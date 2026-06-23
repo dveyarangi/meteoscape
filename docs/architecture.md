@@ -216,7 +216,7 @@ A single `Store` type — a **`Writable`, `Countable` Manifold**, the only thing
 
 ### Config, Registry, Weaver
 
-- **Config & secrets** — a single **typed config**, pure **data**: provider credentials, which providers are enabled, and the **policy config** (priority ordering, per-parameter `reconciler`) + the **derivation registry**. Credentials are **injected at construction**, never read from globals. (Concrete config library → [`v1-requirements.md`](./v1-requirements.md).)
+- **Config & secrets** — a single **typed config**, pure **data**: provider credentials, which providers are enabled, and the **policy config** (priority ordering, per-parameter `reconciler`) + the **derivation registry**. The **parameter table** — the injected `ParameterDef` lookup (a swappable interface; static in v1) — is wired in the same way. Credentials are **injected at construction**, never read from globals. (Concrete config library → [`v1-requirements.md`](./v1-requirements.md).)
 - **Registry** — the **provider leaf-factory**: handed **plain config values**, it owns the **provider-id → Provider-class catalog** and instantiates the enabled Providers (secrets injected), handing the raw leaves to the Weaver. No wiring, no `Store`s.
 - **Weaver** — the **build-time graph constructor**: from producers' `Capability` + policy config it wires the entire static DAG and **allocates every `Store`**, then steps out — the only omniscient component, absent from the request path (runtime is pure `project` recursion). Memoized Calculator wiring and the candidate-ordering algorithm → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **Composition root** — `server.py` is **thin entrypoint**: it reads `config`, has the Registry instantiate Providers, hands `(producers + policy config)` to the **Weaver**, takes back the best-view Manifold, builds the Gateway, and binds surface adapters. **No ordering or construction logic of its own.**
@@ -313,6 +313,9 @@ src/meteoscape/
 │   │                          #   project / quantize / whole-unit assimilate; non-persisting Store impl; read-back homogenization
 │   ├── domain.py              #   Domain interface + representations (regular/rectilinear; curvilinear later); per-axis interpolability + bounds (Separable facet); containment, cardinality, sampling, quantize (snap + widen to whole units), snapped→exact read-back resolution
 │   ├── coverage.py            #   Coverage (leaf Manifold) + ParameterData (values/present mask/unit/aggregation) + ProvenanceField + Timeline/Grid; positional Domain↔values correspondence
+│   ├── parameters/            #   parameter vocabulary + the ParameterTable seam
+│   │   ├── vocabulary.py      #     ParameterId, Unit, Quantity (identity), ParameterDef; closed enums Kind / CellAggregation
+│   │   └── table.py           #     ParameterTable interface + StaticParameterTable (v1: core-5); injected into Normalizer / Capability / edge
 │   └── request.py             #   Selection = Domain + parameters (mode is the Domain's shape: Continuous|Snapped|Enumerable)
 │
 ├── nodes/                     # concrete Manifolds — depends on manifold/

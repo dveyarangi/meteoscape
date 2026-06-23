@@ -135,9 +135,11 @@ consensus, how observations join forecasts along `valid_time`) are undecided and
 Canonical **parameter names, units, and spatial-ref encoding** are deferred at the contract level.
 Normalizers reconcile vendor units into a **canonical unit per `ParameterData`**, but the canonical set
 itself is unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the
-quantity `kind`, and the kind-driven conversion graph ([ADR-0002](./adr/0002-data-model.md)); what
-remains deferred is the **concrete quantity table and the conversion edge qualities**. Contained
-inside the Provider / Normalizer seam — safe to defer.
+quantity `kind`, and the kind-driven conversion graph ([ADR-0002](./adr/0002-data-model.md)) — as is the
+**delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a swappable
+interface; v1 ships a static one hosting the core-5). What remains deferred is the **concrete quantity
+table content (beyond the v1 core-5) and the conversion-edge qualities**. Contained inside the Provider /
+Normalizer seam — safe to defer.
 
 ## 11. Incremental synthetic recompute
 

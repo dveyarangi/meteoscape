@@ -17,6 +17,48 @@ A runnable MCP server that answers an hourly point-forecast request by selecting
 provider per parameter, falling back on failure, and returning one normalized, provenance-stamped
 **Timeline** Coverage — proving the cross-provider thesis end-to-end within the v1 invariants.
 
+## User stories
+
+Two actors: the **agent** (an MCP client / AI tool calling `get_forecast`) and the **operator** (whoever
+configures and runs the server). Stories are numbered for stable reference from
+[issues](#acceptance-criteria-definition-of-done); each maps to an acceptance criterion below.
+
+**Agent**
+
+1. As an agent, I want to request an hourly point forecast for a `latitude`/`longitude`, so that I can
+   answer a weather question without integrating each vendor myself.
+2. As an agent, I want to request only a subset of the core parameters, so that I get a compact answer
+   scoped to what I actually need.
+3. As an agent, I want to give a `start`/`end` window (or rely on a sane default horizon), so that I
+   control the forecast extent without learning per-provider limits.
+4. As an agent, I want every value returned in a canonical unit, so that I can use and compare them
+   without per-vendor unit handling.
+5. As an agent, I want per-parameter provenance — origin and `expiration` — on each `ParameterData`, so
+   that I know which provider/run produced each value and how fresh it is.
+6. As an agent, I want the best obtainable provider chosen per parameter with automatic fallback on
+   failure, so that a single vendor outage doesn't break my request.
+7. As an agent, I want a forecast at my exact requested lat/lon even when it falls off a provider's grid,
+   so that I don't have to interpolate the answer myself.
+8. As an agent, I want the producible subset returned when some parameters can't be served, so that one
+   unavailable parameter doesn't fail the whole request.
+9. As an agent, I want failures reported as typed errors (`bad-request` / `capability-mismatch` /
+   `runtime-failure`), so that I can react correctly — fix my input, drop the parameter, or retry.
+10. As an agent, I want the tool description to narrate the available envelope (parameters × max horizon),
+    so that I know what I can ask for before calling.
+
+**Operator**
+
+11. As an operator, I want to enable/disable providers and set their priority order via typed config, so
+    that I control the quality policy without code changes.
+12. As an operator, I want the TWC API key injected via config at construction, so that secrets never
+    live in code or globals.
+13. As an operator, I want the server to start and serve on Open-Meteo alone when the TWC key is absent,
+    so that a missing optional secret degrades gracefully instead of failing startup.
+14. As an operator, I want a fully-fresh repeat request served from cache without any provider call, so
+    that I minimize latency and provider usage.
+15. As an operator, I want the store grid step and retention interval to be configurable, so that I can
+    tune cache sharing and memory bounds for my deployment.
+
 ## Concrete decisions
 
 ### Providers (two)
@@ -152,9 +194,14 @@ lifts **without a contract change** — see the seams in
 ### Runtime
 
 - **Local stdio MCP server** via FastMCP. HTTP/remote transport deferred.
-- **Stack (concrete libraries)**: Python · async throughout · **Pydantic v2** (typed config + canonical
-  model / validation) · **httpx** (provider HTTP) · **FastMCP / official MCP SDK** (the surface). The
-  architecture body stays library-agnostic (typed config + MCP surface); these are v1 build choices.
+- **Stack (concrete libraries)**: **Python 3.14**, **async** throughout (asyncio). Runtime: **Pydantic v2**
+  + **pydantic-settings** (typed config / validation), **httpx** (provider HTTP), **FastMCP** (the MCP
+  surface), and **numpy** / **xarray** as the **internal backing of the canonical `Coverage` / `Domain`
+  model** — kept strictly behind the `Domain` / `Coverage` interface, never in a Manifold contract
+  surface. Tooling: **uv** (packaging / env), **ruff** (lint + format), **pyright** (types), **pytest** +
+  **pytest-asyncio** + **pytest-cov**, **respx** (httpx mock transport), **hypothesis** (property-based
+  tests). The architecture body stays library-agnostic (typed config + MCP surface); these are v1 build
+  choices.
 
 ## Acceptance criteria (definition of done)
 

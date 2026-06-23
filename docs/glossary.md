@@ -51,8 +51,12 @@ One parameter's **materialized data slice** in a Coverage (`values`, `present` m
 _Avoid_: Range (reads as an interval — collides with axis bounds), DataBlock, slice
 
 **ParameterDef**:
-The **canonical definition** of a parameter (`id`, `quantity`, `kind`, `canonical_unit`, `aggregation`) that a `ParameterData` clones from. → [ADR-0002](./adr/0002-data-model.md).
+The **canonical definition** of a parameter (`id`, `quantity`, `kind`, `canonical_unit`, `aggregation`) that a `ParameterData` clones from; fetched from the **Parameter table**. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Parameter (the identifier), schema
+
+**Parameter table**:
+The injected **lookup of `ParameterDef`s** (keyed by `ParameterId`) that producers and the edge resolve canonical parameter facts from; a swappable interface (v1 ships a static one). → [architecture.md](./architecture.md#config-registry-weaver).
+_Avoid_: Registry (the provider leaf-factory, and the Derivation registry), Catalogue
 
 **CellAggregation**:
 The **window statistic** a value summarizes its cell with — `point | max | min | mean`; *dimension-preserving*; fixed by parameter identity (lives on `ParameterDef`). The calculus axis (accumulation) is the quantity **kind**, not a value here. → [ADR-0002](./adr/0002-data-model.md).
