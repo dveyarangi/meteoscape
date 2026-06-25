@@ -76,7 +76,7 @@ Every node below the Gateway is a **Manifold** (`project(selection) -> Manifold`
 ```mermaid
 flowchart TB
   DOMAIN["Domain — a coordinate set over the 4 axes<br/>(3 spatial × valid_time); continuous or enumerable"]
-  GEOM["EnumerableDomain — the enumerable case of a Domain (a lattice)"]
+  GEOM["EnumerableDomain — the enumerable case of a Domain (regular lattice or point set)"]
   SEL["Selection (the request)<br/>a Domain + parameters (the Domain's shape is region | snapped | exact)"]
   COV["Coverage — a field sampled onto an enumerable Domain<br/>one ParameterData per parameter + per-parameter provenance"]
   TL["Timeline<br/>time-axis domain; each ParameterData single-origin"]
@@ -91,7 +91,7 @@ flowchart TB
 
 - **Axes & parameters** — **4 axes: 3 spatial + `valid_time`** (all interpolable). **Parameter**, **provenance**, and **`issue_time`** are *not* axes: a parameter is a **functional** `(quantity, aggregation)` ([ADR-0002](./adr/0002-data-model.md)) identifying a **`ParameterData`**; provenance is **per-parameter** metadata, and **`issue_time` (run identity) is a provenance stamp** on the atomic `Origin` → [ADR-0003](./adr/0003-provenance-and-origin.md).
 - **Domain** — a **coordinate set** over the 4 axes, **continuous** or **enumerable** (the indexable **EnumerableDomain**); a **Capability** advertises one, and the Arbiter's filter is Domain-containment. Interface with swappable representations and per-axis interpolability → [ADR-0002](./adr/0002-data-model.md).
-- **Coverage** — a **field sampled onto an EnumerableDomain** (`Coverage <: Manifold`): one **`ParameterData` per parameter**, positional to the Domain's enumeration ("a Selection filled with data"). The shape-agnostic exchange unit, realized as a **Timeline** (or a **Grid**, future). Container layout, `present` mask, `bounds`, and `aggregation` → [ADR-0002](./adr/0002-data-model.md).
+- **Coverage** — a **field sampled onto an EnumerableDomain** (`Coverage <: Manifold`): one **`ParameterData` per parameter**, positional to the Domain's enumeration ("a Selection filled with data"). The shape-agnostic exchange unit, realized as a **Timeline** (or a **Grid**, future). Container layout, `present` mask, axis `Cell` `bounds`, and `aggregation` → [ADR-0002](./adr/0002-data-model.md).
 - **Selection** — the **one request type**: `Domain + parameters`; the Domain's **shape** (Continuous / Snapped / Enumerable) **is** the mode and *is* the output lattice when enumerable → [ADR-0002](./adr/0002-data-model.md). A surface adapter builds it at the edge.
 
 > **`valid_time`** (what the value describes) is the field's time axis; **`issue_time`** (which forecast issuance) is a **provenance stamp** — run identity on the atomic `Origin` ([ADR-0003](./adr/0003-provenance-and-origin.md)), *not* an axis: never interpolated, snapped, or requested. The best view always serves the **latest run**. **Cross-run** (archives / multi-run combination) is a **collection / reconciler seam** over run-stamped Coverages ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)), not interpolation along an axis.
@@ -225,7 +225,7 @@ A single `Store` type — a **`Writable`, `Countable` Manifold**, the only thing
 
 Every seam in one place — the *promise* only; behaviour and rationale are in Major components above.
 
-- **Manifold** — `project(Selection) -> Manifold` (closed, read-only — a field/view); `assimilate(coverage)` on `Writable` (samples onto the node grid + stores, **replacing whole quantized units**); index access on node-`Countable`.
+- **Manifold** — `project(Selection) -> Manifold` (closed, read-only — a field/view); `assimilate(coverage)` on `Writable` (samples onto the node grid + stores, **replacing whole quantized units**); `domain` (an enumerable `Domain`) on `Countable`, which carries index access.
 - **Selection** — `Domain + parameters`; the Domain's **shape** is Continuous (`region`) / Snapped / Enumerable (`exact`) ([ADR-0002](./adr/0002-data-model.md)); a lattice is an **enumerable Domain** (no separate structure layer); Snapped requires a `Countable` target.
 - **Capability** — `parameters × covered Domain` (Source → Arbiter); tested by `Domain`-containment. The parameter set is the **closure** of emitted functionals under the conversion graph → [ADR-0002](./adr/0002-data-model.md).
 - **Provider / Normalizer** — `project(Selection) -> Manifold` carrying full Provider-authored provenance; the Normalizer maps vendor shape → canonical semantics (native geometry is an internal step); capability/cadence/grid are declarations, not in the signature.
@@ -280,7 +280,7 @@ Consciously postponed; only a seam is defined for now:
 Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md); this is the index.
 
 - **Concrete `Selection`/`Domain` encoding** — **resolved** by [ADR-0002](./adr/0002-data-model.md) (Domain interface + representations, mode folded into Domain shape, `issue_time` a provenance stamp (not an axis), positional Coverage↔Domain correspondence).
-- **Concrete Coverage-side encoding** — **resolved** by [ADR-0002](./adr/0002-data-model.md) (`ParameterData` layout, `present` mask, axis `bounds`, `aggregation` on `ParameterDef`) and [ADR-0003](./adr/0003-provenance-and-origin.md) (`ProvenanceField`). Settles the Coverage-side concerns (nodata/mask, temporal-cell semantics, per-point provenance).
+- **Concrete Coverage-side encoding** — **resolved** by [ADR-0002](./adr/0002-data-model.md) (`ParameterData` layout, `present` mask, axis `Cell` `bounds`, `aggregation` on `ParameterDef`) and [ADR-0003](./adr/0003-provenance-and-origin.md) (`ProvenanceField`). Settles the Coverage-side concerns (nodata/mask, temporal-cell semantics, per-point provenance).
 - **[4. issue_time definition](./concerns.md#4-issue_time-definition)** — status resolved (demoted to a provenance stamp); precise meaning still open.
 - **[5. Read-time homogenization fidelity](./concerns.md#5-read-time-homogenization-fidelity)** · **[15. Coarser-grid resampling and aggregation semantics](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)** · **[6. Reconciler catalogue](./concerns.md#6-reconciler-catalogue)** · **[7. Quality scoring](./concerns.md#7-quality-scoring)** · **[8. Arbiter to Broker pressure](./concerns.md#8-arbiter-to-broker-pressure)**.
 - **[9. Cross-run combination](./concerns.md#9-cross-run-combination)** · **[10. Parameter conventions](./concerns.md#10-parameter-conventions)** · **[11. Incremental synthetic recompute](./concerns.md#11-incremental-synthetic-recompute)** · **[12. Curvilinear domains](./concerns.md#12-curvilinear-domains)**.
@@ -289,54 +289,12 @@ Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md)
 ## ADR index
 
 - [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) — Manifold algebra & composition: one closed, logically read-only `project`; capabilities not subtypes; result shape is the Selection's `Domain` cardinality; leaf vs composite, compose for behaviour, lazy fields.
-- [ADR-0002](./adr/0002-data-model.md) — Data model: `Domain` one interface with swappable representations (separability/regularity as facets, mode folded into shape, `issue_time` a provenance stamp not an axis — 4 axes); positional `Coverage` / `ParameterData` (`present` mask, cloned `unit` / `aggregation`, axis `bounds`); the parameter functional model (quantity + `kind` intensive/extensive, `CellAggregation`, extent on the Domain).
+- [ADR-0002](./adr/0002-data-model.md) — Data model: `Domain` one interface with swappable representations (separability a facet, regularity a per-axis `RegularAxis`, mode folded into shape, `issue_time` a provenance stamp not an axis — 4 axes); positional `Coverage` / `ParameterData` (`present` mask, cloned `unit` / `aggregation`, axis `Cell` `bounds`); the parameter functional model (quantity + `kind` intensive/extensive, `CellAggregation`, extent on the Domain).
 - [ADR-0003](./adr/0003-provenance-and-origin.md) — Provenance is per-parameter; origin may be atomic or synthetic; realized as a `ProvenanceField` (`Uniform`/`PerPoint`, O(1) `summary`) so per-point is additive.
 - [ADR-0004](./adr/0004-producer-resolution-and-capability.md) — Producer resolution & capability: one Arbiter shape; Capability = structured clauses + a key/range/extent-reachability predicate; the coverage axis is a `reconciler` (default `priority` = selection); a Calculator is a selectable producer with its own scoped Arbiter; static wired DAG, only `Store`s hold state.
 
 ---
 
-## Appendix: Module layout
+## Module layout
 
-**Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices live in [`v1-requirements.md`](./v1-requirements.md).*
-
-*Implementation-level; kept out of the contract body.* Organized **by architectural layer**, not folder-per-role — see each module's inline note and the dependency rule below.
-
-```text
-src/meteoscape/
-├── __init__.py
-├── server.py                  # thin entrypoint: config → Registry → Weaver → Gateway (no construction logic of its own)
-├── config.py                  # typed settings: secrets, enabled providers, policy config + derivation registry
-├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request (pure leaf)
-│
-├── manifold/                  # the Manifold algebra-knot — self-contained (imports only errors)
-│   ├── base.py                #   Manifold protocol + capabilities (Countable, Writable) + Store + Reservoir;
-│   │                          #   project / quantize / whole-unit assimilate; non-persisting Store impl; read-back homogenization
-│   ├── domain.py              #   Domain interface + representations (regular/rectilinear; curvilinear later); per-axis interpolability + bounds (Separable facet); containment, cardinality, sampling, quantize (snap + widen to whole units), snapped→exact read-back resolution
-│   ├── coverage.py            #   Coverage (leaf Manifold) + ParameterData (values/present mask/unit/aggregation) + ProvenanceField + Timeline/Grid; positional Domain↔values correspondence
-│   ├── parameters/            #   parameter vocabulary + the ParameterTable seam
-│   │   ├── vocabulary.py      #     ParameterId, Unit, Quantity (identity), ParameterDef; closed enums Kind / CellAggregation
-│   │   └── table.py           #     ParameterTable interface + StaticParameterTable (v1: core-5); injected into Normalizer / Capability / edge
-│   └── request.py             #   Selection = Domain + parameters (mode is the Domain's shape: Continuous|Snapped|Enumerable)
-│
-├── nodes/                     # concrete Manifolds — depends on manifold/
-│   ├── capability.py          #   Capability (parameters × covered Domain) — the Source→Arbiter selection contract
-│   ├── arbiter.py             #   Arbiter: per-parameter fold via reconciler (priority default) + fallback
-│   ├── source.py              #   Source = Reservoir(store, Provider) + Capability surface
-│   ├── registry.py            #   provider leaf-factory: provider-id→class catalog, instantiate (secrets injected)
-│   ├── weaver.py              #   build-time graph constructor: producers' Capabilities + policy config → wired DAG + Stores
-│   └── providers/
-│       ├── __init__.py
-│       ├── base.py            #   composable fetch pipeline (http/auth/retry/error-map)
-│       ├── normalization.py   #   Normalizer protocol + shared unit/time/parameter conversion utils
-│       └── <vendor>.py        #   one deep module per provider (later)
-│
-└── api/                       # the edge — depends on manifold/ (not nodes)
-    ├── __init__.py
-    ├── gateway.py             #   caller-policy boundary → best view (null policy)
-    └── mcp_app.py             #   MCP surface adapter: protocol ↔ canonical → Gateway (rest_app.py later)
-
-# Dependency rule (acyclic, inward): errors ← manifold ← nodes ; api → manifold ; server.py composes all.
-# nodes/registry + nodes/weaver take plain config *values* by injection from server.py (never the config.py type).
-# tests/ mirrors modules; provider tests mock the HTTP transport.
-# future seams (not built): enrichers/, scheduler.py (background plane → synthetic Sources).
-```
+The implementation-level module layout lives in [`module-layout.md`](./module-layout.md).

@@ -16,8 +16,20 @@ A **coordinate set** over the 4 axes (the *where*) — **continuous** (a region)
 _Avoid_: Bounds, extent, region
 
 **EnumerableDomain**:
-The **enumerable case of a Domain** — an indexable set of coordinate positions, **regular lattice** or **irregular point set** (cardinality-1 is a single coordinate). Only the regular case can be a `quantize` target. → [ADR-0002](./adr/0002-data-model.md).
+The **enumerable case of a Domain** — an indexable set of coordinate positions, **regular lattice** or **irregular point set** (cardinality-1 is a single coordinate); enumeration (`enumerate` / index / `len`) lives here, not on the base `Domain`. Only the regular case can be a `quantize` target. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
+
+**Axis**:
+One axis of a **`Separable`** Domain — its ordered sequence of `Cell`s, positional to a parameter's values. A **`RegularAxis`** is the uniform case (the only snappable one), defined parametrically rather than enumerating each cell. → [ADR-0002](./adr/0002-data-model.md).
+_Avoid_: Dimension, Coordinate array
+
+**Cell**:
+One position on an `Axis` — a representative **coordinate** with optional **bounds**; no bounds ⇒ an **instant / point**. The unit a parameter's value aligns to; coordinate and bounds are independent (the coordinate sits *within* the bounds by convention, not by definition). → [ADR-0002](./adr/0002-data-model.md).
+_Avoid_: Tick (the coordinate alone), Pixel
+
+**Bounds**:
+A `Cell`'s span on one axis (its `Interval`); absent ⇒ the coordinate is an **instant / point**. The geometry an extensive or windowed parameter reads as its **extent** — the aggregation / integration window. → [ADR-0002](./adr/0002-data-model.md).
+_Avoid_: Range (collides with a Coverage's `ranges`), Extent (the parameter-side window that *rides on* these bounds), span
 
 **Interpolable axis**:
 An axis whose values may be **synthesized between samples** (homogenization) — the 3 spatial axes and `valid_time`. → [ADR-0002](./adr/0002-data-model.md).
@@ -48,7 +60,7 @@ _Avoid_: Variable, field, metric
 
 **ParameterData**:
 One parameter's **materialized data slice** in a Coverage (`values`, `present` mask, `unit`, `aggregation`, provenance), positional to the Domain. One per parameter; not itself a Manifold. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Range (reads as an interval — collides with axis bounds), DataBlock, slice
+_Avoid_: Range (reads as an interval — collides with a `Cell`'s `bounds`), DataBlock, slice
 
 **ParameterDef**:
 The **canonical definition** of a parameter (`id`, `quantity`, `kind`, `canonical_unit`, `aggregation`) that a `ParameterData` clones from; fetched from the **Parameter table**. → [ADR-0002](./adr/0002-data-model.md).
@@ -71,12 +83,8 @@ A quantity's relationship to a cell's temporal extent — **intensive** (instant
 _Avoid_: state / rate / accumulation (those conflate identity with the integration edge)
 
 **Functional**:
-A **requestable parameter** = `agg(quantity)` — the materialized key `(quantity, aggregation)`; extent is *not* in it (it is the Domain's `valid_time` bounds). Aliases like `precip_3h` are surface sugar desugaring to functional + Domain cells. → [ADR-0002](./adr/0002-data-model.md).
+A **requestable parameter** = `agg(quantity)` — the materialized key `(quantity, aggregation)`; extent is *not* in it (it rides the Domain's `valid_time` `Cell` `bounds`). Aliases like `precip_3h` are surface sugar desugaring to functional + Domain cells. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Alias (the sugar), parameter name (ambiguous)
-
-**Bounds**:
-The **extent of a coordinate** — an `Interval` per tick (a `Separable` facet); absent ⇒ the coordinate is an **instant / point**. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Cell (the coordinate-with-bounds, not the bounds), range, span
 
 **Nodata**:
 A **cell-level data gap** — a producer succeeded but has no value at a cell (`present[i] = False`); **data, not a fault**. → [architecture.md](./architecture.md#failure-nodata-and-availability).

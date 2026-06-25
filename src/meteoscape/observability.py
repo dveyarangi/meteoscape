@@ -19,11 +19,11 @@ _ENVIRONMENT_ENV = "METEOSCAPE_ENV"
 def init_observability(dsn: str | None = None, *, environment: str | None = None) -> bool:
     """Initialize error reporting if a DSN is configured.
 
-    `dsn` is taken from the argument first, then the ``SENTRY_DSN`` env var. When neither is
-    present this is a no-op and returns ``False`` so a missing/optional secret degrades
+    `dsn` is taken from the argument first, then the `SENTRY_DSN` env var. When neither is
+    present this is a no-op and returns `False` so a missing/optional secret degrades
     gracefully instead of failing startup.
 
-    Returns ``True`` iff Sentry was initialized.
+    Returns `True` iff Sentry was initialized.
     """
     resolved_dsn = dsn or os.environ.get(_SENTRY_DSN_ENV)
     if not resolved_dsn:
