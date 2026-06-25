@@ -28,6 +28,11 @@ classDiagram
         <<abstract>>
         contains(Domain) bool
         intersect(Domain) Domain
+    }
+    class EnumerableDomain {
+        <<abstract>>
+        get(i) Point
+        len() int
         enumerate() Iterator~Point~
     }
     class Separable {
@@ -37,12 +42,16 @@ classDiagram
     class Axis {
         AxisName name
         bool interpolable
-        ticks() Coordinate[]
-        bounds() Interval[] | None
+        get(i) Cell
+        len() int
+    }
+    class Cell {
+        Coordinate coordinate
+        Interval | None bounds
     }
     class Coverage {
         EnumerableDomain domain
-        dict~ParameterId,ParameterData~ parameter_data
+        ranges() Map~ParameterId, ParameterData~
     }
     class ParameterData {
         ParameterId parameter
@@ -66,32 +75,37 @@ classDiagram
 
     Manifold <|.. Coverage : is-a
     Selection o-- Domain : where + which
-    Domain <|-- Separable : facet (v1 Regular)
+    Domain <|-- EnumerableDomain : enumerable refinement
+    Domain <|-- Separable : facet (v1: RegularDomain)
     Separable o-- Axis : 4 axes
-    Coverage o-- Domain : carries (re-projectable)
+    Axis o-- Cell : sequence of (RegularAxis computes; explicit stores)
+    Coverage o-- EnumerableDomain : carries (re-projectable)
     Coverage o-- ParameterData : one per parameter
     ParameterData ..> ParameterDef : resolves by id
     ParameterData o-- ProvenanceField : per-parameter (ADR-0003)
-    ParameterData ..> Domain : values + present positional to enumerate()
+    ParameterData ..> EnumerableDomain : values + present positional to enumerate()
 ```
 
 ## Domain & Selection
 
 - **`Domain` is an interface; representations vary behind it.** A `Domain` is an abstract coordinate set
-  over the **4 axes** (3 spatial + `valid_time`) with a fixed operation
-  surface — `contains` / `intersect` (the Capability filter), cardinality + enumerability,
-  enumerate / index, and a sample-onto seam — and **nothing in that surface assumes the axes are
-  separable**. v1 ships one representation; the interface admits richer ones with no contract change:
-  - **`RegularDomain`** — origin + step + count per axis (the uniform lattice).
-  - **`RectilinearDomain`** — explicit per-axis ticks (separable but irregular).
+  over the **4 axes** (3 spatial + `valid_time`) whose **universal** surface is just the set-algebra —
+  `contains` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
+  separable**. **Enumeration is the `EnumerableDomain` refinement** (`enumerate` / index / `len`), so
+  *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. v1 ships
+  one representation; the interface admits richer ones with no contract change:
+  - **`RegularDomain`** — a `RegularAxis` per axis (cells generated from origin + step + count: the
+    uniform lattice).
+  - **`RectilinearDomain`** — explicit per-axis `Axis`es of stored `Cell`s (separable but irregular).
   - **`CurvilinearDomain`** — non-separable geometry (radar geotangent slice, satellite swath).
     *Room left, not built* ([#12](../concerns.md#12-curvilinear-domains)).
 
-- **Separability and regularity are facets, not the base type.** Mirroring the algebra's *capabilities,
-  not subtypes*: per-axis decomposition is an optional facet a **separable** representation exposes (its
-  per-axis `Axis` with `ticks` / `bounds`), and the regular **anchor + step** descriptor is a facet a
-  **regular** representation exposes. Curvilinear domains satisfy the base interface without either.
-  **Only a regular representation can be snapped-to.**
+- **Separability is a facet; regularity is a per-axis representation.** Mirroring the algebra's
+  *capabilities, not subtypes*: per-axis decomposition is the one optional facet a **separable**
+  representation exposes — its per-axis `Axis`, a lazy `Sequence[Cell]` (`axis[i] -> Cell`, `len`).
+  Regularity is **not** a domain facet but a choice *within* an axis: a `RegularAxis` generates its
+  cells from `(anchor, step, count)` and stays snappable; an explicit axis stores them. Curvilinear
+  domains satisfy the base interface without being separable. **Only a regular axis can be snapped-to.**
 
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
@@ -149,7 +163,7 @@ classDiagram
   **No coordinates are duplicated** in a `ParameterData` ("a Coverage is a Selection filled with data,"
   literally); in-memory packing (N-D vs flat, dtype, order) is deliberately unspecified. The
   per-parameter element is **`ParameterData`**, not "range" — that reads as an interval, colliding with
-  the axis `bounds`.
+  a `Cell`'s `bounds`.
 
 - **`unit` and `aggregation` are cloned by value onto `ParameterData`.** Both are canonical,
   parameter-determined facts whose **source of truth is `ParameterDef`**, carried by value (beside
@@ -164,12 +178,14 @@ classDiagram
   dtype-agnostic (categorical / integer parameters can't carry NaN) and keeps "no data" distinct from a
   legitimate not-a-number value. Per-parameter, since each parameter's coverage footprint differs.
 
-- **Extent → an optional `bounds` facet on the Domain axis.** Each axis coordinate *may* carry an
-  `Interval`; `bounds() is None` ⇒ the coordinate is an **instant / point**, positionally aligned to
-  `ticks()`. It generalizes to all axes uniformly (a spatial cell is the product of per-axis intervals).
-  `bounds` lives on the **`Separable` facet**, not the base `Domain` (non-separable per-cell extents are
-  the deferred curvilinear case). So the aggregation **interval** for `values[i]` is the shared
-  `valid_time` axis `bounds()[i]` — stated **once** on the Domain, read by every parameter.
+- **A parameter's extent → the optional `bounds` on each axis `Cell`.** An axis is a `Sequence[Cell]`,
+  and a `Cell` pairs its representative `coordinate` with optional `bounds: Interval`; `bounds is None` ⇒
+  the coordinate is an **instant / point**. The two are independent — the `coordinate` sits within the
+  `bounds` by convention (centre, or an edge for period-ending accumulations), never by definition. It
+  generalizes to all axes uniformly (a spatial cell is the product of per-axis intervals). Cells live on
+  the **`Separable` facet**, not the base `Domain` (non-separable per-cell bounds are the deferred
+  curvilinear case). So the aggregation window for `values[i]` — an extensive parameter's **extent** — is
+  the shared `valid_time` axis cell's `bounds`, stated **once** on the Domain, read by every parameter.
 
 - **Provenance is a `ProvenanceField` slot, owned by [ADR-0003](./0003-provenance-and-origin.md).** Each
   `ParameterData` carries one whose O(1) `summary` is the parameter-level handle; v1 builds only the
@@ -197,7 +213,7 @@ classDiagram
     an intensive `rate` quantity and its extensive integral (e.g. rain-rate ↔ precipitation) — a
     vocabulary-declared quantity pair, not a third kind.
 
-- **Extent never enters the parameter key.** Extent is the Domain's `valid_time` `bounds` (above). So the
+- **Extent never enters the parameter key.** Extent is carried by the Domain's `valid_time` `Cell` `bounds` (above). So the
   **materialized / requested parameter key = `(quantity, aggregation)`**; "3h precipitation" = parameter
   `precipitation` over a Domain whose `valid_time` cells are 3h wide — one shared axis serving parameters
   of different temporal meaning.
@@ -212,7 +228,7 @@ classDiagram
   to any tick), an extensive quantity has a native extent (period + phase) only coarsenable by aligned
   additivity. That native extent is a **per-parameter Capability fact**
   ([ADR-0004](./0004-producer-resolution-and-capability.md)), carried by the `Store`'s declared grid and
-  the returned Coverage's `valid_time` `bounds`. A request for an unreachable extent (1h from a 3h
+  the returned Coverage's `valid_time` `Cell` `bounds`. A request for an unreachable extent (1h from a 3h
   producer, a shifted phase, instants) is simply **`capability-mismatch`** — no disaggregation machinery.
 
 ## Why
@@ -270,9 +286,9 @@ classDiagram
 - The **materialized key is `(quantity, aggregation)`**: "instantaneous temperature" and "daily-max
   temperature" sit at different keys, not one parameter with two cell-methods.
 - **Mixed *periods* of one parameter in one Coverage are not yet representable** — `precipitation` over
-  1h vs 3h `valid_time` cells would need different bounds for the same coordinate (a future
-  **per-parameter `bounds` override** seam). An extent/Domain matter, not identity; v1's precipitation is
-  **uniformly hourly** (one shared `valid_time` extent serves every parameter), so the override is deferred.
+  1h vs 3h `valid_time` cells would need different `Cell` `bounds` for the same coordinate (a future
+  **per-parameter bounds override** seam). An extent/Domain matter, not identity; v1's precipitation is
+  **uniformly hourly** (one shared `valid_time` cell serves every parameter), so the override is deferred.
 - The aggregation vocabulary and canonical quantity set are the deferred **parameter conventions**
   ([#10](../concerns.md#10-parameter-conventions)); this ADR fixes the *structure* (quantity identity,
   `kind`, the cell axes), while the concrete quantity table, conversion edges, and their quality costs
@@ -280,6 +296,6 @@ classDiagram
 - **Curvilinear domains** and the **sampling-kernel choice** remain interface promises / edge-deferred
   ([#12](../concerns.md#12-curvilinear-domains), [#5](../concerns.md#5-read-time-homogenization-fidelity)).
 - **The model degenerates cleanly.** Unfilled slots — `present = None`, `Uniform` provenance, windowed
-  `CellAggregation` (`max` / `min` / `mean`), the per-parameter `bounds` override, `PerPoint` — cost
+  `CellAggregation` (`max` / `min` / `mean`), the per-parameter bounds override, `PerPoint` — cost
   nothing, so each is purely additive. v1's concrete positions on these slots (including precipitation as
   the one `extensive` parameter) live in [`v1-requirements.md`](../v1-requirements.md).

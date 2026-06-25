@@ -90,10 +90,10 @@ never linearly averaged in degrees.
 
 **Encoding (v1's position on the data-model slots, [ADR-0002](./adr/0002-data-model.md)).** All five share
 `aggregation = point` (no windowed `max` / `min` / `mean`); precipitation differs only by `kind`. Because it
-is **extensive**, the shared `valid_time` axis carries **hourly `bounds`** — precipitation reads them as its
-per-cell accumulation extent, while the intensive params sample at the tick and ignore the extent
-(accumulation rides on `kind` + extent, **not** a `CellAggregation`). One uniform hourly extent serves every
-parameter, so the per-parameter `bounds` override stays deferred. Every `ParameterData` carries
+is **extensive**, the shared `valid_time` axis carries **hourly cell `bounds`** — precipitation reads them as
+its per-cell accumulation extent, while the intensive params sample at the tick and ignore them
+(accumulation rides on `kind` + extent, **not** a `CellAggregation`). One uniform hourly cell serves every
+parameter, so the per-parameter bounds override stays deferred. Every `ParameterData` carries
 `present = None` and a `Uniform` provenance.
 
 Each `ParameterData` carries its canonical unit (Normalizer reconciles vendor units) and per-parameter

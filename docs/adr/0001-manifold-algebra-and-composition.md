@@ -35,9 +35,11 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   segregation), never a type hierarchy:
   - **`Countable`** — the node **declares an enumerable grid `Domain`** (a regular lattice — see the
     [data model](./0002-data-model.md)): its **canonical lattice**, **provider-exact where a vendor
-    declares one, a configured guess for point vendors that expose none**. Confers index access, an
-    `assimilate` target, and resolution of a snapped/exact request, and is the grid for **`quantize`**
-    (snap + widen to whole units, retention) and **read-back homogenization** (below). Conferred by a
+    declares one, a configured guess for point vendors that expose none**. Its grid (an
+    `EnumerableDomain`) carries index access and resolves a snapped/exact request, and is the grid for
+    **`quantize`** (snap + widen to whole
+    units, retention) and **read-back homogenization** (below) — and, paired with `Writable`, the
+    `assimilate` target. Conferred by a
     *declared* grid (not by holding data), and **upward** from a stored grid to the node that serves it.
   - **`Writable`** — accepts `assimilate(coverage)`: the **materialization boundary** — sample a view
     onto the node's own grid and store it. Provenance is authored **upstream**, never computed here.
