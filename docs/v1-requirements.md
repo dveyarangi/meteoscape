@@ -85,19 +85,21 @@ configures and runs the server). Stories are numbered for stable reference from
 
 The set is deliberately **heterogeneous** to exercise homogenization: precipitation is **extensive**
 (accumulation over the cell), temperature / relative-humidity / wind-speed are **intensive**, and **wind
-direction is circular** — it must be interpolated **angularly** (e.g. via sin/cos or u/v components),
-never linearly averaged in degrees.
+direction is circular**. v1's degenerate nearest-neighbor read-back does **not interpolate** or average
+wind direction; any future interpolating kernel for wind direction must be **angular** (e.g. via sin/cos
+or u/v components), never linearly averaged in degrees.
 
 **Encoding (v1's position on the data-model slots, [ADR-0002](./adr/0002-data-model.md)).** All five share
-`aggregation = point` (no windowed `max` / `min` / `mean`); precipitation differs only by `kind`. Because it
+`statistic = point` (no windowed `max` / `min` / `mean`); precipitation differs only by `extent_scaling`. Because it
 is **extensive**, the shared `valid_time` axis carries **hourly cell `bounds`** — precipitation reads them as
 its per-cell accumulation extent, while the intensive params sample at the tick and ignore them
-(accumulation rides on `kind` + extent, **not** a `CellAggregation`). One uniform hourly cell serves every
+(accumulation rides on `extent_scaling` + extent, **not** a `CellStatistic`). One uniform hourly cell serves every
 parameter, so the per-parameter bounds override stays deferred. Every `ParameterData` carries
 `present = None` and a `Uniform` provenance.
 
-Each `ParameterData` carries its canonical unit (Normalizer reconciles vendor units) and per-parameter
-provenance incl. `expiration`.
+Every value is in its parameter's **canonical unit** (the Normalizer reconciles vendor units on ingest);
+the unit rides the Coverage's `capability` descriptor block, not the `ParameterData` slice. Freshness is
+the per-parameter provenance `expiration`.
 
 ### Request / tool contract
 
@@ -114,8 +116,9 @@ provenance incl. `expiration`.
 
 ### Output
 
-- **Compact, agent-friendly JSON**: a `valid_time` array + one `ParameterData` per parameter (values +
-  unit + per-parameter provenance, incl. origin and `expiration`).
+- **Compact, agent-friendly JSON**: a `valid_time` array + one `ParameterData` per parameter (values),
+  the canonical unit from the `capability` descriptor block, and per-parameter provenance (incl. origin
+  and `expiration`).
 
 - Response is at the **requested** lat/lon (homogenized from the store grid; the underlying native/store
   resolution rides in provenance).
@@ -130,9 +133,11 @@ provenance incl. `expiration`.
   (omitted) — no splicing along `valid_time` in v1.
 - A configurable **default horizon** (≈ 7 days) applies only when the caller omits `end`; `start` / `end`
   stay a **free window** (no interval enum — the `Domain` already models arbitrary extents).
-- The **available envelope** (parameters × max horizon) is the **union of provider Capabilities**; v1
-  narrates it statically in the tool description (a capabilities-introspection tool/resource is a
-  deferred seam).
+- The **available envelope** (parameters × max horizon) is the **union of active provider
+  Capabilities** after config resolution (enabled providers + present secrets). v1 narrates that
+  startup-resolved envelope in the tool description, so a missing optional provider (for example, no TWC
+  key) cannot advertise parameters or horizons the running server will not attempt. A separate
+  capabilities-introspection tool/resource remains a deferred seam.
 - Current conditions fall out as the near-now sample. Observations/past data deferred.
 
 ### v1 invariants (positions on contract seams)
@@ -170,7 +175,7 @@ lifts **without a contract change** — see the seams in
   scoring.
 - **No synthetic parameters** — provider data only; no calculators / combiners.
 - **Null Gateway** policy (identity/limits pass through).
-- **Freshness** read straight off each `ParameterData`'s provenance `expiration` (`fresh ⇔ expiration > now`)
+- **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
   — i.e. the run is still current; `expiration` (`fetched_at + cadence`) proxies run-rollover
   ([concern #4](./concerns.md#4-issue_time-definition)).
 
@@ -243,7 +248,7 @@ real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector,
   `Reservoir` seam in [ADR-0004](./adr/0004-producer-resolution-and-capability.md); **deferred** in v1
   (local stdio, low concurrency), built when contention warrants.
 - **Capabilities introspection** surface (an MCP tool/resource reporting the available envelope from the
-  Capability union) — deferred; v1 narrates statically in the tool description.
+  Capability union) — deferred; v1 narrates the startup-resolved active envelope in the tool description.
 - **Homogenization kernel sophistication / accuracy bounds** — beyond v1's degenerate nearest-neighbor
   kernel (acceptance §4): **per-kind** kernels (linear intensive, area-weighted extensive, angular
   circular), higher-order accuracy guarantees, and a provider **`exact`** capability (true off-grid points

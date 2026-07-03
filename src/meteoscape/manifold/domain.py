@@ -1,16 +1,12 @@
-"""`Domain` - the coordinate set over the 4 axes, and its v1 regular representation.
+"""`Domain` - the coordinate set over the 4 axes (3 spatial + `valid_time`), and its v1 regular
+representation.
 
-A `Domain` is an abstract coordinate set; representations vary behind one interface. Separability is a
-*facet* (an optional protocol a representation exposes), not the base type, so a curvilinear geometry
-can satisfy the base interface without it. Regularity is **not** a domain capability but a per-axis
-*representation*: an `Axis` is a lazy `Sequence[Cell]`, and a `RegularAxis` simply computes its cells
-from `(anchor, step, count)` instead of storing them. `issue_time` is **not** an axis - it is a
-provenance stamp (ADR-0002/0003).
+Representations vary behind one interface: separability is a *facet* (not the base type) and
+regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
+curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
+an axis. v1 ships `RegularDomain`; the other representations and `intersect` are declared seams.
 
-v1 ships `RegularDomain`; `RectilinearDomain` / `CurvilinearDomain` and `Domain.intersect` are
-declared seams (behaviour deferred). The iteration surface here (`enumerate`, `Separable.axis` -> the
-`Cell` sequence, `EnumerableDomain` indexing) is the representation-free path serialization and
-homogenization bind to (ADR-0002).
+See ADR-0002.
 """
 
 from __future__ import annotations
@@ -31,17 +27,14 @@ a `Coordinate`."""
 
 
 class AxisName(Enum):
-    """The 4 interpolable axes: 3 spatial (representation-agnostic) + time (`T`).
-
-    `T` is the **valid-time** axis - the time a value is valid for (`issue_time` is provenance, not an
-    axis). v1's lat/lon point maps onto the spatial axes at the edge; the concrete spatial-ref encoding
-    is a deferred parameter convention.
+    """The 4 field axes: 3 spatial + time (`T` = `valid_time`). Categorical keys (`issue_time`,
+    ensembles) are **not** axes (ADR-0002).
     """
 
     X = "x"
     Y = "y"
     Z = "z"
-    T = "t"
+    T = "t" # valid_time
 
 
 @dataclass(frozen=True)
@@ -56,10 +49,9 @@ class Interval:
 class Cell:
     """One position on an axis: its representative `coordinate` and (optional) `bounds`.
 
-    `bounds is None` => an instant / point (zero-width); present => the cell's interval (the
-    aggregation / integration window an extensive or windowed parameter reads as its *extent*). The
-    `coordinate` lies within the `bounds` by convention (centre, or an edge for period-ending
-    accumulations), never by definition - the two are independent, so neither derives from the other.
+    `bounds is None` => an instant / point; present => the cell's interval (a parameter's extent).
+    Invariant: `coordinate` and `bounds` are independent - the coordinate lies within the bounds by
+    convention (centre, or an edge for period-ending accumulations), never by definition (ADR-0002).
     """
 
     coordinate: Coordinate
@@ -78,15 +70,13 @@ class Point:
 class Axis(ABC):
     """One axis of a `Separable` Domain: a lazy, indexable sequence of `Cell`s.
 
-    The whole contract is `axis[i] -> Cell` + `len(axis)` (iteration provided by the base over those);
-    positional, so it aligns with `ParameterData.values[i]`. Columnar coordinate/bounds arrays are a
-    derived edge concern (serialization / a future numpy backend), not part of this surface.
-    Concretions choose storage: `RegularAxis` computes its cells, an explicit (rectilinear) axis stores
-    them.
+    The whole contract is `axis[i] -> Cell` + `len(axis)`; positional, so it aligns with
+    `ParameterData.values[i]`. An axis is pure geometry - it carries no interpolability flag, since
+    whether a value may be resampled along it is the parameter's resampler fact, not the axis's
+    (ADR-0002).
     """
 
     name: AxisName
-    interpolable: bool
 
     @abstractmethod
     def __getitem__(self, index: int) -> Cell: ...
@@ -100,17 +90,15 @@ class Axis(ABC):
 
 @dataclass(frozen=True)
 class RegularAxis(Axis):
-    """The uniform axis: cells generated from `anchor` (origin) + `step` (spacing) + `count` (length).
+    """The uniform axis: cells generated lazily from `anchor` + `step` + `count`.
 
-    `self[i].coordinate = anchor + i*step`, generated lazily (stores nothing). `cellular` picks the
-    geometry: `True` => each `Cell` spans one step (`bounds = [coord, coord+step]`), `False` => an
-    instant (`bounds = None`). Where the coordinate sits within its cell (leading / trailing / centred)
-    is the normalizer's convention, encoded in `anchor`. The v1 representation's axis; generation
-    behaviour is deferred to the slice that samples (001).
+    `self[i].coordinate = anchor + i*step`. `cellular` picks the geometry: `True` => each `Cell` spans
+    one step (`bounds = [coord, coord+step]`), `False` => an instant (`bounds = None`). Where the
+    coordinate sits within its cell (leading / trailing / centred) is the normalizer's convention,
+    encoded in `anchor`.
     """
 
     name: AxisName
-    interpolable: bool
     anchor: Coordinate
     step: Step
     count: int
@@ -131,15 +119,15 @@ class Separable(Protocol):
 
 
 class Domain(ABC):
-    """An abstract coordinate set over the 4 axes - continuous or enumerable. Representations vary
-    behind this interface; only the set-algebra (`contains` / `intersect`) is universal. Enumeration is
-    the `EnumerableDomain` refinement, so *being* one is the enumerability discriminator - the base
-    makes no such claim.
+    """An abstract coordinate set over the 4 axes - continuous or enumerable.
+
+    Only the set-algebra (`contains` / `intersect`) is universal; enumeration is the `EnumerableDomain`
+    refinement, so *being* one is the enumerability discriminator (ADR-0002).
     """
 
     @abstractmethod
     def contains(self, other: Domain) -> bool:
-        """Domain-containment - the Capability filter (this set encloses `other`)."""
+        """Domain-containment (this set encloses `other`)."""
         ...
 
     @abstractmethod
@@ -151,8 +139,7 @@ class Domain(ABC):
 class EnumerableDomain(Domain):
     """The enumerable case of a Domain - a finite, indexable set of coordinate positions.
 
-    A Coverage carries one of these; `ParameterData.values[i]` is positional to `__getitem__(i)` /
-    `enumerate()`. The whole enumeration surface lives here, never on the base `Domain`.
+    Invariant: a Coverage's `ParameterData.values[i]` is positional to `__getitem__(i)` / `enumerate()`.
     """
 
     @abstractmethod
@@ -169,11 +156,9 @@ class EnumerableDomain(Domain):
 
 @dataclass(frozen=True)
 class RegularDomain(EnumerableDomain):
-    """The uniform-grid representation: a `RegularAxis` per axis. The v1 representation.
+    """The v1 uniform-grid representation: a `RegularAxis` per axis.
 
-    Separable (exposes its axes); regularity rides on the axes, not on the domain. Behaviour
-    (containment, enumeration, indexing) is deferred to the slices that need it; v1's point/hourly case
-    is built in 001.
+    Separable (exposes its axes); regularity rides on the axes, not on the domain.
     """
 
     axes: Mapping[AxisName, RegularAxis]

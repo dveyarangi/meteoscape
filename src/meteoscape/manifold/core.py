@@ -1,16 +1,11 @@
 """The Manifold algebra and its materialized leaf.
 
-`Manifold.project` is the single, closed, logically read-only operation. `Countable` and `Writable`
-are capabilities (interface segregation), never a type hierarchy. `Coverage` is the materialized-leaf
-*contract* (`Manifold ∧ Countable ∧ ranges`); it lives here with the algebra because `Writable`
-consumes it and `Coverage <: Manifold`, which keeps the algebra acyclic. Its concrete realizations
-are in `coverage.py`. The retention layer that composes these capabilities (`Store`, `Reservoir`) are
-concrete nodes - they only *use* the algebra (one direction, no cycle) and so live in `nodes/`.
+`project` is the single closed, read-only operation; `Countable` and `Writable` are optional facets,
+never a type hierarchy. The `Coverage` *contract* lives here (its realizations live in `coverage.py`)
+because `Writable` consumes it and `Coverage <: Manifold` - co-locating it with the algebra keeps the
+dependency acyclic. Everything here is an interface bar the `Selection` value type.
 
-Everything here is an interface (bar the `Selection` value type); behaviour and the concrete data
-backing are deferred to the slices that build each node and to `coverage.py`. This module fixes only
-the contracts - the `Selection` request input, the enumerable `domain` seam, and the
-`enumerate()`-positional `Coverage` that serialization binds to.
+See architecture.md ("Core concepts") and ADR-0001.
 """
 
 from __future__ import annotations
@@ -19,17 +14,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from ..catalog.vocabulary import ParameterId
+from .capability import Capability
+from .data import ParameterData
 from .domain import Domain, EnumerableDomain
-from .parameters.data import ParameterData
-from .parameters.vocabulary import ParameterId
+from .provenance import ProvenanceField
 
 
 @dataclass(frozen=True)
 class Selection:
-    """The one request type the algebra consumes - `project`'s input, dual to the `Coverage` it
-    returns. `Selection = Domain + parameters`; the Domain's **shape** (Continuous / Snapped /
-    Enumerable) *is* the mode, so there is no separate `mode` field that could disagree with it
-    (ADR-0002).
+    """`project`'s input: a `Domain` + the parameters to sample.
+
+    Invariant: the Domain's shape (Continuous / Snapped / Enumerable) *is* the mode, so there is no
+    separate `mode` field that could disagree with it (ADR-0002).
     """
 
     domain: Domain
@@ -45,12 +42,12 @@ class Manifold(Protocol):
 
 @runtime_checkable
 class Countable(Protocol):
-    """Capability: the node/result exposes an enumerable (discrete) coordinate `domain`.
+    """Facet: exposes an enumerable coordinate `domain` (discrete-vs-continuous only, nothing about
+    writing).
 
-    Discrete-vs-continuous only - nothing about writing. Geometry enumeration and index access live on
-    the `EnumerableDomain` itself (`domain.enumerate()`, `domain[i]`, `len(domain)`); a *node* uses its
-    domain as the canonical lattice (the `quantize`/retention target), a *result* `Coverage` exposes
-    the domain it was sampled onto.
+    A *node* uses its `domain` as the canonical lattice (the `quantize` / retention target); a *result*
+    `Coverage` exposes the domain it was sampled onto. Enumeration and index access live on the
+    `EnumerableDomain` itself.
     """
 
     @property
@@ -59,26 +56,27 @@ class Countable(Protocol):
 
 @runtime_checkable
 class Writable(Protocol):
-    """Capability: the materialization boundary - sample a view onto the node grid and store it."""
+    """Facet: the materialization boundary - sample a view onto the node grid and store it."""
 
     def assimilate(self, coverage: Coverage) -> None: ...
 
 
 @runtime_checkable
 class Coverage(Manifold, Countable, Protocol):
-    """The materialized leaf: a field sampled onto an enumerable `domain`, one `ParameterData` range
-    per parameter (positional to `domain`). The shape-agnostic exchange unit and itself a Manifold -
-    `Coverage = Manifold ∧ Countable ∧ ranges`. Mirrors CoverageJSON's `domain` + `parameters` +
-    `ranges`. Realizations (`Timeline`, v1) choose the value backing (dense now; numpy/xarray later)
-    behind this contract, in `coverage.py`.
+    """A Manifold sampled onto its enumerable `domain` - the shape-agnostic exchange unit.
 
-    Two orthogonal read axes, each a member object indexed by its own key: positions by the shared
-    geometric index `i` of `domain` (`domain[i]` / `domain.enumerate()`); values by `ParameterId`
-    through `ranges` (`ranges[pid]`, a keyed map - never an ordinal; iterate or `.keys()` it for the
-    parameter set). They align as `ranges[pid].values[i]` identically across every parameter. `domain`
-    (from `Countable`) and `project` (from `Manifold`) complete the surface. CoverageJSON's `parameters`
-    descriptor block is recovered at the edge by joining the `ParameterTable` on these keys.
+    `capability` is the sole carrier of the parameter set (its `ParameterDef`s) and the `Domain` they
+    sit on - there is no separate `parameters` map; a Coverage's capability is co-domained (every
+    parameter on the one sampled `domain`). Invariant: `capability`, `ranges`, and `provenance` share
+    one parameter key set and align positionally over `domain` - `ranges[pid].values[i]` is parameter
+    `pid` at the domain's i-th point (ADR-0002 / ADR-0003).
     """
 
     @property
     def ranges(self) -> Mapping[ParameterId, ParameterData]: ...
+
+    @property
+    def provenance(self) -> ProvenanceField: ...
+
+    @property
+    def capability(self) -> Capability: ...

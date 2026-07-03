@@ -1,9 +1,7 @@
 """MCP surface adapter: protocol <-> canonical, the first surface.
 
-Builds the FastMCP app and registers the one v1 tool, `get_forecast`. In this slice the tool is
-*registered* but carries no forecast behaviour - translating the call into a canonical `Selection`,
-driving the Gateway, and serializing the Coverage to compact JSON (by iterating the Coverage
-interface) is wired from 001 onward.
+Builds the FastMCP app and registers the one v1 tool, `get_forecast`. The adapter's job is to
+translate a call into a canonical `Selection`, drive the Gateway, and serialize the returned Coverage.
 """
 
 from __future__ import annotations
@@ -12,7 +10,7 @@ from fastmcp import FastMCP
 
 
 def build_mcp_app() -> FastMCP:
-    """Construct the MCP app with `get_forecast` registered (no forecast behaviour yet)."""
+    """Construct the MCP app with `get_forecast` registered."""
     mcp: FastMCP = FastMCP("meteoscape")
 
     @mcp.tool

@@ -30,19 +30,37 @@ same shape. The abstraction these are shapes of is the
 
 ## Capability & matching
 
-- **Capability is structured clauses + one generic match predicate** — not an opaque per-producer
-  `can_serve()`, not a DSL. Per emitted parameter a producer declares a clause:
-  `(quantity, aggregation)` — the **key**; a **spatial region + temporal range** (the coverage); and,
-  for an **extensive** quantity ([data model](./0002-data-model.md)), its native **extent**
-  `{period, phase}`. Ordering and the `reconciler` are **policy**, not Capability.
+- **Capability is a per-parameter `(ParameterDef, Domain)` mapping + one generic predicate** — not an
+  opaque per-producer `can_serve()`. Per emitted parameter a
+  producer advertises the parameter's canonical facts (`ParameterDef` — quantity, statistic,
+  `extent_scaling`, canonical unit) paired with the `Domain` it covers. There is **no separate clause
+  or `extent` field**: a parameter's native **vertical offset / level** (`2 m above_ground`,
+  `1000 hPa`) and its extensive **accumulation window** are **geometry on that `Domain`** — a Z `Cell`
+  and a `valid_time` `Cell`'s `bounds` respectively ([data model](./0002-data-model.md)). Ordering and
+  the `reconciler` are **policy**, not Capability.
 
-- **The match predicate** `serves(clause, requested_functional, requested_domain)` is the conjunction of:
-  1. **key equality** — `quantity` and `aggregation` match;
-  2. **range containment** — the clause's region / time-range ⊇ the request (`Domain`-containment, the
-     existing filter);
-  3. **extent reachability**, *kind-aware* — **intensive** ⇒ always (interpolate to any requested tick);
-     **extensive** ⇒ the requested period is an **integer multiple** of `clause.period` **and**
-     phase-aligned (additivity: a 3h producer serves 3h / 6h / 9h…, **not** 1h, 2h, or a shifted phase).
+- **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
+  whether a **valid, non-lossy resampler path** exists from `offered` to `requested` — the
+  `ParameterDef` is why the value is a pair, not a bare `Domain`. A parameter's **resampler** is
+  entailed by its `(scale, statistic, extent_scaling)` and is **asymmetric**:
+  1. the requested parameter is in the mapping (**key presence** — the closure below gives each key its
+     reachable family);
+  2. **refine up** (finer request) — a `linear` scale interpolates to any tick, a categorical scale
+     snaps to members, and an **extensive** window cannot be split;
+  3. **coarsen down** — whole, **phase-aligned integer-multiple** aggregation via the statistic's
+     combine (`sum` for extensive, `max` / `min` / `mean` for windowed): a 3h producer serves 3h / 6h /
+     9h…, **not** 1h, 2h, or a shifted phase.
+  `Domain.contains` is only the **geometric half** (linear-refine / snap); extent-reachable aggregation
+  is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
+  **parameter** fact (its scale), never a `Domain`/axis one.
+
+- **Resamplers are a registry** The `ParameterDef` carries a resampler
+  **selector** (derived from scale × statistic × extent, not hand-set); the **implementations**
+  (linear / angular / area-weighted / categorical kernels) live in a catalogue looked up at
+  homogenization, deferred with the kernel choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
+  Matching reads only resampler **existence and losslessness**; **lossy** resamplers (extensive
+  disaggregation, categorical priority-down) are a later, purely **additive** tier
+  ([#7](../concerns.md#7-quality-scoring)).
 
 - **Capability is the closure of emitted functionals under *exact* conversion edges** (aligned coarsening
   by additivity), so one declared functional serves a whole reachable family without enumeration.
@@ -51,7 +69,7 @@ same shape. The abstraction these are shapes of is the
   into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); when it lands it only
   *grows* a producer's closure — purely additive. Match is **boolean**; ranking stays static priority.
 
-- **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, aggregation)` to wire
+- **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, statistic)` to wire
   each parameter's candidate set (build-time). The **Arbiter** applies range-containment + extent
   reachability per request to filter that set, then walks it in priority order.
 
@@ -160,7 +178,7 @@ request-level contract, whose canonical home is
   selector compute formulas. Scoping each calculator's input Arbiter to its inputs keeps the graph an
   acyclic DAG while letting the Calculator depend on a single resolver.
 - Capability as **data + a fixed predicate** (not behaviour) stays introspectable, so the Weaver can
-  index candidates statically; the kind-aware extent rule is the only thing that distinguishes "3h precip
+  index candidates statically; the extent-scaling–aware extent rule is the only thing that distinguishes "3h precip
   yes / 1h no", and it is exactly the data model's *exact* conversion edge — one mechanism, not two.
 - "Assembly vs reduction" is a false split on the coverage axis: pick-one is just a reducer, and one
   request needs nodata + passthrough + reconcile *simultaneously*, decided per cell by how many producers

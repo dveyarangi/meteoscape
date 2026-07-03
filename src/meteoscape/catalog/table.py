@@ -11,8 +11,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 
 from .vocabulary import (
-    CellAggregation,
-    Kind,
+    CellStatistic,
+    ExtentScaling,
     ParameterDef,
     ParameterId,
     Quantity,
@@ -60,45 +60,46 @@ class StaticParameterTable(ParameterTable):
         return cls(_CORE_5)
 
 
-# Core-5 parameter ids (v1-requirements - Parameters).
-TEMPERATURE_2M = ParameterId("temperature_2m")
+# Core-5 parameter ids. Ids are the functional `(quantity, statistic)`, never the surface height:
+# `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
+# (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name.
+AIR_TEMPERATURE = ParameterId("air_temperature")
 PRECIPITATION = ParameterId("precipitation")
-WIND_SPEED_10M = ParameterId("wind_speed_10m")
-WIND_DIRECTION_10M = ParameterId("wind_direction_10m")
-RELATIVE_HUMIDITY_2M = ParameterId("relative_humidity_2m")
+WIND_U = ParameterId("wind_u")
+WIND_V = ParameterId("wind_v")
+RELATIVE_HUMIDITY = ParameterId("relative_humidity")
 
-# The set is deliberately heterogeneous: precipitation is the one extensive parameter; wind direction
-# is circular (angular interpolation - a homogenization-kind concern, not an identity one). All five
-# share `aggregation = point` in v1.
+# Precipitation is the only extensive parameter; wind rides as u/v components (speed/direction are
+# derived views) so the vector coupling stays out of per-parameter resamplers. See v1-requirements / ADR-0002.
 _CORE_5: tuple[ParameterDef, ...] = (
     ParameterDef(
-        id=TEMPERATURE_2M,
-        quantity=Quantity("air_temperature", Kind.INTENSIVE),
+        id=AIR_TEMPERATURE,
+        quantity=Quantity("air_temperature", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("degC"),
-        aggregation=CellAggregation.POINT,
+        statistic=CellStatistic.POINT,
     ),
     ParameterDef(
         id=PRECIPITATION,
-        quantity=Quantity("precipitation", Kind.EXTENSIVE),
+        quantity=Quantity("precipitation", ExtentScaling.EXTENSIVE),
         canonical_unit=Unit("mm"),
-        aggregation=CellAggregation.POINT,
+        statistic=CellStatistic.POINT,
     ),
     ParameterDef(
-        id=WIND_SPEED_10M,
-        quantity=Quantity("wind_speed", Kind.INTENSIVE),
+        id=WIND_U,
+        quantity=Quantity("eastward_wind", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("m/s"),
-        aggregation=CellAggregation.POINT,
+        statistic=CellStatistic.POINT,
     ),
     ParameterDef(
-        id=WIND_DIRECTION_10M,
-        quantity=Quantity("wind_direction", Kind.INTENSIVE),
-        canonical_unit=Unit("deg"),
-        aggregation=CellAggregation.POINT,
+        id=WIND_V,
+        quantity=Quantity("northward_wind", ExtentScaling.INTENSIVE),
+        canonical_unit=Unit("m/s"),
+        statistic=CellStatistic.POINT,
     ),
     ParameterDef(
-        id=RELATIVE_HUMIDITY_2M,
-        quantity=Quantity("relative_humidity", Kind.INTENSIVE),
+        id=RELATIVE_HUMIDITY,
+        quantity=Quantity("relative_humidity", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("percent"),
-        aggregation=CellAggregation.POINT,
+        statistic=CellStatistic.POINT,
     ),
 )

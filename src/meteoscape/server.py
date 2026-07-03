@@ -1,7 +1,7 @@
 """Composition root - the thin entrypoint.
 
-Initializes observability and stands up the MCP surface. The full DAG wiring (config -> Registry ->
-Weaver -> Gateway -> surface) lands in 001; `server.py` holds no construction logic of its own.
+Initializes observability and stands up the MCP surface. Wires the full DAG (config -> Registry ->
+Weaver -> Gateway -> surface) but holds no construction logic of its own.
 """
 
 from __future__ import annotations
