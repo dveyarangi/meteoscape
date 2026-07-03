@@ -1,8 +1,7 @@
 """Observability init seam.
 
-A single, config-driven entry point that the composition root (`server.py`, built in
-issue 001+) calls once at startup. Kept out of the Manifold contract: it is operational
-infrastructure, not part of the algebra.
+A single, config-driven entry point that the composition root (`server.py`) calls once at startup.
+Kept out of the Manifold contract: it is operational infrastructure, not part of the algebra.
 
 DSN is optional. Absent DSN is a no-op (the server runs without error reporting), mirroring
 the optional-secret graceful-degrade rule the rest of v1 follows for provider keys.

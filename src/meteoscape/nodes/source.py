@@ -1,14 +1,13 @@
 """`Source` - a `Reservoir(store, Provider)` exposing one provider's data.
 
-The serve-or-fetch view of one provider; declares its `Capability` to the Arbiter. Asks its Provider
-store-shaped, so its `assimilate` stores as identity (no resampling, no stamping). Behaviour is the
-`Reservoir`'s; this is the wiring shape.
+Declares its `Capability` to the Arbiter. Asks its Provider store-shaped, so its `assimilate` stores
+as identity (no resampling, no stamping). See architecture.md ("Source").
 """
 
 from __future__ import annotations
 
+from ..manifold.capability import Capability
 from ..manifold.core import Manifold, Selection
-from .capability import Capability
 from .providers.base import Provider
 from .reservoir import Store
 

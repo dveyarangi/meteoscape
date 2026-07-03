@@ -2,7 +2,7 @@
 
 From producers' `Capability` + policy config it wires the entire static DAG and allocates every
 `Store`, then steps out (absent from the request path). Takes plain config values by injection, never
-the `config.py` type. Wiring behaviour is built from 001 onward.
+the `config.py` type. See architecture.md ("Config, Registry, Weaver").
 """
 
 from __future__ import annotations

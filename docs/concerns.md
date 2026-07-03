@@ -9,6 +9,41 @@ parameter functional model → [ADR-0002](./adr/0002-data-model.md); per-point p
 
 ---
 
+## 16. Capability propagation across the Manifold graph
+
+**Kind:** algebra-shaped (the surface to settle before implementation) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
+
+**Settled so far.** `Capability` is **one type** — `Map[ParameterId, (ParameterDef, Domain)]` + a
+`serves(parameter, requested_domain)` predicate ([ADR-0004](./adr/0004-producer-resolution-and-capability.md))
+— and it is the **descriptor-block carrier** every materialized result already exposes: a `Coverage`'s
+`capability` *is* its `(ParameterDef × Domain)` (co-domained on its one sampled `Domain`), so a
+`Selection`, a `Provider` declaration, and a `Coverage` all share the one `(parameters × Domain)` shape
+([ADR-0002](./adr/0002-data-model.md)). A `Provider` declares its own.
+
+**Open — this is the shape to nail before building anything**, because it decides whether `Manifold`
+itself grows a `capability` member (a recursive facet on *every* node, computed by composition) or stays
+a leaf-only declaration consumed by the Arbiter. Capability would compose **bottom-up like `project`**:
+
+- an **Arbiter** exposes the **combined** capability of its candidates (union / closure over their
+  served sets, per servable parameter);
+- a **Reservoir / Source** **forwards** its child's;
+- a **Calculator** is the sharp case: a raw calculator is **domainless** (formula only), but once wired
+  into the DAG it carries the capability **induced by its sources** — its servable `(parameters ×
+  Domain)` is the intersection/closure of its inputs' capabilities *through the formula*.
+
+Tension: uniformity (one recursive facet, clean introspection) vs. nodes with **no natural domain**
+(calculators needing a void/induced domain) and the per-node cost of computing/forwarding a capability.
+
+**Sub-issue — request-time-dynamic capability.** A live `Provider`'s `valid_time` reach is a **rolling
+horizon** (`now − retention … now + lead`), not a fixed `Domain`; its capability is a **function of the
+request instant**, not a static value. Options: capability resolved **at request time** (a
+`reference_time` on `Selection`, so `serves` is evaluated against `now`), vs. a **static declaration**
+carrying relative bounds the Arbiter anchors per request. This must be answered together with the
+propagation shape above — a composed capability is only meaningful once each leaf's reach is well-defined
+at the moment of resolution. **v1** ships a single latest run over a fixed horizon, so a static
+per-request-anchored declaration suffices; the recursive facet and the calculator-induced case are the
+forcing functions.
+
 ## 4. issue_time definition
 
 **Kind:** algebra-shaped (metadata) · **Refs:** [ADR-0002](./adr/0002-data-model.md), [ADR-0003](./adr/0003-provenance-and-origin.md)
@@ -38,14 +73,16 @@ the `ideas.md` provider-real-freshness upgrade.
 [ADR-0003](./adr/0003-provenance-and-origin.md), and [architecture §Reservoir](./architecture.md#reservoir).
 On-grid reads degenerate to a **lossless crop**; the open question is the off-grid kernel.
 
-**What's open is fidelity:** the **kernel choice** per interpolable axis (nearest / linear / cubic;
-**conservative / area-weighted** for extensive re-aggregation; **angular** for circular wind direction)
-and the acceptable **accuracy bounds** — ADR-0002 fixes only *which* axes admit a kernel and that a
-storing grid imposes a **fidelity floor**, not the method. v1 ships the **degenerate nearest-neighbor**
-kernel (kind-agnostic, pluggable) — it honours `sel.domain` without real interpolation; **per-kind**
-kernels (linear intensive, area-weighted extensive, angular wind direction), accuracy bounds, irregular
-vendor geometries (sparse stations, mixed grids), and the **provider "exact" capability** (a vendor that
-serves true off-grid points, bypassing the store-grid floor) are the later stress on the kernel.
+**What's open is fidelity:** the **kernel choice** per field axis — the resampler registry's
+implementations (nearest / linear / cubic; **conservative / area-weighted** for extensive
+re-aggregation; the non-linear `circular` / categorical kernels for scales v1 does not exercise, since
+wind rides as linear u/v components) — and the acceptable **accuracy bounds**; ADR-0002 fixes only
+*which* axes admit a kernel and that a storing grid imposes a **fidelity floor**, not the method. v1
+ships the **degenerate nearest-neighbor** kernel (kind-agnostic, pluggable) — it honours `sel.domain`
+without real interpolation; **per-kind** kernels (linear intensive incl. u/v wind, area-weighted
+extensive, the deferred non-linear scales), accuracy bounds, irregular vendor geometries (sparse
+stations, mixed grids), and the **provider "exact" capability** (a vendor that serves true off-grid
+points, bypassing the store-grid floor) are the later stress on the kernel.
 Contained behind the sampling seam. This concern owns **how accurately** a coarsened value is computed;
 **which** cell statistic it should be, and how a request asks for it, is
 [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
@@ -65,21 +102,21 @@ the latter). Three regimes:
   tick still represents its neighbourhood.
 - **Intensive, large factor** (24 h temperature): a **point** sample is **unrepresentative** — one
   instant is night/day-arbitrary, not "the day". The faithful product is a **window statistic**
-  (`min` / `max` / `mean`), already modelled as **`CellAggregation`** on `ParameterDef`
+  (`min` / `max` / `mean`), already modelled as **`CellStatistic`** on `ParameterDef`
   ([ADR-0002](./adr/0002-data-model.md)).
 
 Two expression gaps block honouring this — both **additive**, neither in v1:
 
-1. **Which statistic.** `Functional = (quantity, aggregation)` can name `tmax` / `tmin` / `tmean`, but the
+1. **Which statistic.** `Functional = (quantity, statistic)` can name `tmax` / `tmin` / `tmean`, but the
    surface exposes only `point`; a request cannot ask for "daily max temperature", and whether the
    statistic is **chosen automatically by coarsening factor** or **stated explicitly** is undecided.
 2. **Several statistics of one quantity at once.** Daily **min and max** temperature in one response are
    distinct `Functional`s / `ParameterData`; the surface alias layer and the Coverage must carry
    **multiple aggregations of the same quantity** together.
 
-v1 sidesteps it entirely — **hourly-only, `point` aggregation**, no `step` input. The open work is the
-**request-expression surface** and the **auto-vs-explicit aggregation policy**, not the data model (the
-`CellAggregation` slot and a multi-`ParameterData` Coverage already exist).
+v1 sidesteps it entirely — **hourly-only, `point` statistic**, no `step` input. The open work is the
+**request-expression surface** and the **auto-vs-explicit statistic policy**, not the data model (the
+`CellStatistic` slot and a multi-`ParameterData` Coverage already exist).
 
 ## 6. Reconciler catalogue
 
@@ -133,13 +170,14 @@ consensus, how observations join forecasts along `valid_time`) are undecided and
 **Kind:** edge-isolated · **Refs:** [architecture.md](./architecture.md#deferred-decisions), [ADR-0002](./adr/0002-data-model.md)
 
 Canonical **parameter names, units, and spatial-ref encoding** are deferred at the contract level.
-Normalizers reconcile vendor units into a **canonical unit per `ParameterData`**, but the canonical set
-itself is unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the
-quantity `kind`, and the kind-driven conversion graph ([ADR-0002](./adr/0002-data-model.md)) — as is the
-**delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a swappable
-interface; v1 ships a static one hosting the core-5). What remains deferred is the **concrete quantity
-table content (beyond the v1 core-5) and the conversion-edge qualities**. Contained inside the Provider /
-Normalizer seam — safe to defer.
+Normalizers reconcile vendor units into the **one canonical unit per parameter** (the
+canonical-mono-unit invariant, [ADR-0002](./adr/0002-data-model.md)), but the canonical set itself is
+unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the quantity
+`extent_scaling`, and the extent-scaling–driven conversion graph ([ADR-0002](./adr/0002-data-model.md))
+— as is the **delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a
+swappable interface; v1 ships a static one hosting the core-5). What remains deferred is the **concrete
+quantity table content (beyond the v1 core-5) and the conversion-edge qualities**. Contained inside the
+Provider / Normalizer seam — safe to defer.
 
 ## 11. Incremental synthetic recompute
 

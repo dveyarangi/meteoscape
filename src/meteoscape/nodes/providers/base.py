@@ -2,16 +2,16 @@
 
 A vendor-specific leaf that contributes native, normalized Coverages: adapter (auth / HTTP /
 endpoints) + its Normalizer + capability / cadence / grid declarations. Stateless, no storage, no
-children; authors each `ParameterData`'s full provenance at fetch. The concrete fetch pipeline is
-built per-vendor from 001 onward.
+children; authors the Coverage's provenance (a single-fetch `Uniform` plane) at fetch. See
+architecture.md ("Provider").
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ...manifold.capability import Capability
 from ...manifold.core import Manifold, Selection
-from ..capability import Capability
 
 
 class Provider(ABC):
