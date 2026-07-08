@@ -1,6 +1,6 @@
 ---
-name: write-prd
-description: Generate a PRD from the client brief and write it as a local markdown file in issues/<YYYYMMDD>_<name>/prd.md. Use when the user wants to turn a client request into a structured PRD.
+name: to-spec
+description: Generate a specification from the client brief and write it as a local markdown file in issues/<YYYYMMDD>_<name>/prd.md. Use when the user wants to turn a client request into a structured PRD.
 ---
 
 This skill will be invoked when the user wants to create a PRD. You may skip steps if you don't consider them necessary.
@@ -17,7 +17,7 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
-5. Once you have a complete understanding of the problem and solution, use the template below to write the PRD. The PRD should be written as a local markdown file at `issues/<YYYYMMDD>_<name>/prd.md`. Create the `issues/<YYYYMMDD>_<name>/` directory if it doesn't exist. Do NOT submit a GitHub issue or call any external service.
+5. Once you have a complete understanding of the problem and solution, use the template below to write the spec. The spec should be written as a local markdown file at `session/<YYYYMMDD>_<name>/spec.md`. Create the `session/<YYYYMMDD>_<name>/` directory if it doesn't exist. Do NOT submit a GitHub issue or call any external service.
 
 <prd-template>
 
