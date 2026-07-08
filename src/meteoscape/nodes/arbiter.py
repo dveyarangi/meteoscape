@@ -18,7 +18,7 @@ class Arbiter:
     def __init__(self, candidates: Mapping[ParameterId, Sequence[Manifold]]) -> None:
         self.candidates = candidates
 
-    def project(self, selection: Selection) -> Manifold:
+    async def project(self, selection: Selection) -> Manifold:
         raise NotImplementedError
 
     @property

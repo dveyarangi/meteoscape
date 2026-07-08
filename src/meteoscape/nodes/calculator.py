@@ -23,7 +23,7 @@ class Calculator:
         self.inputs = inputs
         self.resolver = resolver  # scoped Arbiter over the input parameters
 
-    def project(self, selection: Selection) -> Manifold:
+    async def project(self, selection: Selection) -> Manifold:
         raise NotImplementedError
 
     @property

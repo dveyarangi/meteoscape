@@ -14,7 +14,7 @@ def build_mcp_app() -> FastMCP:
     mcp: FastMCP = FastMCP("meteoscape")
 
     @mcp.tool
-    def get_forecast(
+    async def get_forecast(
         latitude: float,
         longitude: float,
         parameters: list[str] | None = None,
