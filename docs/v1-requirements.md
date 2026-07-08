@@ -273,8 +273,8 @@ real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector,
 ## Open / TBD during build
 
 - Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`).
-- Concrete canonical unit choices per parameter (parameter conventions still deferred at contract
-  level).
+- The v1 canonical units are **committed** in [`parameters.md`](./parameters.md); conventions *beyond* the
+  v1 set stay deferred at the contract level ([concern #10](./concerns.md#10-parameter-conventions)).
 - **Single-flight** coalescing of concurrent same-key refills (cache-stampede guard) — already a
   `Reservoir` seam in [ADR-0004](./adr/0004-producer-resolution-and-capability.md); **deferred** in v1
   (local stdio, low concurrency), built when contention warrants.

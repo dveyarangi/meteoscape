@@ -58,8 +58,11 @@ classDiagram
         provenance() ProvenanceField
     }
     class Capability {
-        Map~ParameterId, (ParameterDef, Domain)~ served
+        Map~ParameterId, ParameterDef~ parameters
         serves(ParameterId, Domain) bool
+    }
+    class FootprintCapability {
+        Map~ParameterId, (ParameterDef, Domain)~ footprints
     }
     class ParameterData {
         float[] values
@@ -68,10 +71,13 @@ classDiagram
     class ParameterDef {
         ParameterId id
         Quantity quantity
-        ExtentScaling extent_scaling
-        MeasurementScale scale
         Unit canonical_unit
         CellStatistic statistic
+    }
+    class Quantity {
+        str name
+        ExtentScaling extent_scaling
+        MeasurementScale scale
     }
     class ProvenanceField {
         summary(ParameterId) Provenance
@@ -86,8 +92,10 @@ classDiagram
     Axis <|-- EnumerableAxis : enumerable refinement
     EnumerableAxis o-- Cell : sequence (RegularAxis computes, explicit stores)
     Coverage o-- EnumerableDomain : carries (re-projectable)
-    Coverage o-- Capability : descriptor block (ParameterDef x Domain)
+    Coverage o-- Capability : descriptor block (materialized: ParameterDef x Domain)
     Capability o-- ParameterDef : one per parameter (keyed by id)
+    Capability <|.. FootprintCapability : leaf (Domain private to serves)
+    ParameterDef o-- Quantity : identity root (entails extent_scaling, scale)
     Coverage o-- ParameterData : one per parameter (keyed by id)
     Coverage o-- ProvenanceField : provenance plane, parameter × point (ADR-0003)
     ParameterData ..> EnumerableDomain : values + present positional to enumerate()
@@ -123,7 +131,11 @@ classDiagram
   universal surface is a span (`extent`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
   `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
   `RegularAxis` generates its cells from `(anchor, step, count)` and stays snappable; an explicit one
-  stores them. A **continuous** axis carries only its bound — a plain `ContinuousAxis` or a clock-anchored
+  stores them. Whether a `RegularAxis` generates **bounded** cells (each spanning one step,
+  `bounds = [coord, coord + step]`) or bare **instants** (`bounds = None`) is its **`cellular`** flag — the
+  generative counterpart of a `Cell`'s optional `bounds`: it is how the shared `valid_time` axis emits the
+  hourly `bounds` an **extensive** parameter reads as its accumulation extent, while an intensive parameter
+  samples the tick and ignores them. A **continuous** axis carries only its bound — a plain `ContinuousAxis` or a clock-anchored
   `RollingAxis` (the `FootprintDomain`'s axes). Curvilinear domains satisfy the base interface without
   being separable. **Only a regular axis can be snapped-to.**
 
@@ -170,14 +182,18 @@ classDiagram
   ([ADR-0004](./0004-producer-resolution-and-capability.md)), yielding a synthetic origin — *not* an
   axis to interpolate.
 
-- **The vertical (Z) axis is a coordinate `(reference, value)`, one reference per Domain.** Z is one of
-  the 3 spatial axes — an ordinary field axis of `Cell`s — but a vertical *coordinate* is a pair
-  `(vertical_reference, value)`: **`above_ground`** (datum = the terrain surface; the home of
-  near-surface offsets like 2 m / 10 m), **`isobaric`** (pressure levels), **`height_above_msl`**. These
-  references are **not linearly comparable** — `2 m above_ground` and `1000 hPa` relate only through
-  physics (surface pressure, hydrostatics) — so a single Domain carries **one** reference, and
-  **stacking references onto a common vertical coordinate is a `Calculator`** (a reinterpolation), never
-  a free axis read.
+- **The vertical (Z) axis carries one `vertical_reference`; the coordinate stays a plain scalar.** Z is one
+  of the 3 spatial axes — an ordinary field axis of `Cell`s whose `coordinate` is a plain scalar like every
+  other axis — and the **`vertical_reference` is an attribute of the Z *axis* representation** (one per
+  Domain, since a Domain carries one Z axis), **not** part of the coordinate. The reference is one of
+  **`above_ground`** (datum = the terrain surface; the home of near-surface offsets like 2 m / 10 m),
+  **`isobaric`** (pressure levels), **`height_above_msl`**. These references are **not linearly comparable**
+  — `2 m above_ground` and `1000 hPa` relate only through physics (surface pressure, hydrostatics) — so a
+  single Domain's Z axis carries **one** reference, and **stacking references is a `Calculator`** (a
+  reinterpolation), never a free axis read.
+  *(Amends the original `(reference, value)` pair-coordinate framing — see
+  [Considered options](#considered-options): the reference is axis-level, so `Coordinate` stays
+  `float | datetime` and only the Z-axis representation grows a field.)*
 
 - **Level vs layer is the `Cell`'s `bounds`, like everywhere else.** A thin Z `Cell` (`bounds = None`)
   is a single level / offset; a **fat** Z `Cell` carries `bounds` spanning a layer — `[~0, 10 m]
@@ -370,6 +386,13 @@ classDiagram
   enumerable view** over those contributors, both with `issue_time` as a stamp. The categorical-key
   shape survives as a **collection-layer seam** (archives, ensemble, scenario). *(Reversible: restore the
   axis if a native 2-D `valid_time × issue_time` Coverage is ever wanted.)*
+- **The vertical reference as part of the coordinate — `(reference, value)`.** Originally recorded that
+  way; **amended**. The reference is one-per-Domain (hence one-per-Z-axis), never varies cell to cell, and
+  is never interpolated, so pairing it into every coordinate would tax `Coordinate` (forcing it past
+  `float | datetime`) and every axis for a Z-only fact. It moves to an **attribute of the Z-axis
+  representation**; coordinates stay plain scalars, and the whole `Cell` / `bounds` apparatus is untouched.
+  *(Reversible: restore the pair if a single Domain ever needs to mix references on one axis — but mixed
+  references are a `Calculator` today, so the axis carries exactly one.)*
 - **A single per-parameter `cell_method` carrying both statistic and extent.** Rejected: duplicates the
   extent into every `ParameterData` and can disagree with the Domain — split extent (Domain) from
   statistic (parameter).

@@ -22,7 +22,7 @@ src/meteoscape/
 │   ├── capability.py          #   Capability = the Manifold serving facet (serves + parameters), dual of project; leaves FootprintCapability/EnumerableCapability + composites UnionCapability (Arbiter)/DerivedCapability (Calculator); Reservoir forwards
 │   ├── data.py                #   ParameterData (values/present mask) — the per-parameter payload of the Coverage boundary; pure numbers positional to the Domain, descriptors ride the Coverage's capability
 │   ├── coverage.py            #   concrete Coverage realizations: Timeline (v1 dense impl); Grid (later)
-│   ├── domain.py              #   Domain (set-algebra: contains/intersect) + EnumerableDomain refinement (enumerate/index/len); per-axis Axis (base = extent span; EnumerableAxis refinement = Sequence[Cell]; reps RegularAxis / ContinuousAxis / RollingAxis), Cell = coordinate + optional bounds (a Z cell's coordinate is (vertical_reference, value)), exposed via the Separable facet; representations regular + footprint (both v1; footprint = continuous, clock-anchored provider reach)/rectilinear/curvilinear-later. quantize + read-back homogenization live on the Store/Reservoir, not here
+│   ├── domain.py              #   Domain (set-algebra: contains/intersect) + EnumerableDomain refinement (enumerate/index/len); per-axis Axis (base = extent span; EnumerableAxis refinement = Sequence[Cell]; reps RegularAxis / ContinuousAxis / RollingAxis), Cell = coordinate + optional bounds (the Z axis carries a `vertical_reference`; coordinates stay plain scalars), exposed via the Separable facet; representations regular + footprint (both v1; footprint = continuous, clock-anchored provider reach)/rectilinear/curvilinear-later. quantize + read-back homogenization live on the Store/Reservoir, not here
 │   └── provenance.py          #   the Coverage provenance plane over (parameter, point): Origin (atomic/synthetic) + Provenance + ProvenanceField (Uniform + PerParameter; PerPoint later)
 │
 ├── nodes/                     # concrete Manifolds — depends on manifold/ + catalog/
@@ -44,6 +44,8 @@ src/meteoscape/
 
 # Dependency rule (acyclic, inward): errors, catalog ← manifold ← nodes ; api → manifold + catalog ; server.py composes all.
 # nodes/registry + nodes/weaver take plain config *values* by injection from server.py (never the config.py type).
+#   Open (build-time): the concrete injection signature — e.g. Registry.build(enabled, secrets) and how `secrets`
+#   is keyed to providers — is not pinned by the contract; settled with the walking skeleton.
 # tests/ mirrors modules; provider tests mock the HTTP transport.
 # future seams (not built): enrichers/, scheduler.py (background plane → synthetic Sources).
 ```

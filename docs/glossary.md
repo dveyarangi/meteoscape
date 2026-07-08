@@ -35,7 +35,7 @@ _Avoid_: Range (collides with a Coverage's `ranges`), Extent (the parameter-side
 An axis whose values may be **synthesized between samples** (homogenization) — the 3 spatial axes and `valid_time`. → [ADR-0002](./adr/0002-data-model.md).
 
 **Vertical reference**:
-The datum a vertical (Z) coordinate is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. **One per Domain**; references are not linearly comparable, so stacking them is a `Calculator`. A surface parameter's fixed height is a Z `Cell`, not part of its key (`temperature_2m` is an alias); a producer's native offset is a `Capability` fact. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters (2 m temperature, 10 m wind) share **one** Domain, precise offsets kept in provenance. → [ADR-0002](./adr/0002-data-model.md).
+The datum a vertical (Z) axis is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. An **attribute of the Z axis** (**one per Domain**), *not* part of the coordinate, which stays a plain scalar; references are not linearly comparable, so stacking them is a `Calculator`. A surface parameter's fixed height is a Z `Cell`, not part of its key (`temperature_2m` is an alias); a producer's native offset is a `Capability` fact. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters (2 m temperature, 10 m wind) share **one** Domain, precise offsets kept in provenance. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Altitude (ambiguous across references), level (one value, not the datum)
 
 **Categorical key**:
@@ -67,7 +67,7 @@ One parameter's **materialized data slice** in a Coverage — pure numbers `(val
 _Avoid_: Range (reads as an interval — collides with a `Cell`'s `bounds`), DataBlock, slice
 
 **ParameterDef**:
-The **canonical definition** of a parameter (`id`, `quantity`, `extent_scaling`, `scale`, `canonical_unit`, `statistic`) — the single home of every fact entailed by its id; a Coverage surfaces it via its `capability` **descriptor block**, and producers / the edge resolve it by `ParameterId` from the **Parameter table**. → [ADR-0002](./adr/0002-data-model.md).
+The **canonical definition** of a parameter — its stored facts `(id, quantity, canonical_unit, statistic)`, with `extent_scaling` and `scale` **entailed by its `quantity`** (the identity root), not restated — the single home of every fact entailed by its id; a Coverage surfaces it via its `capability` **descriptor block**, and producers / the edge resolve it by `ParameterId` from the **Parameter table**. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Parameter (the identifier), schema
 
 **Canonical unit**:

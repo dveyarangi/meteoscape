@@ -24,7 +24,7 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 **Non-scope (by design, not just "later"):**
 
 - **Not a weather model** — it serves provider data; it does not generate forecasts/NWP. (Derived calculators are a *synthetic Manifold* seam — v1 uses it for wind speed/direction over u/v — but producing primary forecasts is not the product.)
-- **Not a multi-tenant accounts/billing system** — caller identity, quotas and rate-limits are a Gateway seam (null / pass-through), not a product surface.
+- **Not an accounts/billing business** — Meteoscape is not a multi-tenant billing/accounts product. Caller identity, usage monitoring, quotas and rate-limits are a real **Gateway seam**, **deferred** for v1 (null / pass-through) — see [Deferred decisions](#deferred-decisions) — not by-design non-scope.
 - **No end-user UI** — the deliverable is a server/protocol surface, not an application.
 
 ## Guiding principles
@@ -89,7 +89,7 @@ flowchart TB
   COV -->|realized as| GRID
 ```
 
-- **Axes & parameters** — **4 axes: 3 spatial + `valid_time`** (all **field axes** — resamplable per each parameter's `scale`); the spatial set includes a vertical **Z** axis whose coordinate is `(vertical_reference, value)` (one reference per Domain). **Parameter**, **provenance**, and **`issue_time`** are *not* axes: a parameter is a **functional** `(quantity, statistic)` ([ADR-0002](./adr/0002-data-model.md)) identifying a **`ParameterData`** — a surface parameter's fixed height (`temperature_2m`) is a Z-cell alias, not part of the key; provenance is a **Coverage plane over parameter × point**, and **`issue_time` (run identity) is a provenance stamp** on the atomic `Origin` → [ADR-0003](./adr/0003-provenance-and-origin.md).
+- **Axes & parameters** — **4 axes: 3 spatial + `valid_time`** (all **field axes** — resamplable per each parameter's `scale`); the spatial set includes a vertical **Z** axis whose **`vertical_reference`** is an axis-level attribute (one per Domain), the coordinate itself a plain scalar. **Parameter**, **provenance**, and **`issue_time`** are *not* axes: a parameter is a **functional** `(quantity, statistic)` ([ADR-0002](./adr/0002-data-model.md)) identifying a **`ParameterData`** — a surface parameter's fixed height (`temperature_2m`) is a Z-cell alias, not part of the key; provenance is a **Coverage plane over parameter × point**, and **`issue_time` (run identity) is a provenance stamp** on the atomic `Origin` → [ADR-0003](./adr/0003-provenance-and-origin.md).
 - **Domain** — a **coordinate set** over the 4 axes, **continuous** or **enumerable** (the indexable **EnumerableDomain**); a **Capability** advertises one, and the Arbiter's filter is Domain-containment. Interface with swappable representations; the `Domain`/axis is **pure geometry** (resamplability is the parameter's `scale`, not an axis flag) → [ADR-0002](./adr/0002-data-model.md).
 - **Coverage** — a **field sampled onto an EnumerableDomain** (`Coverage <: Manifold`): one **`ParameterData` per parameter** (pure `values` / `present`, positional to the Domain's enumeration), its **`capability`** (the `ParameterDef` per parameter × the shared Domain — the self-describing descriptor block, so it interprets standalone), plus a **provenance plane** (parameter × point) ("a Selection filled with data"). Parameters that cannot share its Domain (a temperature profile beside surface precipitation) are **separate Coverages**, not one padded with nodata. The shape-agnostic exchange unit, realized as a **Timeline** (or a **Grid**, future). Capability/descriptor block, `present` mask, axis `Cell` `bounds`, and the canonical-mono-unit invariant → [ADR-0002](./adr/0002-data-model.md).
 - **Selection** — the **one request type**: `Domain + parameters`; the Domain's **shape** (Continuous / Snapped / Enumerable) **is** the mode and *is* the output lattice when enumerable → [ADR-0002](./adr/0002-data-model.md). A surface adapter builds it at the edge.
@@ -270,9 +270,10 @@ Consciously postponed; only a seam is defined for now:
   run-stamped contributors** along `valid_time`, and archives are a **collection keyed by `issue_time`**
   (the categorical-key seam, generalizing to ensemble / scenario) →
   [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+- **Usage monitoring / quotas / rate-limits (Gateway policy)** — caller identity, vendor-API usage metering, quotas and rate-limiting are a **Gateway seam**, wired but **null / pass-through** in v1; the enforcement/metering policy is postponed, not a contract change → [Gateway](#gateway--caller-policy-boundary).
 - **Explicit / dynamic quality** — quality is implicit in Arbiter ordering; a real scoring policy (e.g. request-area resolution) can later replace the static order behind the same selection signature.
 - **Incremental recompute of synthetic `ParameterData`** — refresh is whole-`ParameterData`; partial recompute is an unmodeled optimization (see [ADR-0003](./adr/0003-provenance-and-origin.md)).
-- **Parameter conventions** — canonical names, units, spatial-ref encoding.
+- **Parameter conventions** — canonical names, units, spatial-ref encoding (the committed v1 set lives in [`parameters.md`](./parameters.md); the wider convention stays deferred).
 - **Concrete providers, deployment, MCP tool specifics** — left to later passes.
 
 ## Risks / open questions
