@@ -20,7 +20,7 @@ The **enumerable case of a Domain** — an indexable set of coordinate positions
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
 
 **Axis**:
-The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis). → [ADR-0002](./adr/0002-data-model.md).
+The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis, defined with the cadence it reads so `domain` stays pure geometry). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Dimension, Coordinate array
 
 **Cell**:
@@ -122,14 +122,17 @@ _Avoid_: Source (the Manifold)
 The time a value describes (what the weather *is* at). → [architecture.md](./architecture.md#canonical-data-model).
 
 **Issue time**:
-Which forecast **issuance** a value came from — the **model run (reference) time in UTC**, a **provenance stamp (run identity)** on the atomic `Origin`, **not** a Domain axis; derived via the provider's **cadence model** and the basis of freshness. Cross-run lives in the collection / reconciler seam. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+Which forecast **issuance** a value came from — the **model run (reference) time in UTC**, a **provenance stamp (run identity)** on the atomic `Origin`, **not** a Domain axis; derived via the provider's **cadence** (`CadenceDef`) and the basis of freshness. Cross-run lives in the collection / reconciler seam. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: issue_time *axis* (it is a stamp, not an axis)
 
 **Quality**:
 How good a source's data is for a parameter — the basis for the Arbiter's selection. → [architecture.md](./architecture.md#arbiter).
 
 **Cadence**:
-A **Provider**'s run interval `Δ` (with publication latency `L`) — the **cadence model** from which `issue_time`, `expiration`, and the footprint forward edge derive. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+A **Provider**'s run interval `Δ` (with publication latency `L` and `max_lead`) — the **`CadenceDef`** from which `issue_time`, `expiration`, and the footprint forward edge derive. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+
+**Clock**:
+The system time source — the single wall-clock read, a **build-time** dependency injected into **Provider**s (never threaded through `project`), like a configured logger. `Metronome` floors `now()` to a coarse resolution tick (so the run anchor is a step function); `StoppedClock` freezes an instant for tests. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 
 **Consensus**:
 An Arbiter **`reconciler`** that **blends** overlapping contributors instead of picking one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
@@ -223,7 +226,7 @@ What a Manifold serves — a **facet of every Manifold, the dual of `project`**:
 _Avoid_: Coverage, clause
 
 **Footprint**:
-A producer's **declared reach** — the continuous region its `FootprintCapability` tests `serves` against: static spatial/Z extent plus a **clock-anchored** `valid_time` window around the run anchor (the provider's cadence model, [ADR-0003](./adr/0003-provenance-and-origin.md)). Modelled as the continuous `FootprintDomain` (its `contains` is clock-relative), distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+A producer's **declared reach** — the continuous region its `FootprintCapability` tests `serves` against: static spatial/Z extent plus a **clock-anchored** `valid_time` window around the run anchor (the provider's cadence, [ADR-0003](./adr/0003-provenance-and-origin.md)). Modelled as the continuous `FootprintDomain` (its `contains` is clock-relative), distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: coverage, grid, extent
 
 **Arbiter**:

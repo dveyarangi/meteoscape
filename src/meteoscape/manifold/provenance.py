@@ -44,7 +44,8 @@ class SyntheticOrigin(Origin):
 class Provenance:
     """One origin record - what a (parameter, point) value derives from.
 
-    Freshness reads off `expiration` (`fetched_at + cadence`): fresh while `expiration > now`.
+    Freshness reads off `expiration` (the provider's `CadenceDef.expiration`, `A + Δ + L`; ADR-0003):
+    fresh while `expiration > now`.
     """
 
     origin: Origin

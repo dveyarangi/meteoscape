@@ -74,7 +74,7 @@ same shape. The abstraction these are shapes of is the
   in the tool description, and a dedicated introspection surface is deferred.
 
 - **A leaf's temporal reach is clock-anchored (v1)** — its `valid_time` window tracks the provider's run
-  anchor (the cadence model, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
+  anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
   footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `contains`. The
   per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
