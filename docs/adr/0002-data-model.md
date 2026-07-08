@@ -105,10 +105,12 @@ classDiagram
     uniform lattice).
   - **`FootprintDomain`** — a **continuous**, separable provider reach (never enumerable): per-axis
     bounds — a `ContinuousAxis` on each spatial / Z axis, a clock-anchored `RollingAxis` on `valid_time`
-    (`extent = [now − retention, now + lead]`). `contains` composes per-axis extent-containment and is
-    therefore **clock-relative** — the one intentional exception to Domain-as-pure-geometry, isolated to
-    this representation — so the Capability filter tracks a rolling horizon while `serves` stays a plain
-    `contains` ([ADR-0004](./0004-producer-resolution-and-capability.md) /
+    (`extent = [A, A + max_lead]` around the run anchor `A` — the provider's cadence model,
+    [ADR-0003](./0003-provenance-and-origin.md)). `contains` composes per-axis
+    extent-containment and is therefore **clock-relative** — the one intentional exception to
+    Domain-as-pure-geometry, isolated to this representation — so the Capability filter tracks a rolling
+    horizon while `serves` stays a plain `contains`
+    ([ADR-0004](./0004-producer-resolution-and-capability.md) /
     [#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
   - **`RectilinearDomain`** — explicit per-axis `EnumerableAxis`es of stored `Cell`s (separable but
     irregular).

@@ -99,4 +99,6 @@ class DerivedCapability:
         return {self.output.id: self.output}
 
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
-        return parameter == self.output.id and all(self.upstream.serves(i, requested) for i in self.inputs)
+        return parameter == self.output.id and all(
+            self.upstream.serves(i, requested) for i in self.inputs
+        )

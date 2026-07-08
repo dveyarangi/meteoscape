@@ -143,10 +143,11 @@ the per-parameter provenance `expiration`.
   per parameter the Arbiter admits only providers whose Capability **temporally contains** the requested
   extent (whole-request `Domain`-containment), picks the highest-priority such provider, and **falls back
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
-  (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is a **clock-anchored
-  footprint window**, realized by the continuous `FootprintDomain`
-  ([ADR-0002](./adr/0002-data-model.md)); its accuracy against the provider's run-phased,
-  latency-delayed availability is [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
+  (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is the **clock-anchored
+  footprint window** around the run anchor (the provider's cadence model,
+  [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the continuous `FootprintDomain`
+  ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
+  [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
 - A configurable **default horizon** (≈ 7 days) applies only when the caller omits `end`; `start` / `end`
   stay a **free window** (no interval enum — the `Domain` already models arbitrary extents).
 - The **available envelope** (parameters × max horizon) is the **union of active provider
@@ -198,8 +199,9 @@ lifts **without a contract change** — see the seams in
   stay deferred.
 - **Null Gateway** policy (identity/limits pass through).
 - **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
-  — i.e. the run is still current; `expiration` (`fetched_at + cadence`) proxies run-rollover
-  ([concern #4](./concerns.md#4-issue_time-definition)).
+  — i.e. the run is still current. `expiration` derives from the provider's **cadence model**
+  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 ships conservative per-provider `{Δ, L}` defaults
+  ([concern #18](./concerns.md#18-clock-anchored-footprint-fidelity)).
 
 ### Config & secrets
 
@@ -283,4 +285,4 @@ real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector,
   circular), higher-order accuracy guarantees, and a provider **`exact`** capability (true off-grid points
   bypassing the store-grid floor) stay deferred
   ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
-- **Provider-real freshness** signal (vs the static `fetched_at + cadence` estimate) → `ideas.md`.
+- **Provider-real freshness / reference-time** signal (vs the static cadence-model `{Δ, L}` estimate) → `ideas.md`.

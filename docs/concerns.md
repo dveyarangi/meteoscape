@@ -7,49 +7,15 @@ this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when
 parameter functional model → [ADR-0002](./adr/0002-data-model.md); per-point provenance →
 [ADR-0003](./adr/0003-provenance-and-origin.md); capability propagation — the base-`Manifold` facet and
 its leaf/composite family — → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) /
-[ADR-0004](./adr/0004-producer-resolution-and-capability.md) — the clock-anchored footprint reach is v1,
-its accuracy is [#18](#18-clock-anchored-footprint-fidelity), and only *probed* real-availability stays an
-ADR-0004 deferred seam. Vector-component coupling — co-declared and co-produced from one origin,
-coherence a build-time property — → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).)
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md). Run identity (`issue_time`), the
+**freshness cadence model** (`expiration`, the footprint anchor), and the observation / synthetic-origin
+rules → [ADR-0003](./adr/0003-provenance-and-origin.md); only the per-provider numbers
+([#18](#18-clock-anchored-footprint-fidelity)) remain, and *probed* real-availability stays an
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md) deferred seam. Vector-component coupling —
+co-declared and co-produced from one origin, coherence a build-time property —
+→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md).)
 
 ---
-
-## 4. issue_time definition
-
-**Kind:** algebra-shaped (metadata) · **Refs:** [ADR-0002](./adr/0002-data-model.md), [ADR-0003](./adr/0003-provenance-and-origin.md)
-
-The **status is resolved**: `issue_time` is **demoted from a Domain axis to a provenance stamp** — run
-identity on the atomic `Origin` (ADR-0002 / ADR-0003); it is never interpolated, snapped, or requested.
-What remains is its **meaning**: a sharp, generalized definition — model **run time** vs **publication
-time** vs **assimilation window** — and how it is set for **observations** (no forecast run) and for
-**synthetic / derived** `ParameterData` (which inherit from multiple parents). Prerequisite for
-[cross-run combination](#9-cross-run-combination).
-
-**Freshness ties to this.** A `ParameterData` is fresh while its run (`issue_time`) is **still current**;
-`expiration` (`fetched_at + cadence`) is a **proxy for run-rollover** — when the next run supersedes this
-one. With a real rollover signal the proxy is exact; an **over-estimated cadence** opens the one window
-where a previous run's entries still read as fresh after the new run lands (the only time two runs' entries
-coexist, hence the only risk of cross-run mixing). v1 sidesteps it (single latest run). The real signal is
-the `ideas.md` provider-real-freshness upgrade.
-
-## 18. Clock-anchored footprint fidelity
-
-**Kind:** edge-isolated (capability) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0002](./adr/0002-data-model.md), [#4](#4-issue_time-definition)
-
-v1 admits providers by **temporal containment** against a **clock-anchored footprint window**
-`[now − retention, now + lead]` (the continuous `FootprintDomain`,
-[ADR-0002](./adr/0002-data-model.md)). But a provider's real availability is **run-phased and
-latency-delayed**: the latest run `r` sits on the cadence grid, becomes available only at
-`r + publication_latency`, and covers `[r, r + max_lead]`, so the faithful forward edge is
-`latest_available_run + max_lead` — which drifts **below** `now + lead` as the run ages (by up to a
-cadence + latency). Anchoring naïvely to raw `now()` therefore **over-promises** at the forward edge when
-the run is stale (admit → the fetch returns short / nodata, surfacing as **nodata / runtime**, not
-**capability-mismatch**) and **flickers** at the boundary as `now()` moves continuously. Open: the
-**offset** (subtract publication latency) and **rounding** (floor `now` to the run cadence) that derive
-the *effective* anchor (`latest_available_issue_time`) from `now`, using the provider's **cadence +
-latency** facts (cadence already the freshness proxy, [#4](#4-issue_time-definition)). v1 can ship a
-**conservative default** (round `now` to the hour, generous `retention`), accepting occasional edge
-nodata; precise per-provider latency / rounding is the open work. Additive; no contract change.
 
 ## 5. Read-time homogenization fidelity
 
@@ -118,6 +84,34 @@ real partial-coverage producer set exists. `consensus` / `feather` press toward 
 ([ADR-0003](./adr/0003-provenance-and-origin.md)) and require the nodata / mask
 slot ([ADR-0002](./adr/0002-data-model.md)).
 
+## 13. Candidate admission: containment vs intersection
+
+**Kind:** algebra-shaped (boundary) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+
+ADR-0004 states two admission rules that **only agree for fully-overlapping producers**. The capability
+filter admits a candidate by **whole-request `Domain`-containment** (clause region / time-range ⊇ request),
+yet the per-cell **gap-filler** ("a whole-coverage producer joins the set at low priority; the per-cell
+`priority` reconciler yields the high-res source where it reaches and the whole model in the gaps") needs
+**partial** producers in the set — i.e. **intersection** admission (footprint ∩ request ≠ ∅). Under strict
+containment a partial-coverage producer is filtered out, so spatial gap-fill and any `valid_time` splicing
+**cannot occur**. **v1 is unaffected and in fact relies on containment** — wholesale fallback, "select,
+never combine", no horizon splicing. The open question: when coverage reconcilers
+([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
+at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
+intersection). Additive; no v1 work.
+
+## 9. Cross-run combination
+
+**Kind:** deferred seam · **Refs:** [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+
+A v1 `ParameterData` is **single-origin**, with its run identity carried by the provenance `issue_time`;
+the enclosing Coverage has no shared run identity. Combining runs for one parameter is a **reconciler
+folding run-stamped contributor Coverages along `valid_time`** (ADR-0004), yielding a synthetic origin —
+*not* interpolation along an `issue_time` axis (there is none; `issue_time` is a provenance stamp —
+ADR-0002 / ADR-0003). Archives that retain many runs are a **collection keyed by `issue_time`** (the
+categorical-key seam, generalizing to ensemble / scenario). The semantics (which run wins where, blended
+consensus, how observations join forecasts along `valid_time`) are undecided.
+
 ## 7. Quality scoring
 
 **Kind:** deferred seam · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
@@ -141,19 +135,6 @@ acquisition shape (a "Broker")** with state and I/O at selection time. A larger,
 soft (metadata-only) tier of [quality scoring](#7-quality-scoring) deliberately stays on the near side of
 this line.
 
-## 9. Cross-run combination
-
-**Kind:** deferred seam · **Refs:** [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
-
-A v1 `ParameterData` is **single-origin**, with its run identity carried by the provenance `issue_time`;
-the enclosing Coverage has no shared run identity. Combining runs for one parameter is a **reconciler
-folding run-stamped contributor Coverages along `valid_time`** (ADR-0004), yielding a synthetic origin —
-*not* interpolation along an `issue_time` axis (there is none; `issue_time` is a provenance stamp —
-ADR-0002 / ADR-0003). Archives that retain many runs are a **collection keyed by `issue_time`** (the
-categorical-key seam, generalizing to ensemble / scenario). The semantics (which run wins where, blended
-consensus, how observations join forecasts along `valid_time`) are undecided and depend on a sharpened
-[issue_time definition](#4-issue_time-definition).
-
 ## 10. Parameter conventions
 
 **Kind:** edge-isolated · **Refs:** [architecture.md](./architecture.md#deferred-decisions), [ADR-0002](./adr/0002-data-model.md)
@@ -167,6 +148,31 @@ unspecified. The *structure* the vocabulary must fill is fixed — quantity iden
 swappable interface; v1 ships a static one hosting the v1 parameters). What remains deferred is the **concrete
 quantity table content (beyond the v1 set) and the conversion-edge qualities**. Contained inside the
 Provider / Normalizer seam — safe to defer.
+
+## 14. Resolution trace and observability
+
+**Kind:** deferred seam · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [architecture.md](./architecture.md#failure-nodata-and-availability)
+
+How a profile **explains** a resolution is unspecified — per parameter: which candidate won, what fell
+through (**runtime-fault** vs **nodata** vs **capability-mismatch**), the `issue_time` / freshness used, and
+whether each cell was a **`Store` hit or a refill**. The data product is a **`Coverage`**, so a trace must
+ride **alongside** it as a **sidecar** — a profile may expose diagnostics / traces without changing the
+Coverage — and **never** inside `ParameterData`. Open: the trace's **shape and granularity** (per-request /
+per-parameter / per-cell); its relation to per-parameter **provenance** (provenance = *what the data is*;
+trace = *how it was chosen*); and the wider **observability** surface (structured logs + metrics: selection
+counts, fallback rate, cache hit-rate, provider latency / error). Keeping the trace a sidecar channel leaves
+the read-only algebra untouched. v1 may emit a **minimal structured log**; the structured sidecar is deferred.
+
+## 18. Clock-anchored footprint fidelity
+
+**Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+
+The anchoring **mechanism is settled** ([ADR-0003](./adr/0003-provenance-and-origin.md)); what stays open
+is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 ships a **conservative
+default** — floor to the hour, generous `L` — accepting occasional edge nodata), and the residual
+**estimate error** (under-estimating `L` still over-promises → edge nodata; over-estimating
+under-promises). The real fix is a provider's **actual reference / availability signal** when it exposes
+one (rounded guess as fallback) → `ideas.md`. Additive; no contract change.
 
 ## 11. Incremental synthetic recompute
 
@@ -184,33 +190,3 @@ ADR-0002 makes the `Domain` interface **non-separable by default** so curvilinea
 geotangent slices, satellite swaths — can be a **representation** later without a contract change. Not
 built: the interface-conformance is a **promise**, proven by the first non-separable producer. Until then
 it is only a constraint on the Domain interface (don't assume per-axis separability), not a v1 work item.
-
-## 13. Candidate admission: containment vs intersection
-
-**Kind:** algebra-shaped (boundary) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
-
-ADR-0004 states two admission rules that **only agree for fully-overlapping producers**. The capability
-filter admits a candidate by **whole-request `Domain`-containment** (clause region / time-range ⊇ request),
-yet the per-cell **gap-filler** ("a whole-coverage producer joins the set at low priority; the per-cell
-`priority` reconciler yields the high-res source where it reaches and the whole model in the gaps") needs
-**partial** producers in the set — i.e. **intersection** admission (footprint ∩ request ≠ ∅). Under strict
-containment a partial-coverage producer is filtered out, so spatial gap-fill and any `valid_time` splicing
-**cannot occur**. **v1 is unaffected and in fact relies on containment** — wholesale fallback, "select,
-never combine", no horizon splicing. The open question: when coverage reconcilers
-([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
-at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
-intersection). Additive; no v1 work.
-
-## 14. Resolution trace and observability
-
-**Kind:** deferred seam · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [architecture.md](./architecture.md#failure-nodata-and-availability)
-
-How a profile **explains** a resolution is unspecified — per parameter: which candidate won, what fell
-through (**runtime-fault** vs **nodata** vs **capability-mismatch**), the `issue_time` / freshness used, and
-whether each cell was a **`Store` hit or a refill**. The data product is a **`Coverage`**, so a trace must
-ride **alongside** it as a **sidecar** — a profile may expose diagnostics / traces without changing the
-Coverage — and **never** inside `ParameterData`. Open: the trace's **shape and granularity** (per-request /
-per-parameter / per-cell); its relation to per-parameter **provenance** (provenance = *what the data is*;
-trace = *how it was chosen*); and the wider **observability** surface (structured logs + metrics: selection
-counts, fallback rate, cache hit-rate, provider latency / error). Keeping the trace a sidecar channel leaves
-the read-only algebra untouched. v1 may emit a **minimal structured log**; the structured sidecar is deferred.
