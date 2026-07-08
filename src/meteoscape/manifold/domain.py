@@ -13,7 +13,7 @@ See ADR-0002.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -141,7 +141,8 @@ class RegularAxis(EnumerableAxis):
 class ContinuousAxis(Axis):
     """The plain continuous axis: an explicit span, no cells - a `FootprintDomain`'s spatial / Z axis.
 
-    The unmarked continuous case; `RollingAxis` is the clock-anchored specialization.
+    The unmarked, static continuous case; the clock-anchored `valid_time` specialization (`RollingAxis`)
+    lives with the cadence it reads (`cadence.py`), keeping this module pure geometry.
     """
 
     name: AxisName
@@ -150,27 +151,6 @@ class ContinuousAxis(Axis):
     @property
     def extent(self) -> Interval:
         return self.interval
-
-
-@dataclass(frozen=True)
-class RollingAxis(Axis):
-    """The clock-anchored continuous axis: a `FootprintDomain`'s `valid_time` axis.
-
-    `extent` resolves to `[now() - retention, now() + lead]` against the injected clock at read, so this
-    axis is deliberately **clock-relative** (the one intentional exception to axis-as-pure-geometry,
-    isolated here). Anchor is wall-clock `now()`; reconciling it with the provider's run-phased,
-    latency-delayed availability is the anchor-fidelity concern (concern #18, ADR-0004).
-    """
-
-    name: AxisName
-    lead: timedelta
-    retention: timedelta
-    now: Callable[[], datetime]
-
-    @property
-    def extent(self) -> Interval:
-        instant = self.now()
-        return Interval(lower=instant - self.retention, upper=instant + self.lead)
 
 
 @runtime_checkable

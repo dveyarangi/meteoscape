@@ -8,7 +8,7 @@ parameter functional model → [ADR-0002](./adr/0002-data-model.md); per-point p
 [ADR-0003](./adr/0003-provenance-and-origin.md); capability propagation — the base-`Manifold` facet and
 its leaf/composite family — → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) /
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md). Run identity (`issue_time`), the
-**freshness cadence model** (`expiration`, the footprint anchor), and the observation / synthetic-origin
+**freshness cadence** (`expiration`, the footprint anchor), and the observation / synthetic-origin
 rules → [ADR-0003](./adr/0003-provenance-and-origin.md); only the per-provider numbers
 ([#18](#18-clock-anchored-footprint-fidelity)) remain, and *probed* real-availability stays an
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md) deferred seam. Vector-component coupling —

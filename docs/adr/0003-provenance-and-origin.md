@@ -27,11 +27,11 @@ single-fetch Source — one origin for the whole Coverage) and **`PerParameter`*
 parameter × point corner) is the additive seam. "One provider per parameter" is the special case of
 **"one origin per parameter, possibly synthetic."**
 
-## Run identity & freshness — the cadence model
+## Run identity & freshness — the cadence
 
 `issue_time` is the **model run (reference) time in UTC** — the cycle the values came from, the run's
 identity — **not** publication time or the assimilation window. A forecast Source declares a per-provider
-**cadence model** `{cadence Δ, publication_latency L}`; everything time-relative derives from one
+**`CadenceDef`** `{cadence Δ, publication_latency L, max_lead}`; everything time-relative derives from one
 **effective run anchor** at request time `now`:
 
 ```
@@ -130,7 +130,7 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
   combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
   coexist in a unit (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
   read-back homogenization and is **in v1** ([#5](../concerns.md#5-read-time-homogenization-fidelity),
-  freshness via the cadence model above); only the kernel sophistication stays deferred.
+  freshness via the cadence above); only the kernel sophistication stays deferred.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`
   descriptor block are the [data model](./0002-data-model.md); this ADR owns the provenance plane the
   `Coverage` carries.

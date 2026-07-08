@@ -144,7 +144,7 @@ the per-parameter provenance `expiration`.
   extent (whole-request `Domain`-containment), picks the highest-priority such provider, and **falls back
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
   (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is the **clock-anchored
-  footprint window** around the run anchor (the provider's cadence model,
+  footprint window** around the run anchor (the provider's cadence,
   [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the continuous `FootprintDomain`
   ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
   [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
@@ -199,7 +199,7 @@ lifts **without a contract change** — see the seams in
   stay deferred.
 - **Null Gateway** policy (identity/limits pass through).
 - **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
-  — i.e. the run is still current. `expiration` derives from the provider's **cadence model**
+  — i.e. the run is still current. `expiration` derives from the provider's **cadence** (`CadenceDef`)
   ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 ships conservative per-provider `{Δ, L}` defaults
   ([concern #18](./concerns.md#18-clock-anchored-footprint-fidelity)).
 

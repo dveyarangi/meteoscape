@@ -204,7 +204,7 @@ A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's dat
 
 ### Provider (leaf Manifold)
 
-A vendor-specific **leaf** Manifold that **contributes native, normalized `Coverage`s into the graph**: adapter (auth / HTTP / endpoints) + its **Normalizer** + capability/cadence/grid declarations. No storage, no children, stateless. It **authors the Coverage's provenance** at fetch — a single-fetch `Uniform` plane, stamping the run `issue_time` and deriving `expiration` from its **cadence model** ([ADR-0003](./adr/0003-provenance-and-origin.md)). The Normalizer maps vendor shape → canonical **semantics** in native geometry; `project` dispatches to the matching vendor endpoint by requested `Domain` and samples to the requested lattice. **Node-`Countable`** iff it declares a native grid.
+A vendor-specific **leaf** Manifold that **contributes native, normalized `Coverage`s into the graph**: adapter (auth / HTTP / endpoints) + its **Normalizer** + capability/cadence/grid declarations. No storage, no children, stateless. It **authors the Coverage's provenance** at fetch — a single-fetch `Uniform` plane, stamping the run `issue_time` and deriving `expiration` from its **cadence** (`CadenceDef`, [ADR-0003](./adr/0003-provenance-and-origin.md)). The Normalizer maps vendor shape → canonical **semantics** in native geometry; `project` dispatches to the matching vendor endpoint by requested `Domain` and samples to the requested lattice. **Node-`Countable`** iff it declares a native grid.
 
 ### Gateway — caller-policy boundary
 
