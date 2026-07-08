@@ -13,6 +13,10 @@ rules → [ADR-0003](./adr/0003-provenance-and-origin.md); only the per-provider
 ([#18](#18-clock-anchored-footprint-fidelity)) remain, and *probed* real-availability stays an
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md) deferred seam. Vector-component coupling —
 co-declared and co-produced from one origin, coherence a build-time property —
+→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md). Candidate identity granularity — the
+candidacy / priority unit is a configured producer (`SourceKey = provider + dataset`), realized as
+separate instances, so priority discriminates within a provider; only the geometric offering half remains
+([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)) —
 → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).)
 
 ---
@@ -36,9 +40,15 @@ wind rides as linear u/v components) — and the acceptable **accuracy bounds**;
 ships the **degenerate nearest-neighbor** kernel (kind-agnostic, pluggable) — it honours `sel.domain`
 without real interpolation; **per-kind** kernels (linear intensive incl. u/v wind, area-weighted
 extensive, the deferred non-linear scales), accuracy bounds, irregular vendor geometries (sparse
-stations, mixed grids), and the **provider "exact" capability** (a vendor that serves true off-grid
-points, bypassing the store-grid floor) are the later stress on the kernel.
-Contained behind the sampling seam. This concern owns **how accurately** a coarsened value is computed;
+stations, mixed grids), and the **provider "exact" capability** (true off-grid points bypassing the
+store-grid floor — realized as another `SourceKey`-identified offering under the instance model,
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md)) are the later stress on the kernel.
+Always fetching the finest native product and resampling down is faithful **only** when the kernel is
+aggregation-correct **and** the coarser product is a true downsample of the same origin — a native-coarse
+offering is often a **distinct origin**, so it is sometimes required, not merely cheaper
+([#15](#15-coarser-grid-resampling-and-aggregation-semantics),
+[#20](#20-provider-multi-resolution-offerings-offering-aware-selection)). Contained behind the sampling
+seam. This concern owns **how accurately** a coarsened value is computed;
 **which** cell statistic it should be, and how a request asks for it, is
 [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
@@ -123,6 +133,9 @@ degenerate constant scorer). The same seam covers the **match-cost tier of capab
 conversion edges (e.g. disaggregating 3h into 1h), which only *grow* a producer's closure. The
 **metadata-only soft tier** fits the read-only algebra untouched; a scorer that **probes** sources needs
 state + I/O at selection time, reopening [Arbiter → Broker](#8-arbiter-to-broker-pressure).
+**Offering / resolution-aware source selection**
+([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)) is a concrete instance —
+→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md) (equal-priority `score` tie-break).
 
 ## 8. Arbiter to Broker pressure
 
@@ -183,6 +196,40 @@ one (rounded guess as fallback) → `ideas.md`. Additive; no contract change.
 A synthetic `ParameterData` re-derives whenever **any** parent expires (worst-case `min` expiration —
 ADR-0003). Recomputing **only the stale sub-domain** instead of the whole is an **unmodeled optimization**.
 Purely a performance concern; correctness is unaffected by deferring it.
+
+## 20. Provider multi-resolution offerings (offering-aware selection)
+
+**Kind:** algebra-shaped (extension) · **Refs:** [#5](#5-read-time-homogenization-fidelity), [#7](#7-quality-scoring), [#15](#15-coarser-grid-resampling-and-aggregation-semantics), [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+
+**Contract settled** — offerings as `SourceKey` instances; priority-first band walk with in-band
+`score` fall-through; boolean `serves` + leaf `Capability.score` → `Domain.match`
+(→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); axis `step` + request-constrained
+product / fine-enough fit (→ [ADR-0002](./adr/0002-data-model.md)); no native-fidelity provenance field
+(→ [ADR-0003](./adr/0003-provenance-and-origin.md)). Provider `exact` and native-coarse-as-distinct-origin
+→ [#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
+
+**Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
+continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.score`**, and the Arbiter
+equal-priority band walk.
+
+## 21. Weaver build-time input shape
+
+**Kind:** build-time (wiring) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [architecture.md](./architecture.md#config-registry-weaver)
+
+The Weaver's inputs are **settled in principle**: the **read-only source registry** (configured producers
+keyed by `SourceKey`, each carrying its `priority`), the **derivation registry** (Calculators), and
+**store / grid config** — replacing the degenerate `weave(providers: Sequence[Provider], priority:
+Sequence[str])`, which cannot even join a `Provider` to its priority (the `Provider` interface exposes no
+id). Ordering rides through the registry surface, so `priority` is per-`SourceKey` **policy data**, not a
+detached string list; a runtime Arbiter stays a dumb iterator over baked ordered candidate lists
+([ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
+
+**Open:** the exact **shape** — three explicit injected args (lean: matches the constructor-injection
+stance, unit-testable input-by-input) vs a bundled `WeavePlan` recipe (earns its place only if a
+caller-supplied request-time plan lands — ADR-0004's deferred formula DSL) vs polymorphic Weaver
+implementations (rejected: the weaving *algorithm* is one; only its inputs vary). Also open: whether the
+read-only registry surface is a named **role / Protocol** the Weaver depends on (lean: yes) vs a raw
+`SourceKey`-keyed mapping. Additive; the runtime DAG is unaffected, so no contract-surface change.
 
 ## 12. Curvilinear domains
 

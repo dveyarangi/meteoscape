@@ -20,7 +20,7 @@ The **enumerable case of a Domain** — an indexable set of coordinate positions
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
 
 **Axis**:
-The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis, defined with the cadence it reads so `domain` stays pure geometry). → [ADR-0002](./adr/0002-data-model.md).
+The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis, defined with the cadence it reads so `domain` stays pure geometry). Offering-aware ranking adds an optional native **`step`** on continuous footprint axes (the tick-less half today) — read by `Domain.match`, not a separate Capability fact → [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Dimension, Coordinate array
 
 **Cell**:
@@ -111,12 +111,16 @@ A **Coverage's provenance plane** over (parameter, geometry-point) — `Uniform`
 _Avoid_: provenance array, per-point provenance (the `PerPoint` case only), per-`ParameterData` attribute
 
 **Provenance**:
-One **origin record** — what a (parameter, point) value derives from (origin, fetched-at, native resolution, `expiration`); held by a Coverage's `ProvenanceField`. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+One **origin record** — what a (parameter, point) value derives from (origin, fetched-at, `expiration`); held by a Coverage's `ProvenanceField`. Native fidelity is **not** a provenance field (recoverable from the origin's `SourceKey`; ranking reads the footprint Domain's axis `step`s → [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: Lineage (part of a *synthetic* Origin)
 
 **Origin**:
 What a (parameter, point) value derives from — **atomic** (a single Provider fetch) or **synthetic** (derived from multiple parent provenances, its **lineage**). → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: Source (the Manifold)
+
+**SourceKey**:
+The **identity of a configured producer** — the origin an atomic `Origin` is *stamped with* (the **producer / leaf**, not the Reservoir `Source` role). `(provider, dataset)` today, an **extensible** identity; `dataset` is **always named** (never a partial provider-only identity — the default offering is impl-supplied, v1 Open-Meteo → `best_match`), and the tag **discriminates offerings** (distinct resolution / cadence *products*) **opaquely** — the algebra compares it for equality, never parses it. Its `__str__` is the Registry / config token (e.g. `open-meteo:best_match`); a `SourceDef` is built *from* it. **Structured** (not a delimited string) so a provider exposing several datasets / offerings extends it additively, and provenance stays self-describing. An offering's native *geometry* is **not** in the key — it lives on the footprint Domain's axis `step`s ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0003](./adr/0003-provenance-and-origin.md).
+_Avoid_: Source (the Reservoir role), raw source string
 
 **Valid time**:
 The time a value describes (what the weather *is* at). → [architecture.md](./architecture.md#canonical-data-model).
@@ -243,6 +247,10 @@ _Avoid_: Vendor, backend, driver
 
 **Source**:
 A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
+
+**SourceDef**:
+The **config recipe** for one configured producer — a `SourceKey` plus `{ impl, secret_ref, priority }` — that the Registry builds an instance from, `dataset` fixed **at construction**; v1 uses one per provider. → [architecture.md](./architecture.md#config-registry-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: Source (the built role), Provider (the impl class)
 
 **Normalizer**:
 The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).

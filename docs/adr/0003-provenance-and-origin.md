@@ -27,6 +27,17 @@ single-fetch Source — one origin for the whole Coverage) and **`PerParameter`*
 parameter × point corner) is the additive seam. "One provider per parameter" is the special case of
 **"one origin per parameter, possibly synthetic."**
 
+**Origin identity.** An atomic origin names its producer by a structured **`SourceKey`** (`provider` +
+`dataset`) — not a bare string — shared with the config-side `SourceDef` and rendered as the Registry /
+config token (→ [glossary: SourceKey](../glossary.md)). `dataset` is **always named** (never a partial
+provider-only identity; the default offering is impl-supplied — v1 Open-Meteo → `best_match`), so a stamp
+is unambiguous; dataset-level candidacy is [ADR-0004](./0004-producer-resolution-and-capability.md). **Native fidelity is not a provenance
+field**: after read-back homogenization the Coverage's `Domain` is the request lattice, and the offering's
+native resolution is recoverable server-side from the `SourceKey`. Ranking of multi-resolution offerings
+reads the footprint Domain's axis **`step`s**
+(→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)) — never a free
+`native_resolution` string, and never a parallel provenance / Capability `Resolution` bag.
+
 ## Run identity & freshness — the cadence
 
 `issue_time` is the **model run (reference) time in UTC** — the cycle the values came from, the run's

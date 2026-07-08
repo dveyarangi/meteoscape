@@ -445,3 +445,12 @@ classDiagram
   bundle is the degenerate near-surface fat cell) — cost nothing, so each is purely additive. v1's
   concrete positions on these slots (including precipitation as the one `extensive` parameter) live in
   [`v1-requirements.md`](../v1-requirements.md).
+- **Offering / resolution-aware selection is an additive Domain seam.** Continuous footprint axes gain
+  an optional native **`step`**; **`Domain.match(other) -> scalar`** is the ranking sibling of
+  `contains` (hard admission unchanged). Only axes the **request constrains** (carries a step)
+  participate; per-axis fits **combine by product**. Per axis (request step `r`, offering step `o`):
+  prefer `o <= r` (at least as fine), among those closest to `r`; any `o > r` ranks below all
+  fine-enough peers — upsampling invents detail, downsampling is the normal path. Surfaced as
+  **`Capability.score`** so the covered Domain stays private; equal-priority tie-break only
+  (ADR-0004). Deferred build,
+  [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).

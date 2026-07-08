@@ -19,6 +19,24 @@ from datetime import datetime
 from ..catalog.vocabulary import ParameterId
 
 
+@dataclass(frozen=True)
+class SourceKey:
+    """Identity of a configured producer - provider plus its named dataset/offering.
+
+    Shared by config (a `SourceDef` is built from it) and data (an `AtomicOrigin` is stamped with it);
+    its `str` form is the Registry / config token (e.g. `open-meteo:best_match`). Structured rather than a
+    delimited string so a provider exposing several datasets/offerings extends additively. `dataset` is
+    always named - a `SourceKey` is never a partial (provider-only) identity; the offering's default is
+    impl-supplied at construction (v1 Open-Meteo -> `best_match`). See ADR-0003.
+    """
+
+    provider: str
+    dataset: str
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.dataset}"
+
+
 class Origin:
     """Root of the origin union (atomic | synthetic) - what a value derives from."""
 
@@ -27,11 +45,11 @@ class Origin:
 class AtomicOrigin(Origin):
     """A single upstream fetch, authored in full at fetch time.
 
-    `issue_time` is the run identity (the forecast issuance the values came from), carried here rather
-    than as a Domain axis (ADR-0002).
+    `source` is the producing `SourceKey`; `issue_time` is the run identity (the forecast issuance the
+    values came from), carried here rather than as a Domain axis (ADR-0002).
     """
 
-    source: str
+    source: SourceKey
     issue_time: datetime
 
 
@@ -51,7 +69,9 @@ class Provenance:
     origin: Origin
     fetched_at: datetime
     expiration: datetime
-    native_resolution: str | None = None
+    # No native-fidelity field: after read-back homogenization the Coverage's Domain is the request
+    # lattice; the offering's native resolution is recoverable from `origin`'s SourceKey. Ranking of
+    # multi-resolution offerings reads footprint Domain axis steps (concern #20), not a provenance field.
 
 
 class ProvenanceField(ABC):
