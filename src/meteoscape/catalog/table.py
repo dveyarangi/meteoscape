@@ -55,8 +55,9 @@ class StaticParameterTable(ParameterTable):
     def core(cls) -> StaticParameterTable:
         """The v1 parameter table: 5 canonical (provider-served) + 2 derived wind views.
 
-        Canonical units are provisional - concrete parameter conventions are deferred
-        (v1-requirements - Open / TBD).
+        The committed v1 canonical set and its units are documented in `docs/parameters.md`
+        (this table is their source of truth). Conventions *beyond* the v1 set - the wider quantity
+        table and conversion-edge qualities - stay deferred (concern #10).
         """
         return cls(_CORE)
 

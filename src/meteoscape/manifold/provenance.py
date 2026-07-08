@@ -2,8 +2,9 @@
 
 Origin varies over **two** axes - parameter and geometry point - so it is a pluggable `ProvenanceField`
 plane (peer of `domain` / `ranges`), not a per-`ParameterData` attribute; that is what lets the Arbiter
-assemble one Coverage from many single-origin sources. v1 builds `Uniform` and `PerParameter`;
-`PerPoint` and `SyntheticOrigin` are declared seams.
+assemble one Coverage from many single-origin sources. v1 builds the `Uniform` and `PerParameter` planes
+(`PerPoint` is a declared seam) over both `Origin` kinds - atomic and synthetic (the latter a
+Calculator's derived-wind lineage).
 
 See ADR-0003.
 """
@@ -35,7 +36,8 @@ class AtomicOrigin(Origin):
 
 
 class SyntheticOrigin(Origin):
-    """Declared seam: derived from multiple parent provenances (its lineage). Not built in v1."""
+    """Derived from multiple parent provenances (its lineage) - a Calculator's output (v1: the derived
+    wind views over their `wind_u` / `wind_v` inputs). Concrete lineage shape lands with behaviour."""
 
 
 @dataclass(frozen=True)

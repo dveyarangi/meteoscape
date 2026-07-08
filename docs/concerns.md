@@ -145,9 +145,11 @@ canonical-mono-unit invariant, [ADR-0002](./adr/0002-data-model.md)), but the ca
 unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the quantity
 `extent_scaling`, and the extent-scaling–driven conversion graph ([ADR-0002](./adr/0002-data-model.md))
 — as is the **delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a
-swappable interface; v1 ships a static one hosting the v1 parameters). What remains deferred is the **concrete
-quantity table content (beyond the v1 set) and the conversion-edge qualities**. Contained inside the
-Provider / Normalizer seam — safe to defer.
+swappable interface; v1 ships a static one hosting the v1 parameters). The **v1 canonical set** (the 5
+canonical + 2 derived parameters and their committed units) is recorded in
+[`parameters.md`](./parameters.md); what remains deferred is the **concrete quantity table content (beyond
+the v1 set) and the conversion-edge qualities**. Contained inside the Provider / Normalizer seam — safe to
+defer.
 
 ## 14. Resolution trace and observability
 
