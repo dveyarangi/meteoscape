@@ -35,17 +35,22 @@ class AxisName(Enum):
     X = "x"
     Y = "y"
     Z = "z"
-    T = "t" # valid_time
+    T = "t"  # valid_time
 
 
 @dataclass(frozen=True)
-class Interval:
-    """A span on one axis (`lower`..`upper`) - a `Cell`'s bounds, and an `Axis`'s `extent`."""
+class Interval[C: (float, datetime)]:
+    """A span on one axis (`lower`..`upper`) - a `Cell`'s bounds, and an `Axis`'s `extent`.
 
-    lower: Coordinate
-    upper: Coordinate
+    Generic over the axis's coordinate type (a *constrained* type var: `float` **or** `datetime`, never
+    the `Coordinate` union), so an interval's two bounds are provably the same comparable type and
+    `contains` type-checks - a spatial interval can't be compared against a time one.
+    """
 
-    def contains(self, other: Interval) -> bool:
+    lower: C
+    upper: C
+
+    def contains(self, other: Interval[C]) -> bool:
         return self.lower <= other.lower and other.upper <= self.upper
 
 

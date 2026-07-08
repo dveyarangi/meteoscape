@@ -35,5 +35,5 @@ class Timeline:
     def domain(self) -> EnumerableDomain:
         return self.capability.domain
 
-    def project(self, selection: Selection) -> Manifold:
+    async def project(self, selection: Selection) -> Manifold:
         raise NotImplementedError

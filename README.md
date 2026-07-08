@@ -15,8 +15,7 @@ freshness — behind one small, uniform contract, surfaced over **MCP** first.
 
 v1 ships a single objective — the *best view* (best-obtainable source + fallback) over timeline
 provider data — exposed as one MCP tool, `get_forecast`, returning an hourly point-forecast
-Timeline for the 5 product parameters (temperature, precipitation, wind speed, wind direction,
-relative humidity) — wind canonical as u/v components, speed/direction derived by Calculators.
+`Timeline` for the core surface parameters (temperature, wind, precipitation, humidity).
 
 See [`docs/architecture.md`](./docs/architecture.md) for the design and
 [`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 build scope.

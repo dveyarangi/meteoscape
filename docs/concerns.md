@@ -9,7 +9,8 @@ parameter functional model → [ADR-0002](./adr/0002-data-model.md); per-point p
 its leaf/composite family — → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) /
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md) — the clock-anchored footprint reach is v1,
 its accuracy is [#18](#18-clock-anchored-footprint-fidelity), and only *probed* real-availability stays an
-ADR-0004 deferred seam.)
+ADR-0004 deferred seam. Vector-component coupling — co-declared and co-produced from one origin,
+coherence a build-time property — → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).)
 
 ---
 
@@ -199,22 +200,6 @@ never combine", no horizon splicing. The open question: when coverage reconciler
 ([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
 at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
 intersection). Additive; no v1 work.
-
-## 17. Vector-parameter coupling across the Arbiter
-
-**Kind:** algebra-shaped (boundary) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0002](./adr/0002-data-model.md)
-
-Wind is canonical as two **independent** scalar parameters `wind_u` / `wind_v` (ADR-0002), but the
-per-parameter Arbiter selects each parameter's producer **independently**. Nothing in the algebra forces
-`wind_u` and `wind_v` to resolve to the **same provider/run** — mixing provider A's `u` with B's `v` is
-an **incoherent vector**, and the derived `wind_speed` / `wind_direction` computed from a mismatched pair
-are physically wrong. The same holds for any future multi-component quantity (vector, complex, paired
-statistics). **v1 is unaffected**: a provider serves wind as one native fetch, so the Normalizer
-co-produces `u` and `v` from one origin and, under a single shared priority order, both resolve to the
-same provider (it serves both components or neither). The open question is whether coherent
-multi-component parameters need a **first-class coupling** — a co-selected parameter group the Arbiter
-resolves **atomically** (all components from one contributor) — vs. leaving it a **convention** the
-Normalizer / Weaver upholds. Additive; no v1 work.
 
 ## 14. Resolution trace and observability
 

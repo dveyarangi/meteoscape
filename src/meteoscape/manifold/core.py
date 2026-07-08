@@ -42,7 +42,7 @@ class Manifold(Protocol):
     children, a realized `Coverage` exposes its content. `project` returns a field/view until sampled.
     """
 
-    def project(self, selection: Selection) -> Manifold: ...
+    async def project(self, selection: Selection) -> Manifold: ...
 
     @property
     def capability(self) -> Capability: ...
@@ -66,7 +66,7 @@ class Countable(Protocol):
 class Writable(Protocol):
     """Facet: the materialization boundary - sample a view onto the node grid and store it."""
 
-    def assimilate(self, coverage: Coverage) -> None: ...
+    async def assimilate(self, coverage: Coverage) -> None: ...
 
 
 @runtime_checkable

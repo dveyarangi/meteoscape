@@ -28,6 +28,15 @@ same shape. The abstraction these are shapes of is the
   is a **reconciler**. Only the coverage axis is a reconciler, because there the producers share
   coordinates.
 
+- **Multi-component quantities are co-declared, not runtime-coupled.** A vector or paired quantity —
+  wind's `wind_u` / `wind_v`, later ocean currents / waves / complex fields — is **co-produced from one
+  native field**: a producer serves the whole component set from one origin or none. The Arbiter still
+  selects **per parameter**; component coherence follows from the group sharing one candidate list,
+  order, and footprint — a **build-time** well-formedness property (the Weaver can assert it) — so a
+  mismatched pair (A's `u`, B's `v`) never arises, including where a Calculator's scoped Arbiter resolves
+  `(u, v)` together. There is **no runtime atomic co-selection**: it would guard a case producers cannot
+  create.
+
 ## Capability & matching
 
 - **Capability is a `Manifold` facet — `serves(parameter, requested)` + `parameters` — the dual of

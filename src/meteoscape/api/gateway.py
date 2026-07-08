@@ -13,5 +13,5 @@ class Gateway:
     def __init__(self, best_view: Manifold) -> None:
         self.best_view = best_view
 
-    def resolve(self, selection: Selection) -> Manifold:
+    async def resolve(self, selection: Selection) -> Manifold:
         raise NotImplementedError

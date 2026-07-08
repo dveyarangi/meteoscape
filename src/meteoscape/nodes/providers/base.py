@@ -17,7 +17,7 @@ from ...manifold.core import Manifold, Selection
 
 class Provider(ABC):
     @abstractmethod
-    def project(self, selection: Selection) -> Manifold: ...
+    async def project(self, selection: Selection) -> Manifold: ...
 
     @property
     @abstractmethod
