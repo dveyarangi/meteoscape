@@ -18,7 +18,9 @@ from ..manifold.core import Manifold, Selection
 
 
 class Calculator:
-    def __init__(self, output: ParameterDef, inputs: frozenset[ParameterId], resolver: Manifold) -> None:
+    def __init__(
+        self, output: ParameterDef, inputs: frozenset[ParameterId], resolver: Manifold
+    ) -> None:
         self.output = output
         self.inputs = inputs
         self.resolver = resolver  # scoped Arbiter over the input parameters

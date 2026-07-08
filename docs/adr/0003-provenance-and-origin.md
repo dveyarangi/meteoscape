@@ -17,15 +17,39 @@ attribute. It is indexed over **two** axes — **parameter** (the Arbiter picks 
 and **geometry point** (a mosaic differs per cell) — read `at(parameter, i)`, with `summary(parameter)`
 the **O(1) per-parameter handle**. A value's **origin** is either **atomic** (a single upstream fetch,
 authored in full at fetch — carrying the **run identity `issue_time`**, the forecast issuance the values
-came from) or **synthetic** (derived from multiple **parent** provenances, whose contributed sub-domains
+came from — **forecast-only**: an **observation** is run-free, so `issue_time` is absent and its `expiration` is effectively **∞**, a bounded revision window for late / QC data deferred alongside observations) or **synthetic** (derived from multiple **parent** provenances, whose contributed sub-domains
 form its **lineage**, each parent carrying its own `issue_time`). `issue_time` is a **provenance stamp,
 not a Domain axis** ([ADR-0002](./0002-data-model.md)). **Freshness** is read off `expiration` (per
 parameter, via `summary`): **fresh** while `expiration > now`, and a **synthetic** origin's `expiration`
-is the **worst-case (`min`)** of its parents (freshness inheritance). v1 builds **`Uniform`** (a
+is the **worst-case (`min`)** of its parents (freshness inheritance); its `summary` `issue_time` likewise takes the **`min`** over parents (the oldest run; per-parent detail in `lineage`). v1 builds **`Uniform`** (a
 single-fetch Source — one origin for the whole Coverage) and **`PerParameter`** (the assembled best view
 — one single-origin slice per parameter); **`PerPoint`** (origin varying over geometry — the
 parameter × point corner) is the additive seam. "One provider per parameter" is the special case of
 **"one origin per parameter, possibly synthetic."**
+
+## Run identity & freshness — the cadence model
+
+`issue_time` is the **model run (reference) time in UTC** — the cycle the values came from, the run's
+identity — **not** publication time or the assimilation window. A forecast Source declares a per-provider
+**cadence model** `{cadence Δ, publication_latency L}`; everything time-relative derives from one
+**effective run anchor** at request time `now`:
+
+```
+A(now) = floor(now − L, Δ)      # latest run whose publication (r + L) has already passed
+```
+
+- **`issue_time` = `A`** — stamped on the atomic `Origin`.
+- **`expiration` = `A + Δ + L`** — when the *next* run publishes and supersedes (fresh while
+  `now < expiration`), replacing a `fetched_at`-relative TTL, so two fetches of one run expire together
+  (a synthetic origin still inherits the parents' `min`, per Decision).
+- the leaf's footprint **forward edge** = `A + max_lead` — the capability half, encapsulated in the
+  continuous footprint `Domain` ([ADR-0002](./0002-data-model.md) /
+  [ADR-0004](./0004-producer-resolution-and-capability.md)).
+
+Each run reigns over `[A + L, A + Δ + L]`, so runs tile with no gap or overlap, and flooring makes `A` a
+**step function** — no boundary flicker. v1 ships a **conservative per-provider default** for `{Δ, L}`;
+their concrete values, and preferring a provider's **real** reference / availability signal when it
+exposes one, are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 ## Why
 
@@ -106,7 +130,7 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
   combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
   coexist in a unit (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
   read-back homogenization and is **in v1** ([#5](../concerns.md#5-read-time-homogenization-fidelity),
-  freshness [#4](../concerns.md#4-issue_time-definition)); only the kernel sophistication stays deferred.
+  freshness via the cadence model above); only the kernel sophistication stays deferred.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`
   descriptor block are the [data model](./0002-data-model.md); this ADR owns the provenance plane the
   `Coverage` carries.

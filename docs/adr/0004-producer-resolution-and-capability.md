@@ -73,11 +73,10 @@ same shape. The abstraction these are shapes of is the
   **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); v1 narrates it
   in the tool description, and a dedicated introspection surface is deferred.
 
-- **A leaf's temporal reach is clock-anchored (v1).** A `FootprintCapability`'s `valid_time` reach is a
-  clock-anchored window that tracks the provider's rolling horizon, **encapsulated in the continuous
-  footprint `Domain`** ([ADR-0002](./0002-data-model.md)) — so `serves` stays a plain `contains` and
-  `FootprintCapability` itself is unchanged. Whether that wall-clock window matches the provider's
-  **run-phased** availability is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+- **A leaf's temporal reach is clock-anchored (v1)** — its `valid_time` window tracks the provider's run
+  anchor (the cadence model, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
+  footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `contains`. The
+  per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 - **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
   whether a **valid, non-lossy resampler path** exists from `offered` to `requested` — the
