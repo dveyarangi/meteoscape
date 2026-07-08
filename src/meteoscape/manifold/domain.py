@@ -4,7 +4,8 @@ representation.
 Representations vary behind one interface: separability is a *facet* (not the base type) and
 regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
 curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
-an axis. v1 ships `RegularDomain`; the other representations and `intersect` are declared seams.
+an axis. v1 ships `RegularDomain` (the enumerable grid) and `FootprintDomain` (a continuous provider
+reach); the other representations and `intersect` are declared seams.
 
 See ADR-0002.
 """
@@ -12,7 +13,7 @@ See ADR-0002.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -39,10 +40,13 @@ class AxisName(Enum):
 
 @dataclass(frozen=True)
 class Interval:
-    """A cell's bounds on one axis - the span a coordinate covers (`lower`..`upper`)."""
+    """A span on one axis (`lower`..`upper`) - a `Cell`'s bounds, and an `Axis`'s `extent`."""
 
     lower: Coordinate
     upper: Coordinate
+
+    def contains(self, other: Interval) -> bool:
+        return self.lower <= other.lower and other.upper <= self.upper
 
 
 @dataclass(frozen=True)
@@ -68,15 +72,28 @@ class Point:
 
 
 class Axis(ABC):
-    """One axis of a `Separable` Domain: a lazy, indexable sequence of `Cell`s.
+    """One axis of a `Separable` Domain: the geometry along one named dimension.
 
-    The whole contract is `axis[i] -> Cell` + `len(axis)`; positional, so it aligns with
-    `ParameterData.values[i]`. An axis is pure geometry - it carries no interpolability flag, since
-    whether a value may be resampled along it is the parameter's resampler fact, not the axis's
-    (ADR-0002).
+    Its universal surface is just its span - `extent` - mirroring `Domain` (set-algebra, not
+    enumeration); enumeration is the `EnumerableAxis` refinement. An axis is **pure geometry** - it
+    carries no interpolability flag, since whether a value may be resampled along it is the parameter's
+    resampler fact, not the axis's (ADR-0002).
     """
 
     name: AxisName
+
+    @property
+    @abstractmethod
+    def extent(self) -> Interval:
+        """The axis's span (for a `RollingAxis`, resolved against its clock at read)."""
+        ...
+
+
+class EnumerableAxis(Axis):
+    """The enumerable refinement of an `Axis`: a lazy, indexable sequence of `Cell`s.
+
+    `axis[i] -> Cell` + `len(axis)`; positional, so it aligns with `ParameterData.values[i]`.
+    """
 
     @abstractmethod
     def __getitem__(self, index: int) -> Cell: ...
@@ -89,8 +106,8 @@ class Axis(ABC):
 
 
 @dataclass(frozen=True)
-class RegularAxis(Axis):
-    """The uniform axis: cells generated lazily from `anchor` + `step` + `count`.
+class RegularAxis(EnumerableAxis):
+    """The uniform enumerable axis: cells generated lazily from `anchor` + `step` + `count`.
 
     `self[i].coordinate = anchor + i*step`. `cellular` picks the geometry: `True` => each `Cell` spans
     one step (`bounds = [coord, coord+step]`), `False` => an instant (`bounds = None`). Where the
@@ -104,6 +121,10 @@ class RegularAxis(Axis):
     count: int
     cellular: bool
 
+    @property
+    def extent(self) -> Interval:
+        raise NotImplementedError
+
     def __getitem__(self, index: int) -> Cell:
         raise NotImplementedError
 
@@ -111,9 +132,46 @@ class RegularAxis(Axis):
         raise NotImplementedError
 
 
+@dataclass(frozen=True)
+class ContinuousAxis(Axis):
+    """The plain continuous axis: an explicit span, no cells - a `FootprintDomain`'s spatial / Z axis.
+
+    The unmarked continuous case; `RollingAxis` is the clock-anchored specialization.
+    """
+
+    name: AxisName
+    interval: Interval
+
+    @property
+    def extent(self) -> Interval:
+        return self.interval
+
+
+@dataclass(frozen=True)
+class RollingAxis(Axis):
+    """The clock-anchored continuous axis: a `FootprintDomain`'s `valid_time` axis.
+
+    `extent` resolves to `[now() - retention, now() + lead]` against the injected clock at read, so this
+    axis is deliberately **clock-relative** (the one intentional exception to axis-as-pure-geometry,
+    isolated here). Anchor is wall-clock `now()`; reconciling it with the provider's run-phased,
+    latency-delayed availability is the anchor-fidelity concern (concern #18, ADR-0004).
+    """
+
+    name: AxisName
+    lead: timedelta
+    retention: timedelta
+    now: Callable[[], datetime]
+
+    @property
+    def extent(self) -> Interval:
+        instant = self.now()
+        return Interval(lower=instant - self.retention, upper=instant + self.lead)
+
+
 @runtime_checkable
 class Separable(Protocol):
-    """Facet: per-axis decomposition. A separable representation exposes its axes."""
+    """Facet: per-axis decomposition. A separable representation exposes its axes (enumerable or
+    continuous)."""
 
     def axis(self, name: AxisName) -> Axis: ...
 
@@ -182,9 +240,32 @@ class RegularDomain(EnumerableDomain):
         return self.axes[name]
 
 
+@dataclass(frozen=True)
+class FootprintDomain(Domain):
+    """A producer's declared reach - a **continuous**, `Separable` region (never enumerable), the
+    footprint the Capability filter tests against.
+
+    Per-axis bounds: a `ContinuousAxis` on each spatial / Z axis, a clock-anchored `RollingAxis` on
+    `valid_time`. `contains` composes **per-axis extent-containment**; its `RollingAxis` makes it
+    clock-relative, so admission tracks the provider's rolling horizon while `serves` stays a plain
+    `contains`.
+    """
+
+    axes: Mapping[AxisName, Axis]
+
+    def contains(self, other: Domain) -> bool:
+        raise NotImplementedError
+
+    def intersect(self, other: Domain) -> Domain:
+        raise NotImplementedError
+
+    def axis(self, name: AxisName) -> Axis:
+        return self.axes[name]
+
+
 class RectilinearDomain(Domain):
-    """Declared seam: separable but irregular - holds explicit `Axis`es of stored `Cell`s. Not built
-    in v1."""
+    """Declared seam: separable but irregular - holds explicit `EnumerableAxis`es of stored `Cell`s. Not
+    built in v1."""
 
 
 class CurvilinearDomain(Domain):

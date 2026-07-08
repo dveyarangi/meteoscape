@@ -14,21 +14,21 @@ src/meteoscape/
 │
 ├── catalog/                   # the parameter catalog — a leaf (depends on nothing inward): what a parameter *is*
 │   ├── vocabulary.py          #   ParameterId, Unit, Quantity (identity), ParameterDef; closed enums ExtentScaling / CellStatistic / MeasurementScale
-│   └── table.py               #   ParameterTable interface + StaticParameterTable (v1: core-5); injected into Normalizer / Capability / edge
+│   └── table.py               #   ParameterTable interface + StaticParameterTable (v1: 5 canonical + 2 derived wind views); injected into Normalizer / Capability / edge
 │
 ├── manifold/                  # the Manifold algebra-knot — imports errors + catalog (the vocabulary it speaks in)
 │   ├── core.py                #   Manifold protocol + facets (Countable, Writable) + Selection (the one request type: Domain + parameters, mode = the Domain's shape: Continuous|Snapped|Enumerable) +
 │   │                          #   Coverage interface (= Manifold ∧ Countable ∧ capability ∧ ranges ∧ provenance, Coverage <: Manifold)
-│   ├── capability.py          #   Capability (per-parameter ParameterDef × covered Domain) — the Manifold serving facet; Coverage/Provider expose it (composition open: concern #16)
+│   ├── capability.py          #   Capability = the Manifold serving facet (serves + parameters), dual of project; leaves FootprintCapability/EnumerableCapability + composites UnionCapability (Arbiter)/DerivedCapability (Calculator); Reservoir forwards
 │   ├── data.py                #   ParameterData (values/present mask) — the per-parameter payload of the Coverage boundary; pure numbers positional to the Domain, descriptors ride the Coverage's capability
 │   ├── coverage.py            #   concrete Coverage realizations: Timeline (v1 dense impl); Grid (later)
-│   ├── domain.py              #   Domain (set-algebra: contains/intersect) + EnumerableDomain refinement (enumerate/index/len); per-axis Axis = Sequence[Cell] (RegularAxis computes from anchor/step/count), Cell = coordinate + optional bounds (a Z cell's coordinate is (vertical_reference, value)), exposed via the Separable facet; representations regular (v1)/rectilinear/curvilinear-later. quantize + read-back homogenization live on the Store/Reservoir, not here
+│   ├── domain.py              #   Domain (set-algebra: contains/intersect) + EnumerableDomain refinement (enumerate/index/len); per-axis Axis (base = extent span; EnumerableAxis refinement = Sequence[Cell]; reps RegularAxis / ContinuousAxis / RollingAxis), Cell = coordinate + optional bounds (a Z cell's coordinate is (vertical_reference, value)), exposed via the Separable facet; representations regular + footprint (both v1; footprint = continuous, clock-anchored provider reach)/rectilinear/curvilinear-later. quantize + read-back homogenization live on the Store/Reservoir, not here
 │   └── provenance.py          #   the Coverage provenance plane over (parameter, point): Origin (atomic/synthetic) + Provenance + ProvenanceField (Uniform + PerParameter; PerPoint later)
 │
 ├── nodes/                     # concrete Manifolds — depends on manifold/ + catalog/
-│   ├── reservoir.py           #   Store (the Writable+Countable Manifold composite interface) + Reservoir (retention composite: Store + one child)
-│   ├── arbiter.py             #   Arbiter: per-parameter fold via reconciler (priority default) + fallback
-│   ├── source.py              #   Source = Reservoir(store, Provider) + Capability surface
+│   ├── reservoir.py           #   Store (the Writable+Countable Manifold interface) + Reservoir (retention composite: Store + one child; a Source is the Reservoir(store, Provider) role — no separate type)
+│   ├── arbiter.py             #   Arbiter: per-parameter fold via reconciler (priority default) + fallback; capability = UnionCapability over candidates
+│   ├── calculator.py          #   Calculator: derived-parameter composite (output ⟸ inputs via fn through a scoped Arbiter); capability = induced DerivedCapability
 │   ├── registry.py            #   provider leaf-factory: provider-id→class catalog, instantiate (secrets injected)
 │   ├── weaver.py              #   build-time graph constructor: producers' Capabilities + policy config → wired DAG + Stores
 │   └── providers/

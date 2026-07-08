@@ -30,14 +30,45 @@ same shape. The abstraction these are shapes of is the
 
 ## Capability & matching
 
-- **Capability is a per-parameter `(ParameterDef, Domain)` mapping + one generic predicate** — not an
-  opaque per-producer `can_serve()`. Per emitted parameter a
-  producer advertises the parameter's canonical facts (`ParameterDef` — quantity, statistic,
-  `extent_scaling`, canonical unit) paired with the `Domain` it covers. There is **no separate clause
-  or `extent` field**: a parameter's native **vertical offset / level** (`2 m above_ground`,
-  `1000 hPa`) and its extensive **accumulation window** are **geometry on that `Domain`** — a Z `Cell`
-  and a `valid_time` `Cell`'s `bounds` respectively ([data model](./0002-data-model.md)). Ordering and
-  the `reconciler` are **policy**, not Capability.
+- **Capability is a `Manifold` facet — `serves(parameter, requested)` + `parameters` — the dual of
+  `project`**, on *every* node (a base-`Manifold` member,
+  [ADR-0001](./0001-manifold-algebra-and-composition.md)), not an opaque per-producer `can_serve()`.
+  `parameters` is the served `ParameterId → ParameterDef` map (a parameter's canonical facts: quantity,
+  statistic, `extent_scaling`, canonical unit). A concrete covered `Domain` is deliberately **off the
+  interface** — it lives only where it is singular and exact: **privately** inside a leaf's `serves`, and
+  **publicly** as `EnumerableCapability.domain` on a materialized `Coverage`. There is **no separate
+  clause or `extent` field**: a parameter's native **vertical offset / level** (`2 m above_ground`,
+  `1000 hPa`) and its extensive **accumulation window** are **geometry on that covered `Domain`** — a Z
+  `Cell` and a `valid_time` `Cell`'s `bounds` respectively ([data model](./0002-data-model.md)). Ordering
+  and the `reconciler` are **policy**, not Capability.
+
+- **The family composes bottom-up like `project`** — leaves declare, composites derive:
+  - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
+    `Domain` footprint, kept private to `serves`.
+  - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
+    enumerable `domain` **is** the Coverage's positional grid, so `Countable.domain` derives from it (not
+    a second copy).
+  - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff *some* member does;
+    `parameters` is the members' union. Takes members **flat** (each `Capability` carries its own
+    `parameters`, so no per-parameter pre-indexing). Its future dual is an **intersection / consensus**
+    fold (`serves` iff *all* members do) — the capability of the deferred `consensus` reconcilers
+    ([#6](../concerns.md#6-reconciler-catalogue)) — not built.
+  - **`DerivedCapability`** — a **Calculator**: a **unary input→output transform** (not a set-op). It
+    serves its single **output** parameter (present in *no* input) iff *all* its fixed inputs are servable
+    through the scoped resolver; `parameters` is that output alone.
+  - a **`Reservoir`** **forwards** its child's unchanged (the `Store` grid is a fidelity floor, not a
+    capability boundary).
+  Composition only ever **unions parameter sets and ANDs/ORs the predicate** — it never *synthesises* a
+  `Domain`, so the multi-candidate union has no representation problem: it collapses to one concrete
+  `EnumerableCapability.domain` only when you `project`. A coarse `parameters × max-horizon`
+  **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); v1 narrates it
+  in the tool description, and a dedicated introspection surface is deferred.
+
+- **A leaf's temporal reach is clock-anchored (v1).** A `FootprintCapability`'s `valid_time` reach is a
+  clock-anchored window that tracks the provider's rolling horizon, **encapsulated in the continuous
+  footprint `Domain`** ([ADR-0002](./0002-data-model.md)) — so `serves` stays a plain `contains` and
+  `FootprintCapability` itself is unchanged. Whether that wall-clock window matches the provider's
+  **run-phased** availability is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 - **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
   whether a **valid, non-lossy resampler path** exists from `offered` to `requested` — the
@@ -205,7 +236,8 @@ request-level contract, whose canonical home is
   duplicates the Arbiter's per-cell gather, drops the reconciler choice, and is dead weight for
   point / timeline data — the coverage fold belongs on the Arbiter.
 - **An opaque per-producer `can_serve()` capability, or a capability DSL.** Rejected: opaque defeats the
-  Weaver's static candidate index; a DSL is unjustified when structured clauses + one predicate suffice.
+  Weaver's static candidate index; a DSL is unjustified when a structured `parameters` map + one predicate
+  suffice.
 
 ## Consequences
 
@@ -217,6 +249,11 @@ request-level contract, whose canonical home is
   **not re-linked per Selection**; which contributors fire is decided at `project` by intersecting each
   footprint with the requested `Domain`.
 - **Deferred seams:**
+  - **Probed / discovered real availability.** The clock-anchored footprint (above) declares the
+    *envelope*; a leaf that reflects **which runs / timesteps actually exist right now** — vs the declared
+    window — needs **I/O at selection time**, reopening the **Arbiter → Broker** pressure
+    ([#8](../concerns.md#8-arbiter-to-broker-pressure)). v1's window is metadata-only (no probe); the
+    accuracy of that declared window against real availability is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
   - **Caller-supplied formulas (a request-time DSL).** The function arrives *in the Selection*; the
     Weaver then runs **per request** (weave → project → discard), the same recursion used at build time.
     The static registry is the v1 shape.

@@ -20,7 +20,7 @@ The **enumerable case of a Domain** — an indexable set of coordinate positions
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
 
 **Axis**:
-One axis of a **`Separable`** Domain — its ordered sequence of `Cell`s, positional to a parameter's values. A **`RegularAxis`** is the uniform case (the only snappable one), defined parametrically rather than enumerating each cell. → [ADR-0002](./adr/0002-data-model.md).
+The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Dimension, Coordinate array
 
 **Cell**:
@@ -45,7 +45,7 @@ _Avoid_: Categorical axis (it is not a Domain axis), Label axis, index axis
 ### Data
 
 **Coverage**:
-A **field sampled onto an enumerable Domain** — the shape-agnostic data exchange unit; itself a Manifold (`Coverage <: Manifold`), equivalently a Selection filled with data. **Self-describing**: carries its `capability` (the `ParameterDef` per parameter × Domain — the descriptor block; no separate `parameters` map) beside its `ranges` and `provenance` plane, so it interprets standalone without the global Parameter table. → [ADR-0002](./adr/0002-data-model.md).
+A **field sampled onto an enumerable Domain** — the shape-agnostic data exchange unit; itself a Manifold (`Coverage <: Manifold`), equivalently a Selection filled with data. **Self-describing**: carries its `capability` (the `ParameterDef` per parameter × Domain — the descriptor block) beside its `ranges` and `provenance` plane, so it interprets standalone without the global Parameter table. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: DataBlock, single-parameter Coverage
 
 **Field**:
@@ -91,7 +91,7 @@ A quantity's relationship to a cell's temporal extent — **intensive** (instant
 _Avoid_: Kind (vague), state / rate / accumulation (those conflate identity with the integration edge)
 
 **MeasurementScale**:
-A quantity's measurement scale — `linear` / `circular` / `nominal` / `ordinal` — which selects the **refine-up resampler**. v1's canonical quantities are all `linear` (wind rides as u/v components); non-linear scales are declared-but-unexercised seams. → [ADR-0002](./adr/0002-data-model.md).
+A quantity's measurement scale — `linear` / `circular` / `nominal` / `ordinal` — which selects the **refine-up resampler**. v1's canonical quantities are all `linear` (wind rides as u/v components); the derived `wind_direction` declares `circular` but stays unexercised under v1's nearest-neighbor read-back. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Type, dtype
 
 **Resampler**:
@@ -219,8 +219,12 @@ The **v1 task-oriented profile** — `Reservoir(store, top Arbiter)`: resolves t
 _Avoid_: Best provider, Router result
 
 **Capability**:
-What a Manifold can serve: a per-parameter mapping `ParameterId → (ParameterDef, Domain)` plus the `serves` predicate. Native vertical offset and extensive accumulation window are **geometry on the `Domain`** (a Z `Cell`, a `valid_time` `Cell`'s `bounds`), so there is no separate clause/extent type; the served set is the **closure** of emitted functionals under exact conversion edges. Distinct from the `Countable` / `Writable` facets. Matching rules (the `extent_scaling`-branched predicate) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`). A concrete covered `Domain` is **not** on the interface — it stays private to a leaf's `serves`, surfacing publicly only as `EnumerableCapability.domain` on a materialized `Coverage`. Leaves declare (`FootprintCapability` per-parameter footprint, `EnumerableCapability` co-domained); composites derive bottom-up (`UnionCapability` = Arbiter, `DerivedCapability` = Calculator, `Reservoir` forwards). Distinct from the `Countable` / `Writable` facets. A parameter's native offset / accumulation window is `Domain` geometry, not a separate clause; matching (the `extent_scaling`-branched predicate, closure under exact conversion edges) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: Coverage, clause
+
+**Footprint**:
+A producer's **declared reach** — the continuous region its `FootprintCapability` tests `serves` against: static spatial/Z extent plus a **clock-anchored** `valid_time` window. Modelled as the continuous `FootprintDomain` (its `contains` is clock-relative), distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: coverage, grid, extent
 
 **Arbiter**:
 The one **producer-resolution composite**: per parameter it folds candidate producers with a `reconciler` (default `priority` = selection). The **top** Arbiter spans all servable parameters; each Calculator holds its **own** scoped one. → [architecture.md](./architecture.md#arbiter) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
@@ -235,7 +239,7 @@ A leaf Manifold: the vendor adapter + its **Normalizer** + capability / cadence 
 _Avoid_: Vendor, backend, driver
 
 **Source**:
-A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; declares its **Capability** to the Arbiter. → [architecture.md](./architecture.md#source).
+A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
 
 **Normalizer**:
 The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).

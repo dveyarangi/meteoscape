@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from ..catalog.vocabulary import ParameterId
-from .capability import Capability
+from .capability import Capability, EnumerableCapability
 from .data import ParameterData
 from .domain import Domain, EnumerableDomain
 from .provenance import ProvenanceField
@@ -35,9 +35,17 @@ class Selection:
 
 @runtime_checkable
 class Manifold(Protocol):
-    """A projectable space with one closed operation. Returns a field/view until sampled."""
+    """A projectable space with two duals: `project` *consumes* a `Selection`; `capability`
+    *advertises* which Selections it can serve.
+
+    Every Manifold exposes both - a leaf declares its capability, a composite derives it from its
+    children, a realized `Coverage` exposes its content. `project` returns a field/view until sampled.
+    """
 
     def project(self, selection: Selection) -> Manifold: ...
+
+    @property
+    def capability(self) -> Capability: ...
 
 
 @runtime_checkable
@@ -65,18 +73,18 @@ class Writable(Protocol):
 class Coverage(Manifold, Countable, Protocol):
     """A Manifold sampled onto its enumerable `domain` - the shape-agnostic exchange unit.
 
-    `capability` is the sole carrier of the parameter set (its `ParameterDef`s) and the `Domain` they
-    sit on - there is no separate `parameters` map; a Coverage's capability is co-domained (every
-    parameter on the one sampled `domain`). Invariant: `capability`, `ranges`, and `provenance` share
-    one parameter key set and align positionally over `domain` - `ranges[pid].values[i]` is parameter
-    `pid` at the domain's i-th point (ADR-0002 / ADR-0003).
+    Its `capability` narrows to the co-domained `EnumerableCapability` - every parameter on the one
+    sampled `domain` (which *is* the `Countable.domain`, derived from `capability.domain`, not a second
+    copy). Invariant: `capability`, `ranges`, and `provenance` share one parameter key set and align
+    positionally over `domain` - `ranges[pid].values[i]` is parameter `pid` at the domain's i-th point
+    (ADR-0002 / ADR-0003).
     """
+
+    @property
+    def capability(self) -> EnumerableCapability: ...
 
     @property
     def ranges(self) -> Mapping[ParameterId, ParameterData]: ...
 
     @property
     def provenance(self) -> ProvenanceField: ...
-
-    @property
-    def capability(self) -> Capability: ...

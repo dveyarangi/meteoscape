@@ -47,7 +47,9 @@ class MeasurementScale(Enum):
 
     `linear` interpolates and averages; `circular` is angular (shortest-arc, never linear-in-degrees);
     `nominal` / `ordinal` are categorical (fill / mode / priority, never averaged). Interpolability is
-    thus a parameter fact, not a Domain/axis one (ADR-0002). v1's canonical quantities are all `linear`.
+    thus a parameter fact, not a Domain/axis one (ADR-0002). v1's canonical quantities are all `linear`
+    (wind rides as u/v); the derived `wind_direction` is `circular` but unexercised by v1's
+    nearest-neighbor read-back.
     """
 
     LINEAR = "linear"

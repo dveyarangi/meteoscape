@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from ..catalog.vocabulary import ParameterId
-from .capability import Capability
+from .capability import EnumerableCapability
 from .core import Manifold, Selection
 from .data import ParameterData
 from .domain import EnumerableDomain
@@ -22,14 +22,18 @@ from .provenance import ProvenanceField
 class Timeline:
     """The v1 `Coverage`: a dense field over a `valid_time`-axis `domain` at a fixed location.
 
-    Satisfies the `Coverage` contract structurally (no inheritance). `capability` carries the parameter
-    set (co-domained on `domain`); `ranges` are positional to `domain`.
+    `capability` is the materialized `EnumerableCapability` - it carries the parameter set co-domained on
+    its one enumerable grid, so the `Countable.domain` derives from `capability.domain` rather than being
+    stored twice. `ranges` are positional to `domain`.
     """
 
-    domain: EnumerableDomain
-    capability: Capability
+    capability: EnumerableCapability
     ranges: Mapping[ParameterId, ParameterData]
     provenance: ProvenanceField
+
+    @property
+    def domain(self) -> EnumerableDomain:
+        return self.capability.domain
 
     def project(self, selection: Selection) -> Manifold:
         raise NotImplementedError

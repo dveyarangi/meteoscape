@@ -1,8 +1,8 @@
 """The `ParameterTable` seam and its v1 static representation.
 
 `ParameterTable` is the injected lookup of `ParameterDef`s keyed by `ParameterId`; producers and the
-edge resolve canonical parameter facts from it. v1 ships `StaticParameterTable` hosting the core-5.
-File / UI-backed representations are deferred.
+edge resolve canonical parameter facts from it. v1 ships `StaticParameterTable` hosting the v1
+parameters (5 canonical + 2 derived wind views). File / UI-backed representations are deferred.
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from collections.abc import Iterable, Iterator
 from .vocabulary import (
     CellStatistic,
     ExtentScaling,
+    MeasurementScale,
     ParameterDef,
     ParameterId,
     Quantity,
@@ -51,16 +52,16 @@ class StaticParameterTable(ParameterTable):
         return iter(self._defs)
 
     @classmethod
-    def core_5(cls) -> StaticParameterTable:
-        """The v1 core-5 table.
+    def core(cls) -> StaticParameterTable:
+        """The v1 parameter table: 5 canonical (provider-served) + 2 derived wind views.
 
         Canonical units are provisional - concrete parameter conventions are deferred
         (v1-requirements - Open / TBD).
         """
-        return cls(_CORE_5)
+        return cls(_CORE)
 
 
-# Core-5 parameter ids. Ids are the functional `(quantity, statistic)`, never the surface height:
+# Parameter ids. Ids are the functional `(quantity, statistic)`, never the surface height:
 # `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
 # (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name.
 AIR_TEMPERATURE = ParameterId("air_temperature")
@@ -68,10 +69,13 @@ PRECIPITATION = ParameterId("precipitation")
 WIND_U = ParameterId("wind_u")
 WIND_V = ParameterId("wind_v")
 RELATIVE_HUMIDITY = ParameterId("relative_humidity")
+WIND_SPEED = ParameterId("wind_speed")
+WIND_DIRECTION = ParameterId("wind_direction")
 
-# Precipitation is the only extensive parameter; wind rides as u/v components (speed/direction are
-# derived views) so the vector coupling stays out of per-parameter resamplers. See v1-requirements / ADR-0002.
-_CORE_5: tuple[ParameterDef, ...] = (
+# The 5 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
+# one; wind is canonical as u/v components (both linear), so linear interpolation of u/v is correct
+# wind interpolation and the vector coupling stays out of per-parameter resamplers (ADR-0002).
+_CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=AIR_TEMPERATURE,
         quantity=Quantity("air_temperature", ExtentScaling.INTENSIVE),
@@ -103,3 +107,23 @@ _CORE_5: tuple[ParameterDef, ...] = (
         statistic=CellStatistic.POINT,
     ),
 )
+
+# The 2 derived wind views served by Calculators over `(wind_u, wind_v)` - both lossless functions of
+# the vector: `speed = hypot(u, v)`, `direction = atan2(...)`. `wind_direction` is `circular`, the
+# first non-linear scale, but v1's nearest-neighbor read-back never interpolates it (ADR-0004 / #5).
+_DERIVED: tuple[ParameterDef, ...] = (
+    ParameterDef(
+        id=WIND_SPEED,
+        quantity=Quantity("wind_speed", ExtentScaling.INTENSIVE),
+        canonical_unit=Unit("m/s"),
+        statistic=CellStatistic.POINT,
+    ),
+    ParameterDef(
+        id=WIND_DIRECTION,
+        quantity=Quantity("wind_direction", ExtentScaling.INTENSIVE, MeasurementScale.CIRCULAR),
+        canonical_unit=Unit("degree"),
+        statistic=CellStatistic.POINT,
+    ),
+)
+
+_CORE: tuple[ParameterDef, ...] = _CANONICAL + _DERIVED
