@@ -41,6 +41,9 @@ classDiagram
     }
     class Axis {
         AxisName name
+        extent() Interval
+    }
+    class EnumerableAxis {
         get(i) Cell
         len() int
     }
@@ -80,7 +83,8 @@ classDiagram
     Domain <|-- EnumerableDomain : enumerable refinement
     Domain <|-- Separable : facet (v1 RegularDomain)
     Separable o-- Axis : 4 axes
-    Axis o-- Cell : sequence of (RegularAxis computes, explicit stores)
+    Axis <|-- EnumerableAxis : enumerable refinement
+    EnumerableAxis o-- Cell : sequence (RegularAxis computes, explicit stores)
     Coverage o-- EnumerableDomain : carries (re-projectable)
     Coverage o-- Capability : descriptor block (ParameterDef x Domain)
     Capability o-- ParameterDef : one per parameter (keyed by id)
@@ -96,19 +100,30 @@ classDiagram
   `contains` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
   separable**. **Enumeration is the `EnumerableDomain` refinement** (`enumerate` / index / `len`), so
   *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. v1 ships
-  one representation; the interface admits richer ones with no contract change:
+  two representations; the interface admits richer ones with no contract change:
   - **`RegularDomain`** — a `RegularAxis` per axis (cells generated from origin + step + count: the
     uniform lattice).
-  - **`RectilinearDomain`** — explicit per-axis `Axis`es of stored `Cell`s (separable but irregular).
+  - **`FootprintDomain`** — a **continuous**, separable provider reach (never enumerable): per-axis
+    bounds — a `ContinuousAxis` on each spatial / Z axis, a clock-anchored `RollingAxis` on `valid_time`
+    (`extent = [now − retention, now + lead]`). `contains` composes per-axis extent-containment and is
+    therefore **clock-relative** — the one intentional exception to Domain-as-pure-geometry, isolated to
+    this representation — so the Capability filter tracks a rolling horizon while `serves` stays a plain
+    `contains` ([ADR-0004](./0004-producer-resolution-and-capability.md) /
+    [#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
+  - **`RectilinearDomain`** — explicit per-axis `EnumerableAxis`es of stored `Cell`s (separable but
+    irregular).
   - **`CurvilinearDomain`** — non-separable geometry (radar geotangent slice, satellite swath).
     *Room left, not built* ([#12](../concerns.md#12-curvilinear-domains)).
 
-- **Separability is a facet; regularity is a per-axis representation.** Mirroring the algebra's
-  *capabilities, not subtypes*: per-axis decomposition is the one optional facet a **separable**
-  representation exposes — its per-axis `Axis`, a lazy `Sequence[Cell]` (`axis[i] -> Cell`, `len`).
-  Regularity is **not** a domain facet but a choice *within* an axis: a `RegularAxis` generates its
-  cells from `(anchor, step, count)` and stays snappable; an explicit axis stores them. Curvilinear
-  domains satisfy the base interface without being separable. **Only a regular axis can be snapped-to.**
+- **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
+  algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
+  **separable** representation exposes — its per-axis `Axis`. An **`Axis` mirrors `Domain`**: its
+  universal surface is a span (`extent`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
+  `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
+  `RegularAxis` generates its cells from `(anchor, step, count)` and stays snappable; an explicit one
+  stores them. A **continuous** axis carries only its bound — a plain `ContinuousAxis` or a clock-anchored
+  `RollingAxis` (the `FootprintDomain`'s axes). Curvilinear domains satisfy the base interface without
+  being separable. **Only a regular axis can be snapped-to.**
 
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
@@ -188,8 +203,8 @@ classDiagram
 - **A Coverage carries its Domain, its `capability`, and values positional to the Domain.** `Coverage
   = (EnumerableDomain, Capability, {parameter: ParameterData}, ProvenanceField)` — the Coverage
   *contains* the one `EnumerableDomain` (so it is a re-projectable `Manifold`), its **`capability`**
-  (the `ParameterDef` per parameter × that Domain — the self-describing **descriptor block**; there is
-  **no separate `parameters` map**, since capability already *is* parameters × Domain), one
+  (the `ParameterDef` per parameter × that Domain — the self-describing **descriptor block**, capability
+  being exactly parameters × Domain), one
   `ParameterData` per parameter, and a `provenance` plane (below); `values[i]` is the value at the i-th
   `Point` of `domain.enumerate()`. **No coordinates are duplicated** in a `ParameterData` ("a Coverage
   is a Selection filled with data," literally); in-memory packing (N-D vs flat, dtype, order) is

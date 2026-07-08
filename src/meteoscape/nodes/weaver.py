@@ -10,9 +10,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from ..manifold.core import Manifold
-from .source import Source
+from .providers.base import Provider
 
 
 class Weaver:
-    def weave(self, sources: Sequence[Source], priority: Sequence[str]) -> Manifold:
+    def weave(self, providers: Sequence[Provider], priority: Sequence[str]) -> Manifold:
+        """Wire the static DAG: wrap each Provider in a `Reservoir(store, provider)` (the source role),
+        build the top Arbiter, and wrap it in the best-view `Reservoir` - allocating every `Store`."""
         raise NotImplementedError

@@ -75,27 +75,38 @@ configures and runs the server). Stories are numbered for stable reference from
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).
 
-### Parameters (core 5, provider data only — no synthetic)
+### Parameters (5 canonical + 2 derived)
 
-- air temperature (2 m)
-- precipitation
-- wind speed (10 m)
-- wind direction (10 m)
-- relative humidity (2 m)
+The agent-facing **product is 5**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
+**direction** (10 m), relative humidity (2 m). But **wind is canonical as u/v components** — providers
+deliver native speed/direction, the **Normalizer converts to `wind_u` / `wind_v` on ingest** (both
+linear, so linear interpolation of u/v *is* correct wind interpolation), and **`wind_speed` /
+`wind_direction` are derived views served by Calculators** over `(wind_u, wind_v)`
+([ADR-0002](./adr/0002-data-model.md) / [ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
 
-The set is deliberately **heterogeneous** to exercise homogenization: precipitation is **extensive**
-(accumulation over the cell), temperature / relative-humidity / wind-speed are **intensive**, and **wind
-direction is circular**. v1's degenerate nearest-neighbor read-back does **not interpolate** or average
-wind direction; any future interpolating kernel for wind direction must be **angular** (e.g. via sin/cos
-or u/v components), never linearly averaged in degrees.
+So the table holds **7 `ParameterDef`s**:
 
-**Encoding (v1's position on the data-model slots, [ADR-0002](./adr/0002-data-model.md)).** All five share
+- **5 canonical** (provider-served): `air_temperature`, `precipitation`, `wind_u`, `wind_v`,
+  `relative_humidity`. `wind_u` / `wind_v` are **internal-only** — not requestable in v1.
+- **2 derived** (Calculators over u/v): `wind_speed`, `wind_direction` — the **requestable** wind
+  parameters. Both are lossless functions of the vector (`speed = hypot(u,v)`, `direction = atan2(...)`),
+  so serving them is exact.
+
+The set is deliberately **heterogeneous** to exercise homogenization *and* derivation: precipitation is
+**extensive** (accumulation over the cell); temperature / relative-humidity / `wind_u` / `wind_v` are
+**intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`. v1's
+degenerate nearest-neighbor read-back does **not interpolate**, so neither the linear u/v kernel nor an
+angular direction kernel is exercised; any future direction kernel must be **angular** (via u/v),
+never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
+
+**Encoding (v1's position on the data-model slots, [ADR-0002](./adr/0002-data-model.md)).** All seven share
 `statistic = point` (no windowed `max` / `min` / `mean`); precipitation differs only by `extent_scaling`. Because it
 is **extensive**, the shared `valid_time` axis carries **hourly cell `bounds`** — precipitation reads them as
 its per-cell accumulation extent, while the intensive params sample at the tick and ignore them
 (accumulation rides on `extent_scaling` + extent, **not** a `CellStatistic`). One uniform hourly cell serves every
-parameter, so the per-parameter bounds override stays deferred. Every `ParameterData` carries
-`present = None` and a `Uniform` provenance.
+parameter, so the per-parameter bounds override stays deferred. Every atomic `ParameterData` carries
+`present = None` and a `Uniform` provenance; the derived wind views carry a **synthetic** provenance
+(lineage = their u/v inputs).
 
 Every value is in its parameter's **canonical unit** (the Normalizer reconciles vendor units on ingest);
 the unit rides the Coverage's `capability` descriptor block, not the `ParameterData` slice. Freshness is
@@ -104,8 +115,10 @@ the per-parameter provenance `expiration`.
 ### Request / tool contract
 
 - **One MCP tool: `get_forecast`.**
-- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the core 5; default
-  all), `start`, `end`. **Output resolution is hourly** — no `step` input; coarser re-aggregation and
+- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **5 product**
+  params — temperature, precipitation, wind speed, wind direction, humidity; the internal `wind_u` /
+  `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
+  `step` input; coarser re-aggregation and
   sub-hourly stay deferred ([concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)).
 - **Location is lat/lon only** in v1 (place-name + geocoding deferred → `ideas.md`).
 - The edge builds the request Selection (lat/lon **point** + hourly `valid_time` over the horizon). Each
@@ -130,7 +143,10 @@ the per-parameter provenance `expiration`.
   per parameter the Arbiter admits only providers whose Capability **temporally contains** the requested
   extent (whole-request `Domain`-containment), picks the highest-priority such provider, and **falls back
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
-  (omitted) — no splicing along `valid_time` in v1.
+  (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is a **clock-anchored
+  footprint window**, realized by the continuous `FootprintDomain`
+  ([ADR-0002](./adr/0002-data-model.md)); its accuracy against the provider's run-phased,
+  latency-delayed availability is [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
 - A configurable **default horizon** (≈ 7 days) applies only when the caller omits `end`; `start` / `end`
   stay a **free window** (no interval enum — the `Domain` already models arbitrary extents).
 - The **available envelope** (parameters × max horizon) is the **union of active provider
@@ -151,9 +167,12 @@ lifts **without a contract change** — see the seams in
   timeline; the `Store`s declare a **spatial grid** (their cache lattice), and an off-grid point is
   answered by **read-time homogenization (S)** from the enclosing store cells — not by emitting a spatial
   Grid field.
-- **Single-origin timeline per parameter** — each `ParameterData` comes from one provider's latest run,
-  whose `issue_time` is carried by that parameter's `ProvenanceField`; the Coverage has no response-level
-  run identity, and v1 performs no cross-run combination.
+- **Single-origin atomic timelines; derived wind is synthetic** — each **atomic** `ParameterData` comes
+  from one provider's latest run, whose `issue_time` is carried by that parameter's `ProvenanceField`.
+  The **derived** `wind_speed` / `wind_direction` carry a **synthetic** origin whose lineage is their
+  `wind_u` / `wind_v` inputs; because a provider serves wind as one native fetch, both components are
+  **co-sourced from the same provider/run**, so the synthetic lineage is single-run (no cross-run
+  mixing). The Coverage has no response-level run identity, and v1 performs no cross-run combination.
 - **Retentive in-memory `Store`s** wired into both positions (Source + best view): they **retain across
   requests** — **freshness** read off each `ParameterData`'s `expiration` (serve-vs-refill), with a
   separate **configurable retention interval** bounding memory — and **declare their grid `Domain`**
@@ -173,7 +192,10 @@ lifts **without a contract change** — see the seams in
 - **`priority`-reconciler Arbiter** — implicit-priority select + fallback per parameter; only the
   default `priority` reconciler (no `tile` / `consensus` / `feather` coverage reconcilers), no explicit
   scoring.
-- **No synthetic parameters** — provider data only; no calculators / combiners.
+- **Synthetic parameters (wind only)** — v1 exercises the Calculator seam with exactly the derived
+  wind views (`wind_speed` / `wind_direction` over `wind_u` / `wind_v`): the Calculator node, its scoped
+  Arbiter, Weaver memoized wiring, and synthetic provenance. Other derivations (dewpoint, wind chill, …)
+  stay deferred.
 - **Null Gateway** policy (identity/limits pass through).
 - **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
   — i.e. the run is still current; `expiration` (`fetched_at + cadence`) proxies run-rollover
@@ -211,7 +233,8 @@ lifts **without a contract change** — see the seams in
 ## Acceptance criteria (definition of done)
 
 1. `get_forecast(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
-   with the core-5 parameters — units canonicalized, per-parameter provenance incl. `expiration`.
+   with the 5 product parameters (wind as speed/direction) — units canonicalized, per-parameter
+   provenance incl. `expiration`.
 2. **Select + fallback**: with both providers enabled, results come from the primary; on primary
    failure the Arbiter falls back to the other (demonstrable, e.g. via a forced provider failure).
 3. **Per-parameter selection**: a parameter declared by only one provider is served from that
@@ -232,11 +255,17 @@ lifts **without a contract change** — see the seams in
 7. **Errors** map correctly to MCP `bad-request` / `capability-mismatch` / `runtime-failure`.
 8. **Tests**: unit + integration with mocked HTTP transport (per the TDD skill); provider tests mock
    the transport, not the provider.
+9. **Derived wind via Calculator**: `wind_speed` / `wind_direction` are produced by a Calculator over the
+   canonical `wind_u` / `wind_v` (providers deliver native speed/direction; the Normalizer canonicalizes to
+   u/v on ingest), carrying a **synthetic** provenance whose lineage is the u/v inputs. Requesting only
+   `wind_speed` routes through its Calculator and its scoped Arbiter, and the internal `wind_u` / `wind_v`
+   are not directly requestable.
 
 ## Out of scope for v1 (deferred)
 
 Per [`architecture.md`](./architecture.md#extension-points) / `ideas.md`: Grid realization,
-cross-run combination, synthetic parameters/calculators, coverage `reconciler`s (obs + forecast), persisting `Store`,
+cross-run combination, **synthetic parameters beyond the derived wind views** (dewpoint, wind chill, …),
+coverage `reconciler`s (obs + forecast), persisting `Store`,
 real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector, HTTP transport.
 
 ## Open / TBD during build

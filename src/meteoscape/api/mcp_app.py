@@ -23,7 +23,7 @@ def build_mcp_app() -> FastMCP:
     ) -> dict[str, object]:
         """Hourly point forecast for a latitude/longitude.
 
-        Optional `parameters` selects a subset of the core-5 (default all); `start`/`end` bound the
+        Optional `parameters` selects a subset of the 5 product params (default all); `start`/`end` bound the
         window (default a configured horizon). Returns a normalized, provenance-stamped Timeline.
         """
         raise NotImplementedError

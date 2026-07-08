@@ -6,7 +6,7 @@ status: accepted
 
 Everything below the system's outer boundary is built from a single abstraction — a **Manifold** — so
 the many roles it plays are *shapes of one algebra* rather than separate contracts. This ADR fixes the
-abstraction (what a Manifold is, its one operation, its two facets) **and** how Manifolds compose
+abstraction (what a Manifold is, its one operation, its `capability` dual, its two facets) **and** how Manifolds compose
 into larger ones (when a new node is justified, how composed nodes evaluate). Concrete shapes — vendor
 leaves, `Reservoir`s, the served "best" view — live in [`architecture.md`](../architecture.md); the data
 a Coverage carries is the [data model](./0002-data-model.md); provenance is
@@ -22,6 +22,14 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   an enumerable Selection** — no separate `sample` / `materialize` verb. ("Continuous field" is a
   *semantic* view over sampleable provider data — projectable / interpolable — **not** a claim of
   analytic continuity; providers are discrete and homogenization interpolates between samples.)
+
+- **`capability` — the dual of `project`.** Alongside `project`, every Manifold exposes a `capability`:
+  `project` *consumes* a `Selection`; `capability` *advertises* which Selections are servable
+  (`serves(parameter, requested)` + the served `parameters`). It is a **base-`Manifold` member on every
+  node**, not a facet — a leaf declares it, a composite **derives it bottom-up** (union of parameter sets;
+  AND/OR of the predicate), and a materialized `Coverage` exposes it **co-domained** on its one sampled
+  grid (so `Countable.domain` derives from it). The family and its matching rules are
+  [ADR-0004](./0004-producer-resolution-and-capability.md).
 
 - **Logically read-only.** `project` is referentially transparent **at the value it returns** (same
   Selection ⇒ same Coverage) but **not** referentially pure: it does I/O (a Provider fetches) and may
