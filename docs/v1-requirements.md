@@ -133,8 +133,10 @@ the per-parameter provenance `expiration`.
   the canonical unit from the `capability` descriptor block, and per-parameter provenance (incl. origin
   and `expiration`).
 
-- Response is at the **requested** lat/lon (homogenized from the store grid; the underlying native/store
-  resolution rides in provenance).
+- Response is at the **requested** lat/lon (homogenized from the store grid). The underlying native
+  fidelity is **recoverable server-side via the provenance `SourceKey`**, not emitted as a dedicated field
+  (offering ranking reads footprint Domain axis `step`s →
+  [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 - CoverageJSON compliance and a request `format` selector are **deferred** → `ideas.md`.
 
 ### Time axis
@@ -205,8 +207,9 @@ lifts **without a contract change** — see the seams in
 
 ### Config & secrets
 
-- One typed config (Pydantic Settings): enabled providers, provider secrets (TWC key), Arbiter
-  ordering. Secrets **injected at construction**, never read from globals.
+- One typed config (Pydantic Settings): the enabled **`SourceDef`s** (v1 degenerate case — one per
+  provider, `dataset` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
+  per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
   coarser = more cache sharing, more interpolation; the Source's is provider-exact or a configured guess)
   and **hourly** time step; cache **TTL = `expiration`**

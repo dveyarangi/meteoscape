@@ -110,7 +110,34 @@ same shape. The abstraction these are shapes of is the
 
 - **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, statistic)` to wire
   each parameter's candidate set (build-time). The **Arbiter** applies range-containment + extent
-  reachability per request to filter that set, then walks it in priority order.
+  reachability per request to filter that set, then walks it in **priority** order. A candidate is a
+  **configured producer** identified by a **`SourceKey`** (`provider` + `dataset`; → [glossary:
+  SourceKey](../glossary.md)) — **not** a bare provider — so priority discriminates *within* a provider
+  (`best_match ≻ gfs_seamless`). An **offering** (a distinct resolution / cadence *product*) is a distinct
+  `SourceKey` via its `dataset` tag — the tag **discriminates identity opaquely**; the offering's native
+  geometry is **not** in the key and **not** a second provenance identifier — ranking reads the footprint
+  Domain's per-axis **`step`** via `Domain.match`
+  (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
+  The two selection tiers differ by **timing and precedence**: **quality / model** is **static
+  `priority`** (weave-time, baked into the ordered candidate list) and **always wins across bands**;
+  **resolution** is **dynamic `Capability.score` → `Domain.match`** (project-time), firing only as a
+  **tie-break among equal-`priority`** peers (contiguous band in the baked list: admit via boolean
+  `serves`, then try peers in **`score` order** — `project` the best, on runtime fault try the next
+  admitted peer in the band, leave the band only when none remain). A worse step-fit at higher priority
+  still beats a perfect fit at lower priority — cross-priority geometric override is a later scorer
+  policy behind [#7](../concerns.md#7-quality-scoring), not the default. **`score` defaults:** a leaf
+  without a native `step` (or a request with no constrained axes) returns a **constant** — peers tie and
+  wired order wins; composites (`UnionCapability`, `DerivedCapability`) expose the same constant — the
+  Arbiter scores **leaf** candidates, not the union, and a Calculator is not ranked on geometry (its
+  inputs were already selected). Distinguish an offering (a
+  distinct published **origin**, its own `SourceKey`) from **coarsening within** one product (same
+  `SourceKey`, served by read-back homogenization, [#5](../concerns.md#5-read-time-homogenization-fidelity) /
+  [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)) — the former is `match`, the
+  latter is resampling. This is the **same mechanism** as separate observation / forecast sources (folded
+  later by a `valid_time` reconciler). v1 is one offering per provider (Open-Meteo defaults to
+  `best_match`); the `SourceDef` config surface and footprint-axis `step`s are the deferred build recipe
+  ([architecture](../architecture.md#config-registry-weaver) /
+  [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 
 ## Reconcilers — the coverage fold
 
@@ -271,7 +298,12 @@ request-level contract, whose canonical home is
     generalization. A **stateless metadata scorer** fits the read-only algebra untouched; a scorer that
     **probes** sources needs state + I/O at selection time, reopening the **Arbiter → Broker** pressure
     ([#8](../concerns.md#8-arbiter-to-broker-pressure)) — a separate, larger decision. The match-cost
-    tier of capability (degrading conversion edges) joins this seam.
+    tier of capability (degrading conversion edges) joins this seam. **Offering / resolution-aware
+    selection** ([#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection))
+    is a concrete driver: its geometric half is a graded **`Domain.match()`**
+    (→ [ADR-0002](./0002-data-model.md)) surfaced as **`Capability.score`** (boolean `serves`
+    unchanged), used as an **equal-priority tie-break** only — priority-first; in-band fall-through
+    tries the next peer by `score` before leaving the band; the covered Domain stays private.
   - **Input `Store` placement.** v1 resolves a Calculator's inputs through its scoped Arbiter
     (Source-`Store`d), not the top `Store`; pulling from the top `Store` is the only thing that would want
     a feedback edge, deliberately not done.
