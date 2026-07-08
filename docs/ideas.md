@@ -21,5 +21,6 @@ product/feature ideas that haven't earned a decision yet.
 
 - **Provider-real freshness metadata.** Where a provider exposes real freshness signals (next
   run / issue time, model-cycle expiry, HTTP `Expires` / `Cache-Control`), author each `ParameterData`'s
-  `expiration` from that instead of the static `fetched_at + cadence` estimate; fall back to the
-  configured cadence only when no real signal is available.
+  `issue_time` / `expiration` from that instead of the static cadence-model `{Δ, L}` estimate
+  ([ADR-0003](./adr/0003-provenance-and-origin.md)); fall back to the configured cadence only when
+  no real signal is available.

@@ -6,9 +6,9 @@ status: accepted
 
 The concrete encoding of everything that flows through the [algebra](./0001-manifold-algebra-and-composition.md):
 the **`Domain` / `Selection`** (the *where*), the **`Coverage` / `ParameterData`** (the data), and the
-**parameter** itself (the *what* — quantity, aggregation, extent). It records the encoding so v1's
+**parameter** itself (the *what* — quantity, statistic, extent). It records the encoding so v1's
 concrete types can be built with the right **slots reserved**, even where v1 fills only the degenerate
-case. The provenance attribute a `ParameterData` carries is owned by
+case. The provenance plane a `Coverage` carries is owned by
 [ADR-0003](./0003-provenance-and-origin.md); how producers are matched and resolved is
 [ADR-0004](./0004-producer-resolution-and-capability.md).
 
@@ -28,6 +28,11 @@ classDiagram
         <<abstract>>
         contains(Domain) bool
         intersect(Domain) Domain
+    }
+    class EnumerableDomain {
+        <<abstract>>
+        get(i) Point
+        len() int
         enumerate() Iterator~Point~
     }
     class Separable {
@@ -36,62 +41,103 @@ classDiagram
     }
     class Axis {
         AxisName name
-        bool interpolable
-        ticks() Coordinate[]
-        bounds() Interval[] | None
+        extent() Interval
+    }
+    class EnumerableAxis {
+        get(i) Cell
+        len() int
+    }
+    class Cell {
+        Coordinate coordinate
+        Interval | None bounds
     }
     class Coverage {
         EnumerableDomain domain
-        dict~ParameterId,ParameterData~ parameter_data
+        capability() Capability
+        ranges() Map~ParameterId, ParameterData~
+        provenance() ProvenanceField
+    }
+    class Capability {
+        Map~ParameterId, ParameterDef~ parameters
+        serves(ParameterId, Domain) bool
+    }
+    class FootprintCapability {
+        Map~ParameterId, (ParameterDef, Domain)~ footprints
     }
     class ParameterData {
-        ParameterId parameter
         float[] values
         bool[] | None present
-        Unit unit
-        CellAggregation aggregation
-        ProvenanceField provenance
     }
     class ParameterDef {
         ParameterId id
         Quantity quantity
-        Kind kind
         Unit canonical_unit
-        CellAggregation aggregation
+        CellStatistic statistic
+    }
+    class Quantity {
+        str name
+        ExtentScaling extent_scaling
+        MeasurementScale scale
     }
     class ProvenanceField {
-        summary() Provenance
-        at(i) Provenance
+        summary(ParameterId) Provenance
+        at(ParameterId, i) Provenance
     }
 
     Manifold <|.. Coverage : is-a
     Selection o-- Domain : where + which
-    Domain <|-- Separable : facet (v1 Regular)
+    Domain <|-- EnumerableDomain : enumerable refinement
+    Domain <|-- Separable : facet (v1 RegularDomain)
     Separable o-- Axis : 4 axes
-    Coverage o-- Domain : carries (re-projectable)
-    Coverage o-- ParameterData : one per parameter
-    ParameterData ..> ParameterDef : resolves by id
-    ParameterData o-- ProvenanceField : per-parameter (ADR-0003)
-    ParameterData ..> Domain : values + present positional to enumerate()
+    Axis <|-- EnumerableAxis : enumerable refinement
+    EnumerableAxis o-- Cell : sequence (RegularAxis computes, explicit stores)
+    Coverage o-- EnumerableDomain : carries (re-projectable)
+    Coverage o-- Capability : descriptor block (materialized: ParameterDef x Domain)
+    Capability o-- ParameterDef : one per parameter (keyed by id)
+    Capability <|.. FootprintCapability : leaf (Domain private to serves)
+    ParameterDef o-- Quantity : identity root (entails extent_scaling, scale)
+    Coverage o-- ParameterData : one per parameter (keyed by id)
+    Coverage o-- ProvenanceField : provenance plane, parameter × point (ADR-0003)
+    ParameterData ..> EnumerableDomain : values + present positional to enumerate()
 ```
 
 ## Domain & Selection
 
 - **`Domain` is an interface; representations vary behind it.** A `Domain` is an abstract coordinate set
-  over the **4 axes** (3 spatial + `valid_time`) with a fixed operation
-  surface — `contains` / `intersect` (the Capability filter), cardinality + enumerability,
-  enumerate / index, and a sample-onto seam — and **nothing in that surface assumes the axes are
-  separable**. v1 ships one representation; the interface admits richer ones with no contract change:
-  - **`RegularDomain`** — origin + step + count per axis (the uniform lattice).
-  - **`RectilinearDomain`** — explicit per-axis ticks (separable but irregular).
+  over the **4 axes** (3 spatial + `valid_time`) whose **universal** surface is just the set-algebra —
+  `contains` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
+  separable**. **Enumeration is the `EnumerableDomain` refinement** (`enumerate` / index / `len`), so
+  *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. v1 ships
+  two representations; the interface admits richer ones with no contract change:
+  - **`RegularDomain`** — a `RegularAxis` per axis (cells generated from origin + step + count: the
+    uniform lattice).
+  - **`FootprintDomain`** — a **continuous**, separable provider reach (never enumerable): per-axis
+    bounds — a `ContinuousAxis` on each spatial / Z axis, a clock-anchored `RollingAxis` on `valid_time`
+    (`extent = [A, A + max_lead]` around the run anchor `A` — the provider's cadence,
+    [ADR-0003](./0003-provenance-and-origin.md)). `contains` composes per-axis
+    extent-containment and is therefore **clock-relative** — the one intentional exception to
+    Domain-as-pure-geometry, isolated to this representation — so the Capability filter tracks a rolling
+    horizon while `serves` stays a plain `contains`
+    ([ADR-0004](./0004-producer-resolution-and-capability.md) /
+    [#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
+  - **`RectilinearDomain`** — explicit per-axis `EnumerableAxis`es of stored `Cell`s (separable but
+    irregular).
   - **`CurvilinearDomain`** — non-separable geometry (radar geotangent slice, satellite swath).
     *Room left, not built* ([#12](../concerns.md#12-curvilinear-domains)).
 
-- **Separability and regularity are facets, not the base type.** Mirroring the algebra's *capabilities,
-  not subtypes*: per-axis decomposition is an optional facet a **separable** representation exposes (its
-  per-axis `Axis` with `ticks` / `bounds`), and the regular **anchor + step** descriptor is a facet a
-  **regular** representation exposes. Curvilinear domains satisfy the base interface without either.
-  **Only a regular representation can be snapped-to.**
+- **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
+  algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
+  **separable** representation exposes — its per-axis `Axis`. An **`Axis` mirrors `Domain`**: its
+  universal surface is a span (`extent`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
+  `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
+  `RegularAxis` generates its cells from `(anchor, step, count)` and stays snappable; an explicit one
+  stores them. Whether a `RegularAxis` generates **bounded** cells (each spanning one step,
+  `bounds = [coord, coord + step]`) or bare **instants** (`bounds = None`) is its **`cellular`** flag — the
+  generative counterpart of a `Cell`'s optional `bounds`: it is how the shared `valid_time` axis emits the
+  hourly `bounds` an **extensive** parameter reads as its accumulation extent, while an intensive parameter
+  samples the tick and ignores them. A **continuous** axis carries only its bound — a plain `ContinuousAxis` or a clock-anchored
+  `RollingAxis` (the `FootprintDomain`'s axes). Curvilinear domains satisfy the base interface without
+  being separable. **Only a regular axis can be snapped-to.**
 
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
@@ -127,35 +173,78 @@ classDiagram
   came from) is **never interpolated, never snapped, never in a request**, so it is **not** a coordinate
   the caller navigates — it is **run identity carried on the atomic `Origin`**
   ([ADR-0003](./0003-provenance-and-origin.md)) and the basis of freshness (run currency).
-  **Interpolability** therefore describes every Domain axis uniformly (all 4 interpolable); **no
-  categorical axis sits in the core**. The **categorical-key mechanism** (select / group, never
-  interpolate) survives as a **collection-layer seam** — the home of `issue_time` *archives* and future
+  The 4 axes are therefore all **field axes** (resamplable dimensions); **no categorical axis sits in
+  the core**. Whether a given *parameter* may be resampled along an axis is its **resampler** fact (its
+  `scale`; see *Parameters*), not an axis property. The **categorical-key mechanism** (select / group,
+  never interpolate) survives as a **collection-layer seam** — the home of `issue_time` *archives* and future
   **ensemble / scenario** keys — not a core field axis. **Cross-run combination** is then a **reconciler
   folding run-stamped contributor Coverages along `valid_time`**
   ([ADR-0004](./0004-producer-resolution-and-capability.md)), yielding a synthetic origin — *not* an
   axis to interpolate.
 
-- **Sampling onto an interpolable axis is kind-dependent** (see *Parameters* below): for an **intensive**
-  quantity it interpolates to any requested tick; for an **extensive** quantity, resampling along time is
-  **re-aggregation** — exact only for phase-aligned coarsening, otherwise unserved. The matching rule
-  lives with Capability ([ADR-0004](./0004-producer-resolution-and-capability.md)); the *kernel choice*
-  per interpolable axis stays deferred ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
+- **The vertical (Z) axis carries one `vertical_reference`; the coordinate stays a plain scalar.** Z is one
+  of the 3 spatial axes — an ordinary field axis of `Cell`s whose `coordinate` is a plain scalar like every
+  other axis — and the **`vertical_reference` is an attribute of the Z *axis* representation** (one per
+  Domain, since a Domain carries one Z axis), **not** part of the coordinate. The reference is one of
+  **`above_ground`** (datum = the terrain surface; the home of near-surface offsets like 2 m / 10 m),
+  **`isobaric`** (pressure levels), **`height_above_msl`**. These references are **not linearly comparable**
+  — `2 m above_ground` and `1000 hPa` relate only through physics (surface pressure, hydrostatics) — so a
+  single Domain's Z axis carries **one** reference, and **stacking references is a `Calculator`** (a
+  reinterpolation), never a free axis read.
+  *(Amends the original `(reference, value)` pair-coordinate framing — see
+  [Considered options](#considered-options): the reference is axis-level, so `Coordinate` stays
+  `float | datetime` and only the Z-axis representation grows a field.)*
+
+- **Level vs layer is the `Cell`'s `bounds`, like everywhere else.** A thin Z `Cell` (`bounds = None`)
+  is a single level / offset; a **fat** Z `Cell` carries `bounds` spanning a layer — `[~0, 10 m]
+  above_ground` (the near-surface layer) or `[1000, 850] hPa`. A near-surface request *is* that fat cell:
+  `temperature` (2 m) and `wind_u` (10 m) both land in it, each contributing its native near-surface
+  value, the differing offsets **absorbed into the cell's `bounds`** ("vertically unresolved across the
+  layer") — not a wasteful multi-level Domain with a sparse `present` mask. The cell's `coordinate`
+  (a nominal near-surface height) sits *within* those `bounds` by convention, the same independence
+  every axis's `Cell` already has. Projecting onto a Z cell is vertical **homogenization** — the exact
+  analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
+  cell interpolates (extent-scaling–aware).
+
+- **Resampling a parameter onto an axis is its `resampler`, entailed by `(scale, statistic,
+  extent_scaling)` and asymmetric.** **Refine up** follows the measurement **scale** — `linear`
+  interpolates to any tick, `circular` is angular, categorical fills / snaps; **coarsen down** follows
+  the **statistic** — whole, phase-aligned integer-multiple aggregation (`sum` for extensive,
+  `max` / `min` / `mean` for windowed), never disaggregation. So interpolability is a **parameter**
+  fact, not an axis one. The matching half (does a **lossless** path exist) lives with Capability
+  ([ADR-0004](./0004-producer-resolution-and-capability.md)); the kernel **implementations** (a
+  registry, the mirror of reconcilers) and any **lossy** tier stay deferred
+  ([#5](../concerns.md#5-read-time-homogenization-fidelity), [#7](../concerns.md#7-quality-scoring)).
 
 ## Coverage & ParameterData
 
-- **A Coverage carries its Domain; values are positional to it.** `Coverage = (EnumerableDomain,
-  {parameter: ParameterData})` — the Coverage *contains* the one `EnumerableDomain` (so it is a
-  re-projectable `Manifold`), and `values[i]` is the value at the i-th `Point` of `domain.enumerate()`.
-  **No coordinates are duplicated** in a `ParameterData` ("a Coverage is a Selection filled with data,"
-  literally); in-memory packing (N-D vs flat, dtype, order) is deliberately unspecified. The
-  per-parameter element is **`ParameterData`**, not "range" — that reads as an interval, colliding with
-  the axis `bounds`.
+- **A Coverage carries its Domain, its `capability`, and values positional to the Domain.** `Coverage
+  = (EnumerableDomain, Capability, {parameter: ParameterData}, ProvenanceField)` — the Coverage
+  *contains* the one `EnumerableDomain` (so it is a re-projectable `Manifold`), its **`capability`**
+  (the `ParameterDef` per parameter × that Domain — the self-describing **descriptor block**, capability
+  being exactly parameters × Domain), one
+  `ParameterData` per parameter, and a `provenance` plane (below); `values[i]` is the value at the i-th
+  `Point` of `domain.enumerate()`. **No coordinates are duplicated** in a `ParameterData` ("a Coverage
+  is a Selection filled with data," literally); in-memory packing (N-D vs flat, dtype, order) is
+  deliberately unspecified. The per-parameter element is **`ParameterData`**, not "range" — that reads
+  as an interval, colliding with a `Cell`'s `bounds`. `capability` / `ranges` / `provenance` share one
+  parameter key set.
 
-- **`unit` and `aggregation` are cloned by value onto `ParameterData`.** Both are canonical,
-  parameter-determined facts whose **source of truth is `ParameterDef`**, carried by value (beside
-  `values`, `present`, `provenance`) so a stored / serialized Coverage is **self-describing without** the
-  parameter registry — the same by-value treatment ADR-0003 gives `provenance`. They share one home; we
-  do not split them.
+- **`ParameterData` is pure numbers `(values, present)`; every descriptor is id-entailed.** The slice
+  does **not** restate its own `ParameterId` (the `ranges` map key) and carries **no** descriptors at
+  all. Under the **canonical-mono-unit invariant** (*Parameters* below) every fact that interprets the
+  numbers — `quantity`, `extent_scaling`, `unit`, `statistic` — is *entailed by the parameter's
+  identity*, so it has exactly one home, the `ParameterDef`. A tableless reader interprets the slice
+  through the Coverage's own **`capability`** (`capability.served[pid][0].canonical_unit` /
+  `.statistic` / `.quantity` / `.extent_scaling`); the global `ParameterTable` is not needed at read. This
+  mirrors CoverageJSON, where a `range` carries minimal value facts and the `parameters` block carries
+  the descriptors — here those descriptors **travel with** the Coverage inside its `capability`.
+
+- **The descriptor block is carried, not resolved.** A Coverage is **self-describing**: it embeds its
+  `capability` (the `ParameterDef` per parameter × Domain) so a stored / serialized / inter-node Coverage
+  interprets standalone without the injected `ParameterTable` — the same `(parameters × Domain)` shape as a
+  `Selection` and a `Capability` clause set. The descriptors are id-entailed canonical facts, so there
+  is no per-slice denormalization to drift out of sync; the block is the one place they ride.
 
 - **Nodata is an explicit per-parameter mask.** `present: Sequence[bool] | None`, positional to
   `values`: `present[i] is False` ⇒ **nodata** at that point (a *successful* gap — 0 contributors, not a
@@ -164,56 +253,92 @@ classDiagram
   dtype-agnostic (categorical / integer parameters can't carry NaN) and keeps "no data" distinct from a
   legitimate not-a-number value. Per-parameter, since each parameter's coverage footprint differs.
 
-- **Extent → an optional `bounds` facet on the Domain axis.** Each axis coordinate *may* carry an
-  `Interval`; `bounds() is None` ⇒ the coordinate is an **instant / point**, positionally aligned to
-  `ticks()`. It generalizes to all axes uniformly (a spatial cell is the product of per-axis intervals).
-  `bounds` lives on the **`Separable` facet**, not the base `Domain` (non-separable per-cell extents are
-  the deferred curvilinear case). So the aggregation **interval** for `values[i]` is the shared
-  `valid_time` axis `bounds()[i]` — stated **once** on the Domain, read by every parameter.
+- **A parameter's extent → the optional `bounds` on each axis `Cell`.** An axis is a `Sequence[Cell]`,
+  and a `Cell` pairs its representative `coordinate` with optional `bounds: Interval`; `bounds is None` ⇒
+  the coordinate is an **instant / point**. The two are independent — the `coordinate` sits within the
+  `bounds` by convention (centre, or an edge for period-ending accumulations), never by definition. It
+  generalizes to all axes uniformly (a spatial cell is the product of per-axis intervals). Cells live on
+  the **`Separable` facet**, not the base `Domain` (non-separable per-cell bounds are the deferred
+  curvilinear case). So the statistic / integration window for `values[i]` — an extensive parameter's **extent** — is
+  the shared `valid_time` axis cell's `bounds`, stated **once** on the Domain, read by every parameter.
 
-- **Provenance is a `ProvenanceField` slot, owned by [ADR-0003](./0003-provenance-and-origin.md).** Each
-  `ParameterData` carries one whose O(1) `summary` is the parameter-level handle; v1 builds only the
-  `Uniform` representation.
+- **Provenance is a Coverage-level plane, owned by [ADR-0003](./0003-provenance-and-origin.md).** Not a
+  `ParameterData` attribute: origin varies over **two** axes — **parameter** (the Arbiter picks a source
+  per parameter) and **geometry point** (a mosaic differs per cell) — so it is a `ProvenanceField` on
+  the `Coverage`, peer to `domain` and `ranges`, indexed `at(parameter, i)` with `summary(parameter)`
+  the O(1) per-parameter freshness handle. Keeping it off the slice is what lets the Arbiter assemble
+  one Coverage from many single-origin sources without rewriting each slice.
 
-## Parameters — quantity, aggregation, extent
+## Parameters — quantity, statistic, extent
 
-- **Quantity is the identity root, carrying a `kind`.** A parameter's identity root is a physical field
-  — its **quantity** — whose **`kind ∈ {intensive, extensive}`** is its relationship to a cell's
-  temporal extent (extent-scaling), and sets which aggregations are meaningful:
+- **Quantity is the identity root, carrying an `extent_scaling`.** A parameter's identity root is a
+  physical field — its **quantity** — whose **`extent_scaling ∈ {intensive, extensive}`** is its
+  relationship to a cell's temporal extent, and sets which statistics are meaningful:
   - **Intensive** — instantaneous, **extent-independent** (temperature, rain-rate, pressure, wind).
     Window statistics apply; **extent optional**.
   - **Extensive** — **additive**, the value is the **integral over the cell extent** (precipitation,
     snowfall, radiant energy). **Extent required**; values sum across adjacent cells.
-  `kind` is *extent-scaling*, not a units claim: rain-rate `mm/hr` carries a time unit yet is intensive
+  `extent_scaling` is not a units claim: rain-rate `mm/hr` carries a time unit yet is intensive
   (window-independent); precip `mm` carries none yet is extensive (3h > 1h).
 
-- **The two cell axes, split by dimension.** Cell aggregation is two independent things:
-  - **`CellAggregation = point | max | min | mean`** — a **window statistic**, *dimension-preserving*
-    (mean temp is K, peak intensity is mm/hr); lives on `ParameterDef`, cloned onto `ParameterData`;
-    `point` is the degenerate window (an instant). The Provider's Normalizer coerces vendor data to the
-    canonical aggregation, so it is not a freely-chosen runtime value.
-  - **Calculus depth** — *dimension-changing* (`∫ rate dt → accumulation`, `mm/hr·h → mm`); this is the
-    quantity `kind`, **not** a `CellAggregation` value. Accumulation is the **integration edge** between
-    an intensive `rate` quantity and its extensive integral (e.g. rain-rate ↔ precipitation) — a
-    vocabulary-declared quantity pair, not a third kind.
+- **Measurement scale selects the refine-up resampler.** `Quantity.scale ∈ {linear, circular, nominal,
+  ordinal}` — `linear` interpolates / averages, `circular` is angular, categorical scales fill / mode /
+  priority. **Wind is canonical as its u/v (eastward / northward) components** — both `linear`, so
+  linear interpolation of u/v *is* correct wind interpolation and **speed / direction are derived
+  views** (Calculators above u/v), keeping the coupling out of per-parameter resamplers. Every v1
+  canonical quantity is `linear`; the non-linear scales are declared-but-unexercised seams.
 
-- **Extent never enters the parameter key.** Extent is the Domain's `valid_time` `bounds` (above). So the
-  **materialized / requested parameter key = `(quantity, aggregation)`**; "3h precipitation" = parameter
+- **Units are canonical and mono per parameter — the interior is unit-blind.** Each parameter has
+  **exactly one** unit, `ParameterDef.canonical_unit`; every value of that parameter, everywhere in the
+  algebra, is in that unit. Unit is therefore **id-entailed**, never a navigable degree of freedom: it
+  is *not* in the parameter key, *not* in a `Capability` clause (a vendor emitting °F is the same
+  parameter, not a different one), and *not* in a `Selection`. Unit conversion happens at **exactly two
+  boundaries** — the Provider's **Normalizer** on ingest (vendor unit → canonical, write-time, in the
+  data) and the **surface adapter** on egress (canonical → a requested presentation unit, read-time;
+  deferred in v1, which returns canonical per [§4](../v1-requirements.md)). In between, the whole tree —
+  Capability matching, the Arbiter's fold, Calculators, the `Store` — is **unit-blind**: physics relies
+  on the canonical *convention*, never a runtime conversion. The concrete canonical-unit choice per
+  parameter is a deferred **parameter convention** ([#10](../concerns.md#10-parameter-conventions)).
+
+- **The two cell axes, split by dimension.** A cell's value statistic is two independent things:
+  - **`CellStatistic = point | max | min | mean`** — a **window statistic**, *dimension-preserving*
+    (mean temp is K, peak intensity is mm/hr); lives on `ParameterDef`, surfaced via the Coverage's
+    `capability` (descriptor block); `point` is the degenerate window (an instant). The Provider's
+    Normalizer coerces vendor data to the canonical statistic, so it is not a freely-chosen runtime
+    value.
+  - **Calculus depth** — *dimension-changing* (`∫ rate dt → accumulation`, `mm/hr·h → mm`); this is the
+    quantity `extent_scaling`, **not** a `CellStatistic` value. Accumulation is the **integration edge**
+    between an intensive `rate` quantity and its extensive integral (e.g. rain-rate ↔ precipitation) — a
+    vocabulary-declared quantity pair, not a third value.
+
+- **Extent never enters the parameter key.** Extent is carried by the Domain's `valid_time` `Cell` `bounds` (above). So the
+  **materialized / requested parameter key = `(quantity, statistic)`**; "3h precipitation" = parameter
   `precipitation` over a Domain whose `valid_time` cells are 3h wide — one shared axis serving parameters
   of different temporal meaning.
 
-- **A parameter is a functional `agg(quantity)`; requests name it explicitly.** The window statistic +
-  quantity form the key; the **extent is requested through the Selection's `valid_time` cells**, never in
-  the parameter name. Ergonomic **aliases** (e.g. `precip_3h`) are **surface sugar** that desugars at the
-  edge into *(parameter `(precipitation, ·)`, valid_time cells = 3h)* — the on-ramp to later formula
-  injection, **not** a second identity. v1's surface accepts a bare quantity name = `point(quantity)`.
+- **A parameter is a functional `statistic(quantity)`; requests name it explicitly.** The window
+  statistic + quantity form the key; the **extent is requested through the Selection's `valid_time`
+  cells**, never in the parameter name. Ergonomic **aliases** (e.g. `precip_3h`) are **surface sugar**
+  that desugars at the edge into *(parameter `(precipitation, ·)`, valid_time cells = 3h)* — the on-ramp
+  to later formula injection, **not** a second identity. v1's surface accepts a bare quantity name =
+  `point(quantity)`.
 
 - **An extensive quantity's extent is producer-intrinsic.** Unlike an intensive quantity (resampleable
   to any tick), an extensive quantity has a native extent (period + phase) only coarsenable by aligned
   additivity. That native extent is a **per-parameter Capability fact**
   ([ADR-0004](./0004-producer-resolution-and-capability.md)), carried by the `Store`'s declared grid and
-  the returned Coverage's `valid_time` `bounds`. A request for an unreachable extent (1h from a 3h
+  the returned Coverage's `valid_time` `Cell` `bounds`. A request for an unreachable extent (1h from a 3h
   producer, a shifted phase, instants) is simply **`capability-mismatch`** — no disaggregation machinery.
+
+- **A surface parameter's height is a Domain Z coordinate, not the key — `temperature_2m` is an alias.**
+  Like extent, vertical position rides the Domain (its Z `Cell`), never the parameter key:
+  `temperature_2m` / `wind_u_10m` are **aliases** desugaring at the edge into *(quantity
+  `air_temperature` / `eastward_wind`, statistic `point`, Z = `2 m` / `10 m` above_ground)* — the
+  materialized key stays `(quantity, statistic)`. A producer's **native vertical offset** is a
+  per-parameter **Capability** fact, exactly parallel to an extensive quantity's native **extent**
+  `{period, phase}` ([ADR-0004](./0004-producer-resolution-and-capability.md)): the request's Z cell
+  (a fat near-surface layer or a specific level) is matched against it and sampled onto. A 2 m diagnostic
+  joined onto a pressure column is the cross-reference `Calculator` (above).
 
 ## Why
 
@@ -224,13 +349,27 @@ classDiagram
   single regular descriptor collapses request-snap / store-grid / exact-lattice into one parameterized
   shape, so snapping is an algebraic combine, not special-case code.
 - Putting **extent on the Domain** keeps coordinates in one place and lets a single shared axis serve
-  parameters of different temporal meaning; carrying `unit` / `aggregation` by value keeps a Coverage
-  self-describing, which the stateless-Provider / store-and-flow model needs.
-- **Quantity-as-root + `kind`** explains *why precipitation differs from temperature* — extent-scaling
-  (integration depth), not a special enum value — and keeps units honest (the dimension change rides the
-  quantity edge, not a cell attribute). Splitting the cell axes stops `sum` masquerading as a peer of
-  `max` / `min`: a statistic and an integral are categorically different and per-level exclusive over a
-  single extent ("daily max of hourly accumulation" is a two-window calculator chain).
+  parameters of different temporal meaning; carrying the **`capability`** (its descriptor block) keeps a
+  Coverage self-describing without the global `ParameterTable`, which the stateless-Provider /
+  store-and-flow model needs — while `ParameterData` stays pure `(values, present)`, so there is no
+  id-entailed fact denormalized onto the slice to drift.
+- **A canonical-mono-unit interior** collapses unit handling to two edges (Normalizer ingest, surface
+  egress) and leaves the entire algebra unit-blind: Capability, the Arbiter's fold, and Calculators
+  never negotiate or convert units, so a derived parameter's formula is unit-safe by *convention*.
+- **Vertical position on the Domain (not the key)** is the same move as extent: `temperature_2m` is an
+  alias, height is a Z `Cell`, and a near-surface bundle of mixed offsets is one **fat** Z cell — so the
+  vertical axis reuses the whole `Cell` / `bounds` / Capability apparatus instead of inventing a
+  parameter-side height. The 3-D column and pressure-level products are then reachable purely additively
+  (materialize the Z axis; cross-reference joins are Calculators).
+- **Provenance as a Coverage plane** (not a per-slice field) lets the Arbiter assemble one Coverage from
+  many single-origin sources, and a mosaic vary origin per point, without reshaping `ParameterData` —
+  while `summary(parameter)` keeps the common per-parameter freshness read O(1).
+- **Quantity-as-root + `extent_scaling`** explains *why precipitation differs from temperature* — how the
+  value scales with extent (integration depth), not a special enum value — and keeps units honest (the
+  dimension change rides the quantity edge, not a cell attribute). Splitting the cell axes stops `sum`
+  masquerading as a peer of `max` / `min`: a statistic and an integral are categorically different and
+  per-level exclusive over a single extent ("daily max of hourly accumulation" is a two-window calculator
+  chain).
 - An explicit `present` mask makes partial coverage representable from day one without retrofitting the
   value layout when the first partial producer or coverage reconciler lands.
 
@@ -240,46 +379,69 @@ classDiagram
   can disagree (a snapped flag on an irregular point set). *(Reversible as a derived accessor.)*
 - **A single separable (per-axis product) Domain as the base type.** Rejected: bakes separability into
   the contract, excluding curvilinear geometries; separability is a facet.
-- **Keep `issue_time` as a 5th (categorical) axis.** Rejected (**reversed** — earlier accepted): it is
-  never interpolated, snapped, or requested, so it is a **phantom axis** that double-accounts with the
-  provenance run stamp. The earlier fear that demotion makes **cross-run / forecast-convergence
-  inexpressible** does not hold — cross-run is a **reconciler over run-stamped contributors**
-  ([ADR-0004](./0004-producer-resolution-and-capability.md)) and convergence is a **derived enumerable
-  view** over those contributors; both are expressible with `issue_time` as a stamp. The categorical-key
+- **Keep `issue_time` as a 5th (categorical) axis.** Rejected: it is never interpolated, snapped, or
+  requested, so it is a **phantom axis** that double-accounts with the provenance run stamp. Demotion
+  keeps **cross-run / forecast-convergence** expressible — cross-run is a **reconciler over run-stamped
+  contributors** ([ADR-0004](./0004-producer-resolution-and-capability.md)) and convergence a **derived
+  enumerable view** over those contributors, both with `issue_time` as a stamp. The categorical-key
   shape survives as a **collection-layer seam** (archives, ensemble, scenario). *(Reversible: restore the
   axis if a native 2-D `valid_time × issue_time` Coverage is ever wanted.)*
-- **A single per-parameter `cell_method` carrying both aggregation and extent.** Rejected: duplicates the
+- **The vertical reference as part of the coordinate — `(reference, value)`.** Originally recorded that
+  way; **amended**. The reference is one-per-Domain (hence one-per-Z-axis), never varies cell to cell, and
+  is never interpolated, so pairing it into every coordinate would tax `Coordinate` (forcing it past
+  `float | datetime`) and every axis for a Z-only fact. It moves to an **attribute of the Z-axis
+  representation**; coordinates stay plain scalars, and the whole `Cell` / `bounds` apparatus is untouched.
+  *(Reversible: restore the pair if a single Domain ever needs to mix references on one axis — but mixed
+  references are a `Calculator` today, so the axis carries exactly one.)*
+- **A single per-parameter `cell_method` carrying both statistic and extent.** Rejected: duplicates the
   extent into every `ParameterData` and can disagree with the Domain — split extent (Domain) from
-  aggregation (parameter).
-- **`unit` cloned but `aggregation` reference-only (or vice versa).** Rejected: same kind of canonical,
-  parameter-determined fact — asymmetry would make a Coverage partially self-describing. Both cloned.
+  statistic (parameter).
+- **Clone descriptors (`unit` / `statistic`) onto `ParameterData`.** Rejected: under the
+  canonical-mono-unit invariant these are *id-entailed* canonical facts, identical for every value of
+  the parameter — denormalizing them onto each slice is pure redundancy with a drift risk and re-opens
+  "why this id-entailed fact on the slice and not `quantity` / `extent_scaling`?". The slice stays pure
+  `(values, present)`; the descriptors ride the Coverage's `capability` once.
+- **Resolve descriptors from the injected `ParameterTable` instead of carrying them.** Rejected: a
+  stored / serialized / inter-node Coverage would not interpret standalone — it would couple every
+  reader to the live catalog. Carrying the `capability` (the `(parameters × Domain)` shape a
+  `Selection` and a `Capability` already use) makes the Coverage self-describing; it is the link,
+  and `ParameterData` never restates its `ParameterId` (the `ranges` map key — restating it invites
+  key/value disagreement and diverges from CoverageJSON, where a `range` does not repeat its id).
+- **Unit polymorphism inside the algebra (per-slice or requestable units).** Rejected: it would push
+  unit awareness into Capability matching, the Arbiter's fold, and every Calculator. Canonicalizing at
+  the Provider edge and converting for presentation at the surface edge keeps the interior unit-blind.
+- **Provenance as a per-`ParameterData` attribute.** Rejected: origin varies by *both* parameter and
+  geometry point, and the Arbiter assembles one Coverage from many sources, so provenance is a
+  Coverage-level plane (above), not a field on each slice.
 - **NaN sentinel for nodata.** Rejected: only works for float-valued data and conflates "no data" with a
   legitimate not-a-number value.
-- **A literal `CellIntegration` peer enum beside `CellAggregation`.** Rejected: integration is
+- **A literal `CellIntegration` peer enum beside `CellStatistic`.** Rejected: integration is
   dimension-changing and per-level-exclusive with window statistics, so it is truer as the quantity
-  `kind` than a per-cell attribute.
-- **Extent in the parameter key — `agg(quantity, extent)`.** Rejected: the Domain already owns extent;
+  `extent_scaling` than a per-cell attribute.
+- **Extent in the parameter key — `statistic(quantity, extent)`.** Rejected: the Domain already owns extent;
   putting it in the key too makes "extent" sayable in two places that can disagree. Aliases give the
   ergonomic bundling without the second source of truth.
-- **Aggregation not part of identity (one quantity, many cell-methods at read).** Rejected for the
+- **Statistic not part of identity (one quantity, many cell-methods at read).** Rejected for the
   *materialized key* — `max(temp)` and `mean(temp)` must coexist in one Coverage — but reconciled: the
-  **identity root** is the quantity, the **materialized key** is `(quantity, aggregation)`.
+  **identity root** is the quantity, the **materialized key** is `(quantity, statistic)`.
 
 ## Consequences
 
-- The **materialized key is `(quantity, aggregation)`**: "instantaneous temperature" and "daily-max
+- The **materialized key is `(quantity, statistic)`**: "instantaneous temperature" and "daily-max
   temperature" sit at different keys, not one parameter with two cell-methods.
 - **Mixed *periods* of one parameter in one Coverage are not yet representable** — `precipitation` over
-  1h vs 3h `valid_time` cells would need different bounds for the same coordinate (a future
-  **per-parameter `bounds` override** seam). An extent/Domain matter, not identity; v1's precipitation is
-  **uniformly hourly** (one shared `valid_time` extent serves every parameter), so the override is deferred.
-- The aggregation vocabulary and canonical quantity set are the deferred **parameter conventions**
+  1h vs 3h `valid_time` cells would need different `Cell` `bounds` for the same coordinate (a future
+  **per-parameter bounds override** seam). An extent/Domain matter, not identity; v1's precipitation is
+  **uniformly hourly** (one shared `valid_time` cell serves every parameter), so the override is deferred.
+- The statistic vocabulary and canonical quantity set are the deferred **parameter conventions**
   ([#10](../concerns.md#10-parameter-conventions)); this ADR fixes the *structure* (quantity identity,
-  `kind`, the cell axes), while the concrete quantity table, conversion edges, and their quality costs
-  stay deferred (#10, [#7](../concerns.md#7-quality-scoring)).
+  `extent_scaling`, the cell axes), while the concrete quantity table, conversion edges, and their
+  quality costs stay deferred (#10, [#7](../concerns.md#7-quality-scoring)).
 - **Curvilinear domains** and the **sampling-kernel choice** remain interface promises / edge-deferred
   ([#12](../concerns.md#12-curvilinear-domains), [#5](../concerns.md#5-read-time-homogenization-fidelity)).
-- **The model degenerates cleanly.** Unfilled slots — `present = None`, `Uniform` provenance, windowed
-  `CellAggregation` (`max` / `min` / `mean`), the per-parameter `bounds` override, `PerPoint` — cost
-  nothing, so each is purely additive. v1's concrete positions on these slots (including precipitation as
-  the one `extensive` parameter) live in [`v1-requirements.md`](../v1-requirements.md).
+- **The model degenerates cleanly.** Unfilled slots — `present = None`, the `Uniform` / `PerParameter`
+  provenance plane (`PerPoint` later), windowed `CellStatistic` (`max` / `min` / `mean`), the
+  per-parameter bounds override, a **navigable Z axis** (pressure levels / 3-D columns; the surface
+  bundle is the degenerate near-surface fat cell) — cost nothing, so each is purely additive. v1's
+  concrete positions on these slots (including precipitation as the one `extensive` parameter) live in
+  [`v1-requirements.md`](../v1-requirements.md).

@@ -7,18 +7,35 @@
 
 ## What it is
 
-Meteoscape is a **manifold-based Coverage-resolution engine**: it resolves a request for a
-field — weather over a point and time — into one normalized, provenance-stamped **Coverage**,
-selecting the best obtainable provider per parameter and falling back on failure. It hides the
-hard problems — vendor heterogeneity (shapes, units, geometries), source selection, and
-freshness — behind one small, uniform contract, surfaced over **MCP** first.
+Meteoscape is a **cross-provider weather access layer**: ask for weather once, over a point
+and time, and get back one normalized, provenance-stamped answer — drawn from the best
+available vendor, cached, and fetched again only when it goes stale. It hides vendor
+heterogeneity (units, shapes, geometries), source selection, and freshness behind one small
+contract, surfaced over **MCP** so an AI agent can ask for weather without integrating a
+single vendor itself.
 
-v1 ships a single objective — the *best view* (best-obtainable source + fallback) over timeline
-provider data — exposed as one MCP tool, `get_forecast`, returning an hourly point-forecast
-Timeline for the core-5 parameters (temperature, precipitation, wind speed, wind direction,
-relative humidity).
+**What it gives a caller**
 
-See [`docs/architecture.md`](./docs/architecture.md) for the design and
+- **One API, every vendor** — canonical units and geometry; integrate once, not once per vendor.
+- **Best-source selection with automatic fallback** — the best obtainable provider per
+  parameter, falling back on failure so a single vendor outage doesn't break the request.
+- **Caching & freshness** — a fresh repeat request is served from cache with no vendor call,
+  cutting latency and vendor API usage; every value carries an `expiration`.
+- **Provenance on every value** — which provider/run produced each parameter, and how fresh.
+- **Derived parameters, not just pass-through** — some parameters are computed rather than
+  relayed: v1 serves wind speed/direction from canonical wind components, so you get a
+  consistent answer no matter how each vendor represents wind. User-defined derivations
+  (dewpoint, heat index, …) are roadmap.
+- **MCP-native** — one tool, `get_forecast`, returning an hourly point-forecast `Timeline`
+  for the core surface parameters (temperature, wind, precipitation, humidity).
+
+**Roadmap.** Usage monitoring and quota/rate-limit control over vendor APIs (a wired-but-null
+Gateway seam in v1), user-defined derived parameters, and surfaces beyond MCP.
+
+**Under the hood.** Meteoscape resolves each request through a recursive **Manifold** algebra
+that normalizes, selects, caches, and homogenizes provider data behind one uniform contract —
+the engine that makes the cross-provider guarantees hold. See
+[`docs/architecture.md`](./docs/architecture.md) for the design and
 [`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 build scope.
 
 ## Setup

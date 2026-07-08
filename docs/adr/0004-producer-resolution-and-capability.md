@@ -28,21 +28,78 @@ same shape. The abstraction these are shapes of is the
   is a **reconciler**. Only the coverage axis is a reconciler, because there the producers share
   coordinates.
 
+- **Multi-component quantities are co-declared, not runtime-coupled.** A vector or paired quantity —
+  wind's `wind_u` / `wind_v`, later ocean currents / waves / complex fields — is **co-produced from one
+  native field**: a producer serves the whole component set from one origin or none. The Arbiter still
+  selects **per parameter**; component coherence follows from the group sharing one candidate list,
+  order, and footprint — a **build-time** well-formedness property (the Weaver can assert it) — so a
+  mismatched pair (A's `u`, B's `v`) never arises, including where a Calculator's scoped Arbiter resolves
+  `(u, v)` together. There is **no runtime atomic co-selection**: it would guard a case producers cannot
+  create.
+
 ## Capability & matching
 
-- **Capability is structured clauses + one generic match predicate** — not an opaque per-producer
-  `can_serve()`, not a DSL. Per emitted parameter a producer declares a clause:
-  `(quantity, aggregation)` — the **key**; a **spatial region + temporal range** (the coverage); and,
-  for an **extensive** quantity ([data model](./0002-data-model.md)), its native **extent**
-  `{period, phase}`. Ordering and the `reconciler` are **policy**, not Capability.
+- **Capability is a `Manifold` facet — `serves(parameter, requested)` + `parameters` — the dual of
+  `project`**, on *every* node (a base-`Manifold` member,
+  [ADR-0001](./0001-manifold-algebra-and-composition.md)), not an opaque per-producer `can_serve()`.
+  `parameters` is the served `ParameterId → ParameterDef` map (a parameter's canonical facts: quantity,
+  statistic, `extent_scaling`, canonical unit). A concrete covered `Domain` is deliberately **off the
+  interface** — it lives only where it is singular and exact: **privately** inside a leaf's `serves`, and
+  **publicly** as `EnumerableCapability.domain` on a materialized `Coverage`. There is **no separate
+  clause or `extent` field**: a parameter's native **vertical offset / level** (`2 m above_ground`,
+  `1000 hPa`) and its extensive **accumulation window** are **geometry on that covered `Domain`** — a Z
+  `Cell` and a `valid_time` `Cell`'s `bounds` respectively ([data model](./0002-data-model.md)). Ordering
+  and the `reconciler` are **policy**, not Capability.
 
-- **The match predicate** `serves(clause, requested_functional, requested_domain)` is the conjunction of:
-  1. **key equality** — `quantity` and `aggregation` match;
-  2. **range containment** — the clause's region / time-range ⊇ the request (`Domain`-containment, the
-     existing filter);
-  3. **extent reachability**, *kind-aware* — **intensive** ⇒ always (interpolate to any requested tick);
-     **extensive** ⇒ the requested period is an **integer multiple** of `clause.period` **and**
-     phase-aligned (additivity: a 3h producer serves 3h / 6h / 9h…, **not** 1h, 2h, or a shifted phase).
+- **The family composes bottom-up like `project`** — leaves declare, composites derive:
+  - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
+    `Domain` footprint, kept private to `serves`.
+  - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
+    enumerable `domain` **is** the Coverage's positional grid, so `Countable.domain` derives from it (not
+    a second copy).
+  - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff *some* member does;
+    `parameters` is the members' union. Takes members **flat** (each `Capability` carries its own
+    `parameters`, so no per-parameter pre-indexing). Its future dual is an **intersection / consensus**
+    fold (`serves` iff *all* members do) — the capability of the deferred `consensus` reconcilers
+    ([#6](../concerns.md#6-reconciler-catalogue)) — not built.
+  - **`DerivedCapability`** — a **Calculator**: a **unary input→output transform** (not a set-op). It
+    serves its single **output** parameter (present in *no* input) iff *all* its fixed inputs are servable
+    through the scoped resolver; `parameters` is that output alone.
+  - a **`Reservoir`** **forwards** its child's unchanged (the `Store` grid is a fidelity floor, not a
+    capability boundary).
+  Composition only ever **unions parameter sets and ANDs/ORs the predicate** — it never *synthesises* a
+  `Domain`, so the multi-candidate union has no representation problem: it collapses to one concrete
+  `EnumerableCapability.domain` only when you `project`. A coarse `parameters × max-horizon`
+  **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); v1 narrates it
+  in the tool description, and a dedicated introspection surface is deferred.
+
+- **A leaf's temporal reach is clock-anchored (v1)** — its `valid_time` window tracks the provider's run
+  anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
+  footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `contains`. The
+  per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+
+- **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
+  whether a **valid, non-lossy resampler path** exists from `offered` to `requested` — the
+  `ParameterDef` is why the value is a pair, not a bare `Domain`. A parameter's **resampler** is
+  entailed by its `(scale, statistic, extent_scaling)` and is **asymmetric**:
+  1. the requested parameter is in the mapping (**key presence** — the closure below gives each key its
+     reachable family);
+  2. **refine up** (finer request) — a `linear` scale interpolates to any tick, a categorical scale
+     snaps to members, and an **extensive** window cannot be split;
+  3. **coarsen down** — whole, **phase-aligned integer-multiple** aggregation via the statistic's
+     combine (`sum` for extensive, `max` / `min` / `mean` for windowed): a 3h producer serves 3h / 6h /
+     9h…, **not** 1h, 2h, or a shifted phase.
+  `Domain.contains` is only the **geometric half** (linear-refine / snap); extent-reachable aggregation
+  is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
+  **parameter** fact (its scale), never a `Domain`/axis one.
+
+- **Resamplers are a registry** The `ParameterDef` carries a resampler
+  **selector** (derived from scale × statistic × extent, not hand-set); the **implementations**
+  (linear / angular / area-weighted / categorical kernels) live in a catalogue looked up at
+  homogenization, deferred with the kernel choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
+  Matching reads only resampler **existence and losslessness**; **lossy** resamplers (extensive
+  disaggregation, categorical priority-down) are a later, purely **additive** tier
+  ([#7](../concerns.md#7-quality-scoring)).
 
 - **Capability is the closure of emitted functionals under *exact* conversion edges** (aligned coarsening
   by additivity), so one declared functional serves a whole reachable family without enumeration.
@@ -51,7 +108,7 @@ same shape. The abstraction these are shapes of is the
   into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); when it lands it only
   *grows* a producer's closure — purely additive. Match is **boolean**; ranking stays static priority.
 
-- **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, aggregation)` to wire
+- **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, statistic)` to wire
   each parameter's candidate set (build-time). The **Arbiter** applies range-containment + extent
   reachability per request to filter that set, then walks it in priority order.
 
@@ -160,7 +217,7 @@ request-level contract, whose canonical home is
   selector compute formulas. Scoping each calculator's input Arbiter to its inputs keeps the graph an
   acyclic DAG while letting the Calculator depend on a single resolver.
 - Capability as **data + a fixed predicate** (not behaviour) stays introspectable, so the Weaver can
-  index candidates statically; the kind-aware extent rule is the only thing that distinguishes "3h precip
+  index candidates statically; the extent-scaling–aware extent rule is the only thing that distinguishes "3h precip
   yes / 1h no", and it is exactly the data model's *exact* conversion edge — one mechanism, not two.
 - "Assembly vs reduction" is a false split on the coverage axis: pick-one is just a reducer, and one
   request needs nodata + passthrough + reconcile *simultaneously*, decided per cell by how many producers
@@ -187,7 +244,8 @@ request-level contract, whose canonical home is
   duplicates the Arbiter's per-cell gather, drops the reconciler choice, and is dead weight for
   point / timeline data — the coverage fold belongs on the Arbiter.
 - **An opaque per-producer `can_serve()` capability, or a capability DSL.** Rejected: opaque defeats the
-  Weaver's static candidate index; a DSL is unjustified when structured clauses + one predicate suffice.
+  Weaver's static candidate index; a DSL is unjustified when a structured `parameters` map + one predicate
+  suffice.
 
 ## Consequences
 
@@ -199,6 +257,11 @@ request-level contract, whose canonical home is
   **not re-linked per Selection**; which contributors fire is decided at `project` by intersecting each
   footprint with the requested `Domain`.
 - **Deferred seams:**
+  - **Probed / discovered real availability.** The clock-anchored footprint (above) declares the
+    *envelope*; a leaf that reflects **which runs / timesteps actually exist right now** — vs the declared
+    window — needs **I/O at selection time**, reopening the **Arbiter → Broker** pressure
+    ([#8](../concerns.md#8-arbiter-to-broker-pressure)). v1's window is metadata-only (no probe); the
+    accuracy of that declared window against real availability is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
   - **Caller-supplied formulas (a request-time DSL).** The function arrives *in the Selection*; the
     Weaver then runs **per request** (weave → project → discard), the same recursion used at build time.
     The static registry is the v1 shape.
