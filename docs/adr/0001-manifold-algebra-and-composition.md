@@ -6,7 +6,7 @@ status: accepted
 
 Everything below the system's outer boundary is built from a single abstraction — a **Manifold** — so
 the many roles it plays are *shapes of one algebra* rather than separate contracts. This ADR fixes the
-abstraction (what a Manifold is, its one operation, its two capabilities) **and** how Manifolds compose
+abstraction (what a Manifold is, its one operation, its `capability` dual, its two facets) **and** how Manifolds compose
 into larger ones (when a new node is justified, how composed nodes evaluate). Concrete shapes — vendor
 leaves, `Reservoir`s, the served "best" view — live in [`architecture.md`](../architecture.md); the data
 a Coverage carries is the [data model](./0002-data-model.md); provenance is
@@ -23,21 +23,31 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   *semantic* view over sampleable provider data — projectable / interpolable — **not** a claim of
   analytic continuity; providers are discrete and homogenization interpolates between samples.)
 
+- **`capability` — the dual of `project`.** Alongside `project`, every Manifold exposes a `capability`:
+  `project` *consumes* a `Selection`; `capability` *advertises* which Selections are servable
+  (`serves(parameter, requested)` + the served `parameters`). It is a **base-`Manifold` member on every
+  node**, not a facet — a leaf declares it, a composite **derives it bottom-up** (union of parameter sets;
+  AND/OR of the predicate), and a materialized `Coverage` exposes it **co-domained** on its one sampled
+  grid (so `Countable.domain` derives from it). The family and its matching rules are
+  [ADR-0004](./0004-producer-resolution-and-capability.md).
+
 - **Logically read-only.** `project` is referentially transparent **at the value it returns** (same
   Selection ⇒ same Coverage) but **not** referentially pure: it does I/O (a Provider fetches) and may
   populate `Store`s as **transparent memoization** (a fill on a miss changes no answer). It **computes**
   (sample / select / assemble) but mutates **no orchestration or policy state**. There is **no external
   god-orchestrator** above the algebra that decomposes, ranks, or routes; acquisition and selection are
   **properties of particular shapes**, carried as ordinary `project` logic. The single *declared*
-  mutation, `assimilate(coverage)`, is **not** on the base abstraction — it is the `Writable` capability.
+  mutation, `assimilate(coverage)`, is **not** on the base abstraction — it is the `Writable` facet.
 
-- **Capabilities, not subtypes.** Optional behaviour is added by two capabilities (interface
+- **Facets, not subtypes.** Optional behaviour is added by two facets (interface
   segregation), never a type hierarchy:
   - **`Countable`** — the node **declares an enumerable grid `Domain`** (a regular lattice — see the
     [data model](./0002-data-model.md)): its **canonical lattice**, **provider-exact where a vendor
-    declares one, a configured guess for point vendors that expose none**. Confers index access, an
-    `assimilate` target, and resolution of a snapped/exact request, and is the grid for **`quantize`**
-    (snap + widen to whole units, retention) and **read-back homogenization** (below). Conferred by a
+    declares one, a configured guess for point vendors that expose none**. Its grid (an
+    `EnumerableDomain`) carries index access and resolves a snapped/exact request, and is the grid for
+    **`quantize`** (snap + widen to whole
+    units, retention) and **read-back homogenization** (below) — and, paired with `Writable`, the
+    `assimilate` target. Conferred by a
     *declared* grid (not by holding data), and **upward** from a stored grid to the node that serves it.
   - **`Writable`** — accepts `assimilate(coverage)`: the **materialization boundary** — sample a view
     onto the node's own grid and store it. Provenance is authored **upstream**, never computed here.
@@ -60,8 +70,8 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   when the request already lands on the grid (a snapped read is a **crop**); a non-storing leaf samples
   its substrate per read straight to the target. **Spatially fusing cached ∪ freshly-fetched same-run
   units is the same read homogenization.** **Freshness is read-time**, evaluated per read off each
-  `ParameterData`'s provenance `expiration` (the freshness model, including synthetic-origin inheritance,
-  is [ADR-0003](./0003-provenance-and-origin.md)); `assimilate` is **pure storage** (never recomputes
+  parameter's provenance `expiration` (the Coverage plane's `summary(parameter)`; the freshness model,
+  including synthetic-origin inheritance, is [ADR-0003](./0003-provenance-and-origin.md)); `assimilate` is **pure storage** (never recomputes
   provenance), so the algebra needs no `is_current` operation. The **kernel choice / accuracy bounds** of
   the homogenization stay deferred ([concern #5](../concerns.md#5-read-time-homogenization-fidelity)).
 
@@ -112,7 +122,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 
 ## Why
 
-- One deep interface plus two mixins replaces a contract-per-role; composition then yields new behaviour
+- One deep interface plus two facets replaces a contract-per-role; composition then yields new behaviour
   with **no contract change**, and earns its keep only where it isolates genuinely different
   **behaviour** (coverage differences are a filter, not a node).
 - `-> Manifold` is **real**: views and derived chains are genuine uncountable **fields**; `Countable`
@@ -142,5 +152,5 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   coverage difference, a lazy field, or parameterized data.
 
 > **Shapes (illustrative, not part of the algebra).** Concrete nodes — a vendor leaf, a `Reservoir`, the
-> Arbiter, the served "best" view, Calculators — differ only in `project` logic and which capabilities
+> Arbiter, the served "best" view, Calculators — differ only in `project` logic and which facets
 > they add; see [`architecture.md`](../architecture.md).
