@@ -50,12 +50,10 @@ offering / resolution and Registry–Weaver seams. Contract-level outcomes lande
 
 ## Open / continuation
 
-- **Weaver build-time input shape** — explicit args vs bundled plan vs the read-only-registry role/Protocol
-  → [#21](../concerns.md#21-weaver-build-time-input-shape) (lean: explicit args + a named role).
+- **Weaver build-time input shape** — settled in [0004](./0004-20260709-identity-registry-weaver.md) /
+  [#21](../concerns.md#21-weaver-build-time-input-shape).
 - **#20 contract closed; build leftover** — footprint `step` / `match` / `score` / band walk →
   [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection). Provider
   `exact` / native-coarse-as-distinct-origin → [#5](../concerns.md#5-read-time-homogenization-fidelity).
-- **Code lag** — `registry.py` / `weaver.py` / `config.py` signatures (`SourceKey`-keyed Registry,
-  `SourceDef` config, read-only-registry Weaver input) still carry the provider-level shape; the leaf is
-  unbuilt (per [0002](./0002-20260708-openmeteo-provider-plan.md)). `provenance.py` `native_resolution`
-  removed.
+- **Code lag** — contract signatures landed in [0004](./0004-20260709-identity-registry-weaver.md);
+  `build` / `weave` behaviour and the Open-Meteo leaf remain unbuilt (per [0002](./0002-20260708-openmeteo-provider-plan.md)).

@@ -216,20 +216,13 @@ equal-priority band walk.
 
 **Kind:** build-time (wiring) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [architecture.md](./architecture.md#config-registry-weaver)
 
-The Weaver's inputs are **settled in principle**: the **read-only source registry** (configured producers
-keyed by `SourceKey`, each carrying its `priority`), the **derivation registry** (Calculators), and
-**store / grid config** — replacing the degenerate `weave(providers: Sequence[Provider], priority:
-Sequence[str])`, which cannot even join a `Provider` to its priority (the `Provider` interface exposes no
-id). Ordering rides through the registry surface, so `priority` is per-`SourceKey` **policy data**, not a
-detached string list; a runtime Arbiter stays a dumb iterator over baked ordered candidate lists
-([ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
-
-**Open:** the exact **shape** — three explicit injected args (lean: matches the constructor-injection
-stance, unit-testable input-by-input) vs a bundled `WeavePlan` recipe (earns its place only if a
-caller-supplied request-time plan lands — ADR-0004's deferred formula DSL) vs polymorphic Weaver
-implementations (rejected: the weaving *algorithm* is one; only its inputs vary). Also open: whether the
-read-only registry surface is a named **role / Protocol** the Weaver depends on (lean: yes) vs a raw
-`SourceKey`-keyed mapping. Additive; the runtime DAG is unaffected, so no contract-surface change.
+**Settled:** three explicit injected args + a named read-only role —
+`weave(sources: SourceRegistry, derivations: DerivationRegistry, store: StoreConfig)`.
+`SourceRegistry` is a Protocol (`sources: Mapping[SourceKey, RegisteredSource]`); ordering rides
+inside that surface (per-`SourceKey` `priority`), never a detached string list. The Registry's
+`build(defs, secrets, clock)` produces the role; the Weaver never sees `Settings`. A bundled
+`WeavePlan` earns its place only if a caller-supplied request-time plan lands (ADR-0004's deferred
+formula DSL). Polymorphic Weaver implementations stay rejected.
 
 ## 12. Curvilinear domains
 

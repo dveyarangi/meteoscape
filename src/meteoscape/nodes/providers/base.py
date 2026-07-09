@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ...identity import SourceKey
 from ...manifold.capability import Capability
 from ...manifold.core import Manifold, Selection
 
@@ -23,3 +24,9 @@ class Provider(ABC):
     @property
     @abstractmethod
     def capability(self) -> Capability: ...
+
+    @property
+    @abstractmethod
+    def source_key(self) -> SourceKey:
+        """This producer's identity — stamped onto atomic provenance; never carries priority."""
+        ...
