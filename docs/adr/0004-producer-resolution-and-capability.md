@@ -162,6 +162,21 @@ same shape. The abstraction these are shapes of is the
   producer set at **low priority**; the per-cell `priority` reconciler then yields the high-resolution
   source where it reaches and the whole model in the gaps. No separate node, no whole-vs-partial branch.
 
+- **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
+  analysis surface) is a **single** `Provider` whose `FootprintCapability` advertises the network's
+  **aggregate hull** — a continuous `FootprintDomain` ([ADR-0002](./0002-data-model.md)), so v1's plain
+  `contains` gate admits any interior request with **no `intersect` dependency** — and whose `project`
+  runs the scattered→lattice interpolation **inside the leaf**. Interpolating one network's own stations
+  is resampling **within one origin** (one `SourceKey`), not a cross-origin fold, so it stays private
+  like `best_match`; combining *distinct* networks stays a reconciler. Interior network holes return as
+  first-class **nodata**, filled by the model under the same `priority` fold, so a generous hull is safe.
+  Faithful lineage is **`PerPoint`** (contributing stations, method, distance), above the leaf's default
+  single-fetch `Uniform` plane ([ADR-0003](./0003-provenance-and-origin.md)); honest hull-vs-real
+  coverage and interpolation quality ride the availability / scoring seams
+  ([#18](../concerns.md#18-clock-anchored-footprint-fidelity) / [#7](../concerns.md#7-quality-scoring)).
+  A single station addressed at its **known** point is the **dual** shape — an ordinary point `Provider`
+  — for the named / IoT case; the two coexist by footprint geometry, not by node type.
+
 ## Calculators — derived parameters as candidates
 
 - **A Calculator is just another candidate producer.** It declares its **output** parameter (its
