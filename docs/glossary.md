@@ -20,7 +20,7 @@ The **enumerable case of a Domain** — an indexable set of coordinate positions
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
 
 **Axis**:
-The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis, defined with the cadence it reads so `domain` stays pure geometry). Offering-aware ranking adds an optional native **`step`** on continuous footprint axes (the tick-less half today) — read by `Domain.match`, not a separate Capability fact → [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection). → [ADR-0002](./adr/0002-data-model.md).
+The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis). A continuous footprint axis may later carry a native **`step`** ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Dimension, Coordinate array
 
 **Cell**:
@@ -35,7 +35,7 @@ _Avoid_: Range (collides with a Coverage's `ranges`), Extent (the parameter-side
 An axis whose values may be **synthesized between samples** (homogenization) — the 3 spatial axes and `valid_time`. → [ADR-0002](./adr/0002-data-model.md).
 
 **Vertical reference**:
-The datum a vertical (Z) axis is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. An **attribute of the Z axis** (**one per Domain**), *not* part of the coordinate, which stays a plain scalar; references are not linearly comparable, so stacking them is a `Calculator`. A surface parameter's fixed height is a Z `Cell`, not part of its key (`temperature_2m` is an alias); a producer's native offset is a `Capability` fact. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters (2 m temperature, 10 m wind) share **one** Domain, precise offsets kept in provenance. → [ADR-0002](./adr/0002-data-model.md).
+The datum a vertical (Z) axis is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. An **attribute of the Z axis** (**one per Domain**), *not* part of the coordinate, which stays a plain scalar. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters share **one** Domain. Non-comparability, height aliases, native offsets → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Altitude (ambiguous across references), level (one value, not the datum)
 
 **Categorical key**:
@@ -63,7 +63,7 @@ A single weather variable (e.g. temperature) that identifies a **`ParameterData`
 _Avoid_: Variable, field, metric
 
 **ParameterData**:
-One parameter's **materialized data slice** in a Coverage — pure numbers `(values, present mask)`, positional to the Domain. Carries **no** descriptors: under the canonical-mono-unit invariant every interpreting fact (`quantity` / `extent_scaling` / `unit` / `statistic`) is id-entailed and lives in the `ParameterDef`, surfaced via the Coverage's `capability`. Its `ParameterId` is the `ranges` key (identity is referenced, not restated); provenance is the Coverage's plane. One per parameter; not itself a Manifold. → [ADR-0002](./adr/0002-data-model.md).
+One parameter's **materialized data slice** in a Coverage — pure numbers `(values, present mask)`, positional to the Domain; every interpreting descriptor is id-entailed and lives in the `ParameterDef`, surfaced via the Coverage's `capability`. One per parameter; not itself a Manifold. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Range (reads as an interval — collides with a `Cell`'s `bounds`), DataBlock, slice
 
 **ParameterDef**:
@@ -71,7 +71,7 @@ The **canonical definition** of a parameter — its stored facts `(id, quantity,
 _Avoid_: Parameter (the identifier), schema
 
 **Canonical unit**:
-A parameter's **single** unit (`ParameterDef.canonical_unit`) — every value of that parameter, everywhere in the algebra, is in it (the **canonical-mono-unit invariant**). Unit is id-entailed, never in a key / `Capability` / `Selection`; conversion happens only at the **Normalizer** (vendor → canonical, ingest) and the **surface adapter** (canonical → presentation, egress, deferred in v1). The interior is unit-blind. → [ADR-0002](./adr/0002-data-model.md).
+A parameter's **single** unit (`ParameterDef.canonical_unit`) — every value of that parameter, everywhere in the algebra, is in it (the **canonical-mono-unit invariant**); the interior is unit-blind, conversion happens only at the two edges. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: display unit (a surface-egress concern), per-value unit
 
 **Parameter table**:
@@ -112,7 +112,7 @@ A **Coverage's provenance plane** over (parameter, geometry-point) — `Uniform`
 _Avoid_: provenance array, per-point provenance (the `PerPoint` case only), per-`ParameterData` attribute
 
 **Provenance**:
-One **origin record** — what a (parameter, point) value derives from (origin, fetched-at, `expiration`); held by a Coverage's `ProvenanceField`. Native fidelity is **not** a provenance field (recoverable from the origin's `SourceKey`; ranking reads the footprint Domain's axis `step`s → [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0003](./adr/0003-provenance-and-origin.md).
+One **origin record** — what a (parameter, point) value derives from (origin, fetched-at, `expiration`); held by a Coverage's `ProvenanceField`. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: Lineage (part of a *synthetic* Origin)
 
 **Origin**:
@@ -120,7 +120,7 @@ What a (parameter, point) value derives from — **atomic** (a single Provider f
 _Avoid_: Source (the Manifold)
 
 **SourceKey**:
-The **identity of a configured producer** — the origin an atomic `Origin` is *stamped with* (the **producer / leaf**, not the Reservoir `Source` role). `(provider, dataset)` today, an **extensible** identity; `dataset` is **always named** (never a partial provider-only identity — the default offering is impl-supplied, v1 Open-Meteo → `best_match`), and the tag **discriminates offerings** (distinct resolution / cadence *products*) **opaquely** — the algebra compares it for equality, never parses it. Its `__str__` is the SourceRegistry / config token (e.g. `open-meteo:best_match`). Derived at `SourceBinder` build from `ProviderManifest.provider_id` + `OfferingSpec.name` (or authored by the Provider on expand). **Structured** (not a delimited string) so a provider exposing several datasets / offerings extends it additively, and provenance stays self-describing. An offering's native *geometry* is **not** in the key — it lives on the footprint Domain's axis `step`s ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). Defined in `identity.py` (Tier-0 leaf); concept stays provenance-anchored. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+The **identity of a configured producer** — the origin an atomic `Origin` is *stamped with* (the **producer / leaf**, not the Reservoir `Source` role). **Structured** `(provider, dataset)`; `dataset` is **always named** and **discriminates offerings opaquely** (compared for equality, never parsed). Its `__str__` is the SourceRegistry / config token (e.g. `open-meteo:best_match`). Defined in `identity.py` (Tier-0 leaf). Build-time derivation, extensibility, and what stays out of the key → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: Source (the Reservoir role), raw source string
 
 **Valid time**:
@@ -263,10 +263,10 @@ _Avoid_: Cache (over-claims transience), Buffer, Vault, Pool
 
 **Reservoir**:
 The **generic retention wrapper** — a read-only Manifold composed of a **`Store` + one child**; one reusable node that may sit at a **profile's root or inside it** (a Source is a Reservoir; the best view's root is a Reservoir). Adds retention, **not** selection — reduction lives in the **Arbiter** it may wrap. → [architecture.md](./architecture.md#reservoir).
-_Avoid_: CachingManifold, Cache, Keeper, Sentinel;
+_Avoid_: CachingManifold, Cache, Keeper, Sentinel
 
 **Task-oriented profile**:
-A **named root composition** that resolves a requested view into a **`Coverage` on a target `Domain`** under an **objective** — the served root. **A profile is the whole composition + its objective; a `Reservoir` is one reusable node that may sit at a profile's root or inside it.** v1 ships one profile (the **best view**); a server may host several. Some profiles may expose **diagnostics / traces as sidecars**, but the **data product remains a `Coverage`** ([concern #14](./concerns.md#14-resolution-trace-and-observability)). Distinct from the **reduction policy** (the Arbiter's reconciler). → [architecture.md](./architecture.md#guiding-principles).
+A **named root composition** that resolves a requested view into a **`Coverage` on a target `Domain`** under an **objective** — the served root. **A profile is the whole composition + its objective; a `Reservoir` is one reusable node that may sit at a profile's root or inside it.** v1 ships one profile (the **best view**); a server may host several. Distinct from the **reduction policy** (the Arbiter's reconciler). → [architecture.md](./architecture.md#guiding-principles).
 _Avoid_: View, Mode, Pipeline
 
 **Best view**:
@@ -274,7 +274,7 @@ The **v1 task-oriented profile** — `Reservoir(store, top Arbiter)`: resolves t
 _Avoid_: Best provider, Router result
 
 **Capability**:
-What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`). A concrete covered `Domain` is **not** on the interface — it stays private to a leaf's `serves`, surfacing publicly only as `EnumerableCapability.domain` on a materialized `Coverage`. Leaves declare (`FootprintCapability` per-parameter footprint, `EnumerableCapability` co-domained); composites derive bottom-up (`UnionCapability` = Arbiter, `DerivedCapability` = Calculator, `Reservoir` forwards). Distinct from the `Countable` / `Writable` facets. A parameter's native offset / accumulation window is `Domain` geometry, not a separate clause; matching (the `extent_scaling`-branched predicate, closure under exact conversion edges) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`); a concrete covered `Domain` is **not** on the interface. Distinct from the `Countable` / `Writable` facets. The leaf/composite family and the matching predicate → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: Coverage, clause
 
 **Footprint**:
