@@ -36,6 +36,9 @@ dev = [
     "ruff>=0.15.18",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
+
 [tool.pyright]
 pythonVersion = "3.14"
 venvPath = "."

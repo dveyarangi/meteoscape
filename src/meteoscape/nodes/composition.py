@@ -21,12 +21,17 @@ from dataclasses import dataclass
 from ..clock import Clock
 from ..config import ArbiterPolicy, CalculatorSpec, OfferingDef, RootStoreSpec
 from ..identity import SourceKey
+from ..manifold.core import Countable
 from ..manifold.domain import EnumerableDomain
 from ..parameters import ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
 from .catalog.providers import ProviderCatalog
 from .providers.base import Provider
+
+
+class CompositionError(Exception):
+    """Build-time failure — unknown ticket, dangling secret, duplicate key, unresolvable lattice."""
 
 
 @dataclass(frozen=True)
@@ -57,7 +62,45 @@ class SourceBinder:
         parameters: ParameterTable,
     ) -> SourceRegistry:
         """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each source lattice."""
-        raise NotImplementedError
+        sources: dict[SourceKey, RegisteredSource] = {}
+        for offering in defs:
+            if offering.name is None:
+                raise NotImplementedError("OfferingDef expand (name=None) is not built yet")
+
+            manifest = self.catalog.get(offering.impl)
+            if manifest is None:
+                raise CompositionError(f"unknown provider impl {offering.impl!r}")
+
+            spec = manifest.offerings.get(offering.name)
+            if spec is None:
+                raise CompositionError(
+                    f"unknown offering {offering.name!r} for impl {offering.impl!r}"
+                )
+
+            secret_value: str | None = None
+            if offering.secret_ref is not None:
+                if offering.secret_ref not in secrets:
+                    raise CompositionError(f"dangling secret_ref {offering.secret_ref!r}")
+                secret_value = secrets[offering.secret_ref]
+
+            provider = manifest.build(spec, offering.settings, secret_value, clock, parameters)
+            key = SourceKey(provider=manifest.provider_id, dataset=spec.name)
+            if key in sources:
+                raise CompositionError(f"duplicate SourceKey {key}")
+
+            if isinstance(provider, Countable):
+                lattice = provider.domain
+            elif spec.default_lattice is not None:
+                lattice = spec.default_lattice
+            else:
+                raise CompositionError(f"unresolvable source lattice for {key}")
+
+            sources[key] = RegisteredSource(
+                provider=provider,
+                priority=offering.priority,
+                source_lattice=lattice,
+            )
+        return SourceRegistry(sources=sources)
 
 
 @dataclass(frozen=True)
@@ -85,7 +128,18 @@ class CalculatorBinder:
 
     def build(self, specs: Sequence[CalculatorSpec]) -> CalculatorRegistry:
         """Lookup each `fn_id`; fail unknown ids; return bindings keyed by output parameter."""
-        raise NotImplementedError
+        calculators: dict[ParameterId, RegisteredCalculator] = {}
+        for spec in specs:
+            manifest = self.catalog.get(spec.fn_id)
+            if manifest is None:
+                raise CompositionError(f"unknown calculator fn_id {spec.fn_id!r}")
+            calculators[spec.output] = RegisteredCalculator(
+                output=spec.output,
+                inputs=spec.inputs,
+                manifest=manifest,
+                stored=spec.stored,
+            )
+        return CalculatorRegistry(calculators=calculators)
 
 
 @dataclass(frozen=True)

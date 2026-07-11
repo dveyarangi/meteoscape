@@ -4,7 +4,7 @@
 
 ## What to build
 
-Replace the pass-through `Store` test double with the real **retentive in-memory `Store`** — a
+Replace the stub `Store` with the real **retentive in-memory `Store`** — a
 `Writable`, `Countable` Manifold that declares its grid `Domain` (hourly + spatial) and is wired into
 **both** positions (each `Source` and the best view). `project` runs the `Reservoir` pipeline:
 `quantize` the request onto the store grid (snap + widen to whole assimilable units — a parameter's
@@ -19,6 +19,13 @@ miss or extension refetches the whole window). A separate **configurable retenti
 memory (housekeeping only; the `Arbiter` never serves stale entries — LRU declined). See
 `docs/v1-requirements.md` (v1 invariants, Config & secrets) and `docs/architecture.md` (Reservoir,
 Store).
+
+**Decision to resolve in this issue:** the store-grid representation. A declared grid is the
+anchored-regular member with **open extent** (`anchor + step`; ADR-0002), but `RegularAxis` fixes all
+three of `(anchor, step, count)` — the exact-extent member. Mint the declared-grid representation
+(e.g. an extent derived from the retention window, clock-anchored — the `RollingAxis` precedent), or
+narrow what `quantize` actually requires (anchor + step, not enumeration). Until then the skeleton's
+`StubStore.domain` raises `NotImplementedError` (a retention-free store declares no lattice).
 
 ## Acceptance criteria
 

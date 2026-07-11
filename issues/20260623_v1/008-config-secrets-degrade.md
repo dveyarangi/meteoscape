@@ -11,8 +11,9 @@ per-`SourceKey` `Arbiter` priority, and cache / grid config (store spatial step,
 retention interval). Secrets are **injected at construction**, never read from globals.
 `SourceBinder.build(defs, secrets, clock, parameters)` instantiates only the enabled/configured
 providers into the `SourceRegistry` the `Weaver` consumes via `ProfileDef`. A **missing TWC key →
-graceful degrade**: `SourceBinder` simply does not instantiate the unconfigured provider, and the
-server starts and serves with Open-Meteo alone (no fail-fast in v1).
+graceful degrade**: `Settings` never emits the TWC `OfferingDef`, so the server starts and serves with
+Open-Meteo alone. Degrade is enablement policy owned by `Settings`; the **binder is strict** — a def
+that reaches it either binds or startup fails (`CompositionError`).
 
 Note: `config.py` (`Settings` / `OfferingDef` / `ProfileConfig` knobs) and `tests/test_config.py` already
 exist from the seam work; this slice wires them through `SourceBinder` end-to-end and proves the

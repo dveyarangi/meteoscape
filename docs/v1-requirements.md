@@ -70,8 +70,11 @@ configures and runs the server). Stories are numbered for stable reference from
 
 - Priority order **is** the quality policy (implicit-priority Arbiter; selects, never combines).
   Reconfigurable via Arbiter config.
-- **Missing TWC key → graceful degrade**: `SourceBinder` simply does not instantiate the unconfigured
-  provider; the server starts and serves with Open-Meteo alone. (No fail-fast in v1.)
+- **Missing TWC key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
+  emitted), so the server starts and serves with Open-Meteo alone. Degrade is **enablement policy,
+  owned by `Settings`**; the binder itself is **strict** — every def that reaches it is explicit
+  operator intent, and it either binds or startup fails (`CompositionError`, build-time only — never a
+  request-path taxonomy error).
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).
 
@@ -190,7 +193,7 @@ lifts **without a contract change** — see the seams in
   (one run, one `expiration`); v1 never **temporally splices**, so a temporal miss or window-extension
   refetches the **whole window** from the selected provider, a primary failure **falls back wholesale**
   (the entire window from the next provider), and a window no provider can serve whole is an **error** —
-  never cached-primary ∪ fallback along `valid_time`. A non-retentive pass-through `Store` survives only
+  never cached-primary ∪ fallback along `valid_time`. A non-retentive stub `Store` survives only
   as a **test double**, not a wired position. (In-memory only; a *persisting* `Store` stays deferred.)
 - **`priority`-reconciler Arbiter** — implicit-priority select + fallback per parameter; only the
   default `priority` reconciler (no `tile` / `consensus` / `feather` coverage reconcilers), no explicit
