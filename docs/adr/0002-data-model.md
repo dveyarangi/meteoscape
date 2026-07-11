@@ -225,8 +225,12 @@ classDiagram
   being exactly parameters × Domain), one
   `ParameterData` per parameter, and a `provenance` plane (below); `values[i]` is the value at the i-th
   `Point` of `domain.enumerate()`. **No coordinates are duplicated** in a `ParameterData` ("a Coverage
-  is a Selection filled with data," literally); in-memory packing (N-D vs flat, dtype, order) is
-  deliberately unspecified. The per-parameter element is **`ParameterData`**, not "range" — that reads
+  is a Selection filled with data," literally). **Flat packing order is specified:**
+  `ParameterData.values[i]` is positional to `EnumerableDomain` enumeration under the canonical
+  nesting **X → Y → Z → T, T fastest-varying** (row-major). Index arithmetic lives only in the Domain
+  and the sampling engine (discipline rule). Array *backing* (numpy/xarray, N-D views) stays deferred
+  behind the `ParameterData` interface — only the positional order is locked. The per-parameter element
+  is **`ParameterData`**, not "range" — that reads
   as an interval, colliding with a `Cell`'s `bounds`. `capability` / `ranges` / `provenance` share one
   parameter key set.
 

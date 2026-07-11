@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Protocol, runtime_checkable
@@ -117,7 +117,7 @@ class RegularAxis(EnumerableAxis):
     `self[i].coordinate = anchor + i*step`. `cellular` picks the geometry: `True` => each `Cell` spans
     one step (`bounds = [coord, coord+step]`), `False` => an instant (`bounds = None`). Where the
     coordinate sits within its cell (leading / trailing / centred) is the normalizer's convention,
-    encoded in `anchor`.
+    encoded in `anchor`. Absence is never meaningful — a point is `count=1`; `step` always advances.
     """
 
     name: AxisName
@@ -126,15 +126,34 @@ class RegularAxis(EnumerableAxis):
     count: int
     cellular: bool
 
+    def __post_init__(self) -> None:
+        if self.count < 1:
+            raise ValueError(f"RegularAxis.count must be >= 1, got {self.count}")
+        if isinstance(self.step, timedelta):
+            if self.step <= timedelta(0):
+                raise ValueError(f"RegularAxis.step must be > 0, got {self.step}")
+        elif self.step <= 0:
+            raise ValueError(f"RegularAxis.step must be > 0, got {self.step}")
+
     @property
     def extent(self) -> Interval:
-        raise NotImplementedError
+        # Tick span — cellular only affects Cell.bounds, never axis geometry.
+        upper = self.anchor + self.step * (self.count - 1)  # type: ignore[operator]
+        return Interval(self.anchor, upper)  # type: ignore[arg-type]
 
     def __getitem__(self, index: int) -> Cell:
-        raise NotImplementedError
+        if not 0 <= index < self.count:
+            raise IndexError(index)
+        coordinate = self.anchor + self.step * index  # type: ignore[operator]
+        bounds = (
+            Interval(coordinate, coordinate + self.step)  # type: ignore[operator, arg-type]
+            if self.cellular
+            else None
+        )
+        return Cell(coordinate, bounds)
 
     def __len__(self) -> int:
-        raise NotImplementedError
+        return self.count
 
 
 @dataclass(frozen=True)
@@ -153,12 +172,98 @@ class ContinuousAxis(Axis):
         return self.interval
 
 
+LATTICE_TOLERANCE = 1e-9
+"""Absolute spatial tolerance (degrees) for float-noise alignment — not a snapping radius."""
+
+AXIS_ORDER: tuple[AxisName, ...] = (AxisName.X, AxisName.Y, AxisName.Z, AxisName.T)
+"""Canonical nesting order: X → Y → Z → T, T fastest-varying (row-major)."""
+
+_REQUIRED_AXES = frozenset(AXIS_ORDER)
+
+
+def _validate_four_axes(axes: Mapping[AxisName, Axis]) -> None:
+    """Exactly the four field axes, each keyed by its own `name`."""
+    if set(axes) != _REQUIRED_AXES:
+        raise ValueError(f"Domain requires exactly the four axes {_REQUIRED_AXES}, got {set(axes)}")
+    for name, axis in axes.items():
+        if axis.name is not name:
+            raise ValueError(f"axis key {name} does not match axis.name {axis.name}")
+
+
+def encode_flat_index(axis_counts: Mapping[AxisName, int], locals_: Mapping[AxisName, int]) -> int:
+    """Encode per-axis indices into a flat row-major index (T fastest — `AXIS_ORDER`)."""
+    index = 0
+    for name in AXIS_ORDER:
+        index = index * axis_counts[name] + locals_[name]
+    return index
+
+
+def decode_flat_index(axis_counts: Mapping[AxisName, int], index: int) -> dict[AxisName, int]:
+    """Decode a flat row-major index into per-axis locals (T fastest — `AXIS_ORDER`)."""
+    locals_: dict[AxisName, int] = {}
+    remainder = index
+    for name in reversed(AXIS_ORDER):
+        remainder, local = divmod(remainder, axis_counts[name])
+        locals_[name] = local
+    return locals_
+
+
+def sub_lattice_offset(outer: RegularAxis, inner: RegularAxis) -> int | None:
+    """Start index of `inner` within `outer`, or `None` if off-phase / incompatible.
+
+    Requires identical `step`, and `inner.anchor` on the outer lattice within float tolerance
+    (time axis uses exact `timedelta` arithmetic — no tolerance).
+    """
+    if outer.step != inner.step or inner.count > outer.count:
+        return None
+    delta = inner.anchor - outer.anchor  # type: ignore[operator]
+    step = outer.step
+    if isinstance(step, timedelta):
+        if not isinstance(delta, timedelta) or delta < timedelta(0):
+            return None
+        quot, rem = divmod(delta, step)
+        if rem != timedelta(0):
+            return None
+        offset = int(quot)
+    else:
+        if (
+            not isinstance(delta, float)
+            or not isinstance(step, float)
+            or not isinstance(outer.anchor, float)
+            or not isinstance(inner.anchor, float)
+        ):
+            return None
+        raw = delta / step
+        offset = round(raw)
+        if offset < 0:
+            return None
+        aligned = outer.anchor + step * offset
+        if abs(inner.anchor - aligned) > LATTICE_TOLERANCE:
+            return None
+    if offset + inner.count > outer.count:
+        return None
+    return offset
+
+
 @runtime_checkable
 class Separable(Protocol):
     """Facet: per-axis decomposition. A separable representation exposes its axes (enumerable or
     continuous)."""
 
     def axis(self, name: AxisName) -> Axis: ...
+
+
+def _extent_contains(self_axes: Mapping[AxisName, Axis], other: Domain) -> bool:
+    """Per-axis extent (reach) containment — tick alignment is never this helper's job.
+
+    On an enumerable domain this means *reach*, not tick-set membership.
+    """
+    if not isinstance(other, Separable):
+        return False
+    return all(
+        self_axes[name].extent.contains(other.axis(name).extent)  # type: ignore[arg-type]
+        for name in AXIS_ORDER
+    )
 
 
 class Domain(ABC):
@@ -205,21 +310,33 @@ class RegularDomain(EnumerableDomain):
     """
 
     axes: Mapping[AxisName, RegularAxis]
+    _size: int = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        _validate_four_axes(self.axes)
+        size = 1
+        for name in AXIS_ORDER:
+            size *= len(self.axes[name])
+        object.__setattr__(self, "_size", size)
 
     def contains(self, other: Domain) -> bool:
-        raise NotImplementedError
+        return _extent_contains(self.axes, other)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError
 
     def enumerate(self) -> Iterator[Point]:
-        raise NotImplementedError
+        return (self[i] for i in range(len(self)))
 
     def __getitem__(self, index: int) -> Point:
-        raise NotImplementedError
+        if not 0 <= index < len(self):
+            raise IndexError(index)
+        counts = {name: len(self.axes[name]) for name in AXIS_ORDER}
+        locals_ = decode_flat_index(counts, index)
+        return Point({name: self.axes[name][locals_[name]] for name in AXIS_ORDER})
 
     def __len__(self) -> int:
-        raise NotImplementedError
+        return self._size
 
     def axis(self, name: AxisName) -> Axis:
         return self.axes[name]
@@ -238,8 +355,11 @@ class FootprintDomain(Domain):
 
     axes: Mapping[AxisName, Axis]
 
+    def __post_init__(self) -> None:
+        _validate_four_axes(self.axes)
+
     def contains(self, other: Domain) -> bool:
-        raise NotImplementedError
+        return _extent_contains(self.axes, other)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError

@@ -39,6 +39,33 @@ seam. This concern owns **how accurately** a coarsened value is computed;
 **which** cell statistic it should be, and how a request asks for it, is
 [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
+## 21. `serves` reach vs `project` crop-ability
+
+**Kind:** algebra-shaped (Capability dual) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](#5-read-time-homogenization-fidelity), session 0008
+
+ADR-0004 defines `serves` as *whether a valid non-lossy resampler path exists* from offered → requested;
+`Domain.contains` is only the **geometric half**. Phase B shipped that half alone: `EnumerableCapability.serves`
+(and leaf footprints) admit by **extent reach**, while `Coverage.project` / the sampling engine only
+perform an **aligned identical-step crop** — off-phase or non-identical-step selections that still sit
+inside the span are admitted, then fail at `project` with `NotImplementedError` instead of a clean
+admission miss (`capability-mismatch` / Arbiter fall-through).
+
+**v1 is unaffected** (hourly on-lattice requests). **Close inside `serves`**, not with a second check in
+`Arbiter.project`: deepen the Capability predicate with the resampler / alignment branch (registry at
+007; extensive horizon edge at 002). Composites (`Union` / `Derived`) and the Arbiter inherit
+correctness unchanged — blast radius stays behind the Capability facet. Until then, engine
+`NotImplementedError` is an internal assert that `serves` over-promised, not the normal edge path.
+
+## 22. Lattice helpers vs `domain` / `sampling` module split
+
+**Kind:** room-left (module layout) · **Refs:** session 0008, Phase B wrap
+
+Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by `domain.py`
+today; `sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
+geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry *and* lattice math, or
+a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
+pure refactor, no contract change. Not blocking; do not split preemptively.
+
 ## 15. Coarser-grid resampling and aggregation semantics
 
 **Kind:** edge-isolated (data-model + surface) · **Refs:** [ADR-0002](./adr/0002-data-model.md), [#5](#5-read-time-homogenization-fidelity)
