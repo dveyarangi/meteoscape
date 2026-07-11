@@ -22,6 +22,14 @@ differs only by `extent_scaling`; the shared axis carries hourly `bounds`; every
 
 **Decision to record in this issue:** the concrete canonical unit chosen per parameter.
 
+**Build in this issue — the `extent_scaling`-branched `serves` edge** (settled in session 0008):
+`Domain.contains` is pure tick containment (geometry; ADR-0004's "geometric half"), so an intensive
+parameter serves up to the provider's final forecast instant. For an **extensive** parameter
+(precipitation), `serves` must additionally check that the **last cell's accumulation span** fits the
+footprint — at the horizon edge the request's final slot means "rain during the hour past the last
+forecast instant," which the provider never produced. Failing that check is per-parameter
+`capability-mismatch` (parameter omitted, producible subset served) — never a padded nodata cell.
+
 ## Acceptance criteria
 
 - [ ] `get_forecast(lat, lon)` returns the directly-requestable canonical parameters (air temperature,

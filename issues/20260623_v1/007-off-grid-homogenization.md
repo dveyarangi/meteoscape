@@ -25,6 +25,11 @@ Per-kind / higher-order kernels and a provider `exact` capability stay deferred.
 - [ ] The store spatial step is configurable (not hardcoded); native/store fidelity is recoverable
       server-side via the provenance `SourceKey` — **not** a dedicated provenance field
       ([ADR-0003](../../docs/adr/0003-provenance-and-origin.md)).
+- [ ] `store_spatial_step` defaults to **0.0001° (~11 m)** — a per-point cache: near-exact values
+      under nearest-neighbor read-back, spatial sharing only for repeat coordinates (the agent case).
+      Verify here that the **source-store lattice guess is comparably fine** (fidelity is the
+      coarsest link in the chain — a coarse Open-Meteo `default_lattice` upstream would waste the
+      fine root store).
 - [ ] Unit + mocked-transport integration tests cover on-grid crop and off-grid nearest-neighbor
       read-back.
 
