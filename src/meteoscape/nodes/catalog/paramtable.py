@@ -2,7 +2,8 @@
 
 `ParameterTable` is the injected lookup of `ParameterDef`s keyed by `ParameterId`; producers and the
 edge resolve canonical parameter facts from it. v1 ships `StaticParameterTable` hosting the v1
-parameters (5 canonical + 2 derived wind views). File / UI-backed representations are deferred.
+parameters (5 canonical + 2 derived wind views). File / UI-backed representations are deferred. The
+`ParameterId` constants themselves are vocabulary and live in the `parameters` leaf.
 """
 
 from __future__ import annotations
@@ -10,7 +11,14 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 
-from .vocabulary import (
+from ...parameters import (
+    AIR_TEMPERATURE,
+    PRECIPITATION,
+    RELATIVE_HUMIDITY,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    WIND_U,
+    WIND_V,
     CellStatistic,
     ExtentScaling,
     MeasurementScale,
@@ -61,17 +69,6 @@ class StaticParameterTable(ParameterTable):
         """
         return cls(_CORE)
 
-
-# Parameter ids. Ids are the functional `(quantity, statistic)`, never the surface height:
-# `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
-# (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name.
-AIR_TEMPERATURE = ParameterId("air_temperature")
-PRECIPITATION = ParameterId("precipitation")
-WIND_U = ParameterId("wind_u")
-WIND_V = ParameterId("wind_v")
-RELATIVE_HUMIDITY = ParameterId("relative_humidity")
-WIND_SPEED = ParameterId("wind_speed")
-WIND_DIRECTION = ParameterId("wind_direction")
 
 # The 5 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
 # one; wind is canonical as u/v components (both linear), so linear interpolation of u/v is correct

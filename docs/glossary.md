@@ -75,8 +75,9 @@ A parameter's **single** unit (`ParameterDef.canonical_unit`) — every value of
 _Avoid_: display unit (a surface-egress concern), per-value unit
 
 **Parameter table**:
-The injected **lookup of `ParameterDef`s** (keyed by `ParameterId`) that producers and the edge resolve canonical parameter facts from; a swappable interface (v1 ships a static one). → [architecture.md](./architecture.md#config-registry-weaver).
-_Avoid_: Registry (the provider leaf-factory, and the Derivation registry), Catalogue
+The injected **lookup of `ParameterDef`s** (keyed by `ParameterId`) that producers and the edge resolve canonical parameter facts from; a swappable interface (v1 ships a static one). → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: SourceBinder, DerivationCatalog / DerivationRegistry, Catalogue
+
 
 **CellStatistic**:
 The **window statistic** a value summarizes its cell with — `point | max | min | mean`; *dimension-preserving*; fixed by parameter identity (lives on `ParameterDef`). The calculus axis (accumulation) is the quantity **`extent_scaling`**, not a value here. → [ADR-0002](./adr/0002-data-model.md).
@@ -119,7 +120,7 @@ What a (parameter, point) value derives from — **atomic** (a single Provider f
 _Avoid_: Source (the Manifold)
 
 **SourceKey**:
-The **identity of a configured producer** — the origin an atomic `Origin` is *stamped with* (the **producer / leaf**, not the Reservoir `Source` role). `(provider, dataset)` today, an **extensible** identity; `dataset` is **always named** (never a partial provider-only identity — the default offering is impl-supplied, v1 Open-Meteo → `best_match`), and the tag **discriminates offerings** (distinct resolution / cadence *products*) **opaquely** — the algebra compares it for equality, never parses it. Its `__str__` is the Registry / config token (e.g. `open-meteo:best_match`); a `SourceDef` is built *from* it. **Structured** (not a delimited string) so a provider exposing several datasets / offerings extends it additively, and provenance stays self-describing. An offering's native *geometry* is **not** in the key — it lives on the footprint Domain's axis `step`s ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). Defined in `identity.py` (Tier-0 leaf); concept stays provenance-anchored. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+The **identity of a configured producer** — the origin an atomic `Origin` is *stamped with* (the **producer / leaf**, not the Reservoir `Source` role). `(provider, dataset)` today, an **extensible** identity; `dataset` is **always named** (never a partial provider-only identity — the default offering is impl-supplied, v1 Open-Meteo → `best_match`), and the tag **discriminates offerings** (distinct resolution / cadence *products*) **opaquely** — the algebra compares it for equality, never parses it. Its `__str__` is the SourceRegistry / config token (e.g. `open-meteo:best_match`). Derived at `SourceBinder` build from `ProviderManifest.provider_id` + `OfferingSpec.name` (or authored by the Provider on expand). **Structured** (not a delimited string) so a provider exposing several datasets / offerings extends it additively, and provenance stays self-describing. An offering's native *geometry* is **not** in the key — it lives on the footprint Domain's axis `step`s ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). Defined in `identity.py` (Tier-0 leaf); concept stays provenance-anchored. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 _Avoid_: Source (the Reservoir role), raw source string
 
 **Valid time**:
@@ -136,7 +137,7 @@ How good a source's data is for a parameter — the basis for the Arbiter's sele
 A **Provider**'s run interval `Δ` (with publication latency `L` and `max_lead`) — the **`CadenceDef`** from which `issue_time`, `expiration`, and the footprint forward edge derive. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 
 **Clock**:
-The system time source — the single wall-clock read, a **build-time** dependency injected into **Provider**s by the Registry at construction (never threaded through `project`), like a configured logger. `Metronome` floors `now()` to a coarse resolution tick (so the run anchor is a step function); `StoppedClock` freezes an instant for tests. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+The system time source — the single wall-clock read, a **build-time** dependency injected into **Provider**s by `SourceBinder` at construction (never threaded through `project`), like a configured logger. `Metronome` floors `now()` to a coarse resolution tick (so the run anchor is a step function); `StoppedClock` freezes an instant for tests. → [ADR-0003](./adr/0003-provenance-and-origin.md).
 
 **Consensus**:
 An Arbiter **`reconciler`** that **blends** overlapping contributors instead of picking one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
@@ -191,15 +192,62 @@ _Avoid_: ManifoldProduct, Operation, Combinator
 
 **Calculator**:
 A synthetic composite that **derives a parameter** from inputs via a function — a **selectable producer** the Arbiter picks like any Source; holds its own scoped Arbiter. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Derivation, Formula node, DewpointManifold
+_Avoid_: Formula node, DewpointManifold
+_(Naming: derivation↔calculator dual → [concern #22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns).)_
 
-**Derivation registry**:
-Flat config for derived parameters — per parameter `(function, inputs, stored?)`; the Weaver wires it, memoizing one node per parameter. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Plan, calculator tree, formula DSL
+**DerivationCatalog**:
+Process-wide map of function ids to `DerivationManifest`s available for profile composition. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: DerivationRegistry (the bound weave input), Calculator instance map
+
+**DerivationManifest**:
+A derivation plugin's cohesive declaration: its combine function and the constraints under which it may be invoked. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator instance, data-flow edge
+
+**DerivationSpec**:
+Profile recipe for one derived parameter — `(output, inputs, fn_id, stored?)`. Bound by `DerivationBinder` before weave. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator instance, RegisteredDerivation, formula DSL
+
+**DerivationRegistry**:
+Build product of `DerivationBinder` — output-keyed `RegisteredDerivation`s (catalog-resolved bindings, not Calculators). Peer of `SourceRegistry` on `ProfileDef`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: DerivationCatalog, live Calculator map
+
+**RegisteredDerivation**:
+One catalog-resolved derivation binding — resolved manifest + inputs + `stored?`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator, DerivationSpec (the unbound ticket)
+
+**DerivationBinder**:
+Resolves `DerivationSpec`s against a `DerivationCatalog` into a `DerivationRegistry`. Peer of `SourceBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Weaver, SourceBinder
+
+**SourceBinder**:
+Resolves `SourceDef`s against a `ProviderCatalog` into a `SourceRegistry`. Peer of `DerivationBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Weaver, DerivationBinder, Registry (retired factory name)
+
+**ProviderCatalog**:
+Process-wide map of implementation ids to cohesive `ProviderManifest`s available for profile composition. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Provider instance map, Parameter table
+
+**ProviderManifest**:
+A provider plugin's cohesive declaration: identity, offerings, secret requirement, and construction operation. → [ADR-0005](./adr/0005-build-time-composition.md).
+
+**SecretSlot**:
+Impl-level secret binding name on a `ProviderManifest` (offerings inherit); values live in the injected secrets map, keyed usually by `SourceDef.secret_ref`. → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: secret value, API key field on SourceDef
+
+**OfferingSpec**:
+Catalogue product row — offering `name`, exact `ParameterId` set, optional `default_lattice` (non-`Countable`). → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: SourceDef (enablement), ParameterDef
+
+**ProfileConfig**:
+Operator-side, per-profile enablement — `SourceDef`s, `DerivationSpec`s, root-store knobs, arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver).
+
+**ProfileDef**:
+Weave input for one served root: `SourceRegistry` + `DerivationRegistry` + root store + arbiter. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: WeavePlan, freeform DAG script, ProfileConfig
 
 **Weaver**:
-The **build-time graph constructor**: wires the static DAG from producers' `Capability` + policy config and allocates every `Store`; absent from the request path. → [architecture.md](./architecture.md#config-registry-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Builder, Compiler, Orchestrator, Planner
+The **build-time graph constructor**: `weave(ProfileDef)` wires the static DAG and allocates every `Store`; absent from the request path. Holds no catalogue. → [architecture.md](./architecture.md#config-binders-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md) · [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Builder, Compiler, Orchestrator, Planner, DerivationBinder
 
 **Countable**:
 A Manifold facet: **node-Countable** declares an enumerable grid (its canonical lattice); **result** countability is conferred by the Selection's Domain. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
@@ -249,8 +297,8 @@ _Avoid_: Vendor, backend, driver
 A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
 
 **SourceDef**:
-The **config recipe** for one configured producer — a `SourceKey` plus `{ impl, secret_ref, priority }` — that the Registry builds an instance from, `dataset` fixed **at construction**; v1 uses one per provider. → [architecture.md](./architecture.md#config-registry-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Source (the built role), Provider (the impl class)
+Profile **enablement ticket** for one catalogue offering — `{ impl, offering?, priority, secret_ref?, settings }` — that `SourceBinder` builds from (with `ProviderCatalog`); no raw `SourceKey`, no geometry. Naming → [concern #22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns) (primary alt: `OfferingDef`). → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: Source (the built role), OfferingSpec (catalogue product), Provider (the impl)
 
 **Normalizer**:
 The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).

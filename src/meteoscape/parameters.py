@@ -1,5 +1,9 @@
-"""Parameter vocabulary: the identity types (`ParameterId`, `Quantity`, `ParameterDef`) and closed
-enums (`ExtentScaling`, `CellStatistic`, `MeasurementScale`) the catalog is built from.
+"""Parameter vocabulary (Tier-0 leaf): the identity types and the v1 parameter identifiers.
+
+The identity types (`ParameterId`, `Quantity`, `ParameterDef`) and closed enums (`ExtentScaling`,
+`CellStatistic`, `MeasurementScale`) the algebra speaks in, plus the v1 `ParameterId` constants. The
+canonical `ParameterDef`s that bind each id to its facts live in the catalogue
+(`nodes/catalog/paramtable.py`) — this leaf holds *what a parameter is*, not the injected lookup.
 
 The parameter model they encode - the `(quantity, statistic)` functional, extent on the Domain, the
 resampler entailed by `(scale, statistic, extent_scaling)` - is fixed by ADR-0002.
@@ -84,3 +88,16 @@ class ParameterDef:
     @property
     def extent_scaling(self) -> ExtentScaling:
         return self.quantity.extent_scaling
+
+
+# v1 parameter identifiers. Ids are the functional `(quantity, statistic)`, never the surface height:
+# `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
+# (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name. The canonical
+# `ParameterDef`s these resolve to live in `nodes/catalog/paramtable.py`.
+AIR_TEMPERATURE = ParameterId("air_temperature")
+PRECIPITATION = ParameterId("precipitation")
+WIND_U = ParameterId("wind_u")
+WIND_V = ParameterId("wind_v")
+RELATIVE_HUMIDITY = ParameterId("relative_humidity")
+WIND_SPEED = ParameterId("wind_speed")
+WIND_DIRECTION = ParameterId("wind_direction")

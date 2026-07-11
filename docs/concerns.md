@@ -17,9 +17,31 @@ co-declared and co-produced from one origin, coherence a build-time property —
 candidacy / priority unit is a configured producer (`SourceKey = provider + dataset`), realized as
 separate instances, so priority discriminates within a provider; only the geometric offering half remains
 ([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)) —
-→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md).)
+→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md). Weaver build-time input
+(`ProfileDef`) → [architecture.md](./architecture.md#config-binders-weaver) (former #21 evacuated).)
 
 ---
+
+## 22. Namespace polish — SourceDef / derivation↔calculator / producer nouns
+
+**Kind:** vocabulary · **Refs:** [architecture.md](./architecture.md#config-binders-weaver), [glossary](./glossary.md)
+
+**Next immediate** after the ProfileDef / manifest seam stubs. Blocks clean vocabulary before more
+surface growth.
+
+**A. `SourceDef` → primary alternative `OfferingDef`.** `SourceDef` is a profile enablement ticket
+(`impl` + `offering` + policy) selecting an `OfferingSpec`; it sounds like it defines a Source/product
+and collides with the Reservoir **Source** role and **Provider** leaf. Lead rename: **`OfferingDef`**
+(pairs with `OfferingSpec`). Field `offering` may become `name` / `dataset`.
+
+**B. Derivation ↔ Calculator dual.** `DerivationCatalog` / `DerivationSpec` / `DerivationRegistry` /
+`RegisteredDerivation` vs graph node **`Calculator`**. Weigh renaming the catalogue/binder/registry
+family to `Calculator*` (entries remain cohesive formula + constraint manifests; registry remains
+bindings, not instances). Catalogue layering is settled by
+[ADR-0005](./adr/0005-build-time-composition.md); only the namespace is open here.
+
+**C. Also:** `SourceBinder` / `SourceRegistry` / `RegisteredSource` names; broader Source / Provider / Producer glossary
+cleanup.
 
 ## 5. Read-time homogenization fidelity
 
@@ -211,18 +233,6 @@ product / fine-enough fit (→ [ADR-0002](./adr/0002-data-model.md)); no native-
 **Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
 continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.score`**, and the Arbiter
 equal-priority band walk.
-
-## 21. Weaver build-time input shape
-
-**Kind:** build-time (wiring) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [architecture.md](./architecture.md#config-registry-weaver)
-
-**Settled:** three explicit injected args + a named read-only role —
-`weave(sources: SourceRegistry, derivations: DerivationRegistry, store: StoreConfig)`.
-`SourceRegistry` is a Protocol (`sources: Mapping[SourceKey, RegisteredSource]`); ordering rides
-inside that surface (per-`SourceKey` `priority`), never a detached string list. The Registry's
-`build(defs, secrets, clock)` produces the role; the Weaver never sees `Settings`. A bundled
-`WeavePlan` earns its place only if a caller-supplied request-time plan lands (ADR-0004's deferred
-formula DSL). Polymorphic Weaver implementations stay rejected.
 
 ## 12. Curvilinear domains
 

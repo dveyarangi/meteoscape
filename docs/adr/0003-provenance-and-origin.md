@@ -28,8 +28,9 @@ parameter × point corner) is the additive seam. "One provider per parameter" is
 **"one origin per parameter, possibly synthetic."**
 
 **Origin identity.** An atomic origin names its producer by a structured **`SourceKey`** (`provider` +
-`dataset`) — not a bare string — shared with the config-side `SourceDef` and rendered as the Registry /
-config token (→ [glossary: SourceKey](../glossary.md); defined in `identity.py`). `dataset` is **always named** (never a partial
+`dataset`) — not a bare string — shared with config/`SourceRegistry` identity and rendered as the SourceRegistry /
+config token (→ [glossary: SourceKey](../glossary.md); defined in `identity.py`). Derived at build from
+`ProviderManifest.provider_id` + `OfferingSpec.name` (or Provider-authored on expand). `dataset` is **always named** (never a partial
 provider-only identity; the default offering is impl-supplied — v1 Open-Meteo → `best_match`), so a stamp
 is unambiguous; dataset-level candidacy is [ADR-0004](./0004-producer-resolution-and-capability.md). **Native fidelity is not a provenance
 field**: after read-back homogenization the Coverage's `Domain` is the request lattice, and the offering's

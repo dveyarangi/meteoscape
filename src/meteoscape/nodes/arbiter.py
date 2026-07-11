@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ..catalog.vocabulary import ParameterId
+from ..parameters import ParameterId
 from ..manifold.capability import Capability, UnionCapability
 from ..manifold.core import Manifold, Selection
 
