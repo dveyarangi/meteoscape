@@ -56,7 +56,7 @@ def test_profile_projects_root_store_and_empty_calculators() -> None:
         offerings=(),
         calculators=(),
         root_store=RootStoreSpec(
-            spatial_step=0.1,
+            spatial_step=0.0001,
             retention_interval=timedelta(days=14),
         ),
         arbiter=ArbiterPolicy(),

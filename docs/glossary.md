@@ -52,11 +52,15 @@ _Avoid_: DataBlock, single-parameter Coverage
 A Manifold (or projected view) **before sampling** — the general result of `project`; a Coverage is its sampled (`Countable`) case. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 _Avoid_: Coverage (the sampled leaf), Parameter
 
+**CoverageRecord**:
+The canonical **memory-backed realization** of the `Coverage` protocol — the inert value object (`capability` + `ranges` + `provenance`) every projection materializes into. Implementations may vary by **backing** (file/db-backed later), **never by domain shape** — Timeline / Grid are shapes of its `Domain`, not classes. → [architecture.md](./architecture.md#canonical-data-model).
+_Avoid_: Timeline / Grid (domain shapes, not types), Tensor, DataBlock
+
 **Timeline**:
-A Coverage whose domain is a time axis (fixed location, varying `valid_time`); its provenance plane is `PerParameter` (each parameter single-origin), the run identity stamped as `issue_time` on each origin. → [architecture.md](./architecture.md#canonical-data-model).
+A **domain shape**, not a type: a `CoverageRecord` whose domain varies only along `valid_time` (fixed location); its provenance plane is `PerParameter` (each parameter single-origin), the run identity stamped as `issue_time` on each origin. → [architecture.md](./architecture.md#canonical-data-model).
 
 **Grid**:
-A Coverage whose domain is a spatial axis (fixed `valid_time`, varying location); its provenance plane may vary per geometry point (a mosaic), the `PerPoint` case. → [architecture.md](./architecture.md#canonical-data-model).
+A **domain shape**, not a type: a `CoverageRecord` whose domain varies spatially (fixed `valid_time`); its provenance plane may vary per geometry point (a mosaic), the `PerPoint` case. → [architecture.md](./architecture.md#canonical-data-model).
 
 **Parameter**:
 A single weather variable (e.g. temperature) that identifies a **`ParameterData`** within a Coverage — **not** a coordinate axis. → [architecture.md](./architecture.md#canonical-data-model).

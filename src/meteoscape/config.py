@@ -79,8 +79,10 @@ class Settings(BaseSettings):
     twc_api_key: str | None = None
     """The Weather Company key (optional). Absent => serve on Open-Meteo alone."""
 
-    store_spatial_step: float = 0.1
-    """Best-view store grid step in degrees (a configured guess; the cache lattice / fidelity floor)."""
+    store_spatial_step: float = 0.0001
+    """Best-view store grid step in degrees — the cache lattice / fidelity floor. v1 default ~11 m:
+    effectively a per-point cache (repeat requests hit; distinct points don't share), trading spatial
+    cache sharing for near-exact values under the nearest-neighbor read-back."""
 
     retention_interval: timedelta = timedelta(days=14)
     """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""

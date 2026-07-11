@@ -44,23 +44,16 @@ strict binders (`CompositionError`) with degrade owned by `Settings`, `compose(p
 in `server.py`, empty weave legal, `open_meteo_enabled=False` until Phase C.
 
 **Phase B — make the value types behave** (runtime leaves; test-first). Independent of Phase A, but
-needed before the request path can project:
-
-1. `RegularAxis` — `extent` / `__getitem__` / `__len__`: cells from `anchor + i·step`; `cellular`
-   bounds `[coord, coord + step]`; extent `[anchor, anchor + count·step]` when cellular,
-   `[anchor, anchor + (count−1)·step]` for instants. Property tests (hypothesis).
-2. `RegularDomain` — enumeration + indexing. **Convention to record: canonical axis nesting order
-   X → Y → Z → T, T fastest-varying** (`ParameterData.values[i]` is positional to it; a point timeline
-   enumerates in time order).
-3. `FootprintDomain.contains` — per-axis extent containment over a `Separable` other (all 4 axes
-   required); a non-separable other is not contained. The load-bearing Arbiter admission check; test
-   with `StoppedClock` around the `RollingAxis` window edges.
-4. `RegularDomain.contains` — lattice-set containment (anchor phase + step compatibility + extent); a
-   continuous other is never contained.
-5. `Timeline.project` — parameter-subset restriction + aligned `valid_time` crop; off-grid raises
-   (read-back homogenization belongs to the `Reservoir`, slices 006/007).
-6. Backfill tests for behaviour that landed untested in 000: `CadenceDef`
-   (anchor / expiration / valid_time step-function edges) and the `Capability` family (`serves`).
+needed before the request path can project. **Planned in detail — decisions + TDD cycle list — in
+[session 0008](../../docs/sessions/0008-20260712-phase-b-value-types-plan.md)**; headline decisions:
+`contains` = extent (reach) containment for every representation (tick alignment lives in the
+sampling engine / `quantize` / `serves`, never geometry); `Axis.extent` = tick span (`cellular`
+affects only `Cell.bounds`; the extensive horizon-edge goes to `serves` at 002); four axes mandatory
+at construction; enumeration order X → Y → Z → T, T fastest (index arithmetic only in Domain +
+engine); spatial tolerance `1e-9`° (float noise, not a snapping radius); **`Timeline` the class →
+`CoverageRecord`** (one memory-backed realization; Timeline/Grid = domain shapes; backing may vary,
+shape never); one private sampling engine (`manifold/sampling.py`) behind `Coverage.project` — no
+second verb, aligned crop is the only v1 kernel, registry minted at 007.
 
 Positions held: pure-Python sequences (numpy/xarray deferred behind the interface); aware-UTC datetimes
 throughout; `intersect` / `PerPoint` / rectilinear / curvilinear / `Domain.match` stay declared seams
