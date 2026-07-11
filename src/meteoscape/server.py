@@ -1,7 +1,7 @@
 """Composition root - the thin entrypoint.
 
 Initializes observability and stands up the MCP surface. Wires the full DAG
-(catalogues + `Settings` → `ProfileConfig` → `SourceBinder.build` + `DerivationBinder.build` →
+(catalogues + `Settings` → `ProfileConfig` → `SourceBinder.build` + `CalculatorBinder.build` →
 `ProfileDef` → `Weaver.weave` → `Gateway`) but holds no construction logic of its own.
 """
 

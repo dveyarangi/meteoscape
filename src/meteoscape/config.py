@@ -17,23 +17,23 @@ from .parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V, ParameterId
 
 
 @dataclass(frozen=True)
-class SourceDef:
+class OfferingDef:
     """Profile enablement ticket for one catalogue offering.
 
-    Points at `ProviderManifest` via `impl` (+ optional `offering`); no raw `SourceKey`, no geometry.
-    `offering=None` selects the expand path. Naming → concern #22 (`OfferingDef`).
+    Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
+    `name=None` selects the expand path.
     """
 
     impl: str
     priority: int
-    offering: str | None = None
+    name: str | None = None
     secret_ref: str | None = None
     settings: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
-class DerivationSpec:
-    """Profile recipe for one derived parameter — bound via `DerivationBinder` before weave."""
+class CalculatorSpec:
+    """Profile recipe for one derived parameter — bound via `CalculatorBinder` before weave."""
 
     output: ParameterId
     inputs: frozenset[ParameterId]
@@ -58,10 +58,10 @@ class ArbiterPolicy:
 
 @dataclass(frozen=True)
 class ProfileConfig:
-    """Operator-side, per-profile enablement — sources, derivations, root store, arbiter."""
+    """Operator-side, per-profile enablement — offerings, calculators, root store, arbiter."""
 
-    sources: tuple[SourceDef, ...]
-    derivations: tuple[DerivationSpec, ...]
+    offerings: tuple[OfferingDef, ...]
+    calculators: tuple[CalculatorSpec, ...]
     root_store: RootStoreSpec
     arbiter: ArbiterPolicy
 
@@ -84,35 +84,35 @@ class Settings(BaseSettings):
     default_horizon: timedelta = timedelta(days=7)
     """Forward horizon applied only when the caller omits `end`."""
 
-    def sources(self) -> tuple[SourceDef, ...]:
+    def offerings(self) -> tuple[OfferingDef, ...]:
         """Enabled producer tickets — explicit offering names (no catalogue import)."""
-        defs: list[SourceDef] = []
+        defs: list[OfferingDef] = []
         if self.open_meteo_enabled:
-            defs.append(SourceDef(impl="open-meteo", offering="best_match", priority=0))
+            defs.append(OfferingDef(impl="open-meteo", name="best_match", priority=0))
         if self.twc_api_key is not None:
             defs.append(
-                SourceDef(
+                OfferingDef(
                     impl="twc",
-                    offering="default",
+                    name="default",
                     priority=1,
                     secret_ref="twc_api_key",
                 )
             )
         return tuple(defs)
 
-    def derivations(self) -> tuple[DerivationSpec, ...]:
+    def calculators(self) -> tuple[CalculatorSpec, ...]:
         """v1 derived wind views over canonical u/v."""
         uv = frozenset({WIND_U, WIND_V})
         return (
-            DerivationSpec(output=WIND_SPEED, inputs=uv, fn_id="wind_speed"),
-            DerivationSpec(output=WIND_DIRECTION, inputs=uv, fn_id="wind_direction"),
+            CalculatorSpec(output=WIND_SPEED, inputs=uv, fn_id="wind_speed"),
+            CalculatorSpec(output=WIND_DIRECTION, inputs=uv, fn_id="wind_direction"),
         )
 
     def profile(self) -> ProfileConfig:
         """v1 single best-view profile projected from env scalars."""
         return ProfileConfig(
-            sources=self.sources(),
-            derivations=self.derivations(),
+            offerings=self.offerings(),
+            calculators=self.calculators(),
             root_store=RootStoreSpec(
                 spatial_step=self.store_spatial_step,
                 retention_interval=self.retention_interval,
@@ -121,7 +121,7 @@ class Settings(BaseSettings):
         )
 
     def secrets(self) -> Mapping[str, str]:
-        """Injected secret map keyed by `SourceDef.secret_ref` names."""
+        """Injected secret map keyed by `OfferingDef.secret_ref` names."""
         out: dict[str, str] = {}
         if self.twc_api_key is not None:
             out["twc_api_key"] = self.twc_api_key

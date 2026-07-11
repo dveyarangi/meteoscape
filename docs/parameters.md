@@ -6,7 +6,7 @@ Domain — is fixed by [ADR-0002](./adr/0002-data-model.md). This file records t
 **v1 set**, which ADR-0002 and [concern #10](./concerns.md#10-parameter-conventions) deliberately defer at
 the contract level.
 
-> Source of truth is `StaticParameterTable.core()` in [`catalog/table.py`](../src/meteoscape/catalog/table.py);
+> Source of truth is `StaticParameterTable.core()` in [`nodes/catalog/paramtable.py`](../src/meteoscape/nodes/catalog/paramtable.py);
 > this doc mirrors it with rationale. If the two ever disagree, the code wins — update this file.
 
 ## The v1 canonical set

@@ -2,7 +2,7 @@
 
 `weave(ProfileDef)` wires the static DAG and allocates every `Store`, then steps out (absent from the
 request path). `ProfileDef` (from `composition.py`) already holds symmetrical build products:
-`SourceRegistry` + `DerivationRegistry` (catalog-resolved bindings, not Calculator instances). Takes
+`SourceRegistry` + `CalculatorRegistry` (catalog-resolved bindings, not Calculator instances). Takes
 plain values by injection, never the `config.py` `Settings` type. See architecture.md ("Config,
 binders, Weaver") and ADR-0005.
 """
