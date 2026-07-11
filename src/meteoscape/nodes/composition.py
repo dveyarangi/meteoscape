@@ -5,8 +5,8 @@ registries, which compose the `ProfileDef` the Weaver consumes:
 
 - `SourceBinder(ProviderCatalog).build(...)` → `SourceRegistry` (`SourceKey` → configured producer +
   extrinsic priority + Source-store lattice).
-- `DerivationBinder(DerivationCatalog).build(...)` → `DerivationRegistry` (output `ParameterId` →
-  catalog-resolved binding, *not* a Calculator — the Weaver builds those).
+- `CalculatorBinder(CalculatorCatalog).build(...)` → `CalculatorRegistry` (output `ParameterId` →
+  catalog-resolved binding, *not* a Calculator node — the Weaver builds those).
 
 Binders instantiate/resolve; neither wires the DAG nor allocates the profile-root `Store` (the Weaver
 owns that). Both take plain values by injection, never the `config.py` `Settings` type. See
@@ -19,11 +19,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..clock import Clock
-from ..config import ArbiterPolicy, DerivationSpec, RootStoreSpec, SourceDef
+from ..config import ArbiterPolicy, CalculatorSpec, OfferingDef, RootStoreSpec
 from ..identity import SourceKey
 from ..manifold.domain import EnumerableDomain
 from ..parameters import ParameterId
-from .catalog.derivations import DerivationCatalog, DerivationManifest
+from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
 from .catalog.providers import ProviderCatalog
 from .providers.base import Provider
@@ -51,39 +51,39 @@ class SourceBinder:
 
     def build(
         self,
-        defs: Sequence[SourceDef],
+        defs: Sequence[OfferingDef],
         secrets: Mapping[str, str],
         clock: Clock,
         parameters: ParameterTable,
     ) -> SourceRegistry:
-        """Instantiate producers per `SourceDef`; derive `SourceKey` and resolve each source lattice."""
+        """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each source lattice."""
         raise NotImplementedError
 
 
 @dataclass(frozen=True)
-class RegisteredDerivation:
-    """Catalog-resolved derivation binding — not a Calculator (Weaver builds those)."""
+class RegisteredCalculator:
+    """Catalog-resolved calculator binding — not a Calculator node (Weaver builds those)."""
 
     output: ParameterId
     inputs: frozenset[ParameterId]
-    manifest: DerivationManifest
+    manifest: CalculatorManifest
     stored: bool = False
 
 
 @dataclass(frozen=True)
-class DerivationRegistry:
-    """Read-only, output-keyed surface the Weaver consumes — resolved derivation bindings."""
+class CalculatorRegistry:
+    """Read-only, output-keyed surface the Weaver consumes — resolved calculator bindings."""
 
-    derivations: Mapping[ParameterId, RegisteredDerivation]
+    calculators: Mapping[ParameterId, RegisteredCalculator]
 
 
-class DerivationBinder:
-    """Resolves `DerivationSpec` tickets against a `DerivationCatalog` → `DerivationRegistry`."""
+class CalculatorBinder:
+    """Resolves `CalculatorSpec` tickets against a `CalculatorCatalog` → `CalculatorRegistry`."""
 
-    def __init__(self, catalog: DerivationCatalog) -> None:
+    def __init__(self, catalog: CalculatorCatalog) -> None:
         self.catalog = catalog
 
-    def build(self, specs: Sequence[DerivationSpec]) -> DerivationRegistry:
+    def build(self, specs: Sequence[CalculatorSpec]) -> CalculatorRegistry:
         """Lookup each `fn_id`; fail unknown ids; return bindings keyed by output parameter."""
         raise NotImplementedError
 
@@ -93,6 +93,6 @@ class ProfileDef:
     """Weave input — two resolved registries + profile knobs (not a freeform DAG)."""
 
     sources: SourceRegistry
-    derivations: DerivationRegistry
+    calculators: CalculatorRegistry
     root_store: RootStoreSpec
     arbiter: ArbiterPolicy

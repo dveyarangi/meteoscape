@@ -207,8 +207,8 @@ lifts **without a contract change** — see the seams in
 
 ### Config & secrets
 
-- One typed config (Pydantic Settings): the enabled **`SourceDef`s** (v1 degenerate case — one per
-  provider, `dataset` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
+- One typed config (Pydantic Settings): the enabled **`OfferingDef`s** (v1 degenerate case — one per
+  provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
   per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
   coarser = more cache sharing, more interpolation; the Source's is provider-exact or a configured guess)

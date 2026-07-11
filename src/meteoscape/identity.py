@@ -14,7 +14,7 @@ from dataclasses import dataclass
 class SourceKey:
     """Identity of a configured producer - provider plus its named dataset/offering.
 
-    Shared by config (a `SourceDef` is built from it) and data (an `AtomicOrigin` is stamped with it);
+    Shared by config (an `OfferingDef` selects the offering that becomes it) and data (an `AtomicOrigin` is stamped with it);
     its `str` form is the SourceRegistry / config token (e.g. `open-meteo:best_match`). Structured rather than a
     delimited string so a provider exposing several datasets/offerings extends additively. `dataset` is
     always named - a `SourceKey` is never a partial (provider-only) identity; the offering's default is

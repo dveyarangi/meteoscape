@@ -7,8 +7,8 @@ Implementation-level layout for `src/meteoscape/`. Kept out of the [architecture
 ```text
 src/meteoscape/
 ├── __init__.py                # re-exports SourceKey (from identity) + main
-├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + DerivationBinder → ProfileDef → weave → Gateway
-├── config.py                  # Settings + SourceDef + DerivationSpec + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
+├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → weave → Gateway
+├── config.py                  # Settings + OfferingDef + CalculatorSpec + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
 ├── observability.py           # Sentry init seam (no-op without a DSN)
 ├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request (pure leaf)
 ├── clock.py                   # Clock protocol + Metronome + StoppedClock; injected by SourceBinder.build
@@ -20,12 +20,12 @@ src/meteoscape/
 │
 ├── nodes/
 │   ├── reservoir.py / arbiter.py / calculator.py
-│   ├── composition.py         # SourceBinder + DerivationBinder → SourceRegistry + DerivationRegistry; ProfileDef
+│   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef
 │   ├── weaver.py              # Weaver.weave(ProfileDef) → Manifold (graph construction only)
 │   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
-│   │   └── derivations.py     # DerivationManifest, DerivationCatalog
+│   │   └── calculators.py     # CalculatorManifest, CalculatorCatalog
 │   └── providers/
 │       ├── base.py            # Provider: project + capability + source_key
 │       ├── normalization.py
@@ -34,10 +34,10 @@ src/meteoscape/
 └── api/                       # gateway + mcp_app
 
 # Dependency rule: errors, parameters, clock, identity ← manifold ← nodes ; api → manifold + parameters ; server.py composes all.
-# Catalogue is a role: parameters.py is the vocabulary leaf; provider/derivation/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
+# Catalogue is a role: parameters.py is the vocabulary leaf; provider/calculator/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
 # Injection (never the Settings type):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
-#   DerivationBinder(DerivationCatalog).build(specs) → DerivationRegistry
+#   CalculatorBinder(CalculatorCatalog).build(specs) → CalculatorRegistry
 #   Weaver.weave(ProfileDef) → Manifold
 # tests/ mirrors modules; provider tests mock the HTTP transport.
 ```

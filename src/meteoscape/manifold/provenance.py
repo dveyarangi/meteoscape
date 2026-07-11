@@ -16,8 +16,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..parameters import ParameterId
 from ..identity import SourceKey
+from ..parameters import ParameterId
 
 
 class Origin:

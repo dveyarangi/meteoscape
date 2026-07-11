@@ -76,7 +76,7 @@ _Avoid_: display unit (a surface-egress concern), per-value unit
 
 **Parameter table**:
 The injected **lookup of `ParameterDef`s** (keyed by `ParameterId`) that producers and the edge resolve canonical parameter facts from; a swappable interface (v1 ships a static one). → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: SourceBinder, DerivationCatalog / DerivationRegistry, Catalogue
+_Avoid_: SourceBinder, CalculatorCatalog / CalculatorRegistry, Catalogue
 
 
 **CellStatistic**:
@@ -192,36 +192,43 @@ _Avoid_: ManifoldProduct, Operation, Combinator
 
 **Calculator**:
 A synthetic composite that **derives a parameter** from inputs via a function — a **selectable producer** the Arbiter picks like any Source; holds its own scoped Arbiter. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Formula node, DewpointManifold
-_(Naming: derivation↔calculator dual → [concern #22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns).)_
+_Avoid_: Formula node, DewpointManifold, Derivation (retired build-time noun)
 
-**DerivationCatalog**:
-Process-wide map of function ids to `DerivationManifest`s available for profile composition. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: DerivationRegistry (the bound weave input), Calculator instance map
+**CalculatorCatalog**:
+Process-wide map of function ids to `CalculatorManifest`s available for profile composition. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: CalculatorRegistry (the bound weave input), live Calculator map, DerivationCatalog
 
-**DerivationManifest**:
-A derivation plugin's cohesive declaration: its combine function and the constraints under which it may be invoked. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Calculator instance, data-flow edge
+**CalculatorManifest**:
+A calculator plugin's cohesive declaration: its combine function and the constraints under which it may be invoked. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator instance, data-flow edge, DerivationManifest
 
-**DerivationSpec**:
-Profile recipe for one derived parameter — `(output, inputs, fn_id, stored?)`. Bound by `DerivationBinder` before weave. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Calculator instance, RegisteredDerivation, formula DSL
+**CalculatorSpec**:
+Profile recipe for one derived parameter — `(output, inputs, fn_id, stored?)`. Bound by `CalculatorBinder` before weave. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator instance, RegisteredCalculator, formula DSL, DerivationSpec
 
-**DerivationRegistry**:
-Build product of `DerivationBinder` — output-keyed `RegisteredDerivation`s (catalog-resolved bindings, not Calculators). Peer of `SourceRegistry` on `ProfileDef`. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: DerivationCatalog, live Calculator map
+**CalculatorRegistry**:
+Build product of `CalculatorBinder` — output-keyed `RegisteredCalculator`s (catalog-resolved bindings, not live Calculator nodes). Peer of `SourceRegistry` on `ProfileDef`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: CalculatorCatalog, live Calculator map, DerivationRegistry
 
-**RegisteredDerivation**:
-One catalog-resolved derivation binding — resolved manifest + inputs + `stored?`. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Calculator, DerivationSpec (the unbound ticket)
+**RegisteredCalculator**:
+One catalog-resolved calculator binding — resolved manifest + inputs + `stored?`. Weaver builds the `Calculator` node. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Calculator (the graph node), CalculatorSpec (the unbound ticket), RegisteredDerivation
 
-**DerivationBinder**:
-Resolves `DerivationSpec`s against a `DerivationCatalog` into a `DerivationRegistry`. Peer of `SourceBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Weaver, SourceBinder
+**CalculatorBinder**:
+Resolves `CalculatorSpec`s against a `CalculatorCatalog` into a `CalculatorRegistry`. Peer of `SourceBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Weaver, SourceBinder, DerivationBinder
 
 **SourceBinder**:
-Resolves `SourceDef`s against a `ProviderCatalog` into a `SourceRegistry`. Peer of `DerivationBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Weaver, DerivationBinder, Registry (retired factory name)
+Resolves `OfferingDef`s against a `ProviderCatalog` into a `SourceRegistry`. Peer of `CalculatorBinder`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Weaver, CalculatorBinder, OfferingBinder, Registry (retired factory name)
+
+**SourceRegistry**:
+Build product of `SourceBinder` — `SourceKey`-keyed `RegisteredSource`s (configured producer + priority + Source-store lattice). Peer of `CalculatorRegistry` on `ProfileDef`. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: OfferingRegistry, ProviderCatalog, live Source map
+
+**RegisteredSource**:
+One configured producer plus extrinsic priority and its Source-store lattice. → [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: Source (the Reservoir role), OfferingDef, RegisteredOffering
 
 **ProviderCatalog**:
 Process-wide map of implementation ids to cohesive `ProviderManifest`s available for profile composition. → [ADR-0005](./adr/0005-build-time-composition.md).
@@ -231,23 +238,28 @@ _Avoid_: Provider instance map, Parameter table
 A provider plugin's cohesive declaration: identity, offerings, secret requirement, and construction operation. → [ADR-0005](./adr/0005-build-time-composition.md).
 
 **SecretSlot**:
-Impl-level secret binding name on a `ProviderManifest` (offerings inherit); values live in the injected secrets map, keyed usually by `SourceDef.secret_ref`. → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: secret value, API key field on SourceDef
+Impl-level secret binding name on a `ProviderManifest` (offerings inherit); values live in the injected secrets map, keyed usually by `OfferingDef.secret_ref`. → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: secret value, API key field on OfferingDef
 
 **OfferingSpec**:
 Catalogue product row — offering `name`, exact `ParameterId` set, optional `default_lattice` (non-`Countable`). → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: SourceDef (enablement), ParameterDef
+_Avoid_: OfferingDef (enablement), ParameterDef
+
+**OfferingDef**:
+Profile **enablement ticket** for one catalogue offering — `{ impl, name?, priority, secret_ref?, settings }` — that `SourceBinder` builds from (with `ProviderCatalog`); no raw `SourceKey`, no geometry. `name=None` selects the expand path. → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: SourceDef, Source (the built role), OfferingSpec (catalogue product), Provider (the impl)
 
 **ProfileConfig**:
-Operator-side, per-profile enablement — `SourceDef`s, `DerivationSpec`s, root-store knobs, arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver).
+Operator-side, per-profile enablement — `offerings` (`OfferingDef`s), `calculators` (`CalculatorSpec`s), root-store knobs, arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: sources (retired field name), derivations (retired field name)
 
 **ProfileDef**:
-Weave input for one served root: `SourceRegistry` + `DerivationRegistry` + root store + arbiter. → [ADR-0005](./adr/0005-build-time-composition.md).
+Weave input for one served root: `SourceRegistry` + `CalculatorRegistry` + root store + arbiter. → [ADR-0005](./adr/0005-build-time-composition.md).
 _Avoid_: WeavePlan, freeform DAG script, ProfileConfig
 
 **Weaver**:
 The **build-time graph constructor**: `weave(ProfileDef)` wires the static DAG and allocates every `Store`; absent from the request path. Holds no catalogue. → [architecture.md](./architecture.md#config-binders-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md) · [ADR-0005](./adr/0005-build-time-composition.md).
-_Avoid_: Builder, Compiler, Orchestrator, Planner, DerivationBinder
+_Avoid_: Builder, Compiler, Orchestrator, Planner, CalculatorBinder
 
 **Countable**:
 A Manifold facet: **node-Countable** declares an enumerable grid (its canonical lattice); **result** countability is conferred by the Selection's Domain. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
@@ -295,10 +307,6 @@ _Avoid_: Vendor, backend, driver
 
 **Source**:
 A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
-
-**SourceDef**:
-Profile **enablement ticket** for one catalogue offering — `{ impl, offering?, priority, secret_ref?, settings }` — that `SourceBinder` builds from (with `ProviderCatalog`); no raw `SourceKey`, no geometry. Naming → [concern #22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns) (primary alt: `OfferingDef`). → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: Source (the built role), OfferingSpec (catalogue product), Provider (the impl)
 
 **Normalizer**:
 The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).

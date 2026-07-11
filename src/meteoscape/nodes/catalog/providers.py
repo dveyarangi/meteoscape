@@ -1,7 +1,7 @@
 """Provider plugin catalogue: offerings, secrets, and the build/expand face.
 
 `ProviderCatalog` is `impl_id → ProviderManifest`. An `OfferingSpec` is a product row (exact
-parameter IDs + optional default lattice); `SourceDef` only enables it. See ADR-0005.
+parameter IDs + optional default lattice); `OfferingDef` only enables it. See ADR-0005.
 """
 
 from __future__ import annotations
@@ -9,9 +9,9 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
-from ...parameters import ParameterId
 from ...clock import Clock
 from ...manifold.domain import EnumerableDomain
+from ...parameters import ParameterId
 from ..providers.base import Provider
 from .paramtable import ParameterTable
 

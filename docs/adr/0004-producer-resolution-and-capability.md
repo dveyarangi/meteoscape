@@ -135,7 +135,7 @@ same shape. The abstraction these are shapes of is the
   [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)) — the former is `match`, the
   latter is resampling. This is the **same mechanism** as separate observation / forecast sources (folded
   later by a `valid_time` reconciler). v1 is one offering per provider (Open-Meteo defaults to
-  `best_match`); the `SourceDef` config surface and footprint-axis `step`s are the deferred build recipe
+  `best_match`); the `OfferingDef` config surface and footprint-axis `step`s are the deferred build recipe
   ([architecture](../architecture.md#config-binders-weaver) /
   [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 
@@ -199,10 +199,10 @@ same shape. The abstraction these are shapes of is the
           return combine(self.fn, ins)                                     # + synthetic provenance
   ```
 
-- **The graph is woven once by the Weaver; runtime nodes are dumb.** A **`DerivationRegistry`** of
-  catalog-resolved **`RegisteredDerivation`**s (output → manifest + inputs + `stored?`) — produced by
-  `DerivationBinder` from profile **`DerivationSpec`**s against a **`DerivationCatalog`**
-  (`fn_id → DerivationManifest`; layering → [ADR-0005](./0005-build-time-composition.md)) — feeds the
+- **The graph is woven once by the Weaver; runtime nodes are dumb.** A **`CalculatorRegistry`** of
+  catalog-resolved **`RegisteredCalculator`**s (output → manifest + inputs + `stored?`) — produced by
+  `CalculatorBinder` from profile **`CalculatorSpec`**s against a **`CalculatorCatalog`**
+  (`fn_id → CalculatorManifest`; layering → [ADR-0005](./0005-build-time-composition.md)) — feeds the
   Weaver. The Weaver constructs the graph, **memoizing one Calculator instance per derived parameter**
   (a shared intermediate is a **shared node** — common-subexpression elimination); an in-progress set
   guards a **parameter-dependency cycle**. At request time nodes project their **fixed** children — no

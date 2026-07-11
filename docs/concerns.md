@@ -8,27 +8,6 @@ this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when
 
 ---
 
-## 22. Namespace polish — SourceDef / derivation↔calculator / producer nouns
-
-**Kind:** vocabulary · **Refs:** [architecture.md](./architecture.md#config-binders-weaver), [glossary](./glossary.md)
-
-**Next immediate** after the ProfileDef / manifest seam stubs. Blocks clean vocabulary before more
-surface growth.
-
-**A. `SourceDef` → primary alternative `OfferingDef`.** `SourceDef` is a profile enablement ticket
-(`impl` + `offering` + policy) selecting an `OfferingSpec`; it sounds like it defines a Source/product
-and collides with the Reservoir **Source** role and **Provider** leaf. Lead rename: **`OfferingDef`**
-(pairs with `OfferingSpec`). Field `offering` may become `name` / `dataset`.
-
-**B. Derivation ↔ Calculator dual.** `DerivationCatalog` / `DerivationSpec` / `DerivationRegistry` /
-`RegisteredDerivation` vs graph node **`Calculator`**. Weigh renaming the catalogue/binder/registry
-family to `Calculator*` (entries remain cohesive formula + constraint manifests; registry remains
-bindings, not instances). Catalogue layering is settled by
-[ADR-0005](./adr/0005-build-time-composition.md); only the namespace is open here.
-
-**C. Also:** `SourceBinder` / `SourceRegistry` / `RegisteredSource` names; broader Source / Provider / Producer glossary
-cleanup.
-
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)

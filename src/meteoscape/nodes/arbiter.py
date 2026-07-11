@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from ..parameters import ParameterId
 from ..manifold.capability import Capability, UnionCapability
 from ..manifold.core import Manifold, Selection
+from ..parameters import ParameterId
 
 
 class Arbiter:

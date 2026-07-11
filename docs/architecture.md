@@ -220,17 +220,16 @@ Build-time composition — deployment settings → catalogues → binders → `P
 owned by [ADR-0005](./adr/0005-build-time-composition.md) (manifests, binder mechanics, rationale,
 rejected splits); this section fixes the roles.
 
-- **Catalogues** — three process-wide code maps (`ProviderCatalog`, `DerivationCatalog`,
+- **Catalogues** — three process-wide code maps (`ProviderCatalog`, `CalculatorCatalog`,
   `ParameterTable`); a plugin **manifest** keeps declarations and construction together (geometry and
   canonical `ParameterDef`s stay off it — Capability + `ParameterTable` own those). Catalogue is an
   architectural role, not a directory rule; secrets are an injected map, not a catalogue.
-- **`ProfileConfig`** (operator, per profile) — `SourceDef` enablement tickets, `DerivationSpec`s,
+- **`ProfileConfig`** (operator, per profile) — `OfferingDef` enablement tickets, `CalculatorSpec`s,
   profile-root store knobs, `ArbiterPolicy`. v1: one best-view profile projected from `Settings` with
   **explicit** offering names (Settings does not import the provider catalogue; validation at build).
-  Naming of `SourceDef` / derivation↔calculator nouns → [#22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns).
-- **Binders** — symmetrical: `SourceBinder` → `SourceRegistry`, `DerivationBinder` →
-  `DerivationRegistry` — catalog-resolved build products, not live Calculators. `SourceKey` is derived
-  at build, never authored on a `SourceDef` ([ADR-0003](./adr/0003-provenance-and-origin.md)).
+- **Binders** — symmetrical: `SourceBinder` → `SourceRegistry`, `CalculatorBinder` →
+  `CalculatorRegistry` — catalog-resolved build products, not live Calculators. `SourceKey` is derived
+  at build, never authored on an `OfferingDef` ([ADR-0003](./adr/0003-provenance-and-origin.md)).
 - **`ProfileDef`** — weave input: both registries + root store + arbiter; a constrained composition
   language over the fixed node family, not a freeform DAG DSL. Profile-root lattice is **separate**
   from Source lattices.
@@ -251,8 +250,8 @@ Every seam in one place — the *promise* only; behaviour and rationale are in M
 - **Gateway** — `canonical request -> Manifold | reject` (the surface materializes the answer to a Coverage); not a Manifold itself.
 - **Surface adapter** — `protocol ↔ canonical`; **exposes the same Coverage-resolution engine through MCP first (REST / tiles / products later)**. Builds the Selection's `Domain` and resolves the output lattice / default resolution at the edge, and desugars parameter **aliases** to functionals `(quantity, statistic)` → [ADR-0002](./adr/0002-data-model.md).
 - **Error taxonomy** — `capability-mismatch | runtime-failure | bad-request`; adapters map to protocol errors. Distinct from successful **nodata**; partial success is the norm → [Failure, nodata, and availability](#failure-nodata-and-availability).
-- **Typed config** — catalogues (provider / derivation / parameter) + secrets + `ProfileConfig`
-  (`SourceDef`s, `DerivationSpec`s, root store, arbiter) → `SourceRegistry` + `DerivationRegistry` →
+- **Typed config** — catalogues (provider / calculator / parameter) + secrets + `ProfileConfig`
+  (`OfferingDef`s, `CalculatorSpec`s, root store, arbiter) → `SourceRegistry` + `CalculatorRegistry` →
   `ProfileDef`.
 
 ## Data / request flow
@@ -302,7 +301,7 @@ Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md)
 - **[5. Read-time homogenization fidelity](./concerns.md#5-read-time-homogenization-fidelity)** · **[15. Coarser-grid resampling and aggregation semantics](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)** · **[6. Reconciler catalogue](./concerns.md#6-reconciler-catalogue)** · **[13. Candidate admission: containment vs intersection](./concerns.md#13-candidate-admission-containment-vs-intersection)** · **[9. Cross-run combination](./concerns.md#9-cross-run-combination)**.
 - **[7. Quality scoring](./concerns.md#7-quality-scoring)** · **[8. Arbiter to Broker pressure](./concerns.md#8-arbiter-to-broker-pressure)** · **[10. Parameter conventions](./concerns.md#10-parameter-conventions)** · **[14. Resolution trace and observability](./concerns.md#14-resolution-trace-and-observability)**.
 - **[18. Clock-anchored footprint fidelity](./concerns.md#18-clock-anchored-footprint-fidelity)** — anchoring mechanism settled ([ADR-0003](./adr/0003-provenance-and-origin.md)); per-provider numbers open. · **[11. Incremental synthetic recompute](./concerns.md#11-incremental-synthetic-recompute)** · **[12. Curvilinear domains](./concerns.md#12-curvilinear-domains)**.
-- **[20. Provider multi-resolution offerings](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)** · **[22. Namespace polish](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns)**.
+- **[20. Provider multi-resolution offerings](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)**.
 
 ## ADR index
 
@@ -310,7 +309,7 @@ Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md)
 - [ADR-0002](./adr/0002-data-model.md) — Data model: `Domain` one interface with swappable representations (separability a facet, regularity a per-axis `RegularAxis`, mode folded into shape, `issue_time` a provenance stamp not an axis — 4 axes); positional `Coverage` / `ParameterData` (pure `values` / `present` mask, a self-describing `capability` descriptor block, axis `Cell` `bounds`, canonical-mono-unit interior); the parameter functional model (quantity + `extent_scaling` intensive/extensive, `CellStatistic`, extent on the Domain).
 - [ADR-0003](./adr/0003-provenance-and-origin.md) — Provenance is per-parameter; origin may be atomic or synthetic; realized as a `ProvenanceField` (`Uniform`/`PerPoint`, O(1) `summary`) so per-point is additive.
 - [ADR-0004](./adr/0004-producer-resolution-and-capability.md) — Producer resolution & capability: one Arbiter shape; Capability = a per-parameter `(ParameterDef, Domain)` mapping + an `extent_scaling`-branched `serves` predicate; the coverage axis is a `reconciler` (default `priority` = selection); a Calculator is a selectable producer with its own scoped Arbiter; static wired DAG, only `Store`s hold state.
-- [ADR-0005](./adr/0005-build-time-composition.md) — Build-time composition: deployment settings, cohesive plugin catalogues, symmetrical binders (`SourceBinder` / `DerivationBinder` → `SourceRegistry` / `DerivationRegistry`), `ProfileDef`, and DAG weaving; runtime nodes perform no catalogue lookup.
+- [ADR-0005](./adr/0005-build-time-composition.md) — Build-time composition: deployment settings, cohesive plugin catalogues, symmetrical binders (`SourceBinder` / `CalculatorBinder` → `SourceRegistry` / `CalculatorRegistry`), `ProfileDef`, and DAG weaving; runtime nodes perform no catalogue lookup.
 
 ---
 
