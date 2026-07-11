@@ -66,6 +66,16 @@ geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry 
 a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
 pure refactor, no contract change. Not blocking; do not split preemptively.
 
+## 23. Spatial vs temporal `RegularAxis` types
+
+**Kind:** room-left (types / hot path) · **Refs:** ADR-0002, Phase B wrap
+
+`RegularAxis` today is one type over `Coordinate = float | datetime` and `Step = float | timedelta`.
+`sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
+tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
+axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
+Additive when the axis surface is next touched; v1 behaviour is correct as-is.
+
 ## 15. Coarser-grid resampling and aggregation semantics
 
 **Kind:** edge-isolated (data-model + surface) · **Refs:** [ADR-0002](./adr/0002-data-model.md), [#5](#5-read-time-homogenization-fidelity)
