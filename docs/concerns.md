@@ -3,22 +3,8 @@
 Open design concerns, **ordered by priority** (highest first). Priority blends *how much it blocks the
 encoding pass / v1 build* with *how hard it is to absorb additively later*. `architecture.md` indexes
 this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when a concern is settled it
-**moves out** to its owning ADR, leaving a gap. (Settled earlier: nodata/mask + temporal-cell + the
-parameter functional model → [ADR-0002](./adr/0002-data-model.md); per-point provenance →
-[ADR-0003](./adr/0003-provenance-and-origin.md); capability propagation — the base-`Manifold` facet and
-its leaf/composite family — → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) /
-[ADR-0004](./adr/0004-producer-resolution-and-capability.md). Run identity (`issue_time`), the
-**freshness cadence** (`expiration`, the footprint anchor), and the observation / synthetic-origin
-rules → [ADR-0003](./adr/0003-provenance-and-origin.md); only the per-provider numbers
-([#18](#18-clock-anchored-footprint-fidelity)) remain, and *probed* real-availability stays an
-[ADR-0004](./adr/0004-producer-resolution-and-capability.md) deferred seam. Vector-component coupling —
-co-declared and co-produced from one origin, coherence a build-time property —
-→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md). Candidate identity granularity — the
-candidacy / priority unit is a configured producer (`SourceKey = provider + dataset`), realized as
-separate instances, so priority discriminates within a provider; only the geometric offering half remains
-([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)) —
-→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md). Weaver build-time input
-(`ProfileDef`) → [architecture.md](./architecture.md#config-binders-weaver) (former #21 evacuated).)
+**moves out** to its owning ADR, leaving a gap (what each ADR owns →
+[architecture: ADR index](./architecture.md#adr-index)).
 
 ---
 
