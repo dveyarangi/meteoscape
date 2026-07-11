@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from ..catalog.vocabulary import ParameterId
+from ..parameters import ParameterId
 from .capability import EnumerableCapability
 from .core import Manifold, Selection
 from .data import ParameterData

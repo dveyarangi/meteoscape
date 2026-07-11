@@ -70,7 +70,7 @@ configures and runs the server). Stories are numbered for stable reference from
 
 - Priority order **is** the quality policy (implicit-priority Arbiter; selects, never combines).
   Reconfigurable via Arbiter config.
-- **Missing TWC key → graceful degrade**: the Registry simply does not instantiate the unconfigured
+- **Missing TWC key → graceful degrade**: `SourceBinder` simply does not instantiate the unconfigured
   provider; the server starts and serves with Open-Meteo alone. (No fail-fast in v1.)
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).

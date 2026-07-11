@@ -14,7 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from ..catalog.vocabulary import ParameterId
+from ..parameters import ParameterId
 from .capability import Capability, EnumerableCapability
 from .data import ParameterData
 from .domain import Domain, EnumerableDomain

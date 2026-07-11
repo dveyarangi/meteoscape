@@ -37,21 +37,21 @@ offering / resolution and Registry–Weaver seams. Contract-level outcomes lande
   geometry and populates its footprint Domain's axis steps. Multi-offering is a pure additive change
   (richer `dataset` values + axis `step`s + more `SourceDef`s). →
   [ADR-0004](../adr/0004-producer-resolution-and-capability.md),
-  [architecture](../architecture.md#config-registry-weaver).
+  [architecture](../architecture.md#config-binders-weaver).
 - **`priority` is per-`SourceKey` (per-`SourceDef`), extrinsic to the Provider** (which carries only its
-  `SourceKey`, for provenance) — keeps profiles additive. → [architecture](../architecture.md#config-registry-weaver).
+  `SourceKey`, for provenance) — keeps profiles additive. → [architecture](../architecture.md#config-binders-weaver).
 - **Registry keyed by `SourceKey`; Weaver consumes its read-only surface.** Class catalog stays
   `impl-id → Provider class`; the Registry's read-only, `SourceKey`-keyed surface (producers + `priority`)
   + the derivation registry + store/grid config are the Weaver's inputs. The degenerate
-  `weave(providers, priority: Sequence[str])` is retired. → [architecture](../architecture.md#config-registry-weaver),
-  [#21](../concerns.md#21-weaver-build-time-input-shape).
+  `weave(providers, priority: Sequence[str])` is retired. → [architecture](../architecture.md#config-binders-weaver),
+  Weaver input / `ProfileDef` (former #21 → [architecture](../architecture.md#config-binders-weaver)).
 - **Also:** `/sync-arch` fixed `architecture.md` (Config/Registry/Weaver + Typed-config surface) to the
   `SourceKey` / `SourceDef` model it had never been updated to.
 
 ## Open / continuation
 
 - **Weaver build-time input shape** — settled in [0004](./0004-20260709-identity-registry-weaver.md) /
-  [#21](../concerns.md#21-weaver-build-time-input-shape).
+  Weaver input / `ProfileDef` (former #21 → [architecture](../architecture.md#config-binders-weaver)).
 - **#20 contract closed; build leftover** — footprint `step` / `match` / `score` / band walk →
   [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection). Provider
   `exact` / native-coarse-as-distinct-origin → [#5](../concerns.md#5-read-time-homogenization-fidelity).

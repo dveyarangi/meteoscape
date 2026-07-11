@@ -1,8 +1,8 @@
 """Composition root - the thin entrypoint.
 
 Initializes observability and stands up the MCP surface. Wires the full DAG
-(`Settings` → `Registry.build(defs, secrets, clock)` → `Weaver.weave(sources, derivations, store)` →
-`Gateway`) but holds no construction logic of its own.
+(catalogues + `Settings` → `ProfileConfig` → `SourceBinder.build` + `DerivationBinder.build` →
+`ProfileDef` → `Weaver.weave` → `Gateway`) but holds no construction logic of its own.
 """
 
 from __future__ import annotations

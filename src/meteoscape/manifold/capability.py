@@ -18,7 +18,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from ..catalog.vocabulary import ParameterDef, ParameterId
+from ..parameters import ParameterDef, ParameterId
 from .domain import Domain, EnumerableDomain
 
 

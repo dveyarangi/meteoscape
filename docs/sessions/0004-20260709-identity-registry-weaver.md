@@ -15,7 +15,8 @@ Continues [session 0003](./0003-20260709-sourcekey-offering-align.md). Closes th
   here (providers are instantiated here).
 - **`Weaver.weave(sources, derivations, store)`** — retires `weave(providers, priority: Sequence[str])`.
   Ordering rides inside `sources`. `DerivationRegistry` / `StoreConfig` are thin declared seams.
-  → [#21](../concerns.md#21-weaver-build-time-input-shape) settled.
+  → Weaver input settled as `ProfileDef` → [architecture](../architecture.md#config-binders-weaver)
+  (former #21; see [session 0005](./0005-20260710-profiledef-manifest-seam.md)).
 - **`Provider.source_key`** — abstract property; Provider carries identity for provenance, never priority.
 
 ## Open / continuation

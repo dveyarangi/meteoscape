@@ -67,7 +67,7 @@ flowchart LR
 
 Every node below the Gateway is a **Manifold** (`project(selection) -> Manifold`), differing only by `project` behaviour and the two optional facets **`Countable`** (declares a serving lattice) and **`Writable`** (accepts `assimilate`). The full algebra — closed projection, node-vs-result countability, materialization, freshness, and composition (leaf vs composite) — is [ADR-0001](./adr/0001-manifold-algebra-and-composition.md); terms are in [`glossary.md`](./glossary.md). The three **consequences** that shape *this* level:
 
-- **`snapped` resolves at a `Countable` `Reservoir`, not the Arbiter** — only a node that declares a grid can `quantize`; the Arbiter owns no substrate. Each `Reservoir` quantizes a request onto **its own** grid for retention and **homogenizes back onto the request at read**, so grid-alignment is **per node**; internal nodes are handed Enumerable (store-shaped) Domains ([ADR-0002](./adr/0002-data-model.md)). *(Other sections assume this placement.)*
+- **`snapped` resolves at a `Countable` `Reservoir`, not the Arbiter** — only a node that declares a grid can `quantize`; the Arbiter owns no substrate. Grid-alignment is **per node**; internal nodes are handed Enumerable (store-shaped) Domains → [ADR-0002](./adr/0002-data-model.md). *(Other sections assume this placement.)*
 - **Assembly is free; materialization is on-demand** — a projected view is a lazy field, sampled to values once at `assimilate` (storing node) or per read (non-storing leaf).
 - **Two combine axes, one Arbiter** — *deriving* a parameter from others is a **Calculator**; *filling the lattice* for one parameter is a **`reconciler`**. Both are resolved by the single Arbiter shape; neither is a new node → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 
@@ -214,12 +214,46 @@ The surface-neutral **caller-policy boundary**: it applies caller policy (authz,
 
 A single `Store` type — a **`Writable`, `Countable` Manifold**, the only thing you can `assimilate` into. The same type serves several jobs by what it's handed: **inside each Source** (provider Coverages), **inside the best view** (reduced best-quality Coverages), and **wrapping a heavy Calculator** (opt-in) — the classic landing + curated-layer pattern. Every `Store` is **allocated by the Weaver**, which also provisions its grid — the **canonical lattice** for the `Reservoir` above it (**provider-exact or a configured guess**), a **fidelity floor** that off-grid reads homogenize from. It holds data in **whole assimilable units** (v1: a parameter's timeline at a spatial cell) — `assimilate` **replaces a unit atomically**, so a unit carries one origin, never a partial overwrite.
 
-### Config, Registry, Weaver
+### Config, binders, Weaver
 
-- **Config & secrets** — a single **typed config**, pure **data**: a set of **`SourceDef`s** — each a **`SourceKey`** (`provider` + `dataset`) plus `{impl, secret_ref, priority}` — declaring the enabled producers and their `priority`, the per-parameter `reconciler`, and the **derivation registry**. A `dataset` (offering) is fixed **at construction**, so distinct offerings are distinct configured producers keyed by `SourceKey` (v1: one per provider). The **parameter table** — the injected `ParameterDef` lookup (a swappable interface; static in v1) — is wired in the same way. Secrets are **injected at construction**, never read from globals. (Concrete config library → [`v1-requirements.md`](./v1-requirements.md).)
-- **Registry** — the **producer factory**: its static catalog is **`impl-id → Provider class`**; handed the `SourceDef`s (+ secrets + `Clock`) it instantiates **one configured producer per `SourceDef`** (secrets and clock injected), keyed by **`SourceKey`** — a provider class may back several dataset-keyed instances. Its **read-only `SourceRegistry` role** (`SourceKey` → provider + extrinsic `priority`) is what the Weaver consumes. No wiring, no `Store`s.
-- **Weaver** — the **build-time graph constructor**: `weave(sources: SourceRegistry, derivations, store)` wires the entire static DAG and **allocates every `Store`**, then steps out — the only omniscient component, absent from the request path (runtime is pure `project` recursion). Ordering flows through the registry surface, **not** a detached provider-id list. Memoized Calculator wiring and the candidate-ordering algorithm → [ADR-0004](./adr/0004-producer-resolution-and-capability.md); the settled build-time input shape → [concern #21](./concerns.md#21-weaver-build-time-input-shape).
-- **Composition root** — `server.py` is **thin entrypoint**: it reads `Settings`, has the Registry `build(defs, secrets, clock)`, hands the **`SourceRegistry` + derivations + store config** to the **Weaver**, takes back the best-view Manifold, builds the Gateway, and binds surface adapters. **No ordering or construction logic of its own.**
+Three process-wide **catalogues** (code-side lookup maps, not live instances): **`ProviderCatalog`**
+(`impl_id → ProviderManifest`), **`DerivationCatalog`** (`fn_id → DerivationManifest`), and
+**`ParameterTable`**. A plugin manifest keeps its immutable declarations and construction operation
+together; binders dispatch through manifests rather than maintaining parallel builder maps.
+Catalogue is an architectural role, not a directory rule: `parameters.py` is the parameter-vocabulary
+leaf, while every injected catalogue (`ParameterTable` included) lives in `nodes/catalog/` with its
+manifests above the algebra. Secrets are an injected map, not a catalogue. Rationale and rejected splits → [ADR-0005](./adr/0005-build-time-composition.md).
+
+- **`ProviderManifest` / `OfferingSpec`** — plugin face: declared offerings (exact `ParameterId` set,
+  optional `default_lattice` for non-`Countable` products), impl-level `SecretSlot`,
+  `build(OfferingSpec, …) → Provider` (optional `expand` for 1:N inside `SourceBinder.build`). Geometry and
+  canonical `ParameterDef`s are **not** on the manifest — Capability + `ParameterTable` own those.
+- **`DerivationManifest`** — plugin face: combine function plus declarative invocation constraints.
+  `DerivationSpec` selects it by `fn_id`; the manifest is not a Calculator instance or data-flow edge.
+- **`ProfileConfig`** (operator, per profile) — `SourceDef`s (enablement tickets: `impl`, `offering?`,
+  `priority`, `secret_ref?`, `settings`), `DerivationSpec`s (`output`, `inputs`, `fn_id`, `stored?`),
+  profile-root store knobs, `ArbiterPolicy`. v1: one best-view profile projected from `Settings` with
+  **explicit** offering names (Settings does not import the provider catalogue; validation at build).
+  Naming of `SourceDef` / derivation↔calculator nouns → [#22](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns).
+- **`SourceKey`** — derived at build: `SourceKey(manifest.provider_id, offering.name)` for declared
+  offerings; expand path uses `provider.source_key`. Never authored as a raw key on `SourceDef`.
+- **`SourceBinder`** — `SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry`.
+  Resolves each Source's store lattice onto `RegisteredSource` (`provider.domain` if `Countable`, else
+  `OfferingSpec.default_lattice`). Extrinsic `priority` on the registered entry. No wiring, no profile
+  root `Store`, and no plugin-specific construction branches.
+- **`DerivationBinder`** — `DerivationBinder(DerivationCatalog).build(specs) → DerivationRegistry`.
+  Resolves each `fn_id` to a `RegisteredDerivation` (manifest + inputs + `stored?`, keyed by output).
+  Catalog-resolved bindings only — **not** Calculator instances.
+- **`ProfileDef`** — weave input: `SourceRegistry` + `DerivationRegistry` + root store + arbiter.
+  Symmetrical build products on both sides; Calculators are constructed in weave (need scoped Arbiters).
+  Constrained module language (Reservoir, Arbiter, Calculator, Source) — not a freeform DAG DSL.
+  Profile root lattice is **separate** from Source lattices (no singleton store config for both).
+- **Weaver** — `Weaver.weave(profile: ProfileDef) → Manifold`; allocates every `Store`, wires the DAG,
+  steps out. Holds no catalogue. Memoized Calculator wiring →
+  [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+- **Composition root** — `server.py`: catalogues + `Settings` → `ProfileConfig` → `SourceBinder.build` +
+  `DerivationBinder.build` → assemble `ProfileDef` → `weave` → Gateway. **No ordering or construction
+  logic of its own.**
 
 ## Contract surfaces
 
@@ -232,7 +266,9 @@ Every seam in one place — the *promise* only; behaviour and rationale are in M
 - **Gateway** — `canonical request -> Manifold | reject` (the surface materializes the answer to a Coverage); not a Manifold itself.
 - **Surface adapter** — `protocol ↔ canonical`; **exposes the same Coverage-resolution engine through MCP first (REST / tiles / products later)**. Builds the Selection's `Domain` and resolves the output lattice / default resolution at the edge, and desugars parameter **aliases** to functionals `(quantity, statistic)` → [ADR-0002](./adr/0002-data-model.md).
 - **Error taxonomy** — `capability-mismatch | runtime-failure | bad-request`; adapters map to protocol errors. Distinct from successful **nodata**; partial success is the norm → [Failure, nodata, and availability](#failure-nodata-and-availability).
-- **Typed config** — `SourceDefs (SourceKey + impl / secret_ref / priority) + Arbiter config + derivation registry`; injected at construction.
+- **Typed config** — catalogues (provider / derivation / parameter) + secrets + `ProfileConfig`
+  (`SourceDef`s, `DerivationSpec`s, root store, arbiter) → `SourceRegistry` + `DerivationRegistry` →
+  `ProfileDef`.
 
 ## Data / request flow
 
@@ -285,7 +321,7 @@ Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md)
 - **[5. Read-time homogenization fidelity](./concerns.md#5-read-time-homogenization-fidelity)** · **[15. Coarser-grid resampling and aggregation semantics](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)** · **[6. Reconciler catalogue](./concerns.md#6-reconciler-catalogue)** · **[13. Candidate admission: containment vs intersection](./concerns.md#13-candidate-admission-containment-vs-intersection)** · **[9. Cross-run combination](./concerns.md#9-cross-run-combination)**.
 - **[7. Quality scoring](./concerns.md#7-quality-scoring)** · **[8. Arbiter to Broker pressure](./concerns.md#8-arbiter-to-broker-pressure)** · **[10. Parameter conventions](./concerns.md#10-parameter-conventions)** · **[14. Resolution trace and observability](./concerns.md#14-resolution-trace-and-observability)**.
 - **[18. Clock-anchored footprint fidelity](./concerns.md#18-clock-anchored-footprint-fidelity)** — anchoring mechanism settled ([ADR-0003](./adr/0003-provenance-and-origin.md)); per-provider numbers open. · **[11. Incremental synthetic recompute](./concerns.md#11-incremental-synthetic-recompute)** · **[12. Curvilinear domains](./concerns.md#12-curvilinear-domains)**.
-- **[20. Provider multi-resolution offerings](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)** · **[21. Weaver build-time input shape](./concerns.md#21-weaver-build-time-input-shape)**.
+- **[20. Provider multi-resolution offerings](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)** · **[22. Namespace polish](./concerns.md#22-namespace-polish--sourcedef--derivationcalculator--producer-nouns)**.
 
 ## ADR index
 
@@ -293,6 +329,7 @@ Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md)
 - [ADR-0002](./adr/0002-data-model.md) — Data model: `Domain` one interface with swappable representations (separability a facet, regularity a per-axis `RegularAxis`, mode folded into shape, `issue_time` a provenance stamp not an axis — 4 axes); positional `Coverage` / `ParameterData` (pure `values` / `present` mask, a self-describing `capability` descriptor block, axis `Cell` `bounds`, canonical-mono-unit interior); the parameter functional model (quantity + `extent_scaling` intensive/extensive, `CellStatistic`, extent on the Domain).
 - [ADR-0003](./adr/0003-provenance-and-origin.md) — Provenance is per-parameter; origin may be atomic or synthetic; realized as a `ProvenanceField` (`Uniform`/`PerPoint`, O(1) `summary`) so per-point is additive.
 - [ADR-0004](./adr/0004-producer-resolution-and-capability.md) — Producer resolution & capability: one Arbiter shape; Capability = a per-parameter `(ParameterDef, Domain)` mapping + an `extent_scaling`-branched `serves` predicate; the coverage axis is a `reconciler` (default `priority` = selection); a Calculator is a selectable producer with its own scoped Arbiter; static wired DAG, only `Store`s hold state.
+- [ADR-0005](./adr/0005-build-time-composition.md) — Build-time composition: deployment settings, cohesive plugin catalogues, symmetrical binders (`SourceBinder` / `DerivationBinder` → `SourceRegistry` / `DerivationRegistry`), `ProfileDef`, and DAG weaving; runtime nodes perform no catalogue lookup.
 
 ---
 

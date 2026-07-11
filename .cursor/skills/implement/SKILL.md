@@ -14,4 +14,4 @@ Run typechecking and single tests files regularly, and the full test suite once 
 
 Once done, use /sync-arch to review the work.
 
-Commit your work to the current branch.
+Do not commit your work until requested.
