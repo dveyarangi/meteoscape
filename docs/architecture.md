@@ -196,7 +196,7 @@ It adds retention, not arbitration — **selection** lives in the Arbiter it wra
 
 ### Arbiter
 
-The **producer-resolution composite** the best view turns to — the **v1 reducing Manifold**, the one core node with **no substrate** of its own, that **decides the selection/reduction policy**. Per **parameter** it folds that parameter's ordered candidates onto the target lattice with a configured **`reconciler`**, then assembles the per-parameter `ParameterData` into one Coverage record; v1's first policy is the default `priority` reconciler — **best-source selection with fallback** (quality implicit in the order), generalizing under the same shape to `consensus` / `feather`. Order + reconciler are its injected **Arbiter config** (Weaver-supplied). Capability matching, reconciler catalogue, and candidate-list / Calculator topology → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+The **producer-resolution composite** the best view turns to — the **v1 reducing Manifold**, the one core node with **no substrate** of its own, that **decides the selection/reduction policy**. It is constructed with the woven Source map (`SourceKey → Manifold`), the raw **`SourceRegistry`**, and an **`ArbiterPolicy`**. Per **parameter** it folds candidates onto the target lattice with its **`reconciler`**, then assembles the per-parameter `ParameterData` into one Coverage record; v1's first policy is the default `priority` reconciler — **best-source selection with fallback** (ranking reads `RegisteredSource.priority` from the registry), generalizing under the same shape to `consensus` / `feather`. Capability matching, reconciler catalogue, and Calculator topology → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 
 ### Source
 
@@ -212,7 +212,7 @@ The surface-neutral **caller-policy boundary**: it applies caller policy (authz,
 
 ### Store — one type, several positions
 
-A single `Store` type — a **`Writable`, `Countable` Manifold**, the only thing you can `assimilate` into. The same type serves several jobs by what it's handed: **inside each Source** (provider Coverages), **inside the best view** (reduced best-quality Coverages), and **wrapping a heavy Calculator** (opt-in) — the classic landing + curated-layer pattern. Every `Store` is **allocated by the Weaver**, which also provisions its grid — the **canonical lattice** for the `Reservoir` above it (**provider-exact or a configured guess**), a **fidelity floor** that off-grid reads homogenize from. It holds data in **whole assimilable units** (v1: a parameter's timeline at a spatial cell) — `assimilate` **replaces a unit atomically**, so a unit carries one origin, never a partial overwrite.
+A single `Store` type — a **`Writable`, `Countable` Manifold**, the only thing you can `assimilate` into. The same type serves several jobs by what it's handed: **inside each Source** (provider Coverages), **inside the best view** (reduced best-quality Coverages), and **wrapping a heavy Calculator** (opt-in) — the classic landing + curated-layer pattern. Every `Store` is **allocated by the Weaver** via an injected **`StoreFactory.create(lattice | None) → Store`** (interim: `StubStore`; retentive at issue 006), which also provisions its grid — the **canonical lattice** for the `Reservoir` above it (**provider-exact or a configured guess**), a **fidelity floor** that off-grid reads homogenize from. It holds data in **whole assimilable units** (v1: a parameter's timeline at a spatial cell) — `assimilate` **replaces a unit atomically**, so a unit carries one origin, never a partial overwrite.
 
 ### Config, binders, Weaver
 
@@ -233,11 +233,16 @@ rejected splits); this section fixes the roles.
 - **`ProfileDef`** — weave input: both registries + root store + arbiter; a constrained composition
   language over the fixed node family, not a freeform DAG DSL. Profile-root lattice is **separate**
   from Source lattices.
-- **Weaver** — `Weaver.weave(profile: ProfileDef) → Manifold`; allocates every `Store`, wires the DAG,
-  steps out. Holds no catalogue. Memoized Calculator wiring →
-  [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-- **Composition root** — `server.py`: catalogues + `Settings` → `ProfileConfig` → binders →
-  `ProfileDef` → `weave` → Gateway. **No ordering or construction logic of its own.**
+- **Weaver** — `Weaver(stores: StoreFactory).weave(profile: ProfileDef) → Manifold`; allocates every
+  `Store` via `stores.create`, builds the Source map (`SourceKey → Reservoir(store, Provider)`),
+  constructs `Arbiter(sources, SourceRegistry, ArbiterPolicy)`, wraps the best-view `Reservoir`,
+  steps out. Holds no catalogue; **does not interpret priority** (that is the Arbiter's reconciler).
+  Memoized Calculator wiring → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+- **Composition root** — `server.py`: `compose(profile, catalog, secrets, clock, stores) → Gateway`
+  is the fixed call sequence (binders → `ProfileDef` → `weave` → Gateway). **No ordering or
+  construction logic of its own.** Catalogues are module-level data; `Settings` projects
+  `ProfileConfig` in `main()`. Build-time failures are **`CompositionError`** (binders / Arbiter
+  policy), distinct from the request-path taxonomy in `errors.py`.
 
 ## Contract surfaces
 

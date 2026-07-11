@@ -1,0 +1,168 @@
+"""Shared test doubles for the composition / weave seam."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
+
+from meteoscape.clock import Clock, StoppedClock
+from meteoscape.identity import SourceKey
+from meteoscape.manifold.cadence import CadenceDef, RollingAxis
+from meteoscape.manifold.capability import Capability, FootprintCapability
+from meteoscape.manifold.core import Manifold, Selection
+from meteoscape.manifold.domain import (
+    AxisName,
+    ContinuousAxis,
+    EnumerableDomain,
+    FootprintDomain,
+    Interval,
+    RegularAxis,
+    RegularDomain,
+)
+from meteoscape.nodes.catalog.paramtable import ParameterTable, StaticParameterTable
+from meteoscape.nodes.catalog.providers import (
+    OfferingSpec,
+    ProviderCatalog,
+    ProviderManifest,
+    SecretSlot,
+)
+from meteoscape.nodes.providers.base import Provider
+from meteoscape.nodes.store import Store, StoreFactory
+from meteoscape.parameters import AIR_TEMPERATURE
+
+STOPPED = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
+
+_CADENCE = CadenceDef(
+    cadence=timedelta(hours=1),
+    publication_latency=timedelta(0),
+    max_lead=timedelta(days=7),
+)
+
+
+def sample_lattice(*, count: int = 1) -> RegularDomain:
+    """A constructible enumerable lattice (axis behaviour is Phase B)."""
+    return RegularDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, count, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, count, False),
+            AxisName.Z: RegularAxis(AxisName.Z, 0.0, 1.0, count, False),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), count, False
+            ),
+        }
+    )
+
+
+def _footprint(clock: Clock) -> FootprintDomain:
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
+            AxisName.T: RollingAxis(AxisName.T, _CADENCE, clock),
+        }
+    )
+
+
+def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> FootprintCapability:
+    definition = parameters.get(AIR_TEMPERATURE)
+    return FootprintCapability(footprints={definition.id: (definition, _footprint(clock))})
+
+
+class FakeProvider(Provider):
+    """Test fixture leaf — declared capability + source_key; `project` raises. Not Countable."""
+
+    def __init__(self, *, source_key: SourceKey, capability: Capability) -> None:
+        self._source_key = source_key
+        self._capability = capability
+
+    async def project(self, selection: Selection) -> Manifold:
+        raise NotImplementedError("FakeProvider has no project face")
+
+    @property
+    def capability(self) -> Capability:
+        return self._capability
+
+    @property
+    def source_key(self) -> SourceKey:
+        return self._source_key
+
+
+class CountableFakeProvider(FakeProvider):
+    """Countable fake — lattice resolution prefers `provider.domain`."""
+
+    def __init__(
+        self,
+        *,
+        source_key: SourceKey,
+        capability: Capability,
+        domain: EnumerableDomain,
+    ) -> None:
+        super().__init__(source_key=source_key, capability=capability)
+        self._domain = domain
+
+    @property
+    def domain(self) -> EnumerableDomain:
+        return self._domain
+
+
+class RecordingStoreFactory(StoreFactory):
+    """Records each `create` call; delegates allocation to `StoreFactory`."""
+
+    def __init__(self) -> None:
+        self.calls: list[EnumerableDomain | None] = []
+
+    def create(self, lattice: EnumerableDomain | None) -> Store:
+        self.calls.append(lattice)
+        return super().create(lattice)
+
+
+def fake_catalog(
+    *,
+    impl_id: str = "fake",
+    provider_id: str = "fake",
+    offerings: Mapping[str, OfferingSpec] | None = None,
+    countable: bool = False,
+    secret: SecretSlot | None = None,
+    built: list[tuple[OfferingSpec, Mapping[str, object], str | None]] | None = None,
+) -> ProviderCatalog:
+    """One-impl catalogue whose `build` yields a fake serving air temperature."""
+
+    record = built if built is not None else []
+    specs = offerings or {
+        "default": OfferingSpec(
+            name="default",
+            parameters=frozenset({AIR_TEMPERATURE}),
+            default_lattice=None if countable else sample_lattice(),
+        )
+    }
+
+    def build(
+        spec: OfferingSpec,
+        settings: Mapping[str, object],
+        secret_value: str | None,
+        clock: Clock,
+        parameters: ParameterTable,
+    ) -> Provider:
+        record.append((spec, settings, secret_value))
+        key = SourceKey(provider=provider_id, dataset=spec.name)
+        capability = air_temperature_capability(clock, parameters)
+        if countable:
+            return CountableFakeProvider(
+                source_key=key, capability=capability, domain=sample_lattice(count=2)
+            )
+        return FakeProvider(source_key=key, capability=capability)
+
+    return {
+        impl_id: ProviderManifest(
+            impl_id=impl_id,
+            provider_id=provider_id,
+            offerings=specs,
+            secret=secret,
+            build=build,
+        )
+    }
+
+
+def core_parameters() -> StaticParameterTable:
+    return StaticParameterTable.core()

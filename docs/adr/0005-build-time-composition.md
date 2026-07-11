@@ -102,11 +102,15 @@ Profile-root lattice is separate (`ProfileConfig` / `ProfileDef.root_store`) —
 - **`ProfileDef` holds two registries + profile knobs.** `SourceRegistry` + `CalculatorRegistry` +
   root-store + arbiter. Both sides are build products; neither side still carries raw catalogue tickets.
   The composition root assembles `ProfileDef`; the binders do not.
-- **Weaver owns graph construction only.** `weave(ProfileDef)` constructs Calculators and scoped
-  Arbiters from the calculator registry, allocates source and profile-root Stores, and returns the
-  served root. It does not hold a catalogue or resolve `fn_id`. Runtime nodes hold fixed children and
-  perform no catalogue lookup. Calculator topology and memoization remain defined by
-  [ADR-0004](./0004-producer-resolution-and-capability.md).
+- **Weaver owns graph construction only.** `Weaver(stores: StoreFactory).weave(ProfileDef)`
+  allocates source and profile-root Stores via `stores.create(lattice | None)`, builds the Source map
+  (`SourceKey → Reservoir(store, Provider)`), and constructs
+  `Arbiter(sources, SourceRegistry, ArbiterPolicy)` under the best-view `Reservoir`. It does not hold
+  a catalogue, resolve `fn_id`, or interpret `priority` — ranking is the Arbiter's reconciler
+  ([ADR-0004](./0004-producer-resolution-and-capability.md)). Calculator construction / scoped Arbiters
+  land with issue 002b. Runtime nodes hold fixed children and perform no catalogue lookup.
+  **`CompositionError`** is the build-time failure category (binders + unsupported Arbiter policy);
+  it is distinct from the request-path taxonomy in `errors.py`.
 - **Catalogue is an architectural role, not a directory rule.** The `parameters` leaf holds only
   parameter vocabulary (identity types + `ParameterId` constants) below `manifold/`. Every injected
   catalogue — `ParameterTable`, `ProviderCatalog`, `CalculatorCatalog` — lives in `nodes/catalog/`
@@ -126,6 +130,13 @@ Profile-root lattice is separate (`ProfileConfig` / `ProfileDef.root_store`) —
 
 ## Rejected alternatives
 
+- **Stores arriving live in the registries / `ProfileDef`.** Symmetry with the live `Provider` on
+  `RegisteredSource` is superficial: a Provider is a stateless *input*, a `Store` is a stateful *graph
+  position*. Live stores would make `ProfileDef` single-use (weave-twice would share retention state),
+  and a stored Calculator's store can only be weave-allocated (the node it wraps is built inside
+  `weave`), which would split allocation into two models. The Weaver allocates every store via an
+  injected `StoreFactory` (`create(lattice) → Store`; today returns `StubStore`); the Weaver
+  owns **where** stores exist, never **what** a store is.
 - **`ProfileDef` carrying `CalculatorSpec`s beside a live `SourceRegistry`.** Mixes tickets with
   build products; calculator catalogue resolution then hides inside Weaver.
 - **`CalculatorRegistry` as live Calculators.** Calculator construction needs the candidate index and

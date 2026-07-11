@@ -13,7 +13,7 @@ from datetime import timedelta
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V, ParameterId
+from .parameters import ParameterId
 
 
 @dataclass(frozen=True)
@@ -69,8 +69,12 @@ class ProfileConfig:
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="METEOSCAPE_", env_file=".env", extra="ignore")
 
-    open_meteo_enabled: bool = True
-    """Include the Open-Meteo producer. Keyless; off disables the primary source."""
+    open_meteo_enabled: bool = False
+    """Include the Open-Meteo producer. Keyless; off disables the primary source.
+
+    Defaults False until Phase C registers the Open-Meteo manifest (enabled-but-unregistered is a
+    startup error under strict binders).
+    """
 
     twc_api_key: str | None = None
     """The Weather Company key (optional). Absent => serve on Open-Meteo alone."""
@@ -101,12 +105,8 @@ class Settings(BaseSettings):
         return tuple(defs)
 
     def calculators(self) -> tuple[CalculatorSpec, ...]:
-        """v1 derived wind views over canonical u/v."""
-        uv = frozenset({WIND_U, WIND_V})
-        return (
-            CalculatorSpec(output=WIND_SPEED, inputs=uv, fn_id="wind_speed"),
-            CalculatorSpec(output=WIND_DIRECTION, inputs=uv, fn_id="wind_direction"),
-        )
+        """Derived-parameter recipes — empty until issue 002b can bind them."""
+        return ()
 
     def profile(self) -> ProfileConfig:
         """v1 single best-view profile projected from env scalars."""

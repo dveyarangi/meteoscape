@@ -16,7 +16,7 @@ agent-friendly JSON.
 
 Stand up only the minimal version of every module needed to make this path real: the Coverage model
 (`Timeline` / `ParameterData` / `ProvenanceField`), `Domain` / `Selection`, the `Reservoir` (the Source
-role `Reservoir(store, Provider)`, wired over a **pass-through `Store` test double** — no retention yet),
+role `Reservoir(store, Provider)`, wired over a **stub `Store`** — no retention yet),
 `Arbiter`, the Open-Meteo `Provider`, a minimal `SourceBinder.build` → `SourceRegistry` +
 `Weaver.weave(ProfileDef)` / thin `server.py`, and the MCP adapter. On-grid /
 identity homogenization only; no fallback, no caching, one parameter.
@@ -36,19 +36,12 @@ are), not behaviourally complete. Proving the seam assembles (Phase A) before co
 and the runtime value-type behaviour (Phases B–C) de-risks the shape while a fix is still cheap.
 
 **Phase A — weave the graph** (build path; a fix here is an afternoon, later it ripples). Source half
-only — `CalculatorBinder` / Calculator wiring has nothing to wire until 002b:
-
-1. A **fake `Provider`** leaf (canned `Timeline`, declared `FootprintCapability` + `CadenceDef`) and a
-   **pass-through `Store` double** (`project` forwards to child, `assimilate` a no-op) — the fixtures
-   weaving needs, no HTTP.
-2. `SourceBinder.build(defs, secrets, clock, parameters)` → `SourceRegistry` for a single `OfferingDef`:
-   instantiate the producer, derive its `SourceKey`, resolve its `source_lattice`.
-3. `Weaver.weave(ProfileDef)` → the `Reservoir(store, Arbiter)` → single-candidate `Arbiter` → `Source`
-   (`Reservoir(store, Provider)`) graph; allocate the Stores.
-4. `server.py` composition wiring (catalogues + `Settings` → `ProfileConfig` → `SourceBinder` →
-   `ProfileDef` → `weave` → Gateway) — no construction logic of its own.
-5. Tests: assert the **woven graph shape** (node types, child wiring, allocated Stores) — construction
-   only, nothing projected. The existing smoke test (server starts, tool registered) still passes.
+only — the Calculator graph has nothing to wire until 002b (`CalculatorBinder.build` itself lands now,
+empty). **Planned in detail — decisions + TDD cycle list — in
+[session 0007](../../docs/sessions/0007-20260711-phase-a-weave-plan.md)**; headline decisions:
+`StoreFactory`-injected `Weaver` + interim `StubStore`, fake provider as test fixture only,
+strict binders (`CompositionError`) with degrade owned by `Settings`, `compose(profile, catalog, …)`
+in `server.py`, empty weave legal, `open_meteo_enabled=False` until Phase C.
 
 **Phase B — make the value types behave** (runtime leaves; test-first). Independent of Phase A, but
 needed before the request path can project:

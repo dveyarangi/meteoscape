@@ -108,35 +108,37 @@ same shape. The abstraction these are shapes of is the
   into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); when it lands it only
   *grows* a producer's closure — purely additive. Match is **boolean**; ranking stays static priority.
 
-- **Static / dynamic split.** The **Weaver** indexes producers by key `(quantity, statistic)` to wire
-  each parameter's candidate set (build-time). The **Arbiter** applies range-containment + extent
-  reachability per request to filter that set, then walks it in **priority** order. A candidate is a
-  **configured producer** identified by a **`SourceKey`** (`provider` + `dataset`; → [glossary:
-  SourceKey](../glossary.md)) — **not** a bare provider — so priority discriminates *within* a provider
-  (`best_match ≻ gfs_seamless`). An **offering** (a distinct resolution / cadence *product*) is a distinct
-  `SourceKey` via its `dataset` tag — the tag **discriminates identity opaquely**; the offering's native
-  geometry is **not** in the key and **not** a second provenance identifier — ranking reads the footprint
-  Domain's per-axis **`step`** via `Domain.match`
+- **Static / dynamic split.** The **Weaver** allocates Stores and builds the Source map
+  (`SourceKey → Reservoir(store, Provider)`). The **Arbiter** receives that map plus the raw
+  **`SourceRegistry`** and an **`ArbiterPolicy`**: it indexes producers by parameter, applies
+  range-containment + extent reachability per request to filter the set, and walks it under its
+  **reconciler**. A candidate is a **configured producer** identified by a **`SourceKey`**
+  (`provider` + `dataset`; → [glossary: SourceKey](../glossary.md)) — **not** a bare provider — so
+  priority discriminates *within* a provider (`best_match ≻ gfs_seamless`). An **offering** (a distinct
+  resolution / cadence *product*) is a distinct `SourceKey` via its `dataset` tag — the tag
+  **discriminates identity opaquely**; the offering's native geometry is **not** in the key and **not**
+  a second provenance identifier — ranking reads the footprint Domain's per-axis **`step`** via
+  `Domain.match`
   (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
   The two selection tiers differ by **timing and precedence**: **quality / model** is **static
-  `priority`** (weave-time, baked into the ordered candidate list) and **always wins across bands**;
-  **resolution** is **dynamic `Capability.score` → `Domain.match`** (project-time), firing only as a
-  **tie-break among equal-`priority`** peers (contiguous band in the baked list: admit via boolean
-  `serves`, then try peers in **`score` order** — `project` the best, on runtime fault try the next
-  admitted peer in the band, leave the band only when none remain). A worse step-fit at higher priority
-  still beats a perfect fit at lower priority — cross-priority geometric override is a later scorer
-  policy behind [#7](../concerns.md#7-quality-scoring), not the default. **`score` defaults:** a leaf
-  without a native `step` (or a request with no constrained axes) returns a **constant** — peers tie and
-  wired order wins; composites (`UnionCapability`, `DerivedCapability`) expose the same constant — the
-  Arbiter scores **leaf** candidates, not the union, and a Calculator is not ranked on geometry (its
-  inputs were already selected). Distinguish an offering (a
-  distinct published **origin**, its own `SourceKey`) from **coarsening within** one product (same
-  `SourceKey`, served by read-back homogenization, [#5](../concerns.md#5-read-time-homogenization-fidelity) /
-  [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)) — the former is `match`, the
-  latter is resampling. This is the **same mechanism** as separate observation / forecast sources (folded
-  later by a `valid_time` reconciler). v1 is one offering per provider (Open-Meteo defaults to
-  `best_match`); the `OfferingDef` config surface and footprint-axis `step`s are the deferred build recipe
-  ([architecture](../architecture.md#config-binders-weaver) /
+  `priority`** (on `RegisteredSource` in the registry; the **`priority` reconciler** reads it and
+  always wins across bands); **resolution** is **dynamic `Capability.score` → `Domain.match`**
+  (project-time), firing only as a **tie-break among equal-`priority`** peers (contiguous band:
+  admit via boolean `serves`, then try peers in **`score` order** — `project` the best, on runtime
+  fault try the next admitted peer in the band, leave the band only when none remain). A worse
+  step-fit at higher priority still beats a perfect fit at lower priority — cross-priority geometric
+  override is a later scorer policy behind [#7](../concerns.md#7-quality-scoring), not the default.
+  **`score` defaults:** a leaf without a native `step` (or a request with no constrained axes) returns
+  a **constant** — peers tie and bind order wins; composites (`UnionCapability`, `DerivedCapability`)
+  expose the same constant — the Arbiter scores **leaf** candidates, not the union, and a Calculator
+  is not ranked on geometry (its inputs were already selected). Distinguish an offering (a distinct
+  published **origin**, its own `SourceKey`) from **coarsening within** one product (same `SourceKey`,
+  served by read-back homogenization, [#5](../concerns.md#5-read-time-homogenization-fidelity) /
+  [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)) — the former is `match`,
+  the latter is resampling. This is the **same mechanism** as separate observation / forecast sources
+  (folded later by a `valid_time` reconciler). v1 is one offering per provider (Open-Meteo defaults to
+  `best_match`); the `OfferingDef` config surface and footprint-axis `step`s are the deferred build
+  recipe ([architecture](../architecture.md#config-binders-weaver) /
   [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 
 ## Reconcilers — the coverage fold
@@ -214,26 +216,22 @@ same shape. The abstraction these are shapes of is the
       if param in visiting: raise CycleError(param)
       visiting.add(param)
       fn, inputs, stored = registry[param]
-      input_arb = Arbiter(candidates_for(inputs))       # scoped Arbiter over this calc's inputs
+      # scoped Arbiter: subset of source_nodes + same SourceRegistry; reconciler reads priority
+      input_arb = Arbiter(source_nodes_for(inputs), source_registry, policy)
       calc      = Calculator(param, inputs, fn, input_arb)
       node      = Reservoir(store, calc) if stored else calc
       visiting.remove(param); memo[param] = node; return node
 
-  def candidates_for(params):                  # Weaver-derived from the Capability index
-      return {p: order_by_policy(p, sources_serving(p) +
-                                    ([build_calc(p)] if p in registry else []))
-              for p in params}
-
-  top       = Arbiter(candidates_for(all_servable_params))
+  top       = Arbiter(all_source_nodes, source_registry, policy)  # + calc nodes when competing
   best_view = Reservoir(store, top)
   ```
 
-- **Prioritization is policy data, baked into ordered candidate lists.** The priority policy feeds the
-  **Weaver**, whose `candidates_for` returns each parameter's candidates **already ordered** — including
-  where the Calculator ranks relative to direct providers (derived-vs-direct competition is just its
-  position in that list). A runtime Arbiter is a **dumb iterator**: walk the ordered candidates, fall
-  through on failure. The same policy applies wherever a parameter appears, so ordering is consistent
-  across the top Arbiter and every scoped Arbiter.
+- **Priority is registry data; the reconciler interprets it.** `RegisteredSource.priority` stays on
+  the `SourceRegistry`. The Weaver never ranks: it builds `SourceKey → Source` and passes the map +
+  registry + `ArbiterPolicy` into each Arbiter. The **`priority` reconciler** indexes by parameter and
+  orders by that field (bind order breaks ties); a later reconciler can ignore priority. Scoped
+  calculator Arbiters get a **subset of source nodes**, not a pre-ranked list — ranking stays
+  consistent wherever the same registry + reconciler apply.
 
 - **Retention lives in `Store`s, added by wrapping; only `Store`s hold state.** A heavy or
   shared intermediate — a Calculator's output included — is always retained by wrapping it in a

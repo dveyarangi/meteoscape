@@ -19,9 +19,12 @@ src/meteoscape/
 │   ├── core.py / capability.py / data.py / coverage.py / domain.py / cadence.py / provenance.py
 │
 ├── nodes/
-│   ├── reservoir.py / arbiter.py / calculator.py
+│   ├── store.py / reservoir.py / arbiter.py / calculator.py
+│   # store.py — Store protocol + StubStore + StoreFactory (stub create; retentive at 006)
+│   # reservoir.py — Reservoir composite only (Store + child)
+│   # arbiter.py — Source map + SourceRegistry + ArbiterPolicy (reconciler owns priority)
 │   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef
-│   ├── weaver.py              # Weaver.weave(ProfileDef) → Manifold (graph construction only)
+│   ├── weaver.py              # allocate Stores + Source map; hand registry to Arbiter
 │   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
@@ -38,6 +41,8 @@ src/meteoscape/
 # Injection (never the Settings type):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
 #   CalculatorBinder(CalculatorCatalog).build(specs) → CalculatorRegistry
-#   Weaver.weave(ProfileDef) → Manifold
-# tests/ mirrors modules; provider tests mock the HTTP transport.
+#   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
+#   Arbiter(sources, SourceRegistry, ArbiterPolicy)  # reconciler owns priority
+#   compose(profile, catalog, secrets, clock, stores) → Gateway
+# tests/ mirrors src; provider tests mock the HTTP transport.
 ```

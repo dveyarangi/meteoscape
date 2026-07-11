@@ -258,7 +258,12 @@ Weave input for one served root: `SourceRegistry` + `CalculatorRegistry` + root 
 _Avoid_: WeavePlan, freeform DAG script, ProfileConfig
 
 **Weaver**:
-The **build-time graph constructor**: `weave(ProfileDef)` wires the static DAG and allocates every `Store`; absent from the request path. Holds no catalogue. → [architecture.md](./architecture.md#config-binders-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md) · [ADR-0005](./adr/0005-build-time-composition.md).
+The **build-time graph constructor**: `Weaver(stores).weave(ProfileDef)` allocates every `Store` via
+`StoreFactory`, builds the Source map, constructs the `Arbiter` from that map + `SourceRegistry` +
+`ArbiterPolicy`, and returns the best-view root; absent from the request path. Holds no catalogue;
+does not interpret priority. → [architecture.md](./architecture.md#config-binders-weaver) ·
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md) ·
+[ADR-0005](./adr/0005-build-time-composition.md).
 _Avoid_: Builder, Compiler, Orchestrator, Planner, CalculatorBinder
 
 **Countable**:
@@ -270,7 +275,7 @@ A Manifold facet: accepts `assimilate(coverage)` — the materialization boundar
 _Avoid_: Materialized, Scratchboard, MaterializedManifold, SourceCache, ManifoldCache
 
 **Store**:
-The substrate a `Reservoir` owns — a `Writable`, `Countable` Manifold leaf holding sampled Coverages on its **declared grid `Domain`** (the canonical lattice — **provider-exact or a configured guess**) in **whole assimilable units** (`assimilate` replaces a unit atomically); the only `assimilate` target. → [architecture.md](./architecture.md#store--one-type-several-positions).
+The substrate a `Reservoir` owns — a `Writable`, `Countable` Manifold leaf holding sampled Coverages on its **declared grid `Domain`** (the canonical lattice — **provider-exact or a configured guess**) in **whole assimilable units** (`assimilate` replaces a unit atomically); the only `assimilate` target. Allocated by the Weaver through **`StoreFactory.create`**. → [architecture.md](./architecture.md#store--one-type-several-positions).
 _Avoid_: Cache (over-claims transience), Buffer, Vault, Pool
 
 **Reservoir**:
@@ -294,7 +299,12 @@ A producer's **declared reach** — the continuous region its `FootprintCapabili
 _Avoid_: coverage, grid, extent
 
 **Arbiter**:
-The one **producer-resolution composite**: per parameter it folds candidate producers with a `reconciler` (default `priority` = selection). The **top** Arbiter spans all servable parameters; each Calculator holds its **own** scoped one. → [architecture.md](./architecture.md#arbiter) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+The one **producer-resolution composite**: constructed with the woven Source map
+(`SourceKey → Manifold`), the raw **`SourceRegistry`**, and **`ArbiterPolicy`**. Per parameter it folds
+candidates with a `reconciler` (default `priority` = selection; ranking reads
+`RegisteredSource.priority` from the registry). The **top** Arbiter spans all servable parameters;
+each Calculator holds its **own** scoped one. → [architecture.md](./architecture.md#arbiter) ·
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: Selector, Dispatcher, Router, Resolver, Gateway
 
 **Reconciler**:
