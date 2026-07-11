@@ -213,6 +213,9 @@ def sub_lattice_offset(outer: RegularAxis, inner: RegularAxis) -> int | None:
 
     Requires identical `step`, and `inner.anchor` on the outer lattice within float tolerance
     (time axis uses exact `timedelta` arithmetic — no tolerance).
+
+    TODO(refactor): split spatial vs temporal `RegularAxis` types so this dispatch is not an
+    `isinstance` crawl on the hot path — see concern #23.
     """
     if outer.step != inner.step or inner.count > outer.count:
         return None
