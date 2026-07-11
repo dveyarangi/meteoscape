@@ -40,7 +40,7 @@ _CADENCE = CadenceDef(
 
 
 def sample_lattice(*, count: int = 1) -> RegularDomain:
-    """A constructible enumerable lattice (axis behaviour is Phase B)."""
+    """A constructible enumerable lattice (all axes share `count`)."""
     return RegularDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, count, False),
@@ -53,15 +53,38 @@ def sample_lattice(*, count: int = 1) -> RegularDomain:
     )
 
 
-def _footprint(clock: Clock) -> FootprintDomain:
+def point_timeline_domain(*, hours: int = 4, lon: float = 1.0, lat: float = 2.0) -> RegularDomain:
+    """Count-1 spatial + Z axes; `hours` ticks along T (the v1 point-forecast shape)."""
+    return RegularDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, lon, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, lat, 1.0, 1, False),
+            AxisName.Z: RegularAxis(AxisName.Z, 0.0, 1.0, 1, False),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), hours, False
+            ),
+        }
+    )
+
+
+def footprint_domain(
+    clock: Clock = STOPPED,
+    *,
+    cadence: CadenceDef | None = None,
+) -> FootprintDomain:
+    """A global continuous footprint with a clock-anchored rolling `valid_time`."""
     return FootprintDomain(
         axes={
             AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
             AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
             AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
-            AxisName.T: RollingAxis(AxisName.T, _CADENCE, clock),
+            AxisName.T: RollingAxis(AxisName.T, cadence or _CADENCE, clock),
         }
     )
+
+
+def _footprint(clock: Clock) -> FootprintDomain:
+    return footprint_domain(clock)
 
 
 def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> FootprintCapability:

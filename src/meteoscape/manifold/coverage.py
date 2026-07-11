@@ -1,8 +1,8 @@
 """Concrete `Coverage` realizations (the contract itself lives in `core.py`).
 
 Realizations satisfy the contract *structurally*, not by inheritance: a frozen dataclass field would
-clash with the protocol's `domain` property descriptor. v1 ships `Timeline`; `Grid` (spatial output)
-is a later slice.
+clash with the protocol's `domain` property descriptor. v1 ships `CoverageRecord` — the one
+memory-backed realization; Timeline / Grid are domain *shapes*, not classes (session 0008).
 """
 
 from __future__ import annotations
@@ -19,12 +19,13 @@ from .provenance import ProvenanceField
 
 
 @dataclass(frozen=True)
-class Timeline:
-    """The v1 `Coverage`: a dense field over a `valid_time`-axis `domain` at a fixed location.
+class CoverageRecord:
+    """The canonical memory-backed `Coverage`: inert value object over an enumerable `domain`.
 
     `capability` is the materialized `EnumerableCapability` - it carries the parameter set co-domained on
     its one enumerable grid, so the `Countable.domain` derives from `capability.domain` rather than being
-    stored twice. `ranges` are positional to `domain`.
+    stored twice. `ranges` are positional to `domain`. Implementations may vary by backing later;
+    never by domain shape.
     """
 
     capability: EnumerableCapability
@@ -36,4 +37,6 @@ class Timeline:
         return self.capability.domain
 
     async def project(self, selection: Selection) -> Manifold:
-        raise NotImplementedError
+        from .sampling import resample
+
+        return resample(self, selection)

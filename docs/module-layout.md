@@ -16,7 +16,8 @@ src/meteoscape/
 ├── parameters.py              # parameter vocabulary leaf — identity types + v1 ParameterId constants
 │
 ├── manifold/                  # algebra-knot — errors + parameters + identity
-│   ├── core.py / capability.py / data.py / coverage.py / domain.py / cadence.py / provenance.py
+│   ├── core.py / capability.py / data.py / coverage.py / domain.py / sampling.py / cadence.py / provenance.py
+│   # sampling.py — private aligned-crop engine behind Coverage.project (kernel registry at 007)
 │
 ├── nodes/
 │   ├── store.py / reservoir.py / arbiter.py / calculator.py

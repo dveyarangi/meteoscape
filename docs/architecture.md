@@ -18,7 +18,7 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 - The v1 **best view** profile — a single best-quality `Coverage` assembled over multiple providers behind one contract (one *objective*; the engine admits others).
 - The **MCP surface** as the first adapter (protocol ↔ canonical).
 - **Select + fallback** arbitration with implicit-priority quality (select, never combine). The Arbiter carries the **`reconciler` slot** from [ADR-0004](./adr/0004-producer-resolution-and-capability.md), but v1 ships **only** the default `priority` reconciler (= selection); `tile` / `consensus` / `feather` are wired-but-unbuilt extension points, so "never combine" is a v1 *configuration*, not a structural limit.
-- The **canonical Coverage model** (Timeline realization) with **per-parameter provenance** and `expiration`-based freshness.
+- The **canonical Coverage model** (`CoverageRecord` realization; Timeline / Grid are domain shapes) with **per-parameter provenance** and `expiration`-based freshness.
 - The **`Store` type** as a wired-in seam (a `Writable`, `Countable` Manifold).
 
 **Non-scope (by design, not just "later"):**
@@ -79,19 +79,17 @@ flowchart TB
   GEOM["EnumerableDomain — the enumerable case of a Domain (regular lattice or point set)"]
   SEL["Selection (the request)<br/>a Domain + parameters (the Domain's shape is region | snapped | exact)"]
   COV["Coverage — a field sampled onto an enumerable Domain<br/>one ParameterData per parameter + a provenance plane (parameter × point)"]
-  TL["Timeline<br/>time-axis domain; PerParameter provenance (each parameter single-origin)"]
-  GRID["Grid<br/>spatial-axis domain (future)"]
+  TL["CoverageRecord<br/>memory-backed realization; Timeline / Grid = domain shapes"]
 
   DOMAIN -->|enumerable case| GEOM
   DOMAIN -->|+ parameters| SEL
   SEL -->|"project (field) → sample"| COV
   COV -->|realized as| TL
-  COV -->|realized as| GRID
 ```
 
 - **Axes & parameters** — **4 axes: 3 spatial + `valid_time`**, all **field axes**; the Z axis carries one axis-level **`vertical_reference`**. **Parameter**, **provenance**, and **`issue_time`** are *not* axes: a parameter is a **functional** `(quantity, statistic)` identifying a **`ParameterData`** ([ADR-0002](./adr/0002-data-model.md)); provenance is a **Coverage plane over parameter × point**, and **`issue_time` (run identity) is a provenance stamp** on the atomic `Origin` → [ADR-0003](./adr/0003-provenance-and-origin.md).
 - **Domain** — a **coordinate set** over the 4 axes, **continuous** or **enumerable** (the indexable **EnumerableDomain**); a **Capability** advertises one, and the Arbiter's filter is Domain-containment. Interface with swappable representations; the `Domain`/axis is **pure geometry** (resamplability is the parameter's `scale`, not an axis flag) → [ADR-0002](./adr/0002-data-model.md).
-- **Coverage** — a **field sampled onto an EnumerableDomain** (`Coverage <: Manifold`): one **`ParameterData` per parameter**, a self-describing **`capability`** descriptor block, plus a **provenance plane** ("a Selection filled with data"). Parameters that cannot share its Domain (a temperature profile beside surface precipitation) are **separate Coverages**, not one padded with nodata. The shape-agnostic exchange unit, realized as a **Timeline** (or a **Grid**, future). Slice layout, descriptor block, `present` mask, axis `Cell` `bounds`, and the canonical-mono-unit invariant → [ADR-0002](./adr/0002-data-model.md).
+- **Coverage** — a **field sampled onto an EnumerableDomain** (`Coverage <: Manifold`): one **`ParameterData` per parameter**, a self-describing **`capability`** descriptor block, plus a **provenance plane** ("a Selection filled with data"). Parameters that cannot share its Domain (a temperature profile beside surface precipitation) are **separate Coverages**, not one padded with nodata. The shape-agnostic exchange unit, realized as a **`CoverageRecord`** (Timeline / Grid are domain *shapes*, not classes). Slice layout, descriptor block, `present` mask, axis `Cell` `bounds`, and the canonical-mono-unit invariant → [ADR-0002](./adr/0002-data-model.md).
 - **Selection** — the **one request type**: `Domain + parameters`; the Domain's **shape** (Continuous / Snapped / Enumerable) **is** the mode and *is* the output lattice when enumerable → [ADR-0002](./adr/0002-data-model.md). A surface adapter builds it at the edge.
 
 > The best view always serves the **latest run**; cross-run (archives / multi-run combination) is a deferred seam → [Deferred decisions](#deferred-decisions).
@@ -281,7 +279,7 @@ Possible later features the algebra already absorbs **without a contract change*
 - **Synthetic Manifolds (Calculators)** — derived parameters as selectable producers; topology, scoped Arbiters, and Weaver memoization → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), composition → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 - **Coverage `reconciler`s** — `tile` / `consensus` / `feather` beyond the default `priority`; radar / regional mosaicking and **obs + forecast along `valid_time`** are this one shape → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **Observation + forecast** — obs and forecast as **separate** `Reservoir`s, folded by the Arbiter's `valid_time` reconciler.
-- **Grid realization** — spatial-axis Coverage alongside the Timeline.
+- **Grid domain shape** — spatial-axis Coverage alongside the Timeline shape.
 - **Background plane** — scheduler + enrichers feeding synthetic Sources.
 - **Per-point provenance** — geometry-aligned, additive.
 - **Run-collection / archive layer** — a collection of **run-stamped** Coverages keyed by categorical keys (`issue_time`, ensemble, scenario); the home of cross-run combination and forecast-convergence views → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
@@ -303,9 +301,9 @@ Consciously postponed; only a seam is defined for now:
 
 Open concerns live, **priority-ordered**, in [`docs/concerns.md`](./concerns.md); this is the index.
 
-- **[5. Read-time homogenization fidelity](./concerns.md#5-read-time-homogenization-fidelity)** · **[15. Coarser-grid resampling and aggregation semantics](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)** · **[6. Reconciler catalogue](./concerns.md#6-reconciler-catalogue)** · **[13. Candidate admission: containment vs intersection](./concerns.md#13-candidate-admission-containment-vs-intersection)** · **[9. Cross-run combination](./concerns.md#9-cross-run-combination)**.
+- **[5. Read-time homogenization fidelity](./concerns.md#5-read-time-homogenization-fidelity)** · **[21. `serves` reach vs `project` crop-ability](./concerns.md#21-serves-reach-vs-project-crop-ability)** · **[15. Coarser-grid resampling and aggregation semantics](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)** · **[6. Reconciler catalogue](./concerns.md#6-reconciler-catalogue)** · **[13. Candidate admission: containment vs intersection](./concerns.md#13-candidate-admission-containment-vs-intersection)** · **[9. Cross-run combination](./concerns.md#9-cross-run-combination)**.
 - **[7. Quality scoring](./concerns.md#7-quality-scoring)** · **[8. Arbiter to Broker pressure](./concerns.md#8-arbiter-to-broker-pressure)** · **[10. Parameter conventions](./concerns.md#10-parameter-conventions)** · **[14. Resolution trace and observability](./concerns.md#14-resolution-trace-and-observability)**.
-- **[18. Clock-anchored footprint fidelity](./concerns.md#18-clock-anchored-footprint-fidelity)** — anchoring mechanism settled ([ADR-0003](./adr/0003-provenance-and-origin.md)); per-provider numbers open. · **[11. Incremental synthetic recompute](./concerns.md#11-incremental-synthetic-recompute)** · **[12. Curvilinear domains](./concerns.md#12-curvilinear-domains)**.
+- **[18. Clock-anchored footprint fidelity](./concerns.md#18-clock-anchored-footprint-fidelity)** — anchoring mechanism settled ([ADR-0003](./adr/0003-provenance-and-origin.md)); per-provider numbers open. · **[11. Incremental synthetic recompute](./concerns.md#11-incremental-synthetic-recompute)** · **[12. Curvilinear domains](./concerns.md#12-curvilinear-domains)** · **[22. Lattice helpers vs domain/sampling split](./concerns.md#22-lattice-helpers-vs-domain--sampling-module-split)**.
 - **[20. Provider multi-resolution offerings](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)**.
 
 ## ADR index
