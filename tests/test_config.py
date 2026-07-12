@@ -6,25 +6,27 @@ from meteoscape.config import (
     ArbiterPolicy,
     OfferingDef,
     ProfileConfig,
-    RootStoreSpec,
     Settings,
+    StoreSpec,
 )
 
+_OM = OfferingDef(impl="open-meteo", name="best_match", priority=0)
 
-def test_defaults_emit_no_offerings_or_calculators() -> None:
+
+def test_defaults_emit_open_meteo_primary() -> None:
     settings = Settings()
-    assert settings.offerings() == ()
+    assert settings.offerings() == (_OM,)
     assert settings.calculators() == ()
     assert settings.secrets() == {}
 
 
-def test_open_meteo_enabled_emits_primary() -> None:
-    settings = Settings(open_meteo_enabled=True)
-    assert settings.offerings() == (OfferingDef(impl="open-meteo", name="best_match", priority=0),)
+def test_open_meteo_disabled_emits_no_offerings() -> None:
+    settings = Settings(open_meteo_enabled=False)
+    assert settings.offerings() == ()
 
 
 def test_twc_key_adds_fallback_offering() -> None:
-    settings = Settings(twc_api_key="secret")
+    settings = Settings(open_meteo_enabled=False, twc_api_key="secret")
     assert settings.offerings() == (
         OfferingDef(
             impl="twc",
@@ -37,9 +39,9 @@ def test_twc_key_adds_fallback_offering() -> None:
 
 
 def test_open_meteo_and_twc_together() -> None:
-    settings = Settings(open_meteo_enabled=True, twc_api_key="secret")
+    settings = Settings(twc_api_key="secret")
     assert settings.offerings() == (
-        OfferingDef(impl="open-meteo", name="best_match", priority=0),
+        _OM,
         OfferingDef(
             impl="twc",
             name="default",
@@ -49,13 +51,13 @@ def test_open_meteo_and_twc_together() -> None:
     )
 
 
-def test_profile_projects_root_store_and_empty_calculators() -> None:
+def test_profile_projects_root_store_and_open_meteo() -> None:
     settings = Settings()
     profile = settings.profile()
     assert profile == ProfileConfig(
-        offerings=(),
+        offerings=(_OM,),
         calculators=(),
-        root_store=RootStoreSpec(
+        root_store=StoreSpec(
             spatial_step=0.0001,
             retention_interval=timedelta(days=14),
         ),

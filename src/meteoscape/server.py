@@ -17,13 +17,15 @@ from .nodes.catalog.calculators import CalculatorCatalog
 from .nodes.catalog.paramtable import StaticParameterTable
 from .nodes.catalog.providers import ProviderCatalog
 from .nodes.composition import CalculatorBinder, ProfileDef, SourceBinder
+from .nodes.providers.open_meteo import MANIFEST as OPEN_METEO_MANIFEST
 from .nodes.store import StoreFactory
 from .nodes.weaver import Weaver
 from .observability import init_observability
 
 # Vendor modules each export a MANIFEST; the root assembles — data, not logic.
-# Empty until Phase C registers Open-Meteo.
-PROVIDER_CATALOG: ProviderCatalog = {}
+PROVIDER_CATALOG: ProviderCatalog = {
+    OPEN_METEO_MANIFEST.impl_id: OPEN_METEO_MANIFEST,
+}
 CALCULATOR_CATALOG: CalculatorCatalog = {}
 
 
@@ -52,12 +54,13 @@ def compose(
 def main() -> None:
     init_observability()
     settings = Settings()
-    compose(
+    clock = Metronome()
+    gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
         settings.secrets(),
-        Metronome(),
+        clock,
         StoreFactory(),
     )
-    app = build_mcp_app()
+    app = build_mcp_app(gateway, clock, settings.default_horizon)
     app.run()

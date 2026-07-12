@@ -7,7 +7,7 @@ from datetime import timedelta
 import pytest
 
 from fakes import STOPPED, RecordingStoreFactory, core_parameters, fake_catalog
-from meteoscape.config import ArbiterPolicy, OfferingDef, RootStoreSpec
+from meteoscape.config import ArbiterPolicy, OfferingDef, StoreSpec
 from meteoscape.nodes.arbiter import Arbiter
 from meteoscape.nodes.catalog.calculators import CalculatorManifest
 from meteoscape.nodes.composition import (
@@ -22,8 +22,8 @@ from meteoscape.nodes.weaver import Weaver
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_SPEED, WIND_U, WIND_V
 
 
-def _root_store() -> RootStoreSpec:
-    return RootStoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14))
+def _root_store() -> StoreSpec:
+    return StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14))
 
 
 def _profile(
@@ -53,11 +53,25 @@ def test_single_source_weaves_capability_and_stores() -> None:
     assert isinstance(root, Reservoir)
     assert AIR_TEMPERATURE in root.capability.parameters
     assert len(stores.calls) == 2
-    source_lattice = next(iter(profile.sources.sources.values())).source_lattice
-    assert stores.calls[0] is source_lattice
-    assert stores.calls[1] is None
+    source_store = next(iter(profile.sources.sources.values())).store
+    assert stores.calls[0] is source_store
+    assert stores.calls[1] is profile.root_store
     assert isinstance(root.source, Arbiter)
     assert root.source.registry is profile.sources
+    assert len(root.domain) == 1  # StubStore dummy: four count-1 axes
+
+
+def test_countable_source_passes_provider_domain() -> None:
+    stores = RecordingStoreFactory()
+    profile = _profile(
+        offerings=[OfferingDef(impl="fake", name="default", priority=0)],
+        catalog=fake_catalog(countable=True),
+    )
+    Weaver(stores).weave(profile)
+    entry = next(iter(profile.sources.sources.values()))
+    assert entry.store is None
+    assert stores.calls[0] is entry.provider.domain
+    assert stores.calls[1] is profile.root_store
 
 
 def test_empty_source_registry_weaves_empty_envelope() -> None:

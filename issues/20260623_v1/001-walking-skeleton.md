@@ -76,16 +76,16 @@ the response.
 
 ## Acceptance criteria
 
-- [ ] `forecast_hourly(lat, lon)` over a local stdio MCP server returns an hourly `Timeline` with a single
+- [x] `forecast_hourly(lat, lon)` over a local stdio MCP server returns an hourly `Timeline` with a single
       `ParameterData` (air temperature).
-- [ ] The value is in its canonical unit (Normalizer reconciles the vendor unit).
-- [ ] Each `ParameterData` carries per-parameter provenance with an `Origin` and `expiration`
+- [x] The value is in its canonical unit (Normalizer reconciles the vendor unit).
+- [x] Each `ParameterData` carries per-parameter provenance with an `Origin` and `expiration`
       (run-anchored `A + Δ + L` from the provider's `CadenceDef`,
       [ADR-0003](../../docs/adr/0003-provenance-and-origin.md)).
-- [ ] The full spine is wired by `Weaver.weave(ProfileDef)` over a `SourceBinder`-built
+- [x] The full spine is wired by `Weaver.weave(ProfileDef)` over a `SourceBinder`-built
       `SourceRegistry` (best-view `Reservoir` → `Arbiter` → `Source` → Open-Meteo `Provider`);
       `server.py` holds no construction logic of its own.
-- [ ] One end-to-end integration test drives the tool with **mocked HTTP transport** (mock the
+- [x] One end-to-end integration test drives the tool with **mocked HTTP transport** (mock the
       transport, not the provider); behavioural tests cover the deep modules with real logic (the
       `Normalizer`; the `Domain`'s point/hourly handling) through their own public interface. Thin
       pass-throughs (`Gateway`, `Source`, `Weaver` wiring) are exercised via the end-to-end test, not

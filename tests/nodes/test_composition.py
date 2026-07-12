@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
 
-from fakes import STOPPED, core_parameters, fake_catalog
-from meteoscape.config import CalculatorSpec, OfferingDef
+from fakes import SAMPLE_STORE, STOPPED, core_parameters, fake_catalog
+from meteoscape.config import CalculatorSpec, OfferingDef, StoreSpec
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.core import Countable
 from meteoscape.nodes.catalog.calculators import CalculatorManifest
@@ -29,10 +31,10 @@ def test_one_offering_binds_to_registry() -> None:
     entry = registry.sources[key]
     assert entry.priority == 0
     assert entry.provider.source_key == key
-    assert entry.source_lattice is catalog["fake"].offerings["default"].default_lattice
+    assert entry.store is SAMPLE_STORE
 
 
-def test_lattice_from_countable_provider() -> None:
+def test_countable_provider_drops_store() -> None:
     catalog = fake_catalog(countable=True)
     registry = SourceBinder(catalog).build(
         [OfferingDef(impl="fake", name="default", priority=0)],
@@ -42,27 +44,39 @@ def test_lattice_from_countable_provider() -> None:
     )
     entry = next(iter(registry.sources.values()))
     assert isinstance(entry.provider, Countable)
-    assert entry.source_lattice is entry.provider.domain
+    assert entry.store is None
 
 
-def test_lattice_missing_raises() -> None:
+def test_missing_store_raises() -> None:
     catalog = fake_catalog(
         offerings={
             "default": OfferingSpec(
                 name="default",
                 parameters=frozenset({AIR_TEMPERATURE}),
-                default_lattice=None,
+                store=None,
             )
         },
         countable=False,
     )
-    with pytest.raises(CompositionError, match="lattice"):
+    with pytest.raises(CompositionError, match="store"):
         SourceBinder(catalog).build(
             [OfferingDef(impl="fake", name="default", priority=0)],
             secrets={},
             clock=STOPPED,
             parameters=core_parameters(),
         )
+
+
+def test_offering_def_store_overrides_catalogue() -> None:
+    override = StoreSpec(spatial_step=0.5, retention_interval=timedelta(days=7))
+    registry = SourceBinder(fake_catalog()).build(
+        [OfferingDef(impl="fake", name="default", priority=0, store=override)],
+        secrets={},
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    entry = next(iter(registry.sources.values()))
+    assert entry.store is override
 
 
 def test_unknown_impl_raises() -> None:

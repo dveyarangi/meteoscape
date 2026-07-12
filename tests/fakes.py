@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 
 from meteoscape.clock import Clock, StoppedClock
+from meteoscape.config import StoreSpec
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 from meteoscape.manifold.capability import Capability, FootprintCapability
@@ -37,6 +38,8 @@ _CADENCE = CadenceDef(
     publication_latency=timedelta(0),
     max_lead=timedelta(days=7),
 )
+
+SAMPLE_STORE = StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14))
 
 
 def sample_lattice(*, count: int = 1) -> RegularDomain:
@@ -133,11 +136,11 @@ class RecordingStoreFactory(StoreFactory):
     """Records each `create` call; delegates allocation to `StoreFactory`."""
 
     def __init__(self) -> None:
-        self.calls: list[EnumerableDomain | None] = []
+        self.calls: list[EnumerableDomain | StoreSpec | None] = []
 
-    def create(self, lattice: EnumerableDomain | None) -> Store:
-        self.calls.append(lattice)
-        return super().create(lattice)
+    def create(self, grid: EnumerableDomain | StoreSpec | None) -> Store:
+        self.calls.append(grid)
+        return super().create(grid)
 
 
 def fake_catalog(
@@ -156,7 +159,7 @@ def fake_catalog(
         "default": OfferingSpec(
             name="default",
             parameters=frozenset({AIR_TEMPERATURE}),
-            default_lattice=None if countable else sample_lattice(),
+            store=None if countable else SAMPLE_STORE,
         )
     }
 

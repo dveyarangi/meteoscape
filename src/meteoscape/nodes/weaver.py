@@ -8,11 +8,21 @@ ADR-0005 / ADR-0004.
 
 from __future__ import annotations
 
-from ..manifold.core import Manifold
+from ..config import StoreSpec
+from ..manifold.core import Countable, Manifold
+from ..manifold.domain import EnumerableDomain
 from .arbiter import Arbiter
-from .composition import ProfileDef
+from .composition import ProfileDef, RegisteredSource
 from .reservoir import Reservoir
 from .store import StoreFactory
+
+
+def _source_grid(registered: RegisteredSource) -> EnumerableDomain | StoreSpec:
+    """Provider-exact domain when Countable; otherwise the Source `StoreSpec` knobs."""
+    if registered.store is None:
+        assert isinstance(registered.provider, Countable)
+        return registered.provider.domain
+    return registered.store
 
 
 class Weaver:
@@ -25,10 +35,10 @@ class Weaver:
             raise NotImplementedError("Calculator graph weave lands with issue 002b")
 
         sources = {
-            key: Reservoir(self.stores.create(registered.source_lattice), registered.provider)
+            key: Reservoir(self.stores.create(_source_grid(registered)), registered.provider)
             for key, registered in profile.sources.sources.items()
         }
         return Reservoir(
-            self.stores.create(None),
+            self.stores.create(profile.root_store),
             Arbiter(sources, profile.sources, profile.arbiter),
         )

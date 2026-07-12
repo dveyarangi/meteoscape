@@ -12,6 +12,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 
 from ..config import ArbiterPolicy
+from ..errors import CapabilityMismatch
 from ..identity import SourceKey
 from ..manifold.capability import Capability, UnionCapability
 from ..manifold.core import Manifold, Selection
@@ -37,7 +38,30 @@ class Arbiter:
         self.candidates = _priority_candidates(sources, registry)
 
     async def project(self, selection: Selection) -> Manifold:
-        raise NotImplementedError
+        """Admit per parameter, then project once through the single winning candidate.
+
+        Unserved parameters are omitted; an empty admitted set → `CapabilityMismatch`. Different
+        winning candidates → `NotImplementedError` until issue 005. `RuntimeFailure` propagates.
+        """
+        winners: dict[ParameterId, Manifold] = {}
+        for parameter in selection.parameters:
+            for candidate in self.candidates.get(parameter, ()):
+                if candidate.capability.serves(parameter, selection.domain):
+                    winners[parameter] = candidate
+                    break
+
+        if not winners:
+            raise CapabilityMismatch("no producer admits any requested parameter")
+
+        winner_nodes = list(winners.values())
+        first = winner_nodes[0]
+        if any(node is not first for node in winner_nodes[1:]):
+            raise NotImplementedError(
+                "per-parameter Coverage assembly lands at issue 005"
+            )
+
+        admitted = frozenset(winners)
+        return await first.project(selection.with_params(admitted))
 
     @property
     def capability(self) -> Capability:

@@ -1,7 +1,7 @@
 """Provider plugin catalogue: offerings, secrets, and the build/expand face.
 
 `ProviderCatalog` is `impl_id → ProviderManifest`. An `OfferingSpec` is a product row (exact
-parameter IDs + optional default lattice); `OfferingDef` only enables it. See ADR-0005.
+parameter IDs + optional `StoreSpec`); `OfferingDef` only enables it. See ADR-0005.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from ...clock import Clock
-from ...manifold.domain import EnumerableDomain
+from ...config import StoreSpec
 from ...parameters import ParameterId
 from ..providers.base import Provider
 from .paramtable import ParameterTable
@@ -27,11 +27,11 @@ class SecretSlot:
 
 @dataclass(frozen=True)
 class OfferingSpec:
-    """Catalogue product row — name → `SourceKey.dataset`; exact params; optional non-Countable lattice."""
+    """Catalogue product row — name → `SourceKey.dataset`; exact params; optional Source `StoreSpec`."""
 
     name: str
     parameters: frozenset[ParameterId]
-    default_lattice: EnumerableDomain | None = None
+    store: StoreSpec | None = None
 
 
 @dataclass(frozen=True)

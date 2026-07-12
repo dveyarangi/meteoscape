@@ -7,11 +7,25 @@ store is. See architecture.md ("Store") and ADR-0005.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Protocol, runtime_checkable
 
+from ..config import StoreSpec
 from ..manifold.capability import Capability
 from ..manifold.core import Countable, Coverage, Manifold, Selection, Writable
-from ..manifold.domain import EnumerableDomain
+from ..manifold.domain import AxisName, EnumerableDomain, RegularAxis, RegularDomain
+
+# Structural Countable placeholder only — not a fidelity claim. Replaced at issue 006.
+_STUB_DOMAIN = RegularDomain(
+    axes={
+        AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
+        AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
+        AxisName.Z: RegularAxis(AxisName.Z, 0.0, 1.0, 1, False),
+        AxisName.T: RegularAxis(
+            AxisName.T, datetime(1970, 1, 1, tzinfo=UTC), timedelta(hours=1), 1, False
+        ),
+    }
+)
 
 
 @runtime_checkable
@@ -26,10 +40,11 @@ class Store(Manifold, Countable, Writable, Protocol):
 
 
 class StubStore:
-    """Weave-time placeholder — no retention, no lattice; real store lands at issue 006.
+    """Weave-time placeholder — no retention; real store lands at issue 006.
 
-    Exists so `Reservoir` can be constructed. `assimilate` is a no-op; `project` / `capability` /
-    `domain` raise until a retentive store replaces this.
+    Exists so `Reservoir` can be constructed. `assimilate` is a no-op; `project` / `capability`
+    raise until a retentive store replaces this. `domain` is a harmless dummy RegularDomain
+    (structural Countable only).
     """
 
     async def project(self, selection: Selection) -> Manifold:
@@ -41,14 +56,14 @@ class StubStore:
 
     @property
     def domain(self) -> EnumerableDomain:
-        raise NotImplementedError("StubStore declares no lattice")
+        return _STUB_DOMAIN
 
     async def assimilate(self, coverage: Coverage) -> None:
         return None
 
 
 class StoreFactory:
-    """Allocates interim `StubStore`s (ignores lattice). Retentive factory lands at issue 006."""
+    """Allocates interim `StubStore`s (ignores grid). Retentive factory lands at issue 006."""
 
-    def create(self, lattice: EnumerableDomain | None) -> Store:
+    def create(self, grid: EnumerableDomain | StoreSpec | None) -> Store:
         return StubStore()
