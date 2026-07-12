@@ -22,6 +22,11 @@ degrade path.
 See `docs/v1-requirements.md` (Config & secrets, acceptance §6), `docs/architecture.md` (Config,
 binders, Weaver; Composition root), and [ADR-0005](../../docs/adr/0005-build-time-composition.md).
 
+**Not this issue:** response-level (5xx/429) retry stays **declined-until-evidence** (session 0009 —
+once 004 lands, the right second attempt is a *different candidate*, not a re-try); quota /
+rate-limit policy stays the **deferred null Gateway seam**
+(`architecture.md` → Deferred decisions), out of v1 scope entirely.
+
 ## Acceptance criteria
 
 - [ ] One typed config object holds the enabled `OfferingDef`s, secrets, per-`SourceKey` `Arbiter`

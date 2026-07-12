@@ -25,7 +25,9 @@ anchored-regular member with **open extent** (`anchor + step`; ADR-0002), but `R
 three of `(anchor, step, count)` — the exact-extent member. Mint the declared-grid representation
 (e.g. an extent derived from the retention window, clock-anchored — the `RollingAxis` precedent), or
 narrow what `quantize` actually requires (anchor + step, not enumeration). Until then the skeleton's
-`StubStore.domain` raises `NotImplementedError` (a retention-free store declares no lattice).
+`StubStore.domain` returns a **harmless dummy `RegularDomain`** (structural `Countable` only, not a
+fidelity claim — session 0009); this issue replaces it with the real declared grid. The e2e's
+second-call **re-fetch assertion** (documenting no-retention, session 0010) flips here.
 
 ## Acceptance criteria
 
