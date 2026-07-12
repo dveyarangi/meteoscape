@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from meteoscape.manifold.domain import (
     LATTICE_TOLERANCE,
@@ -296,7 +297,7 @@ def test_enumeration_round_trip_property(nx: int, ny: int, nz: int, nt: int) -> 
 
 @given(tick=st.integers(0, 5), noise=st.floats(-2e-9, 2e-9, allow_nan=False, allow_infinity=False))
 def test_float_alignment_tolerance_property(tick: int, noise: float) -> None:
-    """Within ~half tolerance succeeds; beyond 2× fails. Boundary is float-fuzzy — leave a gap."""
+    """Within ~half tolerance succeeds; beyond 2x fails. Boundary is float-fuzzy — leave a gap."""
     outer = RegularAxis(AxisName.X, 0.0, 1.0, 8, False)
     inner = RegularAxis(AxisName.X, float(tick) + noise, 1.0, 2, False)
     offset = sub_lattice_offset(outer, inner)

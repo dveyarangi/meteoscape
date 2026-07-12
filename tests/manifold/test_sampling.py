@@ -12,7 +12,14 @@ from meteoscape.manifold.capability import EnumerableCapability
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
-from meteoscape.manifold.domain import AxisName, ContinuousAxis, FootprintDomain, Interval, RegularAxis, RegularDomain
+from meteoscape.manifold.domain import (
+    AxisName,
+    ContinuousAxis,
+    FootprintDomain,
+    Interval,
+    RegularAxis,
+    RegularDomain,
+)
 from meteoscape.manifold.provenance import AtomicOrigin, PerParameter, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_U
