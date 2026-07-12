@@ -49,7 +49,7 @@ flowchart LR
     M["ProviderManifest: offerings, secret, build / expand"]
   end
   CAT["ProviderCatalog: impl-id → Manifest"]
-  OD["OfferingDef: impl + name? + priority + secret_ref + settings"]
+  OD["OfferingDef: impl + name? + priority + secret_ref + settings + store?"]
   M --> CAT
   CAT -->|validate + dispatch| SB[SourceBinder.build]
   OD --> SB
@@ -69,19 +69,19 @@ flowchart LR
   CB -->|"RegisteredCalculator"| CR[CalculatorRegistry]
 ```
 
-### Source-store lattice binding
+### Source-store binding
 
 ```mermaid
 flowchart TD
   P[Built Provider] --> C{Provider is Countable?}
-  C -->|yes| N["source_lattice = provider.domain"]
-  C -->|no| G["source_lattice = OfferingSpec.default_lattice"]
+  C -->|yes| N["grid = provider.domain (provider-exact)"]
+  C -->|no| G["grid knobs = StoreSpec (configured guess)"]
   N --> S[RegisteredSource]
   G --> S
-  S --> W["Weaver allocates Reservoir Store on that lattice"]
+  S --> W["Weaver: StoreFactory.create(EnumerableDomain | StoreSpec | None)"]
 ```
 
-Profile-root lattice is separate (`ProfileConfig` / `ProfileDef.root_store`) — never the same singleton as Source lattices.
+Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) — a separate *instance*, never the same singleton as a Source store. `OfferingSpec.default_lattice` (a prebuilt `EnumerableDomain`) is retired; declared grids are built by the factory (issue 006).
 
 - **Catalogues are process-wide code maps.** `ParameterTable` defines canonical parameters;
   `ProviderCatalog` maps implementation ids to cohesive provider manifests; `CalculatorCatalog` maps
@@ -135,7 +135,8 @@ Profile-root lattice is separate (`ProfileConfig` / `ProfileDef.root_store`) —
   position*. Live stores would make `ProfileDef` single-use (weave-twice would share retention state),
   and a stored Calculator's store can only be weave-allocated (the node it wraps is built inside
   `weave`), which would split allocation into two models. The Weaver allocates every store via an
-  injected `StoreFactory` (`create(lattice) → Store`; today returns `StubStore`); the Weaver
+  injected `StoreFactory` (`create(EnumerableDomain | StoreSpec | None) → Store`; today returns
+  `StubStore`); the Weaver
   owns **where** stores exist, never **what** a store is.
 - **`ProfileDef` carrying `CalculatorSpec`s beside a live `SourceRegistry`.** Mixes tickets with
   build products; calculator catalogue resolution then hides inside Weaver.
@@ -152,7 +153,8 @@ Profile-root lattice is separate (`ProfileConfig` / `ProfileDef.root_store`) —
   force hollow duplicate descriptors. The leaf keeps vocabulary only; catalogues sit in `nodes/catalog/`.
 - **Let a binder own plugin-specific construction.** This makes the binder aware of every vendor and
   calculator instead of dispatching through deep plugin modules.
-- **Use one store configuration for sources and the served root.** A source lattice is
-  provider-exact or an offering default; the profile root is an operator-selected best-view lattice.
+- **Use one store configuration for sources and the served root.** Rejected as *sharing one
+  instance*; accepted as *one `StoreSpec` shape*. A source grid is provider-exact or a per-source
+  `StoreSpec` guess; the profile root is a separate `StoreSpec` instance (operator-selected).
 - **Pass operator config directly into runtime nodes.** Construction resolves config into fixed,
   typed graph objects before the request path.

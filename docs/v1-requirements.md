@@ -19,7 +19,7 @@ provider per parameter, falling back on failure, and returning one normalized, p
 
 ## User stories
 
-Two actors: the **agent** (an MCP client / AI tool calling `get_forecast`) and the **operator** (whoever
+Two actors: the **agent** (an MCP client / AI tool calling `forecast_hourly`) and the **operator** (whoever
 configures and runs the server). Stories are numbered for stable reference from
 [issues](#acceptance-criteria-definition-of-done); each maps to an acceptance criterion below.
 
@@ -117,7 +117,9 @@ the per-parameter provenance `expiration`.
 
 ### Request / tool contract
 
-- **One MCP tool: `get_forecast`.**
+- **One MCP tool: `forecast_hourly`** — the shape is in the name: a future daily/aggregated product
+  is a **sibling tool** (different statistics, its own narratable description), never a `step` knob
+  on this one (Phase C align, session 0009).
 - Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **5 product**
   params — temperature, precipitation, wind speed, wind direction, humidity; the internal `wind_u` /
   `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
@@ -240,7 +242,7 @@ lifts **without a contract change** — see the seams in
 
 ## Acceptance criteria (definition of done)
 
-1. `get_forecast(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
+1. `forecast_hourly(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
    with the 5 product parameters (wind as speed/direction) — units canonicalized, per-parameter
    provenance incl. `expiration`.
 2. **Select + fallback**: with both providers enabled, results come from the primary; on primary

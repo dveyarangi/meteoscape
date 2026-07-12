@@ -179,7 +179,7 @@ _Avoid_: snap (only quantize's grid-alignment half), align / round (align is hom
 ### Roles
 
 **Gateway**:
-The surface-neutral **caller-policy boundary** (authz, rate-limit, quota) in front of the best-view Manifold; not a Manifold itself. → [architecture.md](./architecture.md#gateway--caller-policy-boundary).
+The surface-neutral **caller-policy boundary** (authz, rate-limit, quota) in front of a served profile; resolves a canonical Selection to a **Coverage** (or rejects); not a Manifold itself. → [architecture.md](./architecture.md#gateway--caller-policy-boundary).
 _Avoid_: Orchestrator, Translator
 
 **Manifold**:
@@ -246,16 +246,20 @@ Impl-level secret binding name on a `ProviderManifest` (offerings inherit); valu
 _Avoid_: secret value, API key field on OfferingDef
 
 **OfferingSpec**:
-Catalogue product row — offering `name`, exact `ParameterId` set, optional `default_lattice` (non-`Countable`). → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: OfferingDef (enablement), ParameterDef
+Catalogue product row — offering `name`, exact `ParameterId` set, optional `StoreSpec` (configured guess when the Provider is not `Countable`). → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: OfferingDef (enablement), ParameterDef, default_lattice (retired)
+
+**StoreSpec**:
+Operator/catalogue knobs for a `Store` that needs a **configured guess** — `{ spatial_step, retention_interval }`. Same shape for the profile root, a non-`Countable` Source, and (later) a stored Calculator; the factory builds the declared grid at weave/006. Provider-exact stores take `provider.domain` instead. → [architecture.md](./architecture.md#store--one-type-several-positions) · [ADR-0005](./adr/0005-build-time-composition.md).
+_Avoid_: RootStoreSpec (retired name), default_lattice, prebuilt EnumerableDomain as catalogue config
 
 **OfferingDef**:
-Profile **enablement ticket** for one catalogue offering — `{ impl, name?, priority, secret_ref?, settings }` — that `SourceBinder` builds from (with `ProviderCatalog`); no raw `SourceKey`, no geometry. `name=None` selects the expand path. → [architecture.md](./architecture.md#config-binders-weaver).
+Profile **enablement ticket** for one catalogue offering — `{ impl, name?, priority, secret_ref?, settings, store? }` — that `SourceBinder` builds from (with `ProviderCatalog`); optional `store` overrides the catalogue `StoreSpec`. No raw `SourceKey`. `name=None` selects the expand path. → [architecture.md](./architecture.md#config-binders-weaver).
 _Avoid_: SourceDef, Source (the built role), OfferingSpec (catalogue product), Provider (the impl)
 
 **ProfileConfig**:
-Operator-side, per-profile enablement — `offerings` (`OfferingDef`s), `calculators` (`CalculatorSpec`s), root-store knobs, arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver).
-_Avoid_: sources (retired field name), derivations (retired field name)
+Operator-side, per-profile enablement — `offerings` (`OfferingDef`s), `calculators` (`CalculatorSpec`s), root `StoreSpec`, arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver).
+_Avoid_: sources (retired field name), derivations (retired field name), RootStoreSpec (retired name)
 
 **ProfileDef**:
 Weave input for one served root: `SourceRegistry` + `CalculatorRegistry` + root store + arbiter. → [ADR-0005](./adr/0005-build-time-composition.md).

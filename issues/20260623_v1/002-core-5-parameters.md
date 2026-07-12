@@ -32,7 +32,7 @@ forecast instant," which the provider never produced. Failing that check is per-
 
 ## Acceptance criteria
 
-- [ ] `get_forecast(lat, lon)` returns the directly-requestable canonical parameters (air temperature,
+- [ ] `forecast_hourly(lat, lon)` returns the directly-requestable canonical parameters (air temperature,
       precipitation, relative humidity) as `ParameterData` on one shared hourly `valid_time` axis (wind
       speed / direction arrive in 002b).
 - [ ] The `Normalizer` ingests the vendor's native wind speed/direction as `wind_u` / `wind_v` (both

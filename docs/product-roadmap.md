@@ -291,7 +291,7 @@ Purpose: prove the normalized, provenance-stamped forecast engine end to end.
 
 Core scope:
 
-- MCP `get_forecast`.
+- MCP `forecast_hourly`.
 - Canonical v1 parameters and units.
 - Timeline output for a point and hourly time window.
 - Open-Meteo as first provider.
@@ -529,7 +529,7 @@ Signals to seek:
 
 Early validation demos:
 
-1. A single `get_forecast` response with per-parameter provenance and expiration.
+1. A single `forecast_hourly` response with per-parameter provenance and expiration.
 2. A forced provider failure showing fallback and trace.
 3. A self-hosted multi-provider run with operator-supplied keys and priority.
 4. A comparison response showing source disagreement over a rain window.

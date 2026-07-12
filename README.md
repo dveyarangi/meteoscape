@@ -26,7 +26,7 @@ single vendor itself.
   relayed: v1 serves wind speed/direction from canonical wind components, so you get a
   consistent answer no matter how each vendor represents wind. User-defined derivations
   (dewpoint, heat index, …) are roadmap.
-- **MCP-native** — one tool, `get_forecast`, returning an hourly point-forecast `Timeline`
+- **MCP-native** — one tool, `forecast_hourly`, returning an hourly point-forecast `Timeline`
   for the core surface parameters (temperature, wind, precipitation, humidity).
 
 **Roadmap.** Usage monitoring and quota/rate-limit control over vendor APIs (a wired-but-null

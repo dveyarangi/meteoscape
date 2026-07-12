@@ -5,7 +5,7 @@
 ## What to build
 
 The thinnest end-to-end path through the whole spine — a walking skeleton that proves the
-Manifold composition resolves a real request. A `get_forecast(lat, lon)` MCP tool call becomes a
+Manifold composition resolves a real request. A `forecast_hourly(lat, lon)` MCP tool call becomes a
 canonical `Selection` (lat/lon point + hourly `valid_time` window), passes the null `Gateway`, and
 resolves down the wired DAG: best-view `Reservoir` → `Arbiter` (single candidate, `priority`
 reconciler) → **Source** (the `Reservoir(store, Provider)` role) → Open-Meteo `Provider` + its
@@ -23,8 +23,9 @@ identity homogenization only; no fallback, no caching, one parameter.
 
 See `docs/architecture.md` (Major components, Data / request flow, Config/binders/Weaver),
 `docs/v1-requirements.md` (Goal, Runtime), and `docs/sessions/0002-20260708-openmeteo-provider-plan.md`
-(the leaf design: `Transport` / `FetchRequest` / `HttpxTransport`, `Normalizer` + `Channel` mapping,
-Provider-authored provenance).
+(the leaf design: `Transport` / `FetchRequest` / `HttpxTransport`, Provider-authored provenance;
+**Phase C uses a scalar 1:1 normalizer** — `Channel` / N:M wind lands at issue 002, see
+[session 0009](../../docs/sessions/0009-20260712-phase-c-spine-plan.md)).
 
 ## Implementation plan
 
@@ -60,14 +61,22 @@ throughout; `intersect` / `PerPoint` / rectilinear / curvilinear / `Domain.match
 (concerns #12, #13, #20 untouched).
 
 **Phase C — the spine**: swap the fake for the real Open-Meteo `Provider` — the `Transport` /
-`FetchRequest` / `HttpxTransport` seam; the `Provider` + `Normalizer` (`Channel` vendor mapping,
-session 0002) with cadence-derived provenance; real `Reservoir.project` (pass-through) + single-candidate
-`Arbiter.project`; MCP adapter Selection-building + Coverage serialization. The **e2e test on mocked
-transport** closes here, where Phase B's behaviour meets the graph Phase A wove.
+`FetchRequest` / `HttpxTransport` seam; the `Provider` + minimal scalar `Normalizer` (the `Channel`
+vendor-mapping table is minted at 002 with the wind vector case) with cadence-derived provenance;
+real `Reservoir.project` (pure delegate) + `Arbiter.project` (real admission, single selection,
+guarded assembly); MCP adapter Selection-building + Coverage serialization under the
+**`forecast_hourly`** tool. The **e2e test on mocked transport** closes here, where Phase B's
+behaviour meets the graph Phase A wove. **Planned in detail — decisions + TDD cycle list — in
+[session 0009](../../docs/sessions/0009-20260712-phase-c-spine-plan.md)**; headline decisions:
+single-parameter leaf (capability never advertises what the server won't attempt), source lattice
+optional until 006's store consumes one, exact 2 m Z cell on the request (fat cell is capability
+*reach*; mixed-height bundles → concern #24), `start_hour`/`end_hour` exact-window fetch, connect
+retries only, all transport faults → `runtime-failure`, per-parameter `{source, exp}` provenance in
+the response.
 
 ## Acceptance criteria
 
-- [ ] `get_forecast(lat, lon)` over a local stdio MCP server returns an hourly `Timeline` with a single
+- [ ] `forecast_hourly(lat, lon)` over a local stdio MCP server returns an hourly `Timeline` with a single
       `ParameterData` (air temperature).
 - [ ] The value is in its canonical unit (Normalizer reconciles the vendor unit).
 - [ ] Each `ParameterData` carries per-parameter provenance with an `Origin` and `expiration`

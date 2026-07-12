@@ -26,7 +26,7 @@ degree average — [concern #5](../../docs/concerns.md#5-read-time-homogenizatio
 
 ## Acceptance criteria
 
-- [ ] `get_forecast(lat, lon)` returns `wind_speed` and `wind_direction`, derived from the
+- [ ] `forecast_hourly(lat, lon)` returns `wind_speed` and `wind_direction`, derived from the
       provider-served `wind_u` / `wind_v` (never requested from a provider directly).
 - [ ] The derived values are exact functions of u/v (`speed = hypot`, `direction = atan2`) in their
       canonical units (m/s, degree).
@@ -34,7 +34,7 @@ degree average — [concern #5](../../docs/concerns.md#5-read-time-homogenizatio
       `wind_v` inputs.
 - [ ] The `Calculator` resolves its inputs through a **scoped `Arbiter`** (inputs only); the `Weaver`
       memoizes one `Calculator` node per derived parameter; the graph is acyclic.
-- [ ] `wind_u` / `wind_v` stay **internal-only** — not directly requestable via `get_forecast`.
+- [ ] `wind_u` / `wind_v` stay **internal-only** — not directly requestable via `forecast_hourly`.
 - [ ] Unit + mocked-transport integration tests cover the u/v → speed/direction derivation and the
       synthetic-provenance lineage.
 
