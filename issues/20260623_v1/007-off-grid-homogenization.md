@@ -27,9 +27,10 @@ Per-kind / higher-order kernels and a provider `exact` capability stay deferred.
       ([ADR-0003](../../docs/adr/0003-provenance-and-origin.md)).
 - [ ] `store_spatial_step` defaults to **0.0001° (~11 m)** — a per-point cache: near-exact values
       under nearest-neighbor read-back, spatial sharing only for repeat coordinates (the agent case).
-      Verify here that the **source-store lattice guess is comparably fine** (fidelity is the
-      coarsest link in the chain — a coarse Open-Meteo `default_lattice` upstream would waste the
-      fine root store).
+      Verify here that the **source-store `StoreSpec` guess is comparably fine** (fidelity is the
+      coarsest link in the chain — a coarse Open-Meteo source `StoreSpec` upstream would waste the
+      fine root store; the OM catalogue ships `spatial_step=0.0001°`, operator-overridable via
+      `OfferingDef.store` — session 0009).
 - [ ] Unit + mocked-transport integration tests cover on-grid crop and off-grid nearest-neighbor
       read-back.
 

@@ -20,7 +20,18 @@ Encoding follows `docs/v1-requirements.md` (Parameters): all share `statistic = 
 differs only by `extent_scaling`; the shared axis carries hourly `bounds`; every `ParameterData` carries
 `present = None` and `Uniform` provenance.
 
-**Decision to record in this issue:** the concrete canonical unit chosen per parameter.
+**Decision to record in this issue:** the concrete canonical unit chosen per parameter (`degC` for
+air temperature already landed with Phase C — confirm the remaining four).
+
+**Decide in this issue (with 003) —
+[concern #24](../../docs/concerns.md#24-parameter-height-carriage-fat-shared-z-cell-vs-per-z-group-requests):**
+the mixed-height bundle arrives here (2 m temperature / humidity beside 10 m wind in one request) —
+fat shared Z cell vs per-Z-group edge Selections, with the fetch-cost trade in view (session 0009).
+
+**Edge filter to land here:** the MCP default parameter set and tool narration read the woven root
+`capability.parameters` (Phase C). Once the leaf declares `wind_u` / `wind_v`, the requestable set is
+**capability minus internal-only** — never raw capability keys — or the edge would offer parameters
+002b declares unrequestable.
 
 **Build in this issue — the `extent_scaling`-branched `serves` edge** (settled in session 0008):
 `Domain.contains` is pure tick containment (geometry; ADR-0004's "geometric half"), so an intensive
@@ -42,6 +53,8 @@ forecast instant," which the provider never produced. Failing that check is per-
 - [ ] Precipitation reads its accumulation extent from the shared hourly `bounds`; intensive params
       sample at the tick.
 - [ ] Each `ParameterData` carries `present = None` and `Uniform` provenance with `expiration`.
+- [ ] `wind_u` / `wind_v` are declared by the `Capability` but excluded from the tool's default
+      parameter set and narration (internal-only edge filter).
 - [ ] Unit + mocked-transport integration tests cover the canonical set, the vendor-speed/dir → u/v
       conversion, and the extensive precipitation case.
 
