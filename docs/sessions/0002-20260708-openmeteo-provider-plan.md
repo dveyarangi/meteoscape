@@ -26,14 +26,17 @@ their canonical homes (below); this records the leaf design and the still-open f
 - **Three collaborators**: `OpenMeteoProvider` (orchestrator: `Selection` → request → normalize →
   provenance) · `nodes/providers/base.py` (the fetch seam — `Transport` protocol, `FetchRequest`
   vendor-neutral GET `{path, params, headers}`, `HttpxTransport`) · `Normalizer` (raw → canonical).
-- **Provenance authorship**: the **Provider** authors the full `Provenance` (cadence anchor + response
-  facts) and passes it into `Normalizer.normalize(raw, selection, provenance) -> Coverage`. The
-  intermediate `DistilledData` / `NormalizedFetch` type is **dropped** — the normalizer returns a
-  `Coverage` (v1 `Timeline`) directly.
+- **Provenance authorship**: the **Provider** authors the full `Provenance` (cadence + clock) and
+  passes it into `Normalizer.normalize(raw, provenance) -> Coverage` (session 0009 dropped
+  `selection` — native geometry from the response, not the request). The intermediate
+  `DistilledData` / `NormalizedFetch` type is **dropped** — the normalizer returns a `Coverage`
+  directly and installs `Uniform(provenance)`.
 - **Vendor mapping via `Channel`**: `Channel {produces: ParameterId, block: OpenMeteoBlock,
   vendor_vars: VendorVar[], decode}`; `VendorVar {name, block, native_unit?}`. Handles 1:1 scalar,
   unit conversion, and N:M vector transforms (wind → u/v). Canonical units requested from the API where
-  possible; the Normalizer coerces the rest.
+  possible; the Normalizer coerces the rest. **Phase C (session 0009) ships a scalar 1:1 mapping
+  only** (`temperature_2m` → `air_temperature`); the `Channel` table is minted when issue 002 adds
+  the remaining parameters / wind.
 - **`OpenMeteoBlock` enum** — `HOURLY` in v1; `DAILY` / `CURRENT` / `MINUTELY_15` reserved (block is
   explicit, not an implicit "hourly" assumption).
 - **Point `Timeline` domain**: `RegularDomain` with degenerate count-1 spatial + Z axes and a
@@ -46,13 +49,11 @@ their canonical homes (below); this records the leaf design and the still-open f
 
 ## Open questions / continuation
 
-- **HTTP transport** — `HttpxTransport` retry policy (idempotent GET only), error-taxonomy mapping
-  (httpx faults + non-2xx → `errors`). Not yet designed.
-- **Tests** — respx-backed `Transport` fake; TDD the leaf.
-- **Request mapping** — concrete `Selection` → params (`latitude`/`longitude`, `hourly=…`, `timezone`,
-  cell selection) still to spec.
-- **`decode` signature** — exact raw-block → `(values, present)` shape, and the vector-channel path.
+- **HTTP transport** — closed in [session 0009](./0009-20260712-phase-c-spine-plan.md)
+  (`HttpxTransport` retries, taxonomy, decoded JSON).
+- **Request mapping** — closed in session 0009 (`start_hour`/`end_hour` = T first/last ticks).
+- **`decode` signature** — exact raw-block → `(values, present)` shape, and the vector-channel path
+  (with `Channel`, issue 002).
 - **Code — only `SourceKey` built** — `provenance.py` now carries `SourceKey` +
-  `AtomicOrigin.source: SourceKey`; the rest of the leaf (`base.py` `Transport` / `FetchRequest` /
-  `HttpxTransport`, `OpenMeteoProvider`, `Normalizer`, `Channel`) is still unbuilt. `Domain.match()` /
+  `AtomicOrigin.source: SourceKey`; the rest of the leaf lands in Phase C / 002. `Domain.match()` /
   axis `step` remain deferred seams (#20).

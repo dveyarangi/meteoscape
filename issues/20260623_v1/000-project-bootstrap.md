@@ -59,7 +59,7 @@ In scope:
       `ExtentScaling` / `CellStatistic` / `MeasurementScale`.
 - [x] **`nodes/catalog/paramtable.py`** — `ParameterTable` + `StaticParameterTable` (v1 set); parameter
       facts reached by injection, not hardcoded enums.
-- [x] **Smoke test** — the MCP server starts and registers the `get_forecast` tool (no forecast
+- [x] **Smoke test** — the MCP server starts and registers the `forecast_hourly` tool (no forecast
       behaviour).
 - [x] **No behaviour** — no behaviour-bearing logic and no behavioural tests in this slice (begins 001).
       *(Exceptions noted in Status: `cadence.py` / `capability.py` logic landed early, tests owed in

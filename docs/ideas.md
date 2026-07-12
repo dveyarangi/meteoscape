@@ -16,6 +16,20 @@ product/feature ideas that haven't earned a decision yet.
 - **Requested output `format`.** Let the caller choose the response serialization (e.g. compact
   JSON vs OGC CoverageJSON) via a `format` field on the request. v1 emits compact JSON only; the
   surface adapter would select the serializer at the edge.
+- **Caller `timezone` rendering.** An optional request `timezone` renders `valid_time` in the
+  caller's zone at serialization. Pure edge conversion — the engine's time model stays aware-UTC
+  end-to-end (canonical Domain/provenance never carry a display zone). Filed at the Phase C align
+  (session 0009); providers are always queried in UTC regardless.
+- **Caller unit-system selection.** An optional request `units` (e.g. `metric` / `imperial`, or
+  per-parameter overrides) converts values from canonical units at serialization. Pure edge
+  conversion — internal values stay in each parameter's canonical unit (`parameters.md`); pairs
+  with the `timezone` idea above as the two display-preference knobs. Filed at the Phase C align
+  (session 0009).
+- **Provenance detail flag.** The default per-parameter provenance block is compact —
+  `{source, exp}`, the two agent-actionable facts. An optional `provenance=full` request knob
+  expands it with `issue_time`, `fetched_at`, and (for synthetic parameters, 002b) the lineage of
+  their inputs' origins. Third member of the display-preference family (timezone, units,
+  provenance detail); pure edge serialization. Filed at the Phase C align (session 0009).
 
 ## Freshness
 
