@@ -27,7 +27,7 @@ class Reservoir:
         self.source = source
 
     async def project(self, selection: Selection) -> Manifold:
-        raise NotImplementedError
+        return await self.source.project(selection)
 
     @property
     def domain(self) -> EnumerableDomain:

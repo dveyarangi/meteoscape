@@ -4,7 +4,7 @@ Two symmetrical binders resolve operator tickets against process-wide catalogues
 registries, which compose the `ProfileDef` the Weaver consumes:
 
 - `SourceBinder(ProviderCatalog).build(...)` → `SourceRegistry` (`SourceKey` → configured producer +
-  extrinsic priority + Source-store lattice).
+  extrinsic priority + optional Source `StoreSpec`).
 - `CalculatorBinder(CalculatorCatalog).build(...)` → `CalculatorRegistry` (output `ParameterId` →
   catalog-resolved binding, *not* a Calculator node — the Weaver builds those).
 
@@ -19,10 +19,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..clock import Clock
-from ..config import ArbiterPolicy, CalculatorSpec, OfferingDef, RootStoreSpec
+from ..config import ArbiterPolicy, CalculatorSpec, OfferingDef, StoreSpec
 from ..identity import SourceKey
 from ..manifold.core import Countable
-from ..manifold.domain import EnumerableDomain
 from ..parameters import ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
@@ -31,21 +30,24 @@ from .providers.base import Provider
 
 
 class CompositionError(Exception):
-    """Build-time failure — unknown ticket, dangling secret, duplicate key, unresolvable lattice."""
+    """Build-time failure — unknown ticket, dangling secret, duplicate key, missing StoreSpec."""
 
 
 @dataclass(frozen=True)
 class RegisteredSource:
-    """One configured producer plus extrinsic priority and its Source-store lattice."""
+    """One configured producer plus extrinsic priority and optional Source-store knobs.
+
+    Invariant: Countable ⇒ `store is None`; non-Countable ⇒ `store` set.
+    """
 
     provider: Provider
     priority: int
-    source_lattice: EnumerableDomain
+    store: StoreSpec | None
 
 
 @dataclass(frozen=True)
 class SourceRegistry:
-    """Read-only, `SourceKey`-keyed surface the Weaver consumes — producers + priority + lattice."""
+    """Read-only, `SourceKey`-keyed surface the Weaver consumes — producers + priority + store."""
 
     sources: Mapping[SourceKey, RegisteredSource]
 
@@ -61,7 +63,7 @@ class SourceBinder:
         clock: Clock,
         parameters: ParameterTable,
     ) -> SourceRegistry:
-        """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each source lattice."""
+        """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each Source store."""
         sources: dict[SourceKey, RegisteredSource] = {}
         for offering in defs:
             if offering.name is None:
@@ -89,16 +91,16 @@ class SourceBinder:
                 raise CompositionError(f"duplicate SourceKey {key}")
 
             if isinstance(provider, Countable):
-                lattice = provider.domain
-            elif spec.default_lattice is not None:
-                lattice = spec.default_lattice
+                store: StoreSpec | None = None
             else:
-                raise CompositionError(f"unresolvable source lattice for {key}")
+                store = offering.store if offering.store is not None else spec.store
+                if store is None:
+                    raise CompositionError(f"missing store for non-Countable source {key}")
 
             sources[key] = RegisteredSource(
                 provider=provider,
                 priority=offering.priority,
-                source_lattice=lattice,
+                store=store,
             )
         return SourceRegistry(sources=sources)
 
@@ -148,5 +150,5 @@ class ProfileDef:
 
     sources: SourceRegistry
     calculators: CalculatorRegistry
-    root_store: RootStoreSpec
+    root_store: StoreSpec
     arbiter: ArbiterPolicy

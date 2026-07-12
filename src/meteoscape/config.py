@@ -17,11 +17,20 @@ from .parameters import ParameterId
 
 
 @dataclass(frozen=True)
+class StoreSpec:
+    """Knobs for a Store that needs a configured guess — profile root or non-Countable Source."""
+
+    spatial_step: float
+    retention_interval: timedelta
+
+
+@dataclass(frozen=True)
 class OfferingDef:
     """Profile enablement ticket for one catalogue offering.
 
     Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
-    `name=None` selects the expand path.
+    `name=None` selects the expand path. Optional `store` whole-spec-replaces the catalogue
+    `StoreSpec` for non-Countable Sources.
     """
 
     impl: str
@@ -29,6 +38,7 @@ class OfferingDef:
     name: str | None = None
     secret_ref: str | None = None
     settings: Mapping[str, object] = field(default_factory=dict)
+    store: StoreSpec | None = None
 
 
 @dataclass(frozen=True)
@@ -39,14 +49,6 @@ class CalculatorSpec:
     inputs: frozenset[ParameterId]
     fn_id: str
     stored: bool = False
-
-
-@dataclass(frozen=True)
-class RootStoreSpec:
-    """Profile-root Reservoir store knobs (lattice guess + retention) — separate from Source lattices."""
-
-    spatial_step: float
-    retention_interval: timedelta
 
 
 @dataclass(frozen=True)
@@ -62,19 +64,15 @@ class ProfileConfig:
 
     offerings: tuple[OfferingDef, ...]
     calculators: tuple[CalculatorSpec, ...]
-    root_store: RootStoreSpec
+    root_store: StoreSpec
     arbiter: ArbiterPolicy
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="METEOSCAPE_", env_file=".env", extra="ignore")
 
-    open_meteo_enabled: bool = False
-    """Include the Open-Meteo producer. Keyless; off disables the primary source.
-
-    Defaults False until Phase C registers the Open-Meteo manifest (enabled-but-unregistered is a
-    startup error under strict binders).
-    """
+    open_meteo_enabled: bool = True
+    """Include the Open-Meteo producer. Keyless; off disables the primary source."""
 
     twc_api_key: str | None = None
     """The Weather Company key (optional). Absent => serve on Open-Meteo alone."""
@@ -115,7 +113,7 @@ class Settings(BaseSettings):
         return ProfileConfig(
             offerings=self.offerings(),
             calculators=self.calculators(),
-            root_store=RootStoreSpec(
+            root_store=StoreSpec(
                 spatial_step=self.store_spatial_step,
                 retention_interval=self.retention_interval,
             ),
