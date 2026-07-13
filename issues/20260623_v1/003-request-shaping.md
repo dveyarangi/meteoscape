@@ -5,8 +5,8 @@
 ## What to build
 
 Make the request flexible at the edge. The MCP adapter accepts optional `parameters` (a subset of the
-**5 product** params — temperature, precipitation, wind speed, wind direction, humidity; the internal
-`wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and builds the canonical
+**6 product** params — temperature, precipitation, wind speed, wind direction, humidity, cloud cover;
+the internal `wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and builds the canonical
 `Selection` accordingly — a lat/lon
 **point** `Domain` plus an hourly `valid_time` extent. When `end` is omitted, a configurable **default
 horizon** (≈ 7 days) applies; `start` / `end` form a free window (no interval enum — the `Domain` models
@@ -20,18 +20,19 @@ the woven root capability), dynamic served-parameters narration, `serves`-contai
 `Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This issue's remaining substance:
 make the window real (free `start`/`end` → exact-window fetch mapping), apply the configurable default
 horizon to an omitted `end`, add the **edge alias table** (desugar requestable names to canonical
-functionals / exact-Z Selections — session 0009), extend narration with the max horizon, and exercise
+functionals + **exact-mode Z** — a precise level or layer cell, the dual of the default bundle's
+vantage window; sessions 0009/0011), extend narration with the max horizon, and exercise
 out-of-envelope admission with real free windows (Phase C's fixed 168 h window never leaves the
-envelope).
-[Concern #24](../../docs/concerns.md#24-parameter-height-carriage-fat-shared-z-cell-vs-per-z-group-requests)
-is decided at 002 / this issue.
+envelope). Concern #24 is **resolved** (session 0011 → [ADR-0002](../../docs/adr/0002-data-model.md) /
+[ADR-0004](../../docs/adr/0004-producer-resolution-and-capability.md)); this issue inherits the
+vantage/exact request modes 002 builds.
 
 Output resolution stays hourly (no `step` input). See `docs/v1-requirements.md` (Request / tool
 contract, Time axis).
 
 ## Acceptance criteria
 
-- [ ] `parameters` selects a subset of the 5 product params; omitting it returns all five.
+- [ ] `parameters` selects a subset of the 6 product params; omitting it returns all six.
 - [ ] `start` / `end` define a free hourly window; omitting `end` applies the configurable default
       horizon.
 - [ ] A request whose extent exceeds a provider's temporal `Capability` is not admitted for that

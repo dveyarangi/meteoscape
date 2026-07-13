@@ -78,26 +78,29 @@ configures and runs the server). Stories are numbered for stable reference from
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).
 
-### Parameters (5 canonical + 2 derived)
+### Parameters (6 canonical + 2 derived)
 
-The agent-facing **product is 5**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
-**direction** (10 m), relative humidity (2 m). But **wind is canonical as u/v components** — providers
+The agent-facing **product is 6**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
+**direction** (10 m), relative humidity (2 m), **cloud cover** (total column).
+But **wind is canonical as u/v components** — providers
 deliver native speed/direction, the **Normalizer converts to `wind_u` / `wind_v` on ingest** (both
 linear, so linear interpolation of u/v *is* correct wind interpolation), and **`wind_speed` /
 `wind_direction` are derived views served by Calculators** over `(wind_u, wind_v)`
 ([ADR-0002](./adr/0002-data-model.md) / [ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
 
-So the table holds **7 `ParameterDef`s**:
+So the table holds **8 `ParameterDef`s**:
 
-- **5 canonical** (provider-served): `air_temperature`, `precipitation`, `wind_u`, `wind_v`,
-  `relative_humidity`. `wind_u` / `wind_v` are **internal-only** — not requestable in v1.
+- **6 canonical** (provider-served): `air_temperature`, `precipitation`, `wind_u`, `wind_v`,
+  `relative_humidity`, `cloud_cover`. `wind_u` / `wind_v` are **internal-only** — not requestable in v1.
 - **2 derived** (Calculators over u/v): `wind_speed`, `wind_direction` — the **requestable** wind
   parameters. Both are lossless functions of the vector (`speed = hypot(u,v)`, `direction = atan2(...)`),
   so serving them is exact.
 
 The set is deliberately **heterogeneous** to exercise homogenization *and* derivation: precipitation is
 **extensive** (accumulation over the cell); temperature / relative-humidity / `wind_u` / `wind_v` are
-**intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`. v1's
+**intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`;
+**`cloud_cover` is the first cell-statistic (column) parameter** — a statistic over its Z cell's
+`bounds` (`[0, TOA]`) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). v1's
 degenerate nearest-neighbor read-back does **not interpolate**, so neither the linear u/v kernel nor an
 angular direction kernel is exercised; any future direction kernel must be **angular** (via u/v),
 never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
@@ -120,9 +123,9 @@ the per-parameter provenance `expiration`.
 - **One MCP tool: `forecast_hourly`** — the shape is in the name: a future daily/aggregated product
   is a **sibling tool** (different statistics, its own narratable description), never a `step` knob
   on this one (Phase C align, session 0009).
-- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **5 product**
-  params — temperature, precipitation, wind speed, wind direction, humidity; the internal `wind_u` /
-  `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
+- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **6 product**
+  params — temperature, precipitation, wind speed, wind direction, humidity, cloud cover; the internal
+  `wind_u` / `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
   `step` input; coarser re-aggregation and
   sub-hourly stay deferred ([concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)).
 - **Location is lat/lon only** in v1 (place-name + geocoding deferred → `ideas.md`).
@@ -243,7 +246,7 @@ lifts **without a contract change** — see the seams in
 ## Acceptance criteria (definition of done)
 
 1. `forecast_hourly(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
-   with the 5 product parameters (wind as speed/direction) — units canonicalized, per-parameter
+   with the 6 product parameters (wind as speed/direction) — units canonicalized, per-parameter
    provenance incl. `expiration`.
 2. **Select + fallback**: with both providers enabled, results come from the primary; on primary
    failure the Arbiter falls back to the other (demonstrable, e.g. via a forced provider failure).

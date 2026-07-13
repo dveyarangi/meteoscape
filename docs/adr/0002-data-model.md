@@ -206,6 +206,29 @@ classDiagram
   analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
 
+- **Request Z rides the mode-in-shape rule: Continuous = vantage, Enumerable = exact** *(session
+  0011; refines the reading above — the near-surface bundle **request** is the Continuous shape, and
+  the fat cell survives as the served Coverage's Z cell, offsets absorbed into its `bounds`).* A
+  **Continuous** Z extent is **vantage mode** — the asker's position/acceptance window (`[0, ~10 m]`
+  for the default near-surface bundle), authored at the edge: the consumer owns the tolerance. An
+  **exact** Z cell is
+  **sampling / cell-addressing mode** — a precise level (`{2 m}`) or layer (`[0, 2 km]`), the shape
+  the edge alias table desugars to (`temperature_2m`, `cloud_cover_low`, `soil_temperature_6cm`).
+  Declarations stay **native facts** (a sample level; a statistic's served cells — cloud low/mid/high
+  are *cells of one functional*, never `ParameterId`s); how a declaration answers each request shape
+  is the Capability's **axis-kind-owned matching**, including the **maximal-served-cell** vantage
+  resolution → [ADR-0004](./0004-producer-resolution-and-capability.md). Resolution table:
+
+  | request Z shape | sample-declared (temp @ 2 m, wind levels) | cell-statistic-declared (cloud layers) |
+  |---|---|---|
+  | **Continuous (vantage)** | samples ∈ window → resampler's one representative | **maximal served cell**; none exists → omit |
+  | **Exact point / cell** | exact sample match (tolerance) | exact cell match; no match → omit |
+
+  Every miss is an honest per-parameter omission (`capability-mismatch` reason at the edge). The
+  response always rides `sel.domain` (closed projection): the served Z cell is the requested window,
+  native levels/cells staying in the native record, recoverable via the provenance `SourceKey`
+  ([ADR-0003](./0003-provenance-and-origin.md)).
+
 - **Resampling a parameter onto an axis is its `resampler`, entailed by `(scale, statistic,
   extent_scaling)` and asymmetric.** **Refine up** follows the measurement **scale** — `linear`
   interpolates to any tick, `circular` is angular, categorical fills / snaps; **coarsen down** follows

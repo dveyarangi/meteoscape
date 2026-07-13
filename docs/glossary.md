@@ -38,6 +38,14 @@ An axis whose values may be **synthesized between samples** (homogenization) —
 The datum a vertical (Z) axis is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. An **attribute of the Z axis** (**one per Domain**), *not* part of the coordinate, which stays a plain scalar. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters share **one** Domain. Non-comparability, height aliases, native offsets → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Altitude (ambiguous across references), level (one value, not the datum)
 
+**Vantage (Z request mode)**:
+The **Continuous** shape on a request's Z axis — the asker's position / acceptance window (`[0, ~10 m]` for the default near-surface bundle), authored at the edge. Its dual is the exact (Enumerable) shape — precise level / layer **addressing**, the alias table's target. Modes → [ADR-0002](./adr/0002-data-model.md); matching → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: Ground mode (any altitude can be a vantage), Z tolerance (the window *is* the tolerance)
+
+**Maximal served cell**:
+For one functional's declared statistic cells, the served cell **containing all the others** (cloud total `[0,TOA]` over low/mid/high) — the cell a **vantage** request resolves to; none exists ⇒ per-parameter omission. A derivable fact, not a flag; exact-cell requests bypass it. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: Canonical/default cell (suggests authored config), total (the meteorological instance, not the rule)
+
 **Categorical key**:
 A discrete dimension you **select / group / iterate**, never interpolate — the **collection-layer** mechanism for `issue_time` archives and future **ensemble / scenario** keys. **Not** a core field-Domain axis (the v1 `Domain`'s 4 axes are all **field axes** — resamplable, per each parameter's `scale`). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Categorical axis (it is not a Domain axis), Label axis, index axis

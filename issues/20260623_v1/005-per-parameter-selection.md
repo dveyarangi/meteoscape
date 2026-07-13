@@ -5,7 +5,7 @@
 ## What to build
 
 Prove the **per-parameter capability filter**. Configure at least one core parameter so it is declared
-by **only one** provider's `Capability`. For a request spanning the 5 product params, the `Arbiter`
+by **only one** provider's `Capability`. For a request spanning the 6 product params, the `Arbiter`
 resolves each parameter independently: the single-provider parameter is served from the only provider
 that declares
 it, while the rest come from the primary. This exercises that selection is per-parameter, not

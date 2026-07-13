@@ -27,7 +27,7 @@ single vendor itself.
   consistent answer no matter how each vendor represents wind. User-defined derivations
   (dewpoint, heat index, …) are roadmap.
 - **MCP-native** — one tool, `forecast_hourly`, returning an hourly point-forecast `Timeline`
-  for the core surface parameters (temperature, wind, precipitation, humidity).
+  for the core surface parameters (temperature, wind, precipitation, humidity, cloud cover).
 
 **Roadmap.** Usage monitoring and quota/rate-limit control over vendor APIs (a wired-but-null
 Gateway seam in v1), user-defined derived parameters, and surfaces beyond MCP.
