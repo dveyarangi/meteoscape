@@ -130,7 +130,7 @@ the per-parameter provenance `expiration`.
   sub-hourly stay deferred ([concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)).
 - **Location is lat/lon only** in v1 (place-name + geocoding deferred → `ideas.md`).
 - The edge builds the request Selection (lat/lon **point** + hourly `valid_time` over the horizon). Each
-  `Countable` `Reservoir` internally **quantizes to its own declared store grid** for retention and
+  storing `Reservoir` internally **quantizes to its own private store lattices** for retention and
   **homogenizes back onto the requested point at read** (read-time **S**), so the
   answer lands on the **requested** lat/lon — rounding is the store lattice's own business
   ([ADR-0002](./adr/0002-data-model.md)).
@@ -155,8 +155,8 @@ the per-parameter provenance `expiration`.
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
   (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is the **clock-anchored
   footprint window** around the run anchor (the provider's cadence,
-  [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the continuous `FootprintDomain`
-  ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
+  [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the `FootprintDomain`'s continuous
+  T axis ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
   [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
 - A configurable **default horizon** (≈ 7 days) applies only when the caller omits `end`; `start` / `end`
   stay a **free window** (no interval enum — the `Domain` already models arbitrary extents).

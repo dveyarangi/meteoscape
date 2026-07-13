@@ -25,7 +25,7 @@ Z** — a precise level or layer cell, the dual of the default bundle's vantage 
 0009/0011), extend narration with the max horizon, and exercise
 out-of-envelope admission with real free windows (Phase C's fixed 168 h window never leaves the
 envelope). Concern #24 is **resolved** (session 0011 → [ADR-0002](../adr/0002-data-model.md) /
-[ADR-0004](../adr/0004-producer-resolution-and-capability.md)); this issue inherits the
+[ADR-0004](../adr/0004-producer-resolution-and-capability.md)); this ticket inherits the
 vantage/exact request modes 002 builds.
 
 Output resolution stays hourly (no `step` input). See `docs/v1-requirements.md` (Request / tool
