@@ -19,9 +19,25 @@ _Avoid_: Bounds, extent, region
 The **enumerable case of a Domain** — an indexable set of coordinate positions, **regular lattice** or **irregular point set** (cardinality-1 is a single coordinate); enumeration (`enumerate` / index / `len`) lives here, not on the base `Domain`. Only the regular case can be a `quantize` target. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
 
+**GridDomain**:
+The v1 built `EnumerableDomain` — a `Mapping[AxisName, EnumerableAxis]`, **mixed** per axis (`RegularAxis` on X/Y/T; on Z a `VantageAxis`, a count-1 `RegularAxis` point, or an `IntervalAxis` column). Index math uses only `len` / `[]`, so mixed axes need no new arithmetic. Widened from the former uniform-only `RegularDomain`; subsumes the dropped `RectilinearDomain` (explicit-cell axes are just non-`RegularAxis` members). → [ADR-0002](./adr/0002-data-model.md).
+_Avoid_: RegularDomain (retired — was uniform-only), Grid (the raster sense; this is the domain type)
+
 **Axis**:
-The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis). A continuous footprint axis may later carry a native **`step`** ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0002](./adr/0002-data-model.md).
+The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one), **`IntervalAxis`** (a single span cell — below), and **`VantageAxis`** (a request aperture — below). Continuous representations: **`ContinuousAxis`** (plain explicit span, X/Y reach) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis). A continuous footprint axis may later carry a native **`step`** ([concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)). → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Dimension, Coordinate array
+
+**IntervalAxis**:
+A single-cell `EnumerableAxis` defined by one `interval` — `extent == bounds == interval`, one cell, default (containment) `matches`. The enumerable encoding of a **span cell**: the native cloud column `[0,TOA]`, and the base of `VantageAxis`. No `RegularAxis` form (a span is not `(anchor, step, count)` — no `step=inf`/`nan`). → [ADR-0002](./adr/0002-data-model.md).
+_Avoid_: ContinuousAxis (not enumerable; X/Y reach only), fat cell (that is the `Cell`, not the axis)
+
+**VantageAxis**:
+An `IntervalAxis` subclass that **overrides `matches` with intersection** — a **request** Z aperture ("the asker is somewhere in `[0, ~10 m]`"), authored at the edge. Its reason to exist is the inverted admission predicate, not geometry. Rides onto the served Coverage by closed projection; there it sits on the declared side, where only its `.extent` is read, so the inverted predicate never leaks. Never appears in a capability footprint. → [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: Vantage cell (it is an axis; its one `Cell` is the aperture), footprint axis (never appears in a capability)
+
+**matches** (admission predicate):
+The per-axis admission test, owned by the **request** axis: `requested_axis.matches(declared_axis) -> bool`. Default (`Axis` base / `IntervalAxis`) = `declared.extent.contains(self.extent)` (request inside the footprint); `VantageAxis` overrides with `intersects` (overlap). `Domain.contains` composes it per axis — the **admission gate**, distinct from the *selection* of which admitted cell answers (maximal served cell / resampler, [ADR-0004](./adr/0004-producer-resolution-and-capability.md)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+_Avoid_: serves (the parameter-level Capability method that composes this), contains (the geometric half only)
 
 **Cell**:
 One position on an `Axis` — a representative **coordinate** with optional **bounds**; no bounds ⇒ an **instant / point**. The unit a parameter's value aligns to; coordinate and bounds are independent (the coordinate sits *within* the bounds by convention, not by definition). → [ADR-0002](./adr/0002-data-model.md).
@@ -39,7 +55,7 @@ The datum a vertical (Z) axis is measured in — `above_ground` (the home of nea
 _Avoid_: Altitude (ambiguous across references), level (one value, not the datum)
 
 **Vantage (Z request mode)**:
-The **Continuous** shape on a request's Z axis — the asker's position / acceptance window (`[0, ~10 m]` for the default near-surface bundle), authored at the edge. Its dual is the exact (Enumerable) shape — precise level / layer **addressing**, the alias table's target. Modes → [ADR-0002](./adr/0002-data-model.md); matching → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+The request-Z mode carried by a **`VantageAxis`** (above) — the asker's position / acceptance window (`[0, ~10 m]` for the default near-surface bundle), authored at the edge, admitting by overlap. Its dual is the exact mode — a count-1 `RegularAxis` (level) or `IntervalAxis` (layer) **addressing** a precise cell, the alias table's target. → [ADR-0002](./adr/0002-data-model.md).
 _Avoid_: Ground mode (any altitude can be a vantage), Z tolerance (the window *is* the tolerance)
 
 **Maximal served cell**:
@@ -57,7 +73,7 @@ A **field sampled onto an enumerable Domain** — the shape-agnostic data exchan
 _Avoid_: DataBlock, single-parameter Coverage
 
 **Field**:
-A Manifold (or projected view) **before sampling** — the general result of `project`; a Coverage is its sampled (`Countable`) case. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
+A Manifold (or projected view) **before sampling** — the general result of `project`; a Coverage is its sampled (countable) case. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 _Avoid_: Coverage (the sampled leaf), Parameter
 
 **CoverageRecord**:
@@ -178,10 +194,10 @@ _Avoid_: Need
 Which kind of Domain a Selection carries — **Continuous** / **Snapped** / **Enumerable** (region / snapped / exact). → [ADR-0002](./adr/0002-data-model.md).
 
 **Canonical lattice**:
-The enumerable grid a `Reservoir` declares (via its `Store`) that `quantize` snaps to — **per-`Countable`-node** (provider-exact where a vendor declares one, a configured guess otherwise). → [architecture.md](./architecture.md#store--one-type-several-positions).
+The **store-private, per-axis** grids `quantize` snaps to (provider-exact where a vendor declares one, a configured guess otherwise); an axis without one passes through `quantize` identity. Never exposed as a node `domain`. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md) · [architecture.md](./architecture.md#store--one-type-several-positions).
 
 **Quantize**:
-The `Store`-side operation that maps a Selection to the store's **storable shape**: it snaps the requested axes (3 spatial + `valid_time`) onto the declared grid **and widens the extent outward to whole assimilable units** (v1: a parameter's timeline at a spatial cell), so the result **encloses** the request (extent ≥ request) and `assimilate` only ever replaces whole units. Resolving stored cells back onto the requested coordinates is **Homogenization** (read-back), not quantize. → [architecture.md](./architecture.md#reservoir).
+The `Store`-side operation that maps a Selection to the store's **storable shape** — **per axis**: an axis with a declared lattice snaps onto it **and widens the extent outward to whole assimilable units** (v1: a parameter's timeline at a spatial cell), so the result **encloses** the request (extent ≥ request) and `assimilate` only ever replaces whole units; an axis **without** a lattice passes through **identity**, its cell joining the unit key. Resolving stored cells back onto the requested coordinates is **Homogenization** (read-back), not quantize. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md) · [architecture.md](./architecture.md#reservoir).
 _Avoid_: snap (only quantize's grid-alignment half), align / round (align is homogenization)
 
 ### Roles
@@ -254,11 +270,11 @@ Impl-level secret binding name on a `ProviderManifest` (offerings inherit); valu
 _Avoid_: secret value, API key field on OfferingDef
 
 **OfferingSpec**:
-Catalogue product row — offering `name`, exact `ParameterId` set, optional `StoreSpec` (configured guess when the Provider is not `Countable`). → [architecture.md](./architecture.md#config-binders-weaver).
+Catalogue product row — offering `name`, exact `ParameterId` set, optional `StoreSpec` (configured guess when the Provider declares no native lattice). → [architecture.md](./architecture.md#config-binders-weaver).
 _Avoid_: OfferingDef (enablement), ParameterDef, default_lattice (retired)
 
 **StoreSpec**:
-Operator/catalogue knobs for a `Store` that needs a **configured guess** — `{ spatial_step, retention_interval }`. Same shape for the profile root, a non-`Countable` Source, and (later) a stored Calculator; the factory builds the declared grid at weave/006. Provider-exact stores take `provider.domain` instead. → [architecture.md](./architecture.md#store--one-type-several-positions) · [ADR-0005](./adr/0005-build-time-composition.md).
+Operator/catalogue knobs for a `Store` that needs a **configured guess** — `{ spatial_step, retention_interval }`. Same shape for the profile root, a Source whose provider declares no native lattice, and (later) a stored Calculator; the factory builds the declared grid at weave/006. Provider-exact lattices reach the factory via the build-time construction face instead. → [architecture.md](./architecture.md#store--one-type-several-positions) · [ADR-0005](./adr/0005-build-time-composition.md).
 _Avoid_: RootStoreSpec (retired name), default_lattice, prebuilt EnumerableDomain as catalogue config
 
 **OfferingDef**:
@@ -283,15 +299,15 @@ does not interpret priority. → [architecture.md](./architecture.md#config-bind
 _Avoid_: Builder, Compiler, Orchestrator, Planner, CalculatorBinder
 
 **Countable**:
-A Manifold facet: **node-Countable** declares an enumerable grid (its canonical lattice); **result** countability is conferred by the Selection's Domain. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: Enumerable, Browsable, Indexed
+A **materialized result's** property — a `Coverage` exposes the enumerable `domain` it was sampled onto (derived from its `capability`), conferred by the Selection's Domain. **Not a node facet**: a node's lattices are private to its `Store`. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md) · [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md).
+_Avoid_: node-Countable (retired), Enumerable, Browsable, Indexed
 
 **Writable**:
 A Manifold facet: accepts `assimilate(coverage)` — the materialization boundary. The **`Store`** is the only Writable Manifold. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 _Avoid_: Materialized, Scratchboard, MaterializedManifold, SourceCache, ManifoldCache
 
 **Store**:
-The substrate a `Reservoir` owns — a `Writable`, `Countable` Manifold leaf holding sampled Coverages on its **declared grid `Domain`** (the canonical lattice — **provider-exact or a configured guess**) in **whole assimilable units** (`assimilate` replaces a unit atomically); the only `assimilate` target. Allocated by the Weaver through **`StoreFactory.create`**. → [architecture.md](./architecture.md#store--one-type-several-positions).
+The substrate a `Reservoir` owns — a `Writable` Manifold leaf holding **per-parameter units** (`(parameter, per-axis cells, window)`; `assimilate` splits a native record into units and replaces each atomically); the only `assimilate` target. **Unit-granular, never co-domained**; its per-axis lattices (**provider-exact or a configured guess**) are **private** — the `quantize` / report / read-back target, never a public `domain`. Allocated by the Weaver through **`StoreFactory.create`**. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md) · [architecture.md](./architecture.md#store--one-type-several-positions).
 _Avoid_: Cache (over-claims transience), Buffer, Vault, Pool
 
 **Reservoir**:
@@ -307,11 +323,11 @@ The **v1 task-oriented profile** — `Reservoir(store, top Arbiter)`: resolves t
 _Avoid_: Best provider, Router result
 
 **Capability**:
-What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`); a concrete covered `Domain` is **not** on the interface. Distinct from the `Countable` / `Writable` facets. The leaf/composite family and the matching predicate → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`); a concrete covered `Domain` is **not** on the interface. Distinct from the `Writable` facet. The leaf/composite family and the matching predicate → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: Coverage, clause
 
 **Footprint**:
-A producer's **declared reach** — the continuous region its `FootprintCapability` tests `serves` against: static spatial/Z extent plus a **clock-anchored** `valid_time` window around the run anchor (the provider's cadence, [ADR-0003](./adr/0003-provenance-and-origin.md)). Modelled as the continuous `FootprintDomain` (its `contains` is clock-relative), distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+A producer's **declared reach** — the region its `FootprintCapability` tests `serves` against: per-axis declarations of **mixed kind** — **span** axes (spatial region, a statistic-cell Z, the **clock-anchored** `valid_time` window around the run anchor — the provider's cadence, [ADR-0003](./adr/0003-provenance-and-origin.md)) and **sample point-cell** axes (`RegularAxis` count-1, e.g. Z `[2,2]`). Modelled as the `FootprintDomain` — never an `EnumerableDomain`; its `contains` matches per axis by declared kind (point cells → membership, spans → inclusion) and is clock-relative — distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 _Avoid_: coverage, grid, extent
 
 **Arbiter**:
@@ -335,7 +351,11 @@ _Avoid_: Vendor, backend, driver
 A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
 
 **Normalizer**:
-The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).
+The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. Emits **native records** — one per set of parameters sharing a native Domain. → [architecture.md](./architecture.md#normalization-vs-homogenization) · [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md).
+
+**Native record**:
+One **co-domained Coverage a fetch materializes per shared native Domain** — its Domain is true native geometry (e.g. the parameter's native Z cell); the assimilation input and the landing-layer content. The grouping is emergent from the `Tap` declarations and axis-agnostic (one record when everything shares a geometry). → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md).
+_Avoid_: Z-group (the v1 instance, not the rule), raw response (that is vendor JSON)
 
 **Homogenization**:
 **Sampling a field onto a target enumerable Domain** so its `ParameterData` are conformable — read-time, strictly geometric / temporal (distinct from normalization). The kernel degenerates to **identity when the target rides the grid** (a snapped read = a lossless crop); an off-grid point is nearest-neighbor (v1). → [architecture.md](./architecture.md#normalization-vs-homogenization).

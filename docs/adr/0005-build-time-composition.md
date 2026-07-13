@@ -73,12 +73,12 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  P[Built Provider] --> C{Provider is Countable?}
-  C -->|yes| N["grid = provider.domain (provider-exact)"]
+  P[Built Provider] --> C{Provider declares a native lattice?}
+  C -->|yes| N["grid = provider-declared lattice (build-time construction face)"]
   C -->|no| G["grid knobs = StoreSpec (configured guess)"]
   N --> S[RegisteredSource]
   G --> S
-  S --> W["Weaver: StoreFactory.create(EnumerableDomain | StoreSpec | None)"]
+  S --> W["Weaver: StoreFactory.create(declared lattice | StoreSpec | None)"]
 ```
 
 Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) — a separate *instance*, never the same singleton as a Source store. `OfferingSpec.default_lattice` (a prebuilt `EnumerableDomain`) is retired; declared grids are built by the factory (issue 006).

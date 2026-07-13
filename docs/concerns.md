@@ -243,6 +243,20 @@ equal-priority band walk. Note (session 0011): **multi-level samples inside one 
 representative value (→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); `match`/`score`
 applies to *offerings* (distinct `SourceKey`s), not to levels within one product.
 
+## 25. Root-store unit reuse across vantage windows
+
+**Kind:** deferred seam · **Refs:** [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md), [ADR-0002](./adr/0002-data-model.md)
+
+The best-view store holds **product** units keyed by the *request's* Z cell (the vantage window) —
+answers, not native facts ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)).
+v1 has exactly one edge-authored default window, so the key is stable and reuse is exact-match. When
+custom vantage windows arrive, reuse needs a rule: a layer-unresolved value labeled `[0,10]` is an
+**∃-claim** ("measured somewhere in the layer"), so admitting it for a narrower `[0,5]` request by
+plain inclusion is suspect — unlike a ∀-claim statistic cell. Options when it bites: exact-key only
+(cache misses fall through to the Sources, which re-match native units honestly — correct, just
+colder), or a declared tolerance policy at the edge. No v1 work; the fall-through path is already
+correct.
+
 ## 12. Curvilinear domains
 
 **Kind:** room-left (interface promise) · **Refs:** [ADR-0002](./adr/0002-data-model.md)

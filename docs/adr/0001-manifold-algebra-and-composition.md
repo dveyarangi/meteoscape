@@ -6,7 +6,7 @@ status: accepted
 
 Everything below the system's outer boundary is built from a single abstraction — a **Manifold** — so
 the many roles it plays are *shapes of one algebra* rather than separate contracts. This ADR fixes the
-abstraction (what a Manifold is, its one operation, its `capability` dual, its two facets) **and** how Manifolds compose
+abstraction (what a Manifold is, its one operation, its `capability` dual, its `Writable` facet) **and** how Manifolds compose
 into larger ones (when a new node is justified, how composed nodes evaluate). Concrete shapes — vendor
 leaves, `Reservoir`s, the served "best" view — live in [`architecture.md`](../architecture.md); the data
 a Coverage carries is the [data model](./0002-data-model.md); provenance is
@@ -28,7 +28,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   (`serves(parameter, requested)` + the served `parameters`). It is a **base-`Manifold` member on every
   node**, not a facet — a leaf declares it, a composite **derives it bottom-up** (union of parameter sets;
   AND/OR of the predicate), and a materialized `Coverage` exposes it **co-domained** on its one sampled
-  grid (so `Countable.domain` derives from it). The family and its matching rules are
+  grid (so the Coverage's `domain` derives from it). The family and its matching rules are
   [ADR-0004](./0004-producer-resolution-and-capability.md).
 
 - **Logically read-only.** `project` is referentially transparent **at the value it returns** (same
@@ -39,27 +39,25 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   **properties of particular shapes**, carried as ordinary `project` logic. The single *declared*
   mutation, `assimilate(coverage)`, is **not** on the base abstraction — it is the `Writable` facet.
 
-- **Facets, not subtypes.** Optional behaviour is added by two facets (interface
-  segregation), never a type hierarchy:
-  - **`Countable`** — the node **declares an enumerable grid `Domain`** (a regular lattice — see the
-    [data model](./0002-data-model.md)): its **canonical lattice**, **provider-exact where a vendor
-    declares one, a configured guess for point vendors that expose none**. Its grid (an
-    `EnumerableDomain`) carries index access and resolves a snapped/exact request, and is the grid for
-    **`quantize`** (snap + widen to whole
-    units, retention) and **read-back homogenization** (below) — and, paired with `Writable`, the
-    `assimilate` target. Conferred by a
-    *declared* grid (not by holding data), and **upward** from a stored grid to the node that serves it.
+- **Facets, not subtypes.** Optional behaviour is added by facets (interface segregation), never a
+  type hierarchy:
   - **`Writable`** — accepts `assimilate(coverage)`: the **materialization boundary** — sample a view
     onto the node's own grid and store it. Provenance is authored **upstream**, never computed here.
+  - A node exposes **no public lattice**: its declared grids (per axis, **provider-exact where a
+    vendor declares one, a configured guess for point vendors that expose none**) are **private to
+    its `Store`** — the `quantize` / retention / read-back target — and a provider-exact lattice
+    reaches the `Store` as a **build-time declaration** at weave, not a request-path read. The only
+    public `domain` is the **`Coverage`'s** — the positional grid its `ParameterData` align to,
+    derived from its materialized `capability`
+    ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
 
 - **The output lattice is not carried; it is the Selection's `Domain`.** `Selection = Domain +
   parameters`. A **lattice is simply an enumerable `Domain`**, not a second structure layer. Result
   countability is conferred by the Selection: a **continuous** Domain → an (uncountable) **field**; an
-  **enumerable** Domain → a `Countable` **Coverage**, the materialized leaf (`Coverage <: Manifold`).
-  *Node*-countability (declares a grid) and *result*-countability (does this `project` return finite
-  values) are **distinct**: a node-`Countable` node still returns a field for a continuous selection.
-  Selection **mode** is the *kind of Domain* (Continuous / Snapped / Enumerable), not a separate field —
-  the encoding is the [data model](./0002-data-model.md).
+  **enumerable** Domain → a **Coverage**, the materialized leaf (`Coverage <: Manifold`) — the one
+  place a public `domain` exists. A node with a store still returns a field for a continuous
+  selection. Selection **mode** is the *kind of Domain* (Continuous / Snapped / Enumerable), not a
+  separate field — the encoding is the [data model](./0002-data-model.md).
 
 - **Materialization = sampling a field onto an enumerable `Domain`** (`project` with an enumerable
   Selection). A storing `Reservoir` asks its child on a **`quantize`d** Selection (snapped to its **own
@@ -125,8 +123,8 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 - One deep interface plus two facets replaces a contract-per-role; composition then yields new behaviour
   with **no contract change**, and earns its keep only where it isolates genuinely different
   **behaviour** (coverage differences are a filter, not a node).
-- `-> Manifold` is **real**: views and derived chains are genuine uncountable **fields**; `Countable`
-  appears only at a storage node or under a finite selection. The narrowing operations (parameter split,
+- `-> Manifold` is **real**: views and derived chains are genuine uncountable **fields**; countability
+  appears only in a materialized result under a finite selection. The narrowing operations (parameter split,
   residual `Domain`) are **uniform** over continuous and enumerable Domains — no lattice to drag through.
 - Purity keeps a coordination / policy layer **out** of the algebra: acquisition and selection are
   pushed **down** into concrete shapes, not lifted into a god-module. Lazy evaluation avoids an

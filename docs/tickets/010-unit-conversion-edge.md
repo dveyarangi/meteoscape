@@ -4,37 +4,34 @@
 
 ## What to build
 
-The **unit conversion utility at the vendor edge** — deliberately absent until a vendor forces it.
+The **general unit-conversion catalogue** — the shared factor/offset library keyed by
+`(from_unit, to_unit)` (the "conversion library + Normalizer protocol" kernel item), lifting the
+ad-hoc per-`Tap` factors ticket 002 ships into one place and recording each edge's **lossless vs
+degrading** quality ([concern #10](../concerns.md#10-parameter-conventions); degrading edges are a
+quality signal, not silent).
 
-**v1 position (sessions 0009/0012): verify-only, convert-never.** Every `Tap`'s `VendorVar.unit`
-is checked against the vendor's reported units (`hourly_units` for Open-Meteo); a mismatch is
-`runtime-failure` (our request builder or the vendor broke contract — never papered over by a silent
-conversion). Quantity **transforms** (vendor speed/direction → canonical `wind_u`/`wind_v`) are
-`decode`'s job and are not unit conversion.
+**Not this ticket — the v1 per-`Tap` convert-on-ingest position** (verify-always, no request knob,
+wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./002-core-5-parameters.md). This ticket
+is only the shared catalogue those inline factors graduate into.
 
-**Trigger:** the first vendor unit that cannot be requested or served canonically. TWC (issue 004)
-is the likely forcing case (metric tier serves km/h wind). Build then, against the real case:
-
-- The shared **conversion utilities** (the architecture's "conversion library + Normalizer protocol"
-  kernel item) — factor/offset conversions keyed by unit pair.
-- `Tap`-level native→canonical conversion: `VendorVar.unit` declares the native unit, the tap
-  converts to the parameter's `canonical_unit` on ingest (write-time, in the data — per the
-  normalization rule of thumb, `architecture.md` §Normalization vs. homogenization).
-- Record **conversion-edge qualities** (lossless vs degrading) with the parameter conventions
-  ([concern #10](../concerns.md#10-parameter-conventions)).
+**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely TWC at
+[ticket 004](./004-second-provider-fallback.md) (metric tier serves km/h wind). Build then, against
+the real case.
 
 ## Acceptance criteria
 
-- [ ] A vendor unit differing from canonical is converted on ingest at the `Tap`, driven by
-      `VendorVar.unit` — no conversion logic in `decode` or downstream of the Normalizer.
-- [ ] Verification remains: a vendor unit matching neither the declared native unit nor a
-      convertible one is `runtime-failure`, not a guess.
-- [ ] Conversions are exact factor/offset (lossless); anything else is recorded per concern #10.
-- [ ] Unit tests cover convert-on-ingest, verify-mismatch, and the no-op canonical path.
+- [ ] Per-`Tap` native→canonical conversions (002) are re-expressed through the shared library — no
+      conversion factors inline in provider leaves.
+- [ ] Conversions are looked up by unit pair; a pair with no registered edge is `runtime-failure`
+      (never a silent guess), preserving 002's verify-always guard.
+- [ ] Lossless vs degrading is recorded per edge (concern #10); v1 edges are all lossless
+      factor/offset.
+- [ ] Unit tests cover a multi-vendor unit spread (the same canonical parameter served in different
+      native units by two providers) converging to one canonical unit.
 
 ## Blocked by
 
-- Blocked by `docs/tickets/002-core-5-parameters.md` (the `Tap` / `VendorVar` seam)
+- Blocked by `docs/tickets/002-core-5-parameters.md` (the per-`Tap` conversion seam)
 - Expected to be forced by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed

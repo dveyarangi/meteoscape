@@ -55,8 +55,8 @@ same shape. The abstraction these are shapes of is the
   - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
     `Domain` footprint, kept private to `serves`.
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
-    enumerable `domain` **is** the Coverage's positional grid, so `Countable.domain` derives from it (not
-    a second copy).
+    enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it
+    (not a second copy).
   - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff *some* member does;
     `parameters` is the members' union. Takes members **flat** (each `Capability` carries its own
     `parameters`, so no per-parameter pre-indexing). Its future dual is an **intersection / consensus**
@@ -93,30 +93,43 @@ same shape. The abstraction these are shapes of is the
   is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
   **parameter** fact (its scale), never a `Domain`/axis one.
 
-- **Matching is axis-kind-owned — one uniform question, per-declaration arithmetic** *(session 0011;
-  settles the Z half of [#13](../concerns.md#13-candidate-admission-containment-vs-intersection))*.
-  `serves` asks one semantic question per parameter — *"is this value a legitimate answer for a
-  request positioned there?"* — and each **declared** footprint axis answers with its own arithmetic
-  (`declared.matches(requested)`; precedent: `RollingAxis` clock-window matching, and the
-  `extent_scaling`-branched horizon edge above). The direction is entailed by the declaration's
-  **quantifier**: a **sample** is an ∃-claim ("a measurement exists at 2 m") → **membership** — a
-  vantage window admits it iff `2 ∈ [0,10]`; a **cell statistic** is a ∀-claim ("for any vantage in
-  my scope, this describes your sky") → **inclusion** — admitted iff `[0,10] ⊆ [0,TOA]`. One request
-  legally evaluates both directions; no global predicate compares "both ways". Request shapes and the
-  resolution table are [ADR-0002](./0002-data-model.md)'s (vantage = Continuous-on-Z, exact =
-  Enumerable). Two rules complete it:
-  - **Maximal-served-cell (vantage resolution)** — a vantage request resolves a cell-statistic
-    parameter to the served cell **containing all other served cells** for that functional (cloud
-    total over low/mid/high); none exists → per-parameter omission. Exact-cell requests match their
-    cell precisely and are never overridden. Derivable fact, no "canonical" flag.
-  - **Vantage-resolvability is emergent** — anything may be *requested* in vantage mode; whether it
-    *resolves* falls out of the declarations (soil temperature's `−0.06 m` sample ∉ a `[0,10]`
-    window → omitted; its exact alias still serves). No `requestable-in-vantage` metadata.
-  **Declarations are native facts, never widened** — a leaf states its sample levels and served
-  statistic cells verbatim; consumer tolerance rides the request window (edge-authored), engine
-  approximation rides the kernel (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)).
-  *(Supersedes the Phase C fat near-surface footprint (`[0,10]` for a 2 m product) — interpretation
-  in the fact slot; replaced by declared natives at issue 002.)*
+- **Admission is a request-side, per-axis gate: `requested.matches(declared)`** *(session 0011;
+  supersedes the earlier `declared.matches(requested)` framing)*. `serves` composes, per axis, a
+  predicate the **request** axis owns — the aperture knows its own admission semantics; the declared
+  footprint axis is read only for its `.extent`:
+  - **default axis** (exact / `RegularAxis` request): `declared.extent.contains(self.extent)` — the
+    request must sit fully inside the footprint (X/Y/T, and exact-Z requests). Unchanged from Phase C.
+  - **`VantageAxis`** (a Continuous-Z aperture, [ADR-0002](./0002-data-model.md)):
+    `self.interval.intersects(declared.extent)` — admit any producer the aperture **overlaps**.
+  This is the **admission gate** — "could this producer contribute?", liberal by design — precedent
+  `RollingAxis` clock-window matching and the `extent_scaling`-branched horizon edge above. It
+  subsumes the quantifier reasoning it replaces: against a **point sample** (`extent [2,2]`)
+  `intersects` **is** membership (`2 ∈ [0,10]`); against a **column** (`[0,TOA]`) it **is** inclusion
+  (`[0,10] ⊆ [0,TOA]`) for any near-surface window — so v1 is unchanged, with **one** predicate and no
+  per-declaration branch.
+- **Admission ≠ selection.** *Which* admitted cell answers is a distinct step the gate does not decide:
+  - **samples** — several levels admitted by one aperture (`{10},{80}` under `[0,100]`) fold to one
+    representative via the parameter's **resampler** (linear over u/v).
+  - **cell statistics** — the **maximal served cell** (the served cell containing the others: cloud
+    total over low/mid/high) answers; none exists → per-parameter omission. Exact-cell requests match
+    their cell precisely and are never overridden.
+  v1 exercises the trivial case only (one wind level, one `[0,TOA]` cloud cell), so the selection step
+  is **named, not built**. The gate's liberality re-opens the bounded-layer divergence (a deep aperture
+  overlapping a shallow layer statistic is *admitted* but only *partially* answers) — that lives in
+  selection and stays **open** ([#13](../concerns.md#13-candidate-admission-containment-vs-intersection)),
+  not a v1 case.
+- **Vantage-resolvability is emergent** — anything may be *requested* in vantage mode; whether it
+  *resolves* falls out of the declarations (soil temperature's `−0.06 m` sample ∉ a `[0,10]` window →
+  omitted; its exact alias still serves). No `requestable-in-vantage` metadata. **Declarations are
+  native facts, never widened** — a leaf states its sample levels and served statistic cells verbatim;
+  consumer tolerance rides the request aperture (edge-authored), engine approximation rides the kernel
+  (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)). The `matches` arithmetic is
+  **cell-level geometry behind `contains` / the store report — not a second public verb** — and is the
+  **one** predicate shared by its three consumers: capability admission (declared cells), the store's
+  per-unit availability report (held cells), and read-back cell selection
+  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
+  *(Supersedes the Phase C fat near-surface footprint (`[0,10]` for a 2 m product) — interpretation in
+  the fact slot; replaced by declared natives at ticket 002.)*
 
 - **The resampler/Calculator boundary.** A **resampler** is *the same value in new geometry, no
   assumptions* — entailed by `(scale, statistic, extent_scaling)`; multiple samples inside one

@@ -33,10 +33,16 @@ u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
 
 ## Vertical carriage (v1 declarations — session 0011)
 
-Leaves declare **native vertical facts, never widened**; the request's Z **shape** carries the mode
-(Continuous = **vantage**, exact cell = **addressing**) → [ADR-0002](./adr/0002-data-model.md);
-matching → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). The edge default bundle
-window is `[0, ~10 m]` `above_ground`.
+Leaves declare **native vertical facts, never widened** — footprint Z is a **sample** level
+(`RegularAxis` count-1 **point cell**, e.g. `[2,2]`) or a **statistic cell** (`IntervalAxis` **span**,
+e.g. `[0,TOA]`), extents only. The request's Z **axis kind** carries the mode: a **`VantageAxis`** (the
+default bundle aperture, `[0, ~10 m]` `above_ground`) is **vantage**; a count-1 `RegularAxis` / layer
+`IntervalAxis` is exact **addressing**. Admission is the request-side gate `requested.matches(declared)`
+— the `VantageAxis` uses **`intersects`** (which *is* membership against a point cell, inclusion against
+a span), the default axis `contains` → [ADR-0002](./adr/0002-data-model.md),
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md). *Which* overlapping cell answers (maximal
+served cell / resampler) is a separate selection step. (`ContinuousAxis` no longer appears on Z — it
+stays only for the global X/Y footprint reach.)
 
 | ParameterId | native Z declaration | kind | vantage `[0,10]` |
 |---|---|---|---|
