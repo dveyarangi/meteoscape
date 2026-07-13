@@ -19,12 +19,13 @@ off the woven root, extending 001's served-parameters narration with the max hor
 the woven root capability), dynamic served-parameters narration, `serves`-containment admission in the
 `Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This issue's remaining substance:
 make the window real (free `start`/`end` → exact-window fetch mapping), apply the configurable default
-horizon to an omitted `end`, add the **edge alias table** (desugar requestable names to canonical
-functionals + **exact-mode Z** — a precise level or layer cell, the dual of the default bundle's
-vantage window; sessions 0009/0011), extend narration with the max horizon, and exercise
+horizon to an omitted `end`, extend the **edge exposure table** (minted at 002 — presence =
+requestability) with **alias desugaring** (requestable names → canonical functionals + **exact-mode
+Z** — a precise level or layer cell, the dual of the default bundle's vantage window; sessions
+0009/0011), extend narration with the max horizon, and exercise
 out-of-envelope admission with real free windows (Phase C's fixed 168 h window never leaves the
-envelope). Concern #24 is **resolved** (session 0011 → [ADR-0002](../../docs/adr/0002-data-model.md) /
-[ADR-0004](../../docs/adr/0004-producer-resolution-and-capability.md)); this issue inherits the
+envelope). Concern #24 is **resolved** (session 0011 → [ADR-0002](../adr/0002-data-model.md) /
+[ADR-0004](../adr/0004-producer-resolution-and-capability.md)); this issue inherits the
 vantage/exact request modes 002 builds.
 
 Output resolution stays hourly (no `step` input). See `docs/v1-requirements.md` (Request / tool
@@ -44,8 +45,8 @@ contract, Time axis).
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/002-core-5-parameters.md`
-- Blocked by `issues/20260623_v1/002b-derived-wind-calculator.md`
+- Blocked by `docs/tickets/002-core-5-parameters.md`
+- Blocked by `docs/tickets/002b-derived-wind-calculator.md`
 
 ## User stories addressed
 

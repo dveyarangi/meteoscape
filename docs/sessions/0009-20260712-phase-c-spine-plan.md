@@ -1,7 +1,7 @@
 # 0009 · 2026-07-12 · Phase C — spine plan (align session)
 
 Continues [session 0008](./0008-20260712-phase-b-value-types-plan.md) (Phase B landed). Grilled
-Phase C of [issue 001](../../issues/20260623_v1/001-walking-skeleton.md) — the real Open-Meteo leaf,
+Phase C of [issue 001](../tickets/done/001-walking-skeleton.md) — the real Open-Meteo leaf,
 the composite behaviours, and the MCP edge — resolving every fork session 0002 left open. Along the
 way the tool contract was reshaped (`forecast_hourly`), one contract change was weighed and declined
 (per-parameter Selection domains), and concern #24 was filed. Deliverable: the decisions below + the
@@ -204,6 +204,6 @@ fork (002/003).
 ## Continuation
 
 - Build Phase C per the cycle list; the e2e closes
-  [issue 001](../../issues/20260623_v1/001-walking-skeleton.md).
-- Concern #24 decision point arrives at [issue 002](../../issues/20260623_v1/002-core-5-parameters.md) /
-  [issue 003](../../issues/20260623_v1/003-request-shaping.md).
+  [issue 001](../tickets/done/001-walking-skeleton.md).
+- Concern #24 decision point arrives at [issue 002](../tickets/002-core-5-parameters.md) /
+  [issue 003](../tickets/003-request-shaping.md).

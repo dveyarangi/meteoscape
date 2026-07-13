@@ -18,6 +18,6 @@ glossary / [ADR-0005](../adr/0005-build-time-composition.md) /
 
 ## Open / continuation
 
-- Walking skeleton ([001](../../issues/20260623_v1/001-walking-skeleton.md)): `SourceBinder.build` /
+- Walking skeleton ([001](../tickets/done/001-walking-skeleton.md)): `SourceBinder.build` /
   `Weaver.weave` / first Provider leaf.
 - [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection) build leftover.
