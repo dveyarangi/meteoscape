@@ -93,6 +93,41 @@ same shape. The abstraction these are shapes of is the
   is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
   **parameter** fact (its scale), never a `Domain`/axis one.
 
+- **Matching is axis-kind-owned — one uniform question, per-declaration arithmetic** *(session 0011;
+  settles the Z half of [#13](../concerns.md#13-candidate-admission-containment-vs-intersection))*.
+  `serves` asks one semantic question per parameter — *"is this value a legitimate answer for a
+  request positioned there?"* — and each **declared** footprint axis answers with its own arithmetic
+  (`declared.matches(requested)`; precedent: `RollingAxis` clock-window matching, and the
+  `extent_scaling`-branched horizon edge above). The direction is entailed by the declaration's
+  **quantifier**: a **sample** is an ∃-claim ("a measurement exists at 2 m") → **membership** — a
+  vantage window admits it iff `2 ∈ [0,10]`; a **cell statistic** is a ∀-claim ("for any vantage in
+  my scope, this describes your sky") → **inclusion** — admitted iff `[0,10] ⊆ [0,TOA]`. One request
+  legally evaluates both directions; no global predicate compares "both ways". Request shapes and the
+  resolution table are [ADR-0002](./0002-data-model.md)'s (vantage = Continuous-on-Z, exact =
+  Enumerable). Two rules complete it:
+  - **Maximal-served-cell (vantage resolution)** — a vantage request resolves a cell-statistic
+    parameter to the served cell **containing all other served cells** for that functional (cloud
+    total over low/mid/high); none exists → per-parameter omission. Exact-cell requests match their
+    cell precisely and are never overridden. Derivable fact, no "canonical" flag.
+  - **Vantage-resolvability is emergent** — anything may be *requested* in vantage mode; whether it
+    *resolves* falls out of the declarations (soil temperature's `−0.06 m` sample ∉ a `[0,10]`
+    window → omitted; its exact alias still serves). No `requestable-in-vantage` metadata.
+  **Declarations are native facts, never widened** — a leaf states its sample levels and served
+  statistic cells verbatim; consumer tolerance rides the request window (edge-authored), engine
+  approximation rides the kernel (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)).
+  *(Supersedes the Phase C fat near-surface footprint (`[0,10]` for a 2 m product) — interpretation
+  in the fact slot; replaced by declared natives at issue 002.)*
+
+- **The resampler/Calculator boundary.** A **resampler** is *the same value in new geometry, no
+  assumptions* — entailed by `(scale, statistic, extent_scaling)`; multiple samples inside one
+  vantage window (wind at 10 m + 80 m under `[0,100]`) fold to **one representative** this way
+  (linear via u/v). A **Calculator** is *a new value under declared assumptions with synthetic
+  provenance* — combinations the statistic does not define are producers, never kernels: cloud
+  low/mid/high → total requires an **overlap assumption**, so it is a `cloud_cover @ [0,TOA]`
+  Calculator (lineage: the layers) competing as an ordinary candidate — the same gap-filling move as
+  a between-levels wind-interpolation Calculator declaring the `(10, 80) m` cell. A no-total vendor
+  therefore omits under vantage *unless* such a Calculator is woven in.
+
 - **Resamplers are a registry** The `ParameterDef` carries a resampler
   **selector** (derived from scale × statistic × extent, not hand-set); the **implementations**
   (linear / angular / area-weighted / categorical kernels) live in a catalogue looked up at

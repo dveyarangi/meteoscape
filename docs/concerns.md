@@ -76,28 +76,6 @@ tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial
 axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
 Additive when the axis surface is next touched; v1 behaviour is correct as-is.
 
-## 24. Parameter height carriage: fat shared Z cell vs per-Z-group requests
-
-**Kind:** edge-isolated (surface + product semantics) · **Refs:** [ADR-0002](./adr/0002-data-model.md), issues 002/003, Phase C align (session 0009)
-
-Surface height rides the Domain's Z cell, never the `ParameterId` (`temperature_2m` desugars to
-`air_temperature` + a 2 m Z cell; the edge alias table is issue 003's scope). A single-parameter
-request carries its **exact** Z cell — Phase C requests temperature at the 2 m point, no guessing —
-while a provider Capability declares the fat near-surface **reach** (`[0, 10] m`), which contains it.
-
-The open fork is the **mixed-height bundle** (the default all-parameters request at 002/003:
-temperature / humidity @ 2 m, wind u/v @ 10 m, precipitation @ surface):
-
-- **One Selection, fat shared Z cell** — one engine pass, one vendor fetch; Z blurred to the band.
-- **Per-Z-group Selections at the edge** — exact Z per group; ADR-0002's own "separate Coverages"
-  answer composed at the edge (the shared hourly `valid_time` makes the serialization merge trivial);
-  costs 2–3× vendor fetches on the cold path (the 006 store absorbs warm ones).
-
-`Selection` stays **one-domain** either way (per-parameter domains were weighed at the Phase C align
-and declined — they reopen the Coverage co-domain invariant, `EnumerableCapability`, the sampling
-engine, and ADR-0001/0002). Decide at 002/003 with the fetch-cost trade in view; the user-facing
-`temperature_2m` promise rides the alias table regardless of the outcome.
-
 ## 15. Coarser-grid resampling and aggregation semantics
 
 **Kind:** edge-isolated (data-model + surface) · **Refs:** [ADR-0002](./adr/0002-data-model.md), [#5](#5-read-time-homogenization-fidelity)
@@ -155,6 +133,10 @@ never combine", no horizon splicing. The open question: when coverage reconciler
 ([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
 at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
 intersection). Additive; no v1 work.
+
+**Z half settled (session 0011):** vertical matching is **axis-kind-owned** — neither containment nor
+intersection globally → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). The open part of
+this concern is now only the **partial spatial/temporal producer** admission above.
 
 ## 9. Cross-run combination
 
@@ -256,7 +238,10 @@ product / fine-enough fit (→ [ADR-0002](./adr/0002-data-model.md)); no native-
 
 **Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
 continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.score`**, and the Arbiter
-equal-priority band walk.
+equal-priority band walk. Note (session 0011): **multi-level samples inside one vantage window**
+(wind at 10 m + 80 m under `[0,100]`) are **not** offering selection — the resampler folds them to one
+representative value (→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); `match`/`score`
+applies to *offerings* (distinct `SourceKey`s), not to levels within one product.
 
 ## 12. Curvilinear domains
 
