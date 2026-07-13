@@ -25,8 +25,8 @@ See `docs/v1-requirements.md` (Providers, v1 invariants → wholesale-fallback r
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/002-core-5-parameters.md`
-- Blocked by `issues/20260623_v1/003-request-shaping.md`
+- Blocked by `docs/tickets/002-core-5-parameters.md`
+- Blocked by `docs/tickets/003-request-shaping.md`
 
 ## User stories addressed
 

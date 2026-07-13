@@ -52,7 +52,7 @@ window is `[0, ~10 m]` `above_ground`.
   and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
   a resampler) are post-v1.
 - These declarations are not yet in `StaticParameterTable.core()` / the leaf — they land with
-  [issue 002](../issues/20260623_v1/002-core-5-parameters.md).
+  [issue 002](tickets/002-core-5-parameters.md).
 
 ## Rationale (only where the choice is non-obvious)
 

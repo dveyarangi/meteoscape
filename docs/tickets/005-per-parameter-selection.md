@@ -25,7 +25,7 @@ and `docs/architecture.md` (Arbiter, Capability).
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/004-second-provider-fallback.md`
+- Blocked by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed
 

@@ -24,7 +24,7 @@ Per-kind / higher-order kernels and a provider `exact` capability stay deferred.
 - [ ] `valid_time` remains hourly-aligned (identity on the time axis).
 - [ ] The store spatial step is configurable (not hardcoded); native/store fidelity is recoverable
       server-side via the provenance `SourceKey` — **not** a dedicated provenance field
-      ([ADR-0003](../../docs/adr/0003-provenance-and-origin.md)).
+      ([ADR-0003](../adr/0003-provenance-and-origin.md)).
 - [ ] `store_spatial_step` defaults to **0.0001° (~11 m)** — a per-point cache: near-exact values
       under nearest-neighbor read-back, spatial sharing only for repeat coordinates (the agent case).
       Verify here that the **source-store `StoreSpec` guess is comparably fine** (fidelity is the
@@ -36,7 +36,7 @@ Per-kind / higher-order kernels and a provider `exact` capability stay deferred.
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/006-retentive-store-freshness.md`
+- Blocked by `docs/tickets/006-retentive-store-freshness.md`
 
 ## User stories addressed
 

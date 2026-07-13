@@ -36,7 +36,7 @@ See `docs/architecture.md` (Failure, nodata, and availability; Error taxonomy) a
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/003-request-shaping.md`
+- Blocked by `docs/tickets/003-request-shaping.md`
 
 ## User stories addressed
 

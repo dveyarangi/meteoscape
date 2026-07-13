@@ -1,7 +1,7 @@
 # 0008 · 2026-07-12 · Phase B — value-type behaviour plan (align session)
 
 Continues [session 0007](./0007-20260711-phase-a-weave-plan.md) (Phase A landed). Grilled Phase B of
-[issue 001](../../issues/20260623_v1/001-walking-skeleton.md) — the six runtime stubs in
+[issue 001](../tickets/done/001-walking-skeleton.md) — the six runtime stubs in
 `manifold/domain.py` / `coverage.py` — and, along the way, dissolved two of them into simpler shapes
 than originally planned. Deliverable: the decisions below + the TDD cycle list.
 
@@ -19,7 +19,7 @@ than originally planned. Deliverable: the decisions below + the TDD cycle list.
   parameters (last cell's accumulation span pokes past the footprint) is **per-parameter, owned by the
   `extent_scaling`-branched `serves`**, not by geometry — an intensive parameter serves to the final
   forecast instant; an extensive one goes `capability-mismatch` (omitted, producible subset), never a
-  padded nodata cell. Filed on [issue 002](../../issues/20260623_v1/002-core-5-parameters.md) with
+  padded nodata cell. Filed on [issue 002](../tickets/002-core-5-parameters.md) with
   precipitation; not Phase B.
 - **Four axes mandatory on every Domain, validated at construction** (`ValueError` in
   `__post_init__`). Absence never has a meaning: a point is a count-1 axis, near-surface is the fat
@@ -121,6 +121,6 @@ The `serves` resampler / extensive-edge branch (002) · kernel registry + neares
 
 ## Continuation
 
-- Phase C (the spine) per [issue 001](../../issues/20260623_v1/001-walking-skeleton.md).
-- Extensive `serves` edge → [issue 002](../../issues/20260623_v1/002-core-5-parameters.md);
+- Phase C (the spine) per [issue 001](../tickets/done/001-walking-skeleton.md).
+- Extensive `serves` edge → [issue 002](../tickets/002-core-5-parameters.md);
   store-grid representation + kernel registry → issues 006 / 007.

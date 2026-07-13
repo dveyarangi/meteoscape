@@ -3,7 +3,7 @@
 `docs/v1-requirements.md`
 
 > **Status: done (2026-07-11).** All modules landed. The catalog package was reshaped by
-> [ADR-0005](../../docs/adr/0005-build-time-composition.md) after this issue was written: vocabulary →
+> [ADR-0005](../../adr/0005-build-time-composition.md) after this issue was written: vocabulary →
 > `parameters.py` (Tier-0 leaf), table → `nodes/catalog/paramtable.py` (catalogue role); paths below
 > updated to match. Two modules landed slightly ahead of the no-behaviour rule — `cadence.py` (anchor
 > math) and `capability.py` (`serves`) carry logic with no tests yet; their behavioural tests are owed
@@ -18,11 +18,11 @@ forecast behavior**. This slice is deliberately allowed to be horizontal because
 
 In scope:
 
-- **Project skeleton + packaging** — the module layout from [`docs/module-layout.md`](../../docs/module-layout.md),
+- **Project skeleton + packaging** — the module layout from [`docs/module-layout.md`](../../module-layout.md),
   a dependency/packaging file pinning the v1 stack (Python · async · Pydantic v2 · httpx · the
   MCP SDK · the test runner), and baseline tooling (format / lint / type-check).
 - **ADR-fixed value types, v1 degenerate cases only** — the data-model and provenance types from
-  [ADR-0002](../../docs/adr/0002-data-model.md) / [ADR-0003](../../docs/adr/0003-provenance-and-origin.md)
+  [ADR-0002](../../adr/0002-data-model.md) / [ADR-0003](../../adr/0003-provenance-and-origin.md)
   as inert types: the regular point/hourly `Domain` (+ `Axis`), `Selection`, `Timeline` `Coverage`,
   `ParameterData`, `Uniform` `ProvenanceField`, atomic `Origin` / `Provenance`.
 - **Parameter vocabulary + table** — the vocabulary (`ParameterId`, `Unit`, `Quantity` identity,
@@ -42,7 +42,7 @@ In scope:
 ## Acceptance criteria
 
 - [x] **Packaging** — the project installs into a fresh environment; module layout matches
-      [`docs/module-layout.md`](../../docs/module-layout.md), modules behaviour-free.
+      [`docs/module-layout.md`](../../module-layout.md), modules behaviour-free.
 - [x] **`errors.py`** — `capability-mismatch` / `runtime-failure` / `bad-request` taxonomy types.
 - [x] **`manifold/core.py`** — `Manifold` / `Countable` / `Writable` protocols + the `Coverage`
       contract + `Selection` (signatures / value type only).

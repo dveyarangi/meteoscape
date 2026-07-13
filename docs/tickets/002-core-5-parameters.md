@@ -26,17 +26,19 @@ differs only by `extent_scaling`; the shared axis carries hourly `bounds`; every
 air temperature already landed with Phase C — confirm the remaining four).
 
 **Build here — Z carriage (concern #24 resolved, session 0011 →
-[ADR-0002](../../docs/adr/0002-data-model.md) /
-[ADR-0004](../../docs/adr/0004-producer-resolution-and-capability.md)):** native per-parameter Z
+[ADR-0002](../adr/0002-data-model.md) /
+[ADR-0004](../adr/0004-producer-resolution-and-capability.md)):** native per-parameter Z
 declarations replace `_NEAR_SURFACE_Z`; the default bundle request carries a Continuous **vantage** Z
 window (edge-authored); `serves` gains **axis-kind matching**; the request Domain becomes
 **mixed-shape per axis** (X/Y exact, T regular, Z continuous — retires the fake count-1 request Z
-axis). Declarations per parameter → [parameters.md §Vertical carriage](../../docs/parameters.md).
+axis). Declarations per parameter → [parameters.md §Vertical carriage](../parameters.md).
 
-**Edge filter to land here:** the MCP default parameter set and tool narration read the woven root
-`capability.parameters` (Phase C). Once the leaf declares `wind_u` / `wind_v`, the requestable set is
-**capability minus internal-only** — never raw capability keys — or the edge would offer parameters
-002b declares unrequestable.
+**Edge exposure table to land here:** the surface menu is the edge's own table — an entry per
+requestable name (the six product params; `wind_u` / `wind_v` have none) — and the tool's default
+set, narration, and validation all read **exposure ∩ woven capability** (wind speed/direction entries
+stay hidden until 002b's Calculators serve them; disabled providers shrink the menu the same way).
+**Requestability is presence in the table, never a `ParameterDef` flag** — the canonical table stays
+facts. 003 extends this same table with alias desugaring.
 
 **Build in this issue — the `extent_scaling`-branched `serves` edge** (settled in session 0008):
 `Domain.contains` is pure tick containment (geometry; ADR-0004's "geometric half"), so an intensive
@@ -58,17 +60,17 @@ forecast instant," which the provider never produced. Failing that check is per-
 - [ ] Precipitation reads its accumulation extent from the shared hourly `bounds`; intensive params
       sample at the tick.
 - [ ] Each `ParameterData` carries `present = None` and `Uniform` provenance with `expiration`.
-- [ ] `wind_u` / `wind_v` are declared by the `Capability` but excluded from the tool's default
-      parameter set and narration (internal-only edge filter).
+- [ ] `wind_u` / `wind_v` are declared by the `Capability` but absent from the edge exposure table,
+      so the tool's default set, narration, and validation (exposure ∩ capability) never surface them.
 - [ ] The request carries a Continuous **vantage** Z window (edge default); leaf `Capability` declares
       **native** per-parameter Z facts (`_NEAR_SURFACE_Z` removed); admission is axis-kind matching
-      ([ADR-0004](../../docs/adr/0004-producer-resolution-and-capability.md)).
+      ([ADR-0004](../adr/0004-producer-resolution-and-capability.md)).
 - [ ] Unit + mocked-transport integration tests cover the canonical set, the vendor-speed/dir → u/v
       conversion, and the extensive precipitation case.
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/001-walking-skeleton.md`
+- Blocked by `docs/tickets/done/001-walking-skeleton.md`
 
 ## User stories addressed
 

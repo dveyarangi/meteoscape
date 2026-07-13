@@ -20,7 +20,7 @@ exist from the seam work; this slice wires them through `SourceBinder` end-to-en
 degrade path.
 
 See `docs/v1-requirements.md` (Config & secrets, acceptance §6), `docs/architecture.md` (Config,
-binders, Weaver; Composition root), and [ADR-0005](../../docs/adr/0005-build-time-composition.md).
+binders, Weaver; Composition root), and [ADR-0005](../adr/0005-build-time-composition.md).
 
 **Not this issue:** response-level (5xx/429) retry stays **declined-until-evidence** (session 0009 —
 once 004 lands, the right second attempt is a *different candidate*, not a re-try); quota /
@@ -41,7 +41,7 @@ rate-limit policy stays the **deferred null Gateway seam**
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/004-second-provider-fallback.md`
+- Blocked by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed
 

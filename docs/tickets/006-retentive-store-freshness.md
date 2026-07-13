@@ -44,7 +44,7 @@ second-call **re-fetch assertion** (documenting no-retention, session 0010) flip
 
 ## Blocked by
 
-- Blocked by `issues/20260623_v1/002-core-5-parameters.md`
+- Blocked by `docs/tickets/002-core-5-parameters.md`
 
 ## User stories addressed
 
