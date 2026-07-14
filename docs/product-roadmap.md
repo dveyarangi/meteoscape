@@ -6,7 +6,9 @@ gaps, and a staged roadmap from v1 to a possible hosted cloud competitor.
 
 The architecture contract lives in [`architecture.md`](./architecture.md). The
 concrete v1 build scope lives in [`v1-requirements.md`](./v1-requirements.md).
-This document should guide sequencing and product judgment.
+This document should guide sequencing and product judgment. It deliberately does
+not track implementation progress; current capability and delivery order live in
+the [v1 delivery status](./tickets/README.md).
 
 ## Product thesis
 
@@ -479,7 +481,7 @@ Proof:
 - Users choose Meteoscape for trust, confidence, and decision surfaces, not only
   because it can return a forecast.
 
-## Gaps to close
+## Strategic gaps to close
 
 ### Product gaps
 
@@ -492,16 +494,24 @@ Proof:
 - Open-Meteo-level ease of use remains the usability bar even when the internals
   are more advanced.
 
-### Technical gaps
+### Technical proof obligations
 
-- Concrete providers are not implemented yet.
-- Core `project` behavior for Reservoir, Arbiter, Calculator, Gateway, and
-  domains still needs implementation.
-- Store behavior and freshness semantics need behavior tests.
-- Resolution trace sidecar shape is still open.
-- Homogenization kernels are initially simple and need a later fidelity roadmap.
+- Phase 1 must prove more than one concrete provider, wholesale fallback, and
+  per-parameter source selection.
+- The Manifold nodes must preserve closed projection while retention,
+  calculation, and multi-provider assembly are added.
+- Store behavior must make freshness, partial refill, and single-origin window
+  replacement observable and testable.
+- Resolution decisions need an inspectable trace or logging surface; its product
+  shape remains an open design concern.
+- Homogenization starts with a deliberately simple kernel and needs an explicit
+  later fidelity path.
 - Provider capability discovery needs a product surface.
-- Self-host packaging and operational docs are not yet present.
+- Self-host packaging and operational guidance must remain part of the
+  operational-substrate proof.
+
+The [v1 delivery status](./tickets/README.md) records which of these obligations
+are implemented or assigned to active tickets.
 
 ### Go-to-market gaps
 

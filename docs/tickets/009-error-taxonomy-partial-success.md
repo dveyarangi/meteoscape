@@ -1,3 +1,10 @@
+# 009 — Error taxonomy and partial success
+
+- **Status:** Partial
+- **Depends on:** [003 — Request shaping](./003-request-shaping.md),
+  [004 — Second-provider fallback](./004-second-provider-fallback.md)
+- **Outcome:** Per-parameter absence reasons and capable-but-faulting partial results.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -15,7 +22,7 @@ produced. The MCP adapter maps the taxonomy — `bad-request` (e.g. invalid lat/
 
 **Already landed at 001 (Phase C):** taxonomy → `ToolError` **stable prefixes**, lat/lon and
 unknown-parameter `bad-request` validation, producible-subset serving with whole-request
-`capability-mismatch` only when nothing is produced, and nodata → `null` serialization. This issue's
+`capability-mismatch` only when nothing is produced, and nodata → `null` serialization. This ticket's
 remaining substance: the **edge-derived per-parameter absence reason** (capable ⇒ `runtime-failure`,
 else `capability-mismatch`) on partial responses, and the capable-but-all-candidates-fault omission
 path (needs 004's fallback machinery — Phase C propagates a lone candidate's `RuntimeFailure` whole).
@@ -33,10 +40,6 @@ See `docs/architecture.md` (Failure, nodata, and availability; Error taxonomy) a
 - [ ] A whole-request error is raised only when nothing is produced.
 - [ ] **nodata** (`present[i] = False`) is returned as data, never as a failure.
 - [ ] Unit + mocked-transport integration tests cover each error class and a partial-success response.
-
-## Blocked by
-
-- Blocked by `docs/tickets/003-request-shaping.md`
 
 ## User stories addressed
 

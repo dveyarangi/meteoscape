@@ -10,6 +10,9 @@ inputs/outputs, acceptance criteria). The contract's seams themselves live in
 > tool specifics, parameter conventions). The architecture/glossary/ADRs remain the source of truth
 > for the *contract*; nothing here may contradict them. Future/unscoped ideas live in
 > [`ideas.md`](./ideas.md).
+>
+> This is a **release contract, not a progress tracker**. Current implementation state, ticket
+> readiness, and execution order live in the [v1 delivery status](./tickets/README.md).
 
 ## Goal
 
@@ -20,8 +23,8 @@ provider per parameter, falling back on failure, and returning one normalized, p
 ## User stories
 
 Two actors: the **agent** (an MCP client / AI tool calling `forecast_hourly`) and the **operator** (whoever
-configures and runs the server). Stories are numbered for stable reference from
-[issues](#acceptance-criteria-definition-of-done); each maps to an acceptance criterion below.
+configures and runs the server). Stories are numbered for stable reference from the
+[acceptance criteria](#acceptance-criteria-definition-of-done); each maps to a criterion below.
 
 **Agent**
 
@@ -198,8 +201,9 @@ lifts **without a contract change** — see the seams in
   (one run, one `expiration`); v1 never **temporally splices**, so a temporal miss or window-extension
   refetches the **whole window** from the selected provider, a primary failure **falls back wholesale**
   (the entire window from the next provider), and a window no provider can serve whole is an **error** —
-  never cached-primary ∪ fallback along `valid_time`. A non-retentive stub `Store` survives only
-  as a **test double**, not a wired position. (In-memory only; a *persisting* `Store` stays deferred.)
+  never cached-primary ∪ fallback along `valid_time`. The v1 graph wires retentive Stores in both
+  positions; a non-retentive Store is only a **test double**. (In-memory only; a *persisting* `Store`
+  stays deferred.)
 - **`priority`-reconciler Arbiter** — implicit-priority select + fallback per parameter; only the
   default `priority` reconciler (no `tile` / `consensus` / `feather` coverage reconcilers), no explicit
   scoring.
@@ -210,7 +214,7 @@ lifts **without a contract change** — see the seams in
 - **Null Gateway** policy (identity/limits pass through).
 - **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
   — i.e. the run is still current. `expiration` derives from the provider's **cadence** (`CadenceDef`)
-  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 ships conservative per-provider `{Δ, L}` defaults
+  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 specifies conservative per-provider `{Δ, L}` defaults
   ([concern #18](./concerns.md#18-clock-anchored-footprint-fidelity)).
 
 ### Config & secrets
@@ -281,9 +285,10 @@ cross-run combination, **synthetic parameters beyond the derived wind views** (d
 coverage `reconciler`s (obs + forecast), persisting `Store`,
 real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector, HTTP transport.
 
-## Open / TBD during build
+## Remaining v1 design choices and explicit deferrals
 
-- Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`).
+- Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`) is
+  owned by [ticket 005](./tickets/005-per-parameter-selection.md).
 - The v1 canonical units are **committed** in [`parameters.md`](./parameters.md); conventions *beyond* the
   v1 set stay deferred at the contract level ([concern #10](./concerns.md#10-parameter-conventions)).
 - **Single-flight** coalescing of concurrent same-key refills (cache-stampede guard) — already a

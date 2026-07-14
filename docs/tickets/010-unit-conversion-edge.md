@@ -1,3 +1,11 @@
+# 010 — Unit-conversion catalogue
+
+- **Status:** Planned
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Trigger:** First real multi-vendor unit spread, expected in
+  [004 — Second-provider fallback](./004-second-provider-fallback.md)
+- **Outcome:** Shared verified native-to-canonical conversion edges.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -28,11 +36,6 @@ the real case.
       factor/offset.
 - [ ] Unit tests cover a multi-vendor unit spread (the same canonical parameter served in different
       native units by two providers) converging to one canonical unit.
-
-## Blocked by
-
-- Blocked by `docs/tickets/002-core-5-parameters.md` (the per-`Tap` conversion seam)
-- Expected to be forced by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed
 

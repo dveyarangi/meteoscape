@@ -1,3 +1,9 @@
+# 008 — Config, secrets, and graceful degradation
+
+- **Status:** Partial
+- **Depends on:** [004 — Second-provider fallback](./004-second-provider-fallback.md)
+- **Outcome:** Complete key-present/key-absent provider construction behavior.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -22,7 +28,7 @@ degrade path.
 See `docs/v1-requirements.md` (Config & secrets, acceptance §6), `docs/architecture.md` (Config,
 binders, Weaver; Composition root), and [ADR-0005](../adr/0005-build-time-composition.md).
 
-**Not this issue:** response-level (5xx/429) retry stays **declined-until-evidence** (session 0009 —
+**Not this ticket:** response-level (5xx/429) retry stays **declined-until-evidence** (session 0009 —
 once 004 lands, the right second attempt is a *different candidate*, not a re-try); quota /
 rate-limit policy stays the **deferred null Gateway seam**
 (`architecture.md` → Deferred decisions), out of v1 scope entirely.
@@ -38,10 +44,6 @@ rate-limit policy stays the **deferred null Gateway seam**
       stays a thin composition root (catalogues + `Settings` → `ProfileConfig` → binders →
       `ProfileDef` → `weave`).
 - [ ] Unit + integration tests cover key-present (both providers) and key-absent (degrade) startup.
-
-## Blocked by
-
-- Blocked by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed
 

@@ -1,3 +1,9 @@
+# 002b — Derived wind calculator
+
+- **Status:** Planned
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Outcome:** Requestable wind speed/direction with synthetic provenance.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -37,10 +43,6 @@ degree average — [concern #5](../concerns.md#5-read-time-homogenization-fideli
 - [ ] `wind_u` / `wind_v` stay **internal-only** — not directly requestable via `forecast_hourly`.
 - [ ] Unit + mocked-transport integration tests cover the u/v → speed/direction derivation and the
       synthetic-provenance lineage.
-
-## Blocked by
-
-- Blocked by `docs/tickets/002-core-5-parameters.md`
 
 ## User stories addressed
 

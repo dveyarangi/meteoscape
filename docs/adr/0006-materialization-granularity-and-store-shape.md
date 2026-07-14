@@ -5,8 +5,8 @@ status: accepted
 # Materialization granularity & store shape
 
 How a Provider's fetch becomes records, how those records are retained, and which geometry survives
-where. Settled in the 002 align session (Z carriage through the data plane); fixes the contract for
-any provider/store shape, not just v1's point vendor. The capability/matching half is
+where. This fixes the contract for any provider/store shape, including Z carriage through the data
+plane. The capability/matching half is
 [ADR-0004](./0004-producer-resolution-and-capability.md); the data model is
 [ADR-0002](./0002-data-model.md).
 
@@ -37,8 +37,8 @@ any provider/store shape, not just v1's point vendor. The capability/matching ha
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is.** Each axis
   with a declared lattice snaps onto it and widens outward to whole units (extent ≥ request); an axis
-  **without** a declared lattice (v1: Z) **passes through unchanged**, its cell becoming part of the
-  unit key. A future volumetric provider declares a real Z lattice and Z snaps like any other axis —
+  **without** a declared lattice (for example, Z) **passes through unchanged**, its cell becoming part of the
+  unit key. A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
   same rule, no vertical special case. "Quantize preserves Z semantics" is thus by construction.
 
 - **The fact→product boundary sits at the Source's read-back.** One vertical fact travels:
@@ -59,7 +59,7 @@ any provider/store shape, not just v1's point vendor. The capability/matching ha
   **held unit** cells, read-back selects the cells that feed the request. One helper, hidden behind
   `contains` / the report — no second public verb.
 
-- **Node-`Countable` is retired; `domain` lives only on the Coverage.** A node's public shape is its
+- **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
   **capability** (reach — a Source admits uncached-but-in-footprint requests precisely because
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
@@ -72,7 +72,7 @@ any provider/store shape, not just v1's point vendor. The capability/matching ha
 ## Why
 
 - **Losslessness where it matters:** a stored unit carries the geometry it was measured on. Flattened
-  records would need `SourceKey` → *current* tap table to recover heights — version-fragile against
+  records would need `SourceKey` → the then-active Tap table to recover heights — version-fragile against
   tap changes and useless for cross-provider reconciliation or verification.
 - **The Arbiter stays a pure fold:** admission on reach, reads on the handed shape, positional
   assembly. Geometry work lives only in nodes that own data.

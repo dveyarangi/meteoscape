@@ -1,3 +1,9 @@
+# 002 — Core canonical parameters
+
+- **Status:** In progress
+- **Depends on:** [001 — Walking skeleton](./done/001-walking-skeleton.md) (done)
+- **Outcome:** Open-Meteo canonical parameter set, native Z carriage, and edge exposure.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -130,10 +136,6 @@ forecast instant," which the provider never produced. Failing that check is per-
       ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)).
 - [ ] Unit + mocked-transport integration tests cover the canonical set, the vendor-speed/dir → u/v
       conversion, and the extensive precipitation case.
-
-## Blocked by
-
-- Blocked by `docs/tickets/done/001-walking-skeleton.md`
 
 ## User stories addressed
 

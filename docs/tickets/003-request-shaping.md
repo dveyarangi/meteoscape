@@ -1,3 +1,10 @@
+# 003 — Request shaping
+
+- **Status:** Partial
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md),
+  [002b — Derived wind](./002b-derived-wind-calculator.md)
+- **Outcome:** Free request windows, exact-mode aliases, and capability-envelope narration.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -17,7 +24,7 @@ off the woven root, extending 001's served-parameters narration with the max hor
 
 **Already landed at 001 (Phase C):** the `parameters` input (unknown name → `bad-request`, default =
 the woven root capability), dynamic served-parameters narration, `serves`-containment admission in the
-`Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This issue's remaining substance:
+`Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This ticket's remaining substance:
 make the window real (free `start`/`end` → exact-window fetch mapping), apply the configurable default
 horizon to an omitted `end`, extend the **edge exposure table** (minted at 002 — presence =
 requestability) with **alias desugaring** (requestable names → canonical functionals + **exact-mode
@@ -42,11 +49,6 @@ contract, Time axis).
       `Capability` union.
 - [ ] Unit + mocked-transport integration tests cover subset selection, default horizon, and
       out-of-envelope extents.
-
-## Blocked by
-
-- Blocked by `docs/tickets/002-core-5-parameters.md`
-- Blocked by `docs/tickets/002b-derived-wind-calculator.md`
 
 ## User stories addressed
 

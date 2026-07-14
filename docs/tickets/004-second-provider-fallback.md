@@ -1,3 +1,10 @@
+# 004 — Second-provider fallback
+
+- **Status:** Planned
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md),
+  [003 — Request shaping](./003-request-shaping.md)
+- **Outcome:** TWC provider leaf and wholesale priority fallback.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -22,11 +29,6 @@ See `docs/v1-requirements.md` (Providers, v1 invariants → wholesale-fallback r
 - [ ] Fallback is wholesale and single-origin — no cached-primary ∪ fallback splice along `valid_time`.
 - [ ] TWC `Provider` authors full per-parameter provenance (origin + `expiration`) like Open-Meteo.
 - [ ] Unit + mocked-transport integration tests cover primary-serves and forced-failure-fallback.
-
-## Blocked by
-
-- Blocked by `docs/tickets/002-core-5-parameters.md`
-- Blocked by `docs/tickets/003-request-shaping.md`
 
 ## User stories addressed
 
