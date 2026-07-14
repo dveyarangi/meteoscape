@@ -12,14 +12,14 @@ from meteoscape.manifold.capability import (
     FootprintCapability,
     UnionCapability,
 )
-from meteoscape.manifold.domain import AxisName, RegularAxis, RegularDomain
+from meteoscape.manifold.domain import AxisName, GridDomain, RegularAxis
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_SPEED, WIND_U, WIND_V
 
 
-def _point(at: datetime) -> RegularDomain:
+def _point(at: datetime) -> GridDomain:
     base = point_timeline_domain(hours=1)
-    return RegularDomain(
+    return GridDomain(
         axes={
             AxisName.X: base.axes[AxisName.X],
             AxisName.Y: base.axes[AxisName.Y],

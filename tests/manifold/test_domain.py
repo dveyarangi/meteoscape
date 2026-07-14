@@ -1,4 +1,4 @@
-"""RegularAxis / Domain behaviour — extent, enumeration, containment."""
+"""GridDomain / axis behaviour — extent, enumeration, containment, vantage matches."""
 
 from __future__ import annotations
 
@@ -15,11 +15,112 @@ from meteoscape.manifold.domain import (
     ContinuousAxis,
     Domain,
     FootprintDomain,
+    GridDomain,
     Interval,
+    IntervalAxis,
     RegularAxis,
-    RegularDomain,
+    VantageAxis,
     sub_lattice_offset,
 )
+
+
+def test_interval_intersects() -> None:
+    a = Interval(0.0, 10.0)
+    assert a.intersects(Interval(5.0, 15.0)) is True
+    assert a.intersects(Interval(10.0, 20.0)) is True  # touch at bound
+    assert a.intersects(Interval(-5.0, 0.0)) is True
+    assert a.intersects(Interval(2.0, 8.0)) is True  # contained
+    assert a.intersects(Interval(11.0, 20.0)) is False
+    assert a.intersects(Interval(-10.0, -1.0)) is False
+
+
+def test_interval_axis_single_cell() -> None:
+    axis = IntervalAxis(AxisName.Z, Interval(0.0, 12_000.0))
+    assert len(axis) == 1
+    assert axis.extent == Interval(0.0, 12_000.0)
+    assert axis[0] == Cell(0.0, Interval(0.0, 12_000.0))
+    with pytest.raises(IndexError):
+        _ = axis[1]
+
+
+def test_default_matches_is_containment() -> None:
+    declared = ContinuousAxis(AxisName.Z, Interval(0.0, 10.0))
+    inside = RegularAxis(AxisName.Z, 2.0, 1.0, 1, False)
+    outside = RegularAxis(AxisName.Z, 20.0, 1.0, 1, False)
+    span = IntervalAxis(AxisName.Z, Interval(0.0, 5.0))
+    assert inside.matches(declared) is True
+    assert outside.matches(declared) is False
+    assert span.matches(declared) is True
+    assert IntervalAxis(AxisName.Z, Interval(0.0, 20.0)).matches(declared) is False
+
+
+def test_vantage_axis_matches_by_intersection() -> None:
+    vantage = VantageAxis(AxisName.Z, Interval(0.0, 10.0))
+    assert vantage.extent == Interval(0.0, 10.0)
+    assert len(vantage) == 1
+    assert vantage[0] == Cell(0.0, Interval(0.0, 10.0))
+
+    sample_2m = RegularAxis(AxisName.Z, 2.0, 1.0, 1, False)
+    sample_10m = RegularAxis(AxisName.Z, 10.0, 1.0, 1, False)
+    sample_100m = RegularAxis(AxisName.Z, 100.0, 1.0, 1, False)
+    cloud = IntervalAxis(AxisName.Z, Interval(0.0, 12_000.0))
+
+    assert vantage.matches(sample_2m) is True
+    assert vantage.matches(sample_10m) is True
+    assert vantage.matches(cloud) is True
+    assert vantage.matches(sample_100m) is False
+
+
+def test_grid_domain_mixed_z_enumeration() -> None:
+    domain = GridDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), 2, False
+            ),
+        }
+    )
+    assert len(domain) == 2
+    points = list(domain.enumerate())
+    assert points[0].cells[AxisName.Z] == Cell(0.0, Interval(0.0, 10.0))
+    assert points[0].cells[AxisName.T].coordinate == datetime(2026, 7, 11, tzinfo=UTC)
+    assert points[1].cells[AxisName.T].coordinate == datetime(2026, 7, 11, 1, tzinfo=UTC)
+
+
+def test_footprint_matches_vantage_by_intersection() -> None:
+    """Footprint.matches routes through requested.matches(declared) — vantage intersects Z."""
+    footprint = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: RegularAxis(AxisName.Z, 2.0, 1.0, 1, False),
+            AxisName.T: ContinuousAxis(
+                AxisName.T,
+                Interval(datetime(2026, 7, 11, tzinfo=UTC), datetime(2026, 7, 18, tzinfo=UTC)),
+            ),
+        }
+    )
+    request = GridDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, 12, tzinfo=UTC), timedelta(hours=1), 1, False
+            ),
+        }
+    )
+    assert footprint.matches(request) is True
+
+    upper_air = FootprintDomain(
+        axes={
+            **footprint.axes,
+            AxisName.Z: RegularAxis(AxisName.Z, 100.0, 1.0, 1, False),
+        }
+    )
+    assert upper_air.matches(request) is False
 
 
 def test_regular_axis_getitem_and_len() -> None:
@@ -82,16 +183,16 @@ def _four_regular_axes() -> dict[AxisName, RegularAxis]:
 
 
 def test_regular_domain_requires_exactly_four_axes() -> None:
-    RegularDomain(axes=_four_regular_axes())  # ok
+    GridDomain(axes=_four_regular_axes())  # ok
 
     missing_t = {n: a for n, a in _four_regular_axes().items() if n is not AxisName.T}
     with pytest.raises(ValueError, match="four axes"):
-        RegularDomain(axes=missing_t)
+        GridDomain(axes=missing_t)
 
     mismatched = _four_regular_axes()
     mismatched[AxisName.X] = RegularAxis(AxisName.Y, 0.0, 1.0, 1, False)
     with pytest.raises(ValueError, match="name"):
-        RegularDomain(axes=mismatched)
+        GridDomain(axes=mismatched)
 
     footprint_axes = {
         AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
@@ -109,7 +210,7 @@ def test_regular_domain_requires_exactly_four_axes() -> None:
 
 def test_regular_domain_enumeration_order() -> None:
     """X → Y → Z → T nesting, T fastest; positional round-trip; point-timeline is time order."""
-    domain = RegularDomain(
+    domain = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 2, False),
             AxisName.Y: RegularAxis(AxisName.Y, 10.0, 1.0, 2, False),
@@ -136,7 +237,7 @@ def test_regular_domain_enumeration_order() -> None:
     assert points[6].cells[AxisName.X].coordinate == 1.0
 
     # Degenerate point-timeline: count-1 spatial/Z → enumerates in time order.
-    timeline = RegularDomain(
+    timeline = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
@@ -151,7 +252,7 @@ def test_regular_domain_enumeration_order() -> None:
     ]
 
 
-def test_footprint_domain_contains_by_extent() -> None:
+def test_footprint_domain_matches_by_extent() -> None:
     from meteoscape.clock import StoppedClock
     from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 
@@ -171,7 +272,7 @@ def test_footprint_domain_contains_by_extent() -> None:
         }
     )
 
-    inside = RegularDomain(
+    inside = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
@@ -181,10 +282,10 @@ def test_footprint_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert footprint.contains(inside) is True
+    assert footprint.matches(inside) is True
 
     # One tick past A + max_lead — T extent upper is 18:00; a tick at 19:00 is outside.
-    past = RegularDomain(
+    past = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
@@ -194,10 +295,10 @@ def test_footprint_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert footprint.contains(past) is False
+    assert footprint.matches(past) is False
 
     # Before A.
-    before = RegularDomain(
+    before = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
@@ -207,20 +308,20 @@ def test_footprint_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert footprint.contains(before) is False
+    assert footprint.matches(before) is False
 
     class _NonSeparable(Domain):
-        def contains(self, other: Domain) -> bool:
+        def matches(self, other: Domain) -> bool:
             return False
 
         def intersect(self, other: Domain) -> Domain:
             return self
 
-    assert footprint.contains(_NonSeparable()) is False
+    assert footprint.matches(_NonSeparable()) is False
 
 
-def test_regular_domain_contains_by_extent() -> None:
-    outer = RegularDomain(
+def test_grid_domain_matches_by_extent() -> None:
+    outer = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 5, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 5, False),
@@ -231,7 +332,7 @@ def test_regular_domain_contains_by_extent() -> None:
         }
     )
     # Enumerable ⊆ enumerable by span (tick alignment is not contains' job).
-    inner = RegularDomain(
+    inner = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 2, False),
             AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 2, False),
@@ -241,7 +342,7 @@ def test_regular_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert outer.contains(inner) is True
+    assert outer.matches(inner) is True
 
     # Continuous other — per-axis span check.
     continuous = FootprintDomain(
@@ -255,9 +356,9 @@ def test_regular_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert outer.contains(continuous) is True
+    assert outer.matches(continuous) is True
 
-    off_span = RegularDomain(
+    off_span = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 10.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),
@@ -267,7 +368,7 @@ def test_regular_domain_contains_by_extent() -> None:
             ),
         }
     )
-    assert outer.contains(off_span) is False
+    assert outer.matches(off_span) is False
 
 
 # --- hypothesis property cycles (session 0008) ---
@@ -280,7 +381,7 @@ def test_regular_domain_contains_by_extent() -> None:
     nt=st.integers(1, 4),
 )
 def test_enumeration_round_trip_property(nx: int, ny: int, nz: int, nt: int) -> None:
-    domain = RegularDomain(
+    domain = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, nx, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, ny, False),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
 from fakes import point_timeline_domain
@@ -17,7 +18,7 @@ from meteoscape.parameters import AIR_TEMPERATURE
 
 
 def test_normalizer_contract_takes_raw_and_provenance() -> None:
-    """Locks `normalize(raw, provenance) -> Coverage` (no selection — homogenization is Reservoir)."""
+    """Locks `normalize(raw, provenance) -> Sequence[Coverage]` (no selection — homogenization is Reservoir)."""
     domain = point_timeline_domain(hours=1)
     table = StaticParameterTable.core()
     provenance = Provenance(
@@ -35,10 +36,10 @@ def test_normalizer_contract_takes_raw_and_provenance() -> None:
     )
 
     class _Stub:
-        def normalize(self, raw: object, provenance: Provenance) -> Coverage:
+        def normalize(self, raw: object, provenance: Provenance) -> Sequence[Coverage]:
             assert raw == {"temperature_2m": [18.5]}
             assert provenance.origin.source.provider == "open-meteo"
-            return expected
+            return [expected]
 
     normalizer: Normalizer = _Stub()
-    assert normalizer.normalize({"temperature_2m": [18.5]}, provenance) is expected
+    assert normalizer.normalize({"temperature_2m": [18.5]}, provenance) == [expected]

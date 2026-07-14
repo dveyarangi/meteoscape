@@ -16,9 +16,9 @@ from meteoscape.manifold.domain import (
     AxisName,
     ContinuousAxis,
     FootprintDomain,
+    GridDomain,
     Interval,
     RegularAxis,
-    RegularDomain,
 )
 from meteoscape.manifold.provenance import AtomicOrigin, PerParameter, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
@@ -39,7 +39,7 @@ def _prov(pid_stamp: str = "fake") -> Provenance:
 
 
 def _record(
-    domain: RegularDomain,
+    domain: GridDomain,
     *,
     values: dict | None = None,
     present: dict | None = None,
@@ -112,7 +112,7 @@ async def test_aligned_valid_time_crop() -> None:
         values={AIR_TEMPERATURE: [10.0, 11.0, 12.0, 13.0, 14.0, 15.0]},
         present={AIR_TEMPERATURE: [True, True, False, True, True, True]},
     )
-    cropped_domain = RegularDomain(
+    cropped_domain = GridDomain(
         axes={
             AxisName.X: domain.axes[AxisName.X],
             AxisName.Y: domain.axes[AxisName.Y],
@@ -146,7 +146,7 @@ async def test_off_phase_and_continuous_raise_not_implemented() -> None:
     domain = point_timeline_domain(hours=4)
     record = _record(domain)
 
-    off_phase = RegularDomain(
+    off_phase = GridDomain(
         axes={
             AxisName.X: domain.axes[AxisName.X],
             AxisName.Y: domain.axes[AxisName.Y],
@@ -176,3 +176,41 @@ async def test_off_phase_and_continuous_raise_not_implemented() -> None:
     )
     with pytest.raises(NotImplementedError, match="continuous"):
         await record.project(Selection(domain=continuous, parameters=frozenset({AIR_TEMPERATURE})))
+
+
+@pytest.mark.asyncio
+async def test_vantage_z_identity_crop() -> None:
+    """Non-RegularAxis Z uses identity offset — closed projection rides the vantage cell."""
+    from meteoscape.manifold.domain import VantageAxis
+
+    domain = GridDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), 3, False
+            ),
+        }
+    )
+    record = _record(
+        domain,
+        values={AIR_TEMPERATURE: [10.0, 11.0, 12.0]},
+    )
+    cropped = GridDomain(
+        axes={
+            AxisName.X: domain.axes[AxisName.X],
+            AxisName.Y: domain.axes[AxisName.Y],
+            AxisName.Z: domain.axes[AxisName.Z],
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, 1, tzinfo=UTC), timedelta(hours=1), 2, False
+            ),
+        }
+    )
+    result = await _project(
+        record, Selection(domain=cropped, parameters=frozenset({AIR_TEMPERATURE}))
+    )
+    assert result.domain == cropped
+    assert list(result.ranges[AIR_TEMPERATURE].values) == [11.0, 12.0]
+    assert isinstance(result.domain, GridDomain)
+    assert isinstance(result.domain.axes[AxisName.Z], VantageAxis)

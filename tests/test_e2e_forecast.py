@@ -26,10 +26,23 @@ def _canned_forecast(*, hours: int = _HOURS) -> dict:
     return {
         "latitude": 52.52,
         "longitude": 13.419998,
-        "hourly_units": {"time": "iso8601", "temperature_2m": "°C"},
+        "hourly_units": {
+            "time": "iso8601",
+            "temperature_2m": "°C",
+            "relative_humidity_2m": "%",
+            "wind_speed_10m": "km/h",
+            "wind_direction_10m": "°",
+            "precipitation": "mm",
+            "cloud_cover": "%",
+        },
         "hourly": {
             "time": times,
             "temperature_2m": [18.0 + (i % 5) * 0.1 for i in range(hours)],
+            "relative_humidity_2m": [50.0] * hours,
+            "wind_speed_10m": [3.6] * hours,
+            "wind_direction_10m": [0.0] * hours,
+            "precipitation": [0.0] * hours,
+            "cloud_cover": [40.0] * hours,
         },
     }
 
@@ -72,6 +85,12 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     assert len(block["values"]) == _HOURS
     assert block["values"][0] == pytest.approx(18.0)
     assert None not in block["values"]
+
+    assert "precipitation" in payload
+    assert "relative_humidity" in payload
+    assert "cloud_cover" in payload
+    assert "wind_u" not in payload
+    assert "wind_v" not in payload
 
     now = _CLOCK.now()
     assert block["provenance"] == {

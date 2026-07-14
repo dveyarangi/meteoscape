@@ -15,15 +15,45 @@ from fastmcp.exceptions import ToolError
 from ..clock import Clock, floor_to
 from ..errors import BadRequest, CapabilityMismatch, RuntimeFailure
 from ..manifold.core import Coverage, Selection
-from ..manifold.domain import AxisName, EnumerableAxis, RegularAxis, RegularDomain
+from ..manifold.domain import (
+    AxisName,
+    EnumerableAxis,
+    GridDomain,
+    Interval,
+    RegularAxis,
+    VantageAxis,
+)
 from ..manifold.provenance import AtomicOrigin
 from ..nodes.catalog.paramtable import ParameterTable, StaticParameterTable
-from ..parameters import ParameterId
+from ..parameters import (
+    AIR_TEMPERATURE,
+    CLOUD_COVER,
+    PRECIPITATION,
+    RELATIVE_HUMIDITY,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    ParameterId,
+)
 from .gateway import Gateway
 
 _HOUR = timedelta(hours=1)
-_REQUEST_Z_M = 2.0
 _SPATIAL_STEP = 1.0
+# Edge-authored near-surface observation aperture (session 0011 / ticket 002).
+_VANTAGE_Z = Interval(0.0, 10.0)
+
+# Surface menu: requestable names. Presence here ⇔ requestable (not a ParameterDef flag).
+# `wind_u` / `wind_v` have no entry. Speed/direction stay in the table so 002b reveals them via
+# exposure ∩ capability once Calculators weave them in.
+_EXPOSURE: frozenset[ParameterId] = frozenset(
+    {
+        AIR_TEMPERATURE,
+        PRECIPITATION,
+        RELATIVE_HUMIDITY,
+        CLOUD_COVER,
+        WIND_SPEED,
+        WIND_DIRECTION,
+    }
+)
 
 
 def build_mcp_app(
@@ -37,7 +67,8 @@ def build_mcp_app(
     table = parameters or StaticParameterTable.core()
     envelope = gateway.best_view.capability.parameters
     hour_count = _horizon_hours(default_horizon)
-    served = ", ".join(sorted(envelope)) or "(none)"
+    menu = _exposed_menu(envelope)
+    served = ", ".join(sorted(menu)) or "(none)"
 
     mcp: FastMCP = FastMCP("meteoscape")
     description = (
@@ -103,11 +134,11 @@ def build_selection(
     params = _resolve_parameters(parameter_names, envelope=envelope, table=table)
     hours = _horizon_hours(default_horizon)
     anchor = floor_to(clock.now(), _HOUR)
-    domain = RegularDomain(
+    domain = GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, longitude, _SPATIAL_STEP, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, latitude, _SPATIAL_STEP, 1, False),
-            AxisName.Z: RegularAxis(AxisName.Z, _REQUEST_Z_M, _SPATIAL_STEP, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, _VANTAGE_Z),
             AxisName.T: RegularAxis(AxisName.T, anchor, _HOUR, hours, True),
         }
     )
@@ -116,7 +147,10 @@ def build_selection(
 
 def serialize_coverage(coverage: Coverage) -> dict[str, object]:
     """Compact agent JSON: shared `valid_time` + per-parameter `{unit, values, provenance}`."""
-    t_axis = coverage.domain.axis(AxisName.T)
+    domain = coverage.domain
+    if not isinstance(domain, GridDomain):
+        raise TypeError("Coverage domain must be a GridDomain")
+    t_axis = domain.axis(AxisName.T)
     if not isinstance(t_axis, EnumerableAxis):
         raise TypeError("Coverage T axis must be enumerable")
     payload: dict[str, object] = {
@@ -145,19 +179,29 @@ def serialize_coverage(coverage: Coverage) -> dict[str, object]:
     return payload
 
 
+def _exposed_menu(envelope: Mapping[ParameterId, object]) -> frozenset[ParameterId]:
+    """Requestable ∩ woven capability — the surface menu and default parameter set."""
+    return frozenset(pid for pid in envelope if pid in _EXPOSURE)
+
+
 def _resolve_parameters(
     names: Sequence[str] | None,
     *,
     envelope: Mapping[ParameterId, object],
     table: ParameterTable,
 ) -> frozenset[ParameterId]:
+    menu = _exposed_menu(envelope)
     if names is None:
-        return frozenset(envelope)
+        return menu
     resolved: list[ParameterId] = []
     for name in names:
         pid = ParameterId(name)
         if pid not in table:
             raise BadRequest(f"unknown parameter {name!r}")
+        if pid not in _EXPOSURE:
+            raise BadRequest(f"parameter {name!r} is not requestable")
+        if pid not in envelope:
+            raise BadRequest(f"parameter {name!r} is not served by this profile")
         resolved.append(pid)
     return frozenset(resolved)
 

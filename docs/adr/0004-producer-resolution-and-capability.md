@@ -75,7 +75,7 @@ same shape. The abstraction these are shapes of is the
 
 - **A leaf's temporal reach is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
-  footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `contains`. The
+  footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `matches`. The
   per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 - **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
@@ -89,7 +89,7 @@ same shape. The abstraction these are shapes of is the
   3. **coarsen down** — whole, **phase-aligned integer-multiple** aggregation via the statistic's
      combine (`sum` for extensive, `max` / `min` / `mean` for windowed): a 3h producer serves 3h / 6h /
      9h…, **not** 1h, 2h, or a shifted phase.
-  `Domain.contains` is only the **geometric half** (linear-refine / snap); extent-reachable aggregation
+  `Domain.matches` is only the **geometric half** (linear-refine / snap); extent-reachable aggregation
   is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
   **parameter** fact (its scale), never a `Domain`/axis one.
 
@@ -123,7 +123,7 @@ same shape. The abstraction these are shapes of is the
   native facts, never widened** — a leaf states its sample levels and served statistic cells verbatim;
   consumer tolerance rides the request aperture (edge-authored), engine approximation rides the kernel
   (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)). The `matches` arithmetic is
-  **cell-level geometry behind `contains` / the store report — not a second public verb** — and is the
+  **cell-level geometry behind `matches` / the store report — not a second public verb** — and is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
   per-unit availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
@@ -214,7 +214,7 @@ same shape. The abstraction these are shapes of is the
 - **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
   analysis surface) is a **single** `Provider` whose `FootprintCapability` advertises the network's
   **aggregate hull** — a continuous `FootprintDomain` ([ADR-0002](./0002-data-model.md)), so the plain
-  `contains` gate admits any interior request with **no `intersect` dependency** — and whose `project`
+  `matches` gate admits any interior request with **no `intersect` dependency** — and whose `project`
   runs the scattered→lattice interpolation **inside the leaf**. Interpolating one network's own stations
   is resampling **within one origin** (one `SourceKey`), not a cross-origin fold, so it stays private
   like `best_match`; combining *distinct* networks stays a reconciler. Interior network holes return as

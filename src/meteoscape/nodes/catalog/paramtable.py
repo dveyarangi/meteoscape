@@ -2,7 +2,7 @@
 
 `ParameterTable` is the injected lookup of `ParameterDef`s keyed by `ParameterId`; producers and the
 edge resolve canonical parameter facts from it. v1 ships `StaticParameterTable` hosting the v1
-parameters (5 canonical + 2 derived wind views). File / UI-backed representations are deferred. The
+parameters (6 canonical + 2 derived wind views). File / UI-backed representations are deferred. The
 `ParameterId` constants themselves are vocabulary and live in the `parameters` leaf.
 """
 
@@ -13,6 +13,7 @@ from collections.abc import Iterable, Iterator
 
 from ...parameters import (
     AIR_TEMPERATURE,
+    CLOUD_COVER,
     PRECIPITATION,
     RELATIVE_HUMIDITY,
     WIND_DIRECTION,
@@ -61,7 +62,7 @@ class StaticParameterTable(ParameterTable):
 
     @classmethod
     def core(cls) -> StaticParameterTable:
-        """The v1 parameter table: 5 canonical (provider-served) + 2 derived wind views.
+        """The v1 parameter table: 6 canonical (provider-served) + 2 derived wind views.
 
         The committed v1 canonical set and its units are documented in `docs/parameters.md`
         (this table is their source of truth). Conventions *beyond* the v1 set - the wider quantity
@@ -70,9 +71,10 @@ class StaticParameterTable(ParameterTable):
         return cls(_CORE)
 
 
-# The 5 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
+# The 6 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
 # one; wind is canonical as u/v components (both linear), so linear interpolation of u/v is correct
 # wind interpolation and the vector coupling stays out of per-parameter resamplers (ADR-0002).
+# `cloud_cover` is the first cell-statistic-on-Z parameter (value over `[0, TOA]`).
 _CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=AIR_TEMPERATURE,
@@ -101,6 +103,12 @@ _CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=RELATIVE_HUMIDITY,
         quantity=Quantity("relative_humidity", ExtentScaling.INTENSIVE),
+        canonical_unit=Unit("percent"),
+        statistic=CellStatistic.POINT,
+    ),
+    ParameterDef(
+        id=CLOUD_COVER,
+        quantity=Quantity("cloud_area_fraction", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("percent"),
         statistic=CellStatistic.POINT,
     ),

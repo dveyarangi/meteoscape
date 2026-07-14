@@ -47,7 +47,7 @@ seam. This concern owns **how accurately** a coarsened value is computed;
 **Kind:** algebra-shaped (Capability dual) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](#5-read-time-homogenization-fidelity), session 0008
 
 ADR-0004 defines `serves` as *whether a valid non-lossy resampler path exists* from offered → requested;
-`Domain.contains` is only the **geometric half**. The implementation seam under concern is a mismatch:
+`Domain.matches` is only the **geometric half**. The implementation seam under concern is a mismatch:
 `EnumerableCapability.serves` (and leaf footprints) admit by **extent reach**, while
 `Coverage.project` / the sampling engine only
 perform an **aligned identical-step crop** — off-phase or non-identical-step selections that still sit
