@@ -18,7 +18,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from ..catalog.vocabulary import ParameterDef, ParameterId
+from ..parameters import ParameterDef, ParameterId
 from .domain import Domain, EnumerableDomain
 
 
@@ -48,8 +48,8 @@ class FootprintCapability:
 
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
         entry = self.footprints.get(parameter)
-        # v1: geometric containment. Resampler-reachability (via the ParameterDef) is a seam (ADR-0004).
-        return entry is not None and entry[1].contains(requested)
+        # v1: geometric matches. Resampler-reachability (via the ParameterDef) is a seam (ADR-0004).
+        return entry is not None and entry[1].matches(requested)
 
 
 @dataclass(frozen=True)
@@ -62,7 +62,7 @@ class EnumerableCapability:
     parameters: Mapping[ParameterId, ParameterDef]
 
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
-        return parameter in self.parameters and self.domain.contains(requested)
+        return parameter in self.parameters and self.domain.matches(requested)
 
 
 @dataclass(frozen=True)

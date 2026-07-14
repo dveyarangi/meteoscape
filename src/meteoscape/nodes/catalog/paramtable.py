@@ -2,7 +2,8 @@
 
 `ParameterTable` is the injected lookup of `ParameterDef`s keyed by `ParameterId`; producers and the
 edge resolve canonical parameter facts from it. v1 ships `StaticParameterTable` hosting the v1
-parameters (5 canonical + 2 derived wind views). File / UI-backed representations are deferred.
+parameters (6 canonical + 2 derived wind views). File / UI-backed representations are deferred. The
+`ParameterId` constants themselves are vocabulary and live in the `parameters` leaf.
 """
 
 from __future__ import annotations
@@ -10,7 +11,15 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator
 
-from .vocabulary import (
+from ...parameters import (
+    AIR_TEMPERATURE,
+    CLOUD_COVER,
+    PRECIPITATION,
+    RELATIVE_HUMIDITY,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    WIND_U,
+    WIND_V,
     CellStatistic,
     ExtentScaling,
     MeasurementScale,
@@ -53,7 +62,7 @@ class StaticParameterTable(ParameterTable):
 
     @classmethod
     def core(cls) -> StaticParameterTable:
-        """The v1 parameter table: 5 canonical (provider-served) + 2 derived wind views.
+        """The v1 parameter table: 6 canonical (provider-served) + 2 derived wind views.
 
         The committed v1 canonical set and its units are documented in `docs/parameters.md`
         (this table is their source of truth). Conventions *beyond* the v1 set - the wider quantity
@@ -62,20 +71,10 @@ class StaticParameterTable(ParameterTable):
         return cls(_CORE)
 
 
-# Parameter ids. Ids are the functional `(quantity, statistic)`, never the surface height:
-# `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
-# (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name.
-AIR_TEMPERATURE = ParameterId("air_temperature")
-PRECIPITATION = ParameterId("precipitation")
-WIND_U = ParameterId("wind_u")
-WIND_V = ParameterId("wind_v")
-RELATIVE_HUMIDITY = ParameterId("relative_humidity")
-WIND_SPEED = ParameterId("wind_speed")
-WIND_DIRECTION = ParameterId("wind_direction")
-
-# The 5 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
+# The 6 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
 # one; wind is canonical as u/v components (both linear), so linear interpolation of u/v is correct
 # wind interpolation and the vector coupling stays out of per-parameter resamplers (ADR-0002).
+# `cloud_cover` is the first cell-statistic-on-Z parameter (value over `[0, TOA]`).
 _CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=AIR_TEMPERATURE,
@@ -104,6 +103,12 @@ _CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=RELATIVE_HUMIDITY,
         quantity=Quantity("relative_humidity", ExtentScaling.INTENSIVE),
+        canonical_unit=Unit("percent"),
+        statistic=CellStatistic.POINT,
+    ),
+    ParameterDef(
+        id=CLOUD_COVER,
+        quantity=Quantity("cloud_area_fraction", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("percent"),
         statistic=CellStatistic.POINT,
     ),
