@@ -18,10 +18,18 @@ from meteoscape.manifold.capability import EnumerableCapability
 from meteoscape.manifold.core import Coverage, Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
-from meteoscape.manifold.domain import AxisName, RegularAxis
+from meteoscape.manifold.domain import AxisName, RegularAxis, VantageAxis
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
-from meteoscape.parameters import AIR_TEMPERATURE
+from meteoscape.parameters import (
+    AIR_TEMPERATURE,
+    CLOUD_COVER,
+    PRECIPITATION,
+    RELATIVE_HUMIDITY,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    WIND_U,
+)
 
 _HORIZON = timedelta(days=7)
 _CLOCK = StoppedClock(datetime(2026, 7, 11, 12, 34, tzinfo=UTC))
@@ -87,7 +95,7 @@ class _RecordingView:
         )
 
 
-def test_build_selection_floors_now_and_uses_168_ticks() -> None:
+def test_build_selection_floors_now_and_uses_vantage_z() -> None:
     table = StaticParameterTable.core()
     envelope = {AIR_TEMPERATURE: table.get(AIR_TEMPERATURE)}
     selection = build_selection(
@@ -104,12 +112,59 @@ def test_build_selection_floors_now_and_uses_168_ticks() -> None:
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
     assert selection.domain.axis(AxisName.X).extent.lower == pytest.approx(13.41)
     assert selection.domain.axis(AxisName.Y).extent.lower == pytest.approx(52.52)
-    assert selection.domain.axis(AxisName.Z).extent.lower == pytest.approx(2.0)
+    z = selection.domain.axis(AxisName.Z)
+    assert isinstance(z, VantageAxis)
+    assert z.extent.lower == pytest.approx(0.0)
+    assert z.extent.upper == pytest.approx(10.0)
     t = selection.domain.axis(AxisName.T)
     assert isinstance(t, RegularAxis)
     assert t.anchor == floor_to(_CLOCK.now(), timedelta(hours=1))
     assert t.count == 168
     assert t.cellular is True
+
+
+def test_build_selection_default_menu_is_exposure_intersect_capability() -> None:
+    table = StaticParameterTable.core()
+    envelope = {pid: table.get(pid) for pid in table}
+    selection = build_selection(
+        latitude=0.0,
+        longitude=0.0,
+        parameter_names=None,
+        start=None,
+        end=None,
+        clock=_CLOCK,
+        default_horizon=_HORIZON,
+        envelope=envelope,
+        table=table,
+    )
+    assert selection.parameters == frozenset(
+        {
+            AIR_TEMPERATURE,
+            PRECIPITATION,
+            RELATIVE_HUMIDITY,
+            CLOUD_COVER,
+            WIND_SPEED,
+            WIND_DIRECTION,
+        }
+    )
+    assert WIND_U not in selection.parameters
+
+
+def test_build_selection_rejects_internal_wind_components() -> None:
+    table = StaticParameterTable.core()
+    envelope = {pid: table.get(pid) for pid in table}
+    with pytest.raises(Exception, match="not requestable"):
+        build_selection(
+            latitude=0.0,
+            longitude=0.0,
+            parameter_names=["wind_u"],
+            start=None,
+            end=None,
+            clock=_CLOCK,
+            default_horizon=_HORIZON,
+            envelope=envelope,
+            table=table,
+        )
 
 
 def test_build_selection_rejects_bad_lat_lon_and_window() -> None:
@@ -218,6 +273,7 @@ async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     assert tool is not None
     assert "air_temperature" in (tool.description or "")
     assert "168" in (tool.description or "")
+    assert "wind_u" not in (tool.description or "")
 
     async with Client(app) as client:
         result = await client.call_tool(
@@ -228,7 +284,7 @@ async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     assert len(view.calls) == 1
     selection = view.calls[0]
     assert selection.domain.axis(AxisName.T).count == 168
-    assert selection.domain.axis(AxisName.Z).extent.lower == pytest.approx(2.0)
+    assert isinstance(selection.domain.axis(AxisName.Z), VantageAxis)
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
 
 

@@ -57,7 +57,7 @@ plane. The capability/matching half is
   [ADR-0004](./0004-producer-resolution-and-capability.md)) is cell-level geometry, not
   capability-private: capability admission checks **declared** cells, the store report checks
   **held unit** cells, read-back selects the cells that feed the request. One helper, hidden behind
-  `contains` / the report — no second public verb.
+  `matches` / the report — no second public verb.
 
 - **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
   **capability** (reach — a Source admits uncached-but-in-footprint requests precisely because

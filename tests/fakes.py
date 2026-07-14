@@ -16,9 +16,9 @@ from meteoscape.manifold.domain import (
     ContinuousAxis,
     EnumerableDomain,
     FootprintDomain,
+    GridDomain,
     Interval,
     RegularAxis,
-    RegularDomain,
 )
 from meteoscape.nodes.catalog.paramtable import ParameterTable, StaticParameterTable
 from meteoscape.nodes.catalog.providers import (
@@ -42,9 +42,9 @@ _CADENCE = CadenceDef(
 SAMPLE_STORE = StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14))
 
 
-def sample_lattice(*, count: int = 1) -> RegularDomain:
+def sample_lattice(*, count: int = 1) -> GridDomain:
     """A constructible enumerable lattice (all axes share `count`)."""
-    return RegularDomain(
+    return GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, count, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, count, False),
@@ -56,9 +56,9 @@ def sample_lattice(*, count: int = 1) -> RegularDomain:
     )
 
 
-def point_timeline_domain(*, hours: int = 4, lon: float = 1.0, lat: float = 2.0) -> RegularDomain:
+def point_timeline_domain(*, hours: int = 4, lon: float = 1.0, lat: float = 2.0) -> GridDomain:
     """Count-1 spatial + Z axes; `hours` ticks along T (the v1 point-forecast shape)."""
-    return RegularDomain(
+    return GridDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, lon, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, lat, 1.0, 1, False),

@@ -70,10 +70,10 @@ a **`VantageAxis`** on Z — a single-cell `IntervalAxis` (overriding `matches` 
 `interval` is the edge-authored window `[0,~10]` (retires the fake point `Z=2.0`); `RegularDomain`
 widens to **`GridDomain`**
 (`Mapping[AxisName, EnumerableAxis]`, mixed), so the request stays enumerable — X/Y exact count-1, T
-hourly cellular, Z the vantage cell. Admission becomes the **request-side gate**
-`requested.matches(declared)` hidden inside the footprint's `contains`: a `VantageAxis` request uses
+hourly cellular, Z the vantage cell. Admission is the **request-side gate**
+`requested.matches(declared)`: a `VantageAxis` request uses
 `Interval.intersects(declared.extent)` (which *is* membership `2 ∈ [0,10]` against a point cell,
-inclusion `[0,10] ⊆ [0,TOA]` against a span), the default axis uses `contains` (X/Y/T unchanged) — one
+inclusion `[0,10] ⊆ [0,TOA]` against a span), the default axis uses `Interval.contains` (X/Y/T unchanged) — one
 predicate, no new public verb. By closed projection the `VantageAxis` rides onto the served Coverage
 (`resample` sets `domain = selection.domain`); *which* admitted cell answers (maximal served cell /
 resampler) is a separate selection step, trivial in v1. Declarations per parameter →
@@ -99,14 +99,6 @@ stay hidden until 002b's Calculators serve them; disabled providers shrink the m
 **Requestability is presence in the table, never a `ParameterDef` flag** — the canonical table stays
 facts. 003 extends this same table with alias desugaring.
 
-**Build in this ticket — the `extent_scaling`-branched `serves` edge** (settled in session 0008):
-`Domain.contains` is pure tick containment (geometry; ADR-0004's "geometric half"), so an intensive
-parameter serves up to the provider's final forecast instant. For an **extensive** parameter
-(precipitation), `serves` must additionally check that the **last cell's accumulation span** fits the
-footprint — at the horizon edge the request's final slot means "rain during the hour past the last
-forecast instant," which the provider never produced. Failing that check is per-parameter
-`capability-mismatch` (parameter omitted, producible subset served) — never a padded nodata cell.
-
 ## Acceptance criteria
 
 - [ ] `forecast_hourly(lat, lon)` returns the directly-requestable canonical parameters (air temperature,
@@ -126,8 +118,8 @@ forecast instant," which the provider never produced. Failing that check is per-
 - [ ] The request carries a **`VantageAxis`** Z aperture over a **`GridDomain`** (edge default); leaf
       `Capability` declares **native** per-parameter Z facts — samples as `RegularAxis` count-1
       point cells, the cloud statistic cell as an `IntervalAxis` span (`_NEAR_SURFACE_Z` removed);
-      admission is the request-side gate `requested.matches(declared)` (`VantageAxis` → `intersects`)
-      hidden inside footprint `contains`
+      admission is the request-side gate `requested.matches(declared)` (`VantageAxis` → `Interval.intersects`,
+      default → `Interval.contains`)
       ([ADR-0002](../adr/0002-data-model.md) /
       [ADR-0004](../adr/0004-producer-resolution-and-capability.md)).
 - [ ] `normalize` returns native records grouped by shared native Domain; the leaf assembles the

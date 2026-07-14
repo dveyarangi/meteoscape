@@ -42,7 +42,7 @@ e.g. `[0,TOA]`), extents only. The request's Z **axis kind** carries the mode: a
 default bundle aperture, `[0, ~10 m]` `above_ground`) is **vantage**; a count-1 `RegularAxis` / layer
 `IntervalAxis` is exact **addressing**. Admission is the request-side gate `requested.matches(declared)`
 — the `VantageAxis` uses **`intersects`** (which *is* membership against a point cell, inclusion against
-a span), the default axis `contains` → [ADR-0002](./adr/0002-data-model.md),
+a span), the default axis `Interval.contains` → [ADR-0002](./adr/0002-data-model.md),
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md). *Which* overlapping cell answers (maximal
 served cell / resampler) is a separate selection step. (`ContinuousAxis` no longer appears on Z — it
 stays only for the global X/Y footprint reach.)

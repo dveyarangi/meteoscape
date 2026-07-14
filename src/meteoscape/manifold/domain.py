@@ -1,11 +1,11 @@
-"""`Domain` - the coordinate set over the 4 axes (3 spatial + `valid_time`), and its v1 regular
+"""`Domain` - the coordinate set over the 4 axes (3 spatial + `valid_time`), and its v1 grid
 representation.
 
 Representations vary behind one interface: separability is a *facet* (not the base type) and
 regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
 curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
-an axis. v1 ships `RegularDomain` (the enumerable grid) and `FootprintDomain` (a continuous provider
-reach); the other representations and `intersect` are declared seams.
+an axis. v1 ships `GridDomain` (the enumerable grid — mixed `EnumerableAxis` per axis) and
+`FootprintDomain` (a continuous provider reach); `CurvilinearDomain` and `intersect` are declared seams.
 
 See ADR-0002.
 """
@@ -44,7 +44,7 @@ class Interval[C: (float, datetime)]:
 
     Generic over the axis's coordinate type (a *constrained* type var: `float` **or** `datetime`, never
     the `Coordinate` union), so an interval's two bounds are provably the same comparable type and
-    `contains` type-checks - a spatial interval can't be compared against a time one.
+    `contains` / `intersects` type-check - a spatial interval can't be compared against a time one.
     """
 
     lower: C
@@ -52,6 +52,9 @@ class Interval[C: (float, datetime)]:
 
     def contains(self, other: Interval[C]) -> bool:
         return self.lower <= other.lower and other.upper <= self.upper
+
+    def intersects(self, other: Interval[C]) -> bool:
+        return self.lower <= other.upper and other.lower <= self.upper
 
 
 @dataclass(frozen=True)
@@ -79,10 +82,10 @@ class Point:
 class Axis(ABC):
     """One axis of a `Separable` Domain: the geometry along one named dimension.
 
-    Its universal surface is just its span - `extent` - mirroring `Domain` (set-algebra, not
-    enumeration); enumeration is the `EnumerableAxis` refinement. An axis is **pure geometry** - it
-    carries no interpolability flag, since whether a value may be resampled along it is the parameter's
-    resampler fact, not the axis's (ADR-0002).
+    Its universal surface is its span (`extent`) plus request-driven admission (`matches`) — set-
+    algebra, not enumeration; enumeration is the `EnumerableAxis` refinement. An axis is **pure
+    geometry** - it carries no interpolability flag, since whether a value may be resampled along it
+    is the parameter's resampler fact, not the axis's (ADR-0002).
     """
 
     name: AxisName
@@ -92,6 +95,11 @@ class Axis(ABC):
     def extent(self) -> Interval:
         """The axis's span (for a `RollingAxis`, resolved against its clock at read)."""
         ...
+
+    def matches(self, declared: Axis) -> bool:
+        """Whether this *requested* axis matches a *declared* axis — default: full containment.
+        """
+        return declared.extent.contains(self.extent)  # type: ignore[arg-type]
 
 
 class EnumerableAxis(Axis):
@@ -157,11 +165,48 @@ class RegularAxis(EnumerableAxis):
 
 
 @dataclass(frozen=True)
+class IntervalAxis(EnumerableAxis):
+    """A single enumerable cell defined by an `interval` — `extent` is the interval itself.
+
+    The enumerable encoding of a span cell (e.g. a native cloud column `[0, TOA]`). Inherits the
+    default containment `matches`; `VantageAxis` specialises with intersection.
+    """
+
+    name: AxisName
+    interval: Interval
+
+    @property
+    def extent(self) -> Interval:
+        return self.interval
+
+    def __getitem__(self, index: int) -> Cell:
+        if index != 0:
+            raise IndexError(index)
+        return Cell(self.interval.lower, self.interval)
+
+    def __len__(self) -> int:
+        return 1
+
+
+@dataclass(frozen=True)
+class VantageAxis(IntervalAxis):
+    """A single-cell observation aperture: admits any declared axis whose extent intersects it.
+
+    Lives on the Selection (and rides onto the Coverage by closed projection). Never a capability
+    footprint axis — providers declare native Z as a `RegularAxis` point or `IntervalAxis` column.
+    """
+
+    def matches(self, declared: Axis) -> bool:
+        return self.interval.intersects(declared.extent)  # type: ignore[arg-type]
+
+
+@dataclass(frozen=True)
 class ContinuousAxis(Axis):
-    """The plain continuous axis: an explicit span, no cells - a `FootprintDomain`'s spatial / Z axis.
+    """The plain continuous axis: an explicit span, no cells — a `FootprintDomain`'s X/Y reach.
 
     The unmarked, static continuous case; the clock-anchored `valid_time` specialization (`RollingAxis`)
-    lives with the cadence it reads (`cadence.py`), keeping this module pure geometry.
+    lives with the cadence it reads (`cadence.py`), keeping this module pure geometry. Z footprints use
+    `RegularAxis` (point) or `IntervalAxis` (column), not this type.
     """
 
     name: AxisName
@@ -256,29 +301,16 @@ class Separable(Protocol):
     def axis(self, name: AxisName) -> Axis: ...
 
 
-def _extent_contains(self_axes: Mapping[AxisName, Axis], other: Domain) -> bool:
-    """Per-axis extent (reach) containment — tick alignment is never this helper's job.
-
-    On an enumerable domain this means *reach*, not tick-set membership.
-    """
-    if not isinstance(other, Separable):
-        return False
-    return all(
-        self_axes[name].extent.contains(other.axis(name).extent)  # type: ignore[arg-type]
-        for name in AXIS_ORDER
-    )
-
-
 class Domain(ABC):
     """An abstract coordinate set over the 4 axes - continuous or enumerable.
 
-    Only the set-algebra (`contains` / `intersect`) is universal; enumeration is the `EnumerableDomain`
+    Only the set-algebra (`matches` / `intersect`) is universal; enumeration is the `EnumerableDomain`
     refinement, so *being* one is the enumerability discriminator (ADR-0002).
     """
 
     @abstractmethod
-    def contains(self, other: Domain) -> bool:
-        """Domain-containment (this set encloses `other`)."""
+    def matches(self, other: Domain) -> bool:
+        """Whether this *declared* domain matches a *requested* `other` — per-axis `matches`."""
         ...
 
     @abstractmethod
@@ -306,13 +338,14 @@ class EnumerableDomain(Domain):
 
 
 @dataclass(frozen=True)
-class RegularDomain(EnumerableDomain):
-    """The v1 uniform-grid representation: a `RegularAxis` per axis.
+class GridDomain(EnumerableDomain):
+    """The v1 enumerable-grid representation: an `EnumerableAxis` per axis (mixed kinds allowed).
 
-    Separable (exposes its axes); regularity rides on the axes, not on the domain.
+    Separable (exposes its axes). Index math uses only `len` / `[]`, so a `VantageAxis` or
+    `IntervalAxis` on Z needs no new arithmetic. Regularity rides on the axes that are `RegularAxis`.
     """
 
-    axes: Mapping[AxisName, RegularAxis]
+    axes: Mapping[AxisName, EnumerableAxis]
     _size: int = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -322,8 +355,10 @@ class RegularDomain(EnumerableDomain):
             size *= len(self.axes[name])
         object.__setattr__(self, "_size", size)
 
-    def contains(self, other: Domain) -> bool:
-        return _extent_contains(self.axes, other)
+    def matches(self, other: Domain) -> bool:
+        if not isinstance(other, Separable):
+            return False
+        return all(other.axis(name).matches(self.axes[name]) for name in AXIS_ORDER)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError
@@ -347,13 +382,13 @@ class RegularDomain(EnumerableDomain):
 
 @dataclass(frozen=True)
 class FootprintDomain(Domain):
-    """A producer's declared reach - a **continuous**, `Separable` region (never enumerable), the
-    footprint the Capability filter tests against.
+    """A producer's declared reach - a **non-enumerable**, `Separable` region, the footprint the
+    Capability filter tests against.
 
-    Per-axis bounds: a `ContinuousAxis` on each spatial / Z axis, a clock-anchored `RollingAxis` on
-    `valid_time`. `contains` composes **per-axis extent-containment**; its `RollingAxis` makes it
-    clock-relative, so admission tracks the provider's rolling horizon while `serves` stays a plain
-    `contains`.
+    Per-axis bounds: typically a `ContinuousAxis` on X/Y, a `RegularAxis` point or `IntervalAxis`
+    column on Z, and a clock-anchored `RollingAxis` on `valid_time`. `matches` composes **per-axis
+    `matches`** (request-driven); its `RollingAxis` makes it clock-relative, so admission tracks the
+    provider's rolling horizon while `serves` stays a plain `matches`.
     """
 
     axes: Mapping[AxisName, Axis]
@@ -361,19 +396,16 @@ class FootprintDomain(Domain):
     def __post_init__(self) -> None:
         _validate_four_axes(self.axes)
 
-    def contains(self, other: Domain) -> bool:
-        return _extent_contains(self.axes, other)
+    def matches(self, other: Domain) -> bool:
+        if not isinstance(other, Separable):
+            return False
+        return all(other.axis(name).matches(self.axes[name]) for name in AXIS_ORDER)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError
 
     def axis(self, name: AxisName) -> Axis:
         return self.axes[name]
-
-
-class RectilinearDomain(Domain):
-    """Declared seam: separable but irregular - holds explicit `EnumerableAxis`es of stored `Cell`s. Not
-    built in v1."""
 
 
 class CurvilinearDomain(Domain):

@@ -26,7 +26,7 @@ classDiagram
     }
     class Domain {
         <<abstract>>
-        contains(Domain) bool
+        matches(Domain) bool
         intersect(Domain) Domain
     }
     class EnumerableDomain {
@@ -105,7 +105,7 @@ classDiagram
 
 - **`Domain` is an interface; representations vary behind it.** A `Domain` is an abstract coordinate set
   over the **4 axes** (3 spatial + `valid_time`) whose **universal** surface is just the set-algebra —
-  `contains` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
+  `matches` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
   separable**. **Enumeration is the `EnumerableDomain` refinement** (`enumerate` / index / `len`), so
   *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. The
   contract defines two concrete representations; the interface admits richer ones without changing the interface:
@@ -123,11 +123,11 @@ classDiagram
     cell** (`RegularAxis` count-1, e.g. `[2,2]`; count-N declares multiple sample levels) or a
     **statistic-cell span** (`IntervalAxis`, e.g. `[0,TOA]` cloud). The footprint declares only
     extents; admission is the **request-side** gate `requested.matches(declared)` (`VantageAxis` →
-    `intersects`, default → `contains`, [ADR-0004](./0004-producer-resolution-and-capability.md)), so
-    `contains` reads each declared axis's `.extent`, never its kind. Its `RollingAxis` makes the reach
+    `Interval.intersects`, default → `Interval.contains`, [ADR-0004](./0004-producer-resolution-and-capability.md)), so
+    `matches` reads each declared axis's `.extent`, never its kind. Its `RollingAxis` makes the reach
     **clock-relative** — the one intentional exception to Domain-as-pure-geometry, isolated to this
     representation — so the Capability filter tracks a rolling horizon while `serves` stays a plain
-    `contains` ([#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
+    `matches` ([#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
   - **`CurvilinearDomain`** — deferred non-separable geometry (radar geotangent slice, satellite
     swath); the base interface deliberately leaves room for it
     ([#12](../concerns.md#12-curvilinear-domains)).
@@ -235,7 +235,7 @@ classDiagram
   side of a subsequent match where only its `.extent` is read, so its inverted predicate never leaks
   (re-querying a materialized vantage Coverage with a precise Z remains a deferred concern).
 - **Admission is a request-side per-axis gate — `requested.matches(declared)`, with `VantageAxis`
-  using `Interval.intersects`** (overlap), the default axis using `contains` (request inside the
+  using `Interval.intersects`** (overlap), the default axis using `Interval.contains` (request inside the
   footprint) → [ADR-0004](./0004-producer-resolution-and-capability.md). Declarations stay **native
   facts** (a sample level; a statistic's served cells — cloud low/mid/high are *cells of one
   functional*, never `ParameterId`s). Against a point sample `intersects` **is** membership; against a
@@ -498,7 +498,7 @@ classDiagram
   profiles select positions on these slots without changing the model.
 - **Offering / resolution-aware selection is an additive Domain seam.** Continuous footprint axes gain
   an optional native **`step`**; **`Domain.match(other) -> scalar`** is the ranking sibling of
-  `contains` (hard admission unchanged). Only axes the **request constrains** (carries a step)
+  `matches` (hard admission unchanged). Only axes the **request constrains** (carries a step)
   participate; per-axis fits **combine by product**. Per axis (request step `r`, offering step `o`):
   prefer `o <= r` (at least as fine), among those closest to `r`; any `o > r` ranks below all
   fine-enough peers — upsampling invents detail, downsampling is the normal path. Surfaced as

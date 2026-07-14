@@ -7,12 +7,12 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from meteoscape.manifold.core import Selection
-from meteoscape.manifold.domain import AxisName, RegularAxis, RegularDomain
+from meteoscape.manifold.domain import AxisName, GridDomain, RegularAxis
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_U
 
 
-def _point_domain() -> RegularDomain:
-    return RegularDomain(
+def _point_domain() -> GridDomain:
+    return GridDomain(
         {
             AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, 0.0, 1.0, 1, False),

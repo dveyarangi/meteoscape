@@ -26,9 +26,9 @@ from meteoscape.manifold.domain import (
     AxisName,
     ContinuousAxis,
     FootprintDomain,
+    GridDomain,
     Interval,
     RegularAxis,
-    RegularDomain,
 )
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.arbiter import Arbiter
@@ -70,7 +70,7 @@ def _point_selection(
     parameters: frozenset = frozenset({AIR_TEMPERATURE}),
 ) -> Selection:
     return Selection(
-        domain=RegularDomain(
+        domain=GridDomain(
             axes={
                 AxisName.X: RegularAxis(AxisName.X, lon, 1.0, 1, False),
                 AxisName.Y: RegularAxis(AxisName.Y, lat, 1.0, 1, False),

@@ -17,7 +17,8 @@ from .domain import (
     AXIS_ORDER,
     AxisName,
     EnumerableDomain,
-    RegularDomain,
+    GridDomain,
+    RegularAxis,
     decode_flat_index,
     encode_flat_index,
     sub_lattice_offset,
@@ -25,10 +26,18 @@ from .domain import (
 from .provenance import PerParameter, PerPoint, ProvenanceField, Uniform
 
 
-def _aligned_offsets(outer: RegularDomain, inner: RegularDomain) -> dict[AxisName, int] | None:
+def _aligned_offsets(outer: GridDomain, inner: GridDomain) -> dict[AxisName, int] | None:
     offsets: dict[AxisName, int] = {}
     for name in AXIS_ORDER:
-        offset = sub_lattice_offset(outer.axes[name], inner.axes[name])
+        outer_axis = outer.axes[name]
+        inner_axis = inner.axes[name]
+        if not isinstance(outer_axis, RegularAxis) or not isinstance(inner_axis, RegularAxis):
+            # IntervalAxis / VantageAxis — identity crop when both are count-1 and equal length.
+            if len(outer_axis) != len(inner_axis):
+                return None
+            offsets[name] = 0
+            continue
+        offset = sub_lattice_offset(outer_axis, inner_axis)
         if offset is None:
             return None
         offsets[name] = offset
@@ -60,13 +69,11 @@ def resample(coverage: Coverage, selection: Selection) -> CoverageRecord:
     if not isinstance(selection.domain, EnumerableDomain):
         raise NotImplementedError("continuous selection requires Reservoir homogenization")
 
-    if not isinstance(selection.domain, RegularDomain) or not isinstance(
-        coverage.domain, RegularDomain
-    ):
-        raise NotImplementedError("v1 sampling engine only crops RegularDomain lattices")
+    if not isinstance(selection.domain, GridDomain) or not isinstance(coverage.domain, GridDomain):
+        raise NotImplementedError("v1 sampling engine only crops GridDomain lattices")
 
-    target: RegularDomain = selection.domain
-    source: RegularDomain = coverage.domain
+    target: GridDomain = selection.domain
+    source: GridDomain = coverage.domain
     offsets = _aligned_offsets(source, target)
     if offsets is None:
         raise NotImplementedError(
