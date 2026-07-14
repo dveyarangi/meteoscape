@@ -1,28 +1,15 @@
-"""`Store` and `Reservoir` - the retention layer.
+"""`Reservoir` - the retention composite.
 
-`Store` is the only Writable, Countable Manifold (the sole `assimilate` target); `Reservoir` is the
-generic retention composite (`Store` + one child) that adds retention, not selection. See
-architecture.md ("Reservoir", "Store") and ADR-0001.
+A read-only Manifold composed of a `Store` + one child. Adds retention, not selection. See
+architecture.md ("Reservoir") and ADR-0001. The `Store` protocol and factories live in `store.py`.
 """
 
 from __future__ import annotations
 
-from typing import Protocol, runtime_checkable
-
 from ..manifold.capability import Capability
-from ..manifold.core import Countable, Manifold, Selection, Writable
+from ..manifold.core import Manifold, Selection
 from ..manifold.domain import EnumerableDomain
-
-
-@runtime_checkable
-class Store(Manifold, Countable, Writable, Protocol):
-    """The substrate a `Reservoir` owns: a Writable, Countable Manifold leaf.
-
-    Holds sampled Coverages on its declared `domain` in whole assimilable units (a unit is replaced
-    atomically, so it carries one origin); the only `assimilate` target. Its `capability` is what it
-    currently holds (an `EnumerableCapability` over the retained content), distinct from `domain` - the
-    full grid lattice it *could* hold.
-    """
+from .store import Store
 
 
 class Reservoir:
@@ -40,7 +27,7 @@ class Reservoir:
         self.source = source
 
     async def project(self, selection: Selection) -> Manifold:
-        raise NotImplementedError
+        return await self.source.project(selection)
 
     @property
     def domain(self) -> EnumerableDomain:

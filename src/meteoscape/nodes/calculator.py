@@ -12,9 +12,9 @@ synthetic (the derivation over its inputs' lineage). See ADR-0004.
 
 from __future__ import annotations
 
-from ..catalog.vocabulary import ParameterDef, ParameterId
 from ..manifold.capability import Capability, DerivedCapability
 from ..manifold.core import Manifold, Selection
+from ..parameters import ParameterDef, ParameterId
 
 
 class Calculator:

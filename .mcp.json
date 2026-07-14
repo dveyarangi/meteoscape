@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "meteoscape": {
+      "command": "uv",
+      "args": ["run", "--directory", "D:/Dev/AI/meteoscape", "meteoscape"]
+    }
+  }
+}

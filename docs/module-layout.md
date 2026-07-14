@@ -1,53 +1,53 @@
 # Meteoscape · Module layout
 
-Implementation-level layout for `src/meteoscape/`. Kept out of the [architecture contract](./architecture.md); organized **by architectural layer**, not folder-per-role — see each module's inline note and the dependency rule below.
+Implementation-level layout for `src/meteoscape/`. Kept out of the
+[architecture contract](./architecture.md); organized **by architectural layer**, not
+folder-per-role — see each module's inline note and the dependency rule below. This document owns
+module placement and responsibilities, not milestone status; delivery state lives in
+[tickets/README.md](./tickets/README.md).
 
 **Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices live in [`v1-requirements.md`](./v1-requirements.md).*
 
 ```text
 src/meteoscape/
-├── __init__.py
-├── server.py                  # thin entrypoint: config → Registry → Weaver → Gateway (no construction logic of its own)
-├── config.py                  # typed settings: secrets, enabled providers, policy config + derivation registry
+├── __init__.py                # re-exports SourceKey (from identity) + main
+├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → weave → Gateway
+├── config.py                  # Settings + OfferingDef + CalculatorSpec + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
 ├── observability.py           # Sentry init seam (no-op without a DSN)
 ├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request (pure leaf)
-├── clock.py                   # the system time source (pure leaf): Clock protocol + Metronome (now() floored to a resolution tick) + StoppedClock (test); injected into Providers at build, never threaded through project
+├── clock.py                   # Clock protocol + Metronome + StoppedClock; injected by SourceBinder.build
+├── identity.py                # SourceKey — Tier-0 leaf; stamped onto atomic Origin
+├── parameters.py              # parameter vocabulary leaf — identity types + v1 ParameterId constants
 │
-├── catalog/                   # the parameter catalog — a leaf (depends on nothing inward): what a parameter *is*
-│   ├── vocabulary.py          #   ParameterId, Unit, Quantity (identity), ParameterDef; closed enums ExtentScaling / CellStatistic / MeasurementScale
-│   └── table.py               #   ParameterTable interface + StaticParameterTable (v1: 5 canonical + 2 derived wind views); injected into Normalizer / Capability / edge
+├── manifold/                  # algebra-knot — errors + parameters + identity
+│   ├── core.py / capability.py / data.py / coverage.py / domain.py / sampling.py / cadence.py / provenance.py
+│   # sampling.py — private aligned-crop/read-back engine behind Coverage.project
 │
-├── manifold/                  # the Manifold algebra-knot — imports errors + catalog (the vocabulary it speaks in)
-│   ├── core.py                #   Manifold protocol + facets (Countable, Writable) + Selection (the one request type: Domain + parameters, mode = the Domain's shape: Continuous|Snapped|Enumerable) +
-│   │                          #   Coverage interface (= Manifold ∧ Countable ∧ capability ∧ ranges ∧ provenance, Coverage <: Manifold)
-│   ├── capability.py          #   Capability = the Manifold serving facet (serves + parameters), dual of project; leaves FootprintCapability/EnumerableCapability + composites UnionCapability (Arbiter)/DerivedCapability (Calculator); Reservoir forwards
-│   ├── data.py                #   ParameterData (values/present mask) — the per-parameter payload of the Coverage boundary; pure numbers positional to the Domain, descriptors ride the Coverage's capability
-│   ├── coverage.py            #   concrete Coverage realizations: Timeline (v1 dense impl); Grid (later)
-│   ├── domain.py              #   Domain set-algebra (contains/intersect) + EnumerableDomain refinement (enumerate/index/len); per-axis Axis via the Separable facet (base = extent span; EnumerableAxis = Sequence[Cell]; reps RegularAxis/ContinuousAxis); reps RegularDomain + FootprintDomain (v1), rectilinear/curvilinear later. Pure geometry — clock-relative RollingAxis lives in cadence.py
-│   ├── cadence.py             #   CadenceDef: Provider run-cadence {Δ, L, max_lead} → anchor/issue_time, expiration, valid_time window (single source of time-relative derivations, ADR-0003); + RollingAxis, its clock-relative Axis face
-│   └── provenance.py          #   the Coverage provenance plane over (parameter, point): Origin (atomic/synthetic) + Provenance + ProvenanceField (Uniform + PerParameter; PerPoint later)
-│
-├── nodes/                     # concrete Manifolds — depends on manifold/ + catalog/
-│   ├── reservoir.py           #   Store (the Writable+Countable Manifold interface) + Reservoir (retention composite: Store + one child; a Source is the Reservoir(store, Provider) role — no separate type)
-│   ├── arbiter.py             #   Arbiter: per-parameter fold via reconciler (priority default) + fallback; capability = UnionCapability over candidates
-│   ├── calculator.py          #   Calculator: derived-parameter composite (output ⟸ inputs via fn through a scoped Arbiter); capability = induced DerivedCapability
-│   ├── registry.py            #   provider leaf-factory: provider-id→class catalog, instantiate (secrets injected)
-│   ├── weaver.py              #   build-time graph constructor: producers' Capabilities + policy config → wired DAG + Stores
+├── nodes/
+│   ├── store.py / reservoir.py / arbiter.py / calculator.py
+│   # store.py — Store protocol + StoreFactory + substrate implementations
+│   # reservoir.py — Reservoir composite only (Store + child)
+│   # arbiter.py — Source map + SourceRegistry + ArbiterPolicy (reconciler owns priority)
+│   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef
+│   ├── weaver.py              # allocate Stores + Source map; hand registry to Arbiter
+│   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
+│   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
+│   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
+│   │   └── calculators.py     # CalculatorManifest, CalculatorCatalog
 │   └── providers/
-│       ├── __init__.py
-│       ├── base.py            #   composable fetch pipeline (http/auth/retry/error-map)
-│       ├── normalization.py   #   Normalizer protocol + shared unit/time/parameter conversion utils
-│       └── <vendor>.py        #   one deep module per provider (later)
+│       ├── base.py            # Provider: project + capability + source_key
+│       ├── normalization.py
+│       └── <vendor>.py
 │
-└── api/                       # the edge — depends on manifold/ (not nodes)
-    ├── __init__.py
-    ├── gateway.py             #   caller-policy boundary → best view (null policy)
-    └── mcp_app.py             #   MCP surface adapter: protocol ↔ canonical → Gateway (rest_app.py later)
+└── api/                       # gateway + mcp_app
 
-# Dependency rule (acyclic, inward): errors, catalog, clock ← manifold ← nodes ; api → manifold + catalog ; server.py composes all.
-# nodes/registry + nodes/weaver take plain config *values* by injection from server.py (never the config.py type).
-#   Open (build-time): the concrete injection signature — e.g. Registry.build(enabled, secrets) and how `secrets`
-#   is keyed to providers — is not pinned by the contract; settled with the walking skeleton.
-# tests/ mirrors modules; provider tests mock the HTTP transport.
-# future seams (not built): enrichers/, scheduler.py (background plane → synthetic Sources).
+# Dependency rule: errors, parameters, clock, identity ← manifold ← nodes ; api → manifold + parameters ; server.py composes all.
+# Catalogue is a role: parameters.py is the vocabulary leaf; provider/calculator/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
+# Injection (never the Settings type):
+#   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
+#   CalculatorBinder(CalculatorCatalog).build(specs) → CalculatorRegistry
+#   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
+#   Arbiter(sources, SourceRegistry, ArbiterPolicy)  # reconciler owns priority
+#   compose(profile, catalog, secrets, clock, stores) → Gateway
+# tests/ mirrors src; provider tests mock the HTTP transport.
 ```

@@ -11,10 +11,10 @@ See architecture.md ("Core concepts") and ADR-0001.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol, runtime_checkable
 
-from ..catalog.vocabulary import ParameterId
+from ..parameters import ParameterId
 from .capability import Capability, EnumerableCapability
 from .data import ParameterData
 from .domain import Domain, EnumerableDomain
@@ -31,6 +31,13 @@ class Selection:
 
     domain: Domain
     parameters: frozenset[ParameterId]
+
+    def with_params(self, parameters: frozenset[ParameterId]) -> Selection:
+        """Same domain, rewritten parameter set. `parameters` must be ⊆ `self.parameters`."""
+        extras = parameters - self.parameters
+        if extras:
+            raise ValueError(f"parameters not in selection: {sorted(extras)}")
+        return replace(self, parameters=parameters)
 
 
 @runtime_checkable

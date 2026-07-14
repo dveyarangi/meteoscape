@@ -1,9 +1,10 @@
 """`Clock` - the system time source, injected once at build into the leaves that read wall-clock time.
 
-A `Clock` is a build-time dependency (like a configured logger), handed to `Provider`s by the Weaver -
-never threaded through `project`. `Metronome` is the running clock: it floors `now()` onto a coarse
-`resolution` grid, so the run anchor is a **step function** (no per-second flicker) and any within-tick
-caching has a single natural home here. `StoppedClock` freezes one instant for tests.
+A `Clock` is a build-time dependency (like a configured logger), handed to `Provider`s by `SourceBinder`
+at construction — never threaded through `project`. `Metronome` is the running clock: it floors
+`now()` onto a coarse `resolution` grid, so the run anchor is a **step function** (no per-second
+flicker) and any within-tick caching has a single natural home here. `StoppedClock` freezes one
+instant for tests.
 """
 
 from __future__ import annotations
