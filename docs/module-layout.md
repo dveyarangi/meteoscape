@@ -1,6 +1,10 @@
 # Meteoscape · Module layout
 
-Implementation-level layout for `src/meteoscape/`. Kept out of the [architecture contract](./architecture.md); organized **by architectural layer**, not folder-per-role — see each module's inline note and the dependency rule below.
+Implementation-level layout for `src/meteoscape/`. Kept out of the
+[architecture contract](./architecture.md); organized **by architectural layer**, not
+folder-per-role — see each module's inline note and the dependency rule below. This document owns
+module placement and responsibilities, not milestone status; delivery state lives in
+[tickets/README.md](./tickets/README.md).
 
 **Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices live in [`v1-requirements.md`](./v1-requirements.md).*
 
@@ -17,11 +21,11 @@ src/meteoscape/
 │
 ├── manifold/                  # algebra-knot — errors + parameters + identity
 │   ├── core.py / capability.py / data.py / coverage.py / domain.py / sampling.py / cadence.py / provenance.py
-│   # sampling.py — private aligned-crop engine behind Coverage.project (kernel registry at 007)
+│   # sampling.py — private aligned-crop/read-back engine behind Coverage.project
 │
 ├── nodes/
 │   ├── store.py / reservoir.py / arbiter.py / calculator.py
-│   # store.py — Store protocol + StubStore + StoreFactory (stub create; retentive at 006)
+│   # store.py — Store protocol + StoreFactory + substrate implementations
 │   # reservoir.py — Reservoir composite only (Store + child)
 │   # arbiter.py — Source map + SourceRegistry + ArbiterPolicy (reconciler owns priority)
 │   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef

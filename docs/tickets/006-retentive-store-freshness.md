@@ -1,3 +1,9 @@
+# 006 — Retentive store and freshness
+
+- **Status:** Planned
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -25,7 +31,7 @@ memory (housekeeping only; the `Arbiter` never serves stale entries — LRU decl
 `docs/v1-requirements.md` (v1 invariants, Config & secrets) and `docs/architecture.md` (Reservoir,
 Store).
 
-**Decision to resolve in this issue:** the store-lattice representation. A declared lattice is the
+**Decision to resolve in this ticket:** the store-lattice representation. A declared lattice is the
 anchored-regular member with **open extent** (`anchor + step`; ADR-0002), but `RegularAxis` fixes all
 three of `(anchor, step, count)` — the exact-extent member. Mint the declared-lattice representation
 (e.g. an extent derived from the retention window, clock-anchored — the `RollingAxis` precedent), or
@@ -46,10 +52,6 @@ session 0010) flips here.
 - [ ] The retention interval is configurable and only bounds memory (never serves stale).
 - [ ] Unit + mocked-transport integration tests cover fresh-serve, per-parameter partial refill, and
       whole-window single-origin refetch.
-
-## Blocked by
-
-- Blocked by `docs/tickets/002-core-5-parameters.md`
 
 ## User stories addressed
 

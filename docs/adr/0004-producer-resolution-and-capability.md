@@ -29,7 +29,7 @@ same shape. The abstraction these are shapes of is the
   coordinates.
 
 - **Multi-component quantities are co-declared, not runtime-coupled.** A vector or paired quantity —
-  wind's `wind_u` / `wind_v`, later ocean currents / waves / complex fields — is **co-produced from one
+  wind's `wind_u` / `wind_v`, ocean currents, waves, or other complex fields — is **co-produced from one
   native field**: a producer serves the whole component set from one origin or none. The Arbiter still
   selects **per parameter**; component coherence follows from the group sharing one candidate list,
   order, and footprint — a **build-time** well-formedness property (the Weaver can assert it) — so a
@@ -59,9 +59,9 @@ same shape. The abstraction these are shapes of is the
     (not a second copy).
   - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff *some* member does;
     `parameters` is the members' union. Takes members **flat** (each `Capability` carries its own
-    `parameters`, so no per-parameter pre-indexing). Its future dual is an **intersection / consensus**
+    `parameters`, so no per-parameter pre-indexing). Its **intersection / consensus** dual is a
     fold (`serves` iff *all* members do) — the capability of the deferred `consensus` reconcilers
-    ([#6](../concerns.md#6-reconciler-catalogue)) — not built.
+    ([#6](../concerns.md#6-reconciler-catalogue)).
   - **`DerivedCapability`** — a **Calculator**: a **unary input→output transform** (not a set-op). It
     serves its single **output** parameter (present in *no* input) iff *all* its fixed inputs are servable
     through the scoped resolver; `parameters` is that output alone.
@@ -70,10 +70,10 @@ same shape. The abstraction these are shapes of is the
   Composition only ever **unions parameter sets and ANDs/ORs the predicate** — it never *synthesises* a
   `Domain`, so the multi-candidate union has no representation problem: it collapses to one concrete
   `EnumerableCapability.domain` only when you `project`. A coarse `parameters × max-horizon`
-  **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); v1 narrates it
-  in the tool description, and a dedicated introspection surface is deferred.
+  **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); a surface may
+  narrate or expose that envelope without changing the capability model.
 
-- **A leaf's temporal reach is clock-anchored (v1)** — its `valid_time` window tracks the provider's run
+- **A leaf's temporal reach is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
   footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `contains`. The
   per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
@@ -93,19 +93,19 @@ same shape. The abstraction these are shapes of is the
   is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
   **parameter** fact (its scale), never a `Domain`/axis one.
 
-- **Admission is a request-side, per-axis gate: `requested.matches(declared)`** *(session 0011;
-  supersedes the earlier `declared.matches(requested)` framing)*. `serves` composes, per axis, a
+- **Admission is a request-side, per-axis gate: `requested.matches(declared)`.** This supersedes the
+  `declared.matches(requested)` framing. `serves` composes, per axis, a
   predicate the **request** axis owns — the aperture knows its own admission semantics; the declared
   footprint axis is read only for its `.extent`:
   - **default axis** (exact / `RegularAxis` request): `declared.extent.contains(self.extent)` — the
-    request must sit fully inside the footprint (X/Y/T, and exact-Z requests). Unchanged from Phase C.
+    request must sit fully inside the footprint (X/Y/T, and exact-Z requests).
   - **`VantageAxis`** (a Continuous-Z aperture, [ADR-0002](./0002-data-model.md)):
     `self.interval.intersects(declared.extent)` — admit any producer the aperture **overlaps**.
   This is the **admission gate** — "could this producer contribute?", liberal by design — precedent
   `RollingAxis` clock-window matching and the `extent_scaling`-branched horizon edge above. It
   subsumes the quantifier reasoning it replaces: against a **point sample** (`extent [2,2]`)
   `intersects` **is** membership (`2 ∈ [0,10]`); against a **column** (`[0,TOA]`) it **is** inclusion
-  (`[0,10] ⊆ [0,TOA]`) for any near-surface window — so v1 is unchanged, with **one** predicate and no
+  (`[0,10] ⊆ [0,TOA]`) for any near-surface window — with **one** predicate and no
   per-declaration branch.
 - **Admission ≠ selection.** *Which* admitted cell answers is a distinct step the gate does not decide:
   - **samples** — several levels admitted by one aperture (`{10},{80}` under `[0,100]`) fold to one
@@ -113,11 +113,10 @@ same shape. The abstraction these are shapes of is the
   - **cell statistics** — the **maximal served cell** (the served cell containing the others: cloud
     total over low/mid/high) answers; none exists → per-parameter omission. Exact-cell requests match
     their cell precisely and are never overridden.
-  v1 exercises the trivial case only (one wind level, one `[0,TOA]` cloud cell), so the selection step
-  is **named, not built**. The gate's liberality re-opens the bounded-layer divergence (a deep aperture
+  With one admitted wind level or one `[0,TOA]` cloud cell, selection degenerates to a passthrough.
+  General multi-cell selection is a separate decision. The gate's liberality re-opens the bounded-layer divergence (a deep aperture
   overlapping a shallow layer statistic is *admitted* but only *partially* answers) — that lives in
-  selection and stays **open** ([#13](../concerns.md#13-candidate-admission-containment-vs-intersection)),
-  not a v1 case.
+  selection and stays **open** ([#13](../concerns.md#13-candidate-admission-containment-vs-intersection)).
 - **Vantage-resolvability is emergent** — anything may be *requested* in vantage mode; whether it
   *resolves* falls out of the declarations (soil temperature's `−0.06 m` sample ∉ a `[0,10]` window →
   omitted; its exact alias still serves). No `requestable-in-vantage` metadata. **Declarations are
@@ -128,8 +127,8 @@ same shape. The abstraction these are shapes of is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
   per-unit availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
-  *(Supersedes the Phase C fat near-surface footprint (`[0,10]` for a 2 m product) — interpretation in
-  the fact slot; replaced by declared natives at ticket 002.)*
+  This supersedes a fat near-surface footprint (`[0,10]` for a 2 m product): interpretation belongs
+  in the fact slot, and producers declare native cells instead.
 
 - **The resampler/Calculator boundary.** A **resampler** is *the same value in new geometry, no
   assumptions* — entailed by `(scale, statistic, extent_scaling)`; multiple samples inside one
@@ -146,14 +145,14 @@ same shape. The abstraction these are shapes of is the
   (linear / angular / area-weighted / categorical kernels) live in a catalogue looked up at
   homogenization, deferred with the kernel choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
   Matching reads only resampler **existence and losslessness**; **lossy** resamplers (extensive
-  disaggregation, categorical priority-down) are a later, purely **additive** tier
+  disaggregation, categorical priority-down) form an optional, purely **additive** tier
   ([#7](../concerns.md#7-quality-scoring)).
 
 - **Capability is the closure of emitted functionals under *exact* conversion edges** (aligned coarsening
   by additivity), so one declared functional serves a whole reachable family without enumeration.
   Anything outside the closure is **`capability-mismatch`** — a first-class outcome, so there is **no
   disaggregation / quality-degradation machinery** in the contract. The degrading tier (e.g. splitting 3h
-  into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); when it lands it only
+  into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); adding it only
   *grows* a producer's closure — purely additive. Match is **boolean**; ranking stays static priority.
 
 - **Static / dynamic split.** The **Weaver** allocates Stores and builds the Source map
@@ -167,7 +166,7 @@ same shape. The abstraction these are shapes of is the
   **discriminates identity opaquely**; the offering's native geometry is **not** in the key and **not**
   a second provenance identifier — ranking reads the footprint Domain's per-axis **`step`** via
   `Domain.match`
-  (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
+  (→ [ADR-0002](./0002-data-model.md); design concern [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
   The two selection tiers differ by **timing and precedence**: **quality / model** is **static
   `priority`** (on `RegisteredSource` in the registry; the **`priority` reconciler** reads it and
   always wins across bands); **resolution** is **dynamic `Capability.score` → `Domain.match`**
@@ -175,7 +174,7 @@ same shape. The abstraction these are shapes of is the
   admit via boolean `serves`, then try peers in **`score` order** — `project` the best, on runtime
   fault try the next admitted peer in the band, leave the band only when none remain). A worse
   step-fit at higher priority still beats a perfect fit at lower priority — cross-priority geometric
-  override is a later scorer policy behind [#7](../concerns.md#7-quality-scoring), not the default.
+  override is an alternative scorer policy behind [#7](../concerns.md#7-quality-scoring), not the default.
   **`score` defaults:** a leaf without a native `step` (or a request with no constrained axes) returns
   a **constant** — peers tie and bind order wins; composites (`UnionCapability`, `DerivedCapability`)
   expose the same constant — the Arbiter scores **leaf** candidates, not the union, and a Calculator
@@ -184,10 +183,10 @@ same shape. The abstraction these are shapes of is the
   served by read-back homogenization, [#5](../concerns.md#5-read-time-homogenization-fidelity) /
   [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)) — the former is `match`,
   the latter is resampling. This is the **same mechanism** as separate observation / forecast sources
-  (folded later by a `valid_time` reconciler). v1 is one offering per provider (Open-Meteo defaults to
-  `best_match`); the `OfferingDef` config surface and footprint-axis `step`s are the deferred build
-  recipe ([architecture](../architecture.md#config-binders-weaver) /
-  [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
+  (folded by a `valid_time` reconciler). A profile may enable one or several offerings per
+  provider; the `OfferingDef` config surface and footprint-axis `step`s are described by
+  [architecture](../architecture.md#config-binders-weaver) and
+  [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
 
 ## Reconcilers — the coverage fold
 
@@ -214,7 +213,7 @@ same shape. The abstraction these are shapes of is the
 
 - **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
   analysis surface) is a **single** `Provider` whose `FootprintCapability` advertises the network's
-  **aggregate hull** — a continuous `FootprintDomain` ([ADR-0002](./0002-data-model.md)), so v1's plain
+  **aggregate hull** — a continuous `FootprintDomain` ([ADR-0002](./0002-data-model.md)), so the plain
   `contains` gate admits any interior request with **no `intersect` dependency** — and whose `project`
   runs the scattered→lattice interpolation **inside the leaf**. Interpolating one network's own stations
   is resampling **within one origin** (one `SourceKey`), not a cross-origin fold, so it stays private
@@ -277,15 +276,14 @@ same shape. The abstraction these are shapes of is the
 - **Priority is registry data; the reconciler interprets it.** `RegisteredSource.priority` stays on
   the `SourceRegistry`. The Weaver never ranks: it builds `SourceKey → Source` and passes the map +
   registry + `ArbiterPolicy` into each Arbiter. The **`priority` reconciler** indexes by parameter and
-  orders by that field (bind order breaks ties); a later reconciler can ignore priority. Scoped
+  orders by that field (bind order breaks ties); another reconciler can ignore priority. Scoped
   calculator Arbiters get a **subset of source nodes**, not a pre-ranked list — ranking stays
   consistent wherever the same registry + reconciler apply.
 
 - **Retention lives in `Store`s, added by wrapping; only `Store`s hold state.** A heavy or
   shared intermediate — a Calculator's output included — is always retained by wrapping it in a
   `Reservoir`. An **optional single-flight** guard on the `Reservoir` can coalesce concurrent identical
-  `project`s so a shared intermediate computes **once** under parallelism — a wired-but-unbuilt seam,
-  **deferred** until contention warrants it ([deferred in v1](../v1-requirements.md)). Primary-parameter
+  `project`s so a shared intermediate computes **once** under parallelism when contention warrants it. Primary-parameter
   fetches dedupe at the **Source** `Store`. Arbiters, Calculators,
   Providers and `Reservoir`s are **stateless transformers** — exactly the
   [algebra](./0001-manifold-algebra-and-composition.md)'s logically-read-only model with retention as
@@ -313,13 +311,13 @@ request-level contract, whose canonical home is
   request needs nodata + passthrough + reconcile *simultaneously*, decided per cell by how many producers
   cover it. A declared reconciler avoids a `timeline`-vs-`grid` flag; trivial geometry picks for free.
 - Weaving once and memoizing reifies the parameter-dependency graph into dumb, pre-wired, testable nodes;
-  a natural home for single-flight dedupe and future scheduling.
+  a natural home for single-flight dedupe and scheduling.
 
 ## Considered options
 
 - **A single global registry-aware Arbiter** shared as every calculator's resolver. Coherent and scales,
   but makes the runtime arbiter omniscient, introduces a **cyclic object graph** (arbiter ⇄ Calculators),
-  re-walks the structure each request, and must grow node + future machinery to dedupe concurrent shared
+  re-walks the structure each request, and must grow node + additional machinery to dedupe concurrent shared
   intermediates. Rejected **as the default** in favour of scoped per-calculator Arbiters; *a preference
   about where omniscience and the cycle live, not a hard invariant.*
 - **Merge derivation into the Arbiter (a select-or-derive node).** Rejected — load-bearing: it puts
@@ -348,13 +346,13 @@ request-level contract, whose canonical home is
   footprint with the requested `Domain`.
 - **Deferred seams:**
   - **Probed / discovered real availability.** The clock-anchored footprint (above) declares the
-    *envelope*; a leaf that reflects **which runs / timesteps actually exist right now** — vs the declared
+    *envelope*; a leaf that reflects **which runs / timesteps actually exist at request time** — vs the declared
     window — needs **I/O at selection time**, reopening the **Arbiter → Broker** pressure
-    ([#8](../concerns.md#8-arbiter-to-broker-pressure)). v1's window is metadata-only (no probe); the
+    ([#8](../concerns.md#8-arbiter-to-broker-pressure)). A metadata-only window performs no probe; the
     accuracy of that declared window against real availability is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
   - **Caller-supplied formulas (a request-time DSL).** The function arrives *in the Selection*; the
-    Weaver then runs **per request** (weave → project → discard), the same recursion used at build time.
-    The static registry is the v1 shape.
+    Weaver then runs **per request** (weave → project → discard), the same recursion used at build time;
+    the ordinary form uses a static registry.
   - **Dynamic / quality scoring** ([#7](../concerns.md#7-quality-scoring)). Replace the static order with
     a request-aware `score(candidate, selection)` behind the **same selection signature**: the static
     order is the **degenerate constant scorer** (`score = -wired_index`), so it is a strict
@@ -367,6 +365,6 @@ request-level contract, whose canonical home is
     (→ [ADR-0002](./0002-data-model.md)) surfaced as **`Capability.score`** (boolean `serves`
     unchanged), used as an **equal-priority tie-break** only — priority-first; in-band fall-through
     tries the next peer by `score` before leaving the band; the covered Domain stays private.
-  - **Input `Store` placement.** v1 resolves a Calculator's inputs through its scoped Arbiter
+  - **Input `Store` placement.** A Calculator resolves its inputs through its scoped Arbiter
     (Source-`Store`d), not the top `Store`; pulling from the top `Store` is the only thing that would want
     a feedback edge, deliberately not done.

@@ -1,3 +1,9 @@
+# 007 — Off-grid homogenization
+
+- **Status:** Planned
+- **Depends on:** [006 — Retentive store](./006-retentive-store-freshness.md)
+- **Outcome:** Nearest-neighbor read-back onto the requested point.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -33,10 +39,6 @@ Per-kind / higher-order kernels and a provider `exact` capability stay deferred.
       `OfferingDef.store` — session 0009).
 - [ ] Unit + mocked-transport integration tests cover on-grid crop and off-grid nearest-neighbor
       read-back.
-
-## Blocked by
-
-- Blocked by `docs/tickets/006-retentive-store-freshness.md`
 
 ## User stories addressed
 

@@ -6,13 +6,16 @@ this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when
 **moves out** to its owning ADR, leaving a gap (what each ADR owns →
 [architecture: ADR index](./architecture.md#adr-index)).
 
+This file owns unresolved design pressure, not delivery sequencing. Current implementation and ticket
+readiness live in the [v1 delivery status](./tickets/README.md).
+
 ---
 
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
 
-**Mechanism resolved (and in v1):** every `Reservoir` `quantize`s a request for retention and
+**Mechanism resolved (required by v1):** every `Reservoir` `quantize`s a request for retention and
 **homogenizes** the stored cells onto the requested `Domain` at read, so `project(sel)` honours
 `sel.domain` — the pipeline, single-origin units, and same-run fusion live in
 [ADR-0001 §materialization](./adr/0001-manifold-algebra-and-composition.md),
@@ -23,8 +26,8 @@ On-grid reads degenerate to a **lossless crop**; the open question is the off-gr
 implementations (nearest / linear / cubic; **conservative / area-weighted** for extensive
 re-aggregation; the non-linear `circular` / categorical kernels for scales v1 does not exercise, since
 wind rides as linear u/v components) — and the acceptable **accuracy bounds**; ADR-0002 fixes only
-*which* axes admit a kernel and that a storing grid imposes a **fidelity floor**, not the method. v1
-ships the **degenerate nearest-neighbor** kernel (kind-agnostic, pluggable) — it honours `sel.domain`
+*which* axes admit a kernel and that a storing grid imposes a **fidelity floor**, not the method. The
+v1 contract specifies the **degenerate nearest-neighbor** kernel (kind-agnostic, pluggable) — it honours `sel.domain`
 without real interpolation; **per-kind** kernels (linear intensive incl. u/v wind, area-weighted
 extensive, the deferred non-linear scales), accuracy bounds, irregular vendor geometries (sparse
 stations, mixed grids), and the **provider "exact" capability** (true off-grid points bypassing the
@@ -44,13 +47,14 @@ seam. This concern owns **how accurately** a coarsened value is computed;
 **Kind:** algebra-shaped (Capability dual) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](#5-read-time-homogenization-fidelity), session 0008
 
 ADR-0004 defines `serves` as *whether a valid non-lossy resampler path exists* from offered → requested;
-`Domain.contains` is only the **geometric half**. Phase B shipped that half alone: `EnumerableCapability.serves`
-(and leaf footprints) admit by **extent reach**, while `Coverage.project` / the sampling engine only
+`Domain.contains` is only the **geometric half**. The implementation seam under concern is a mismatch:
+`EnumerableCapability.serves` (and leaf footprints) admit by **extent reach**, while
+`Coverage.project` / the sampling engine only
 perform an **aligned identical-step crop** — off-phase or non-identical-step selections that still sit
 inside the span are admitted, then fail at `project` with `NotImplementedError` instead of a clean
 admission miss (`capability-mismatch` / Arbiter fall-through).
 
-**v1 is unaffected** (hourly on-lattice requests). **Close inside `serves`**, not with a second check in
+The fixed hourly on-lattice v1 request does not exercise this mismatch. **Close inside `serves`**, not with a second check in
 `Arbiter.project`: deepen the Capability predicate with the resampler / alignment branch (registry at
 007; extensive horizon edge at 002). Composites (`Union` / `Derived`) and the Arbiter inherit
 correctness unchanged — blast radius stays behind the Capability facet. Until then, engine
@@ -58,19 +62,19 @@ correctness unchanged — blast radius stays behind the Capability facet. Until 
 
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
-**Kind:** room-left (module layout) · **Refs:** session 0008, Phase B wrap
+**Kind:** room-left (module layout) · **Refs:** session 0008
 
-Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by `domain.py`
-today; `sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
+Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by `domain.py`;
+`sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
 geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry *and* lattice math, or
 a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
 pure refactor, no contract change. Not blocking; do not split preemptively.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
-**Kind:** room-left (types / hot path) · **Refs:** ADR-0002, Phase B wrap
+**Kind:** room-left (types / hot path) · **Refs:** ADR-0002, session 0008
 
-`RegularAxis` today is one type over `Coordinate = float | datetime` and `Step = float | timedelta`.
+`RegularAxis` is one type over `Coordinate = float | datetime` and `Step = float | timedelta`.
 `sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
 tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
 axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
@@ -186,7 +190,7 @@ canonical-mono-unit invariant, [ADR-0002](./adr/0002-data-model.md)), but the ca
 unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the quantity
 `extent_scaling`, and the extent-scaling–driven conversion graph ([ADR-0002](./adr/0002-data-model.md))
 — as is the **delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a
-swappable interface; v1 ships a static one hosting the v1 parameters). The **v1 canonical set** (the 5
+swappable interface; the v1 contract uses a static one hosting the v1 parameters). The **v1 canonical set** (the 5
 canonical + 2 derived parameters and their committed units) is recorded in
 [`parameters.md`](./parameters.md); what remains deferred is the **concrete quantity table content (beyond
 the v1 set) and the conversion-edge qualities**. Contained inside the Provider / Normalizer seam — safe to
@@ -211,7 +215,7 @@ the read-only algebra untouched. v1 may emit a **minimal structured log**; the s
 **Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
 The anchoring **mechanism is settled** ([ADR-0003](./adr/0003-provenance-and-origin.md)); what stays open
-is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 ships a **conservative
+is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 specifies a **conservative
 default** — floor to the hour, generous `L` — accepting occasional edge nodata), and the residual
 **estimate error** (under-estimating `L` still over-promises → edge nodata; over-estimating
 under-promises). The real fix is a provider's **actual reference / availability signal** when it exposes
@@ -262,6 +266,6 @@ correct.
 **Kind:** room-left (interface promise) · **Refs:** [ADR-0002](./adr/0002-data-model.md)
 
 ADR-0002 makes the `Domain` interface **non-separable by default** so curvilinear geometries — radar
-geotangent slices, satellite swaths — can be a **representation** later without a contract change. Not
-built: the interface-conformance is a **promise**, proven by the first non-separable producer. Until then
+geotangent slices, satellite swaths — can be a **representation** later without a contract change.
+Curvilinear implementations are deferred: interface conformance is a **promise**, proven by the first non-separable producer. Until then
 it is only a constraint on the Domain interface (don't assume per-axis separability), not a v1 work item.

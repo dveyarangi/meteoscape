@@ -6,8 +6,11 @@ Domain — is fixed by [ADR-0002](./adr/0002-data-model.md). This file records t
 **v1 set**, which ADR-0002 and [concern #10](./concerns.md#10-parameter-conventions) deliberately defer at
 the contract level.
 
-> Source of truth is `StaticParameterTable.core()` in [`nodes/catalog/paramtable.py`](../src/meteoscape/nodes/catalog/paramtable.py);
-> this doc mirrors it with rationale. If the two ever disagree, the code wins — update this file.
+> This file is the normative **v1 convention set**. `StaticParameterTable.core()` in
+> [`nodes/catalog/paramtable.py`](../src/meteoscape/nodes/catalog/paramtable.py) is the runtime
+> realization and may temporarily trail the contract during delivery. For definitions already
+> implemented, code and this reference must agree; current delivery state lives in the
+> [v1 delivery status](./tickets/README.md).
 
 ## The v1 canonical set
 
@@ -57,8 +60,8 @@ stays only for the global X/Y footprint reach.)
   of cell-statistic matching and the maximal-served-cell rule. Layer aliases (`cloud_cover_low` …)
   and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
   a resampler) are post-v1.
-- These declarations are not yet in `StaticParameterTable.core()` / the leaf — they land with
-  [issue 002](tickets/002-core-5-parameters.md).
+- [Ticket 002](./tickets/002-core-5-parameters.md) owns the runtime realization of these declarations;
+  readiness and completion are tracked in the [v1 delivery status](./tickets/README.md).
 
 ## Rationale (only where the choice is non-obvious)
 
@@ -74,7 +77,7 @@ stays only for the global X/Y footprint reach.)
 
 ## Deferred (still open at the contract level)
 
-- The **canonical set beyond the v1 seven**, and the **conversion-edge qualities** (which vendor→canonical
+- The **canonical set beyond v1**, and the **conversion-edge qualities** (which vendor→canonical
   edges are lossless vs degrading), stay deferred → [concern #10](./concerns.md#10-parameter-conventions).
 - Windowed statistics (`max` / `min` / `mean`) and their request surface → [concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics).
 - **Spatial-ref encoding** (CRS / datum conventions) — deferred with the broader parameter conventions.

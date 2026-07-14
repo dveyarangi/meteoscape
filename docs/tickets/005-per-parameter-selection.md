@@ -1,3 +1,9 @@
+# 005 — Per-parameter selection
+
+- **Status:** Planned
+- **Depends on:** [004 — Second-provider fallback](./004-second-provider-fallback.md)
+- **Outcome:** One response assembled from different winning providers by parameter.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`
@@ -11,21 +17,17 @@ that declares
 it, while the rest come from the primary. This exercises that selection is per-parameter, not
 per-request.
 
-**Decision to resolve in this issue (HITL):** which specific core parameter is single-provider for the
+**Decision to resolve in this ticket (HITL):** which specific core parameter is single-provider for the
 demo (config-driven `Capability`). See `docs/v1-requirements.md` (Providers, Open / TBD during build)
 and `docs/architecture.md` (Arbiter, Capability).
 
 ## Acceptance criteria
 
 - [ ] One core parameter is declared by only one provider (recorded here, config-driven).
-- [ ] A 5-product-param request returns that parameter from its sole provider and the remaining
+- [ ] A 6-product-param request returns that parameter from its sole provider and the remaining
       parameters from the primary.
 - [ ] Each parameter's provenance reflects its actual origin provider.
 - [ ] Unit + mocked-transport integration tests assert per-parameter routing.
-
-## Blocked by
-
-- Blocked by `docs/tickets/004-second-provider-fallback.md`
 
 ## User stories addressed
 

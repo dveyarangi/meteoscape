@@ -6,9 +6,9 @@ status: accepted
 
 The concrete encoding of everything that flows through the [algebra](./0001-manifold-algebra-and-composition.md):
 the **`Domain` / `Selection`** (the *where*), the **`Coverage` / `ParameterData`** (the data), and the
-**parameter** itself (the *what* — quantity, statistic, extent). It records the encoding so v1's
-concrete types can be built with the right **slots reserved**, even where v1 fills only the degenerate
-case. The provenance plane a `Coverage` carries is owned by
+**parameter** itself (the *what* — quantity, statistic, extent). It fixes the structural slots while
+allowing concrete profiles to use only the representations they need. The provenance plane a
+`Coverage` carries is owned by
 [ADR-0003](./0003-provenance-and-origin.md); how producers are matched and resolved is
 [ADR-0004](./0004-producer-resolution-and-capability.md).
 
@@ -87,7 +87,7 @@ classDiagram
     Manifold <|.. Coverage : is-a
     Selection o-- Domain : where + which
     Domain <|-- EnumerableDomain : enumerable refinement
-    Domain <|-- Separable : facet (v1 GridDomain)
+    Domain <|-- Separable : facet (GridDomain)
     Separable o-- Axis : 4 axes
     Axis <|-- EnumerableAxis : enumerable refinement
     EnumerableAxis o-- Cell : sequence (RegularAxis computes, explicit stores)
@@ -107,13 +107,13 @@ classDiagram
   over the **4 axes** (3 spatial + `valid_time`) whose **universal** surface is just the set-algebra —
   `contains` / `intersect` (the Capability filter) — with **nothing in it assuming the axes are
   separable**. **Enumeration is the `EnumerableDomain` refinement** (`enumerate` / index / `len`), so
-  *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. v1 ships
-  two representations; the interface admits richer ones with no contract change:
+  *being* one is the enumerability discriminator — a continuous `region` Domain never claims it. The
+  contract defines two concrete representations; the interface admits richer ones without changing the interface:
   - **`GridDomain`** — a `Mapping[AxisName, EnumerableAxis]`, **mixed** per axis: `RegularAxis` on
     X/Y/T, and on Z a `VantageAxis` (request / result aperture), a count-1 `RegularAxis` (native
-    sample level), or an `IntervalAxis` (native column cell). The v1 built enumerable representation;
+    sample level), or an `IntervalAxis` (native column cell). This is the enumerable representation;
     index math uses only `len` / `[]`, so mixed axes need no new arithmetic. (Was `RegularDomain`,
-    uniform-only; widening it subsumes the former `RectilinearDomain` — explicit-cell axes are just
+    uniform-only; widening it subsumes `RectilinearDomain` — explicit-cell axes are just
     non-`RegularAxis` `EnumerableAxis` members of the same mapping.)
   - **`FootprintDomain`** — a separable provider reach, **never claiming enumerability** (even when its
     Z axis is an enumerable `IntervalAxis`): per-axis **extent** declarations of mixed kind — a
@@ -128,8 +128,9 @@ classDiagram
     **clock-relative** — the one intentional exception to Domain-as-pure-geometry, isolated to this
     representation — so the Capability filter tracks a rolling horizon while `serves` stays a plain
     `contains` ([#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
-  - **`CurvilinearDomain`** — non-separable geometry (radar geotangent slice, satellite swath).
-    *Room left, not built* ([#12](../concerns.md#12-curvilinear-domains)).
+  - **`CurvilinearDomain`** — deferred non-separable geometry (radar geotangent slice, satellite
+    swath); the base interface deliberately leaves room for it
+    ([#12](../concerns.md#12-curvilinear-domains)).
 
 - **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
   algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
@@ -167,7 +168,7 @@ classDiagram
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
   declared lattice snaps onto it **and widens the extent outward to whole assimilable units**, so the
   retrieval shape **encloses** the request (extent **≥** request; the rounding is the store lattice's
-  own business); an axis **without** a declared lattice (v1: Z) **passes through identity**, its cell
+  own business); an axis **without** a declared lattice (for example, Z) **passes through identity**, its cell
   becoming part of the unit key
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). At
   **read** the `Reservoir` **homogenizes** the stored cells back onto the requested `Domain` — extent
@@ -190,7 +191,7 @@ classDiagram
   The 4 axes are therefore all **field axes** (resamplable dimensions); **no categorical axis sits in
   the core**. Whether a given *parameter* may be resampled along an axis is its **resampler** fact (its
   `scale`; see *Parameters*), not an axis property. The **categorical-key mechanism** (select / group,
-  never interpolate) survives as a **collection-layer seam** — the home of `issue_time` *archives* and future
+  never interpolate) survives as a **collection-layer seam** — the home of `issue_time` *archives* and
   **ensemble / scenario** keys — not a core field axis. **Cross-run combination** is then a **reconciler
   folding run-stamped contributor Coverages along `valid_time`**
   ([ADR-0004](./0004-producer-resolution-and-capability.md)), yielding a synthetic origin — *not* an
@@ -220,8 +221,8 @@ classDiagram
   analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
 
-- **Request Z carries the mode as an axis kind: `VantageAxis` = vantage, `RegularAxis` cell = exact**
-  *(session 0011; refines the reading above — the near-surface bundle **request** is a vantage
+- **Request Z carries the mode as an axis kind: `VantageAxis` = vantage, `RegularAxis` cell = exact.**
+  The near-surface bundle **request** is a vantage
   aperture, and its cell survives as the served Coverage's Z cell by closed projection, offsets
   absorbed into its `bounds`).* A **`VantageAxis`** — a single-cell **`IntervalAxis`** that overrides
   `matches` with overlap — is **vantage mode**: the asker's position/acceptance window (`[0, ~10 m]`
@@ -231,8 +232,8 @@ classDiagram
   (`temperature_2m`, `cloud_cover_low`, `soil_temperature_6cm`). The `VantageAxis` lives on the `Selection`; **closed projection rides it
   onto the returned Coverage** (`resample` sets `domain = selection.domain`) — it never appears in a
   capability footprint (providers declare native Z), and once on a Coverage it sits on the *declared*
-  side of a future match where only its `.extent` is read, so its inverted predicate never leaks
-  (re-querying a materialized vantage Coverage with a precise Z is a deferred concern, never a v1 case).
+  side of a subsequent match where only its `.extent` is read, so its inverted predicate never leaks
+  (re-querying a materialized vantage Coverage with a precise Z remains a deferred concern).
 - **Admission is a request-side per-axis gate — `requested.matches(declared)`, with `VantageAxis`
   using `Interval.intersects`** (overlap), the default axis using `contains` (request inside the
   footprint) → [ADR-0004](./0004-producer-resolution-and-capability.md). Declarations stay **native
@@ -245,11 +246,11 @@ classDiagram
   response always rides `sel.domain` (closed projection): the served Z cell is the requested window,
   native levels/cells staying in the native records
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
-  **v1 encoding:** the whole request Domain stays enumerable, so the vantage window rides as the
+  **Enumerable vantage encoding:** the whole request Domain stays enumerable, so the vantage window rides as the
   request's **fat Z `Cell`** (`bounds` = the window; a point request cell is the exact/addressing
   dual) — a fully Continuous Z shape remains the general vantage form. Matching treats a fat request
-  cell as the window; fat-cell-as-exact-*layer* addressing arrives only with the layer aliases
-  (post-v1) and will need the Continuous form to disambiguate.
+  cell as the window; fat-cell-as-exact-*layer* addressing requires layer aliases and the Continuous
+  form to disambiguate.
 
 - **Resampling a parameter onto an axis is its `resampler`, entailed by `(scale, statistic,
   extent_scaling)` and asymmetric.** **Refine up** follows the measurement **scale** — `linear`
@@ -336,8 +337,8 @@ classDiagram
   ordinal}` — `linear` interpolates / averages, `circular` is angular, categorical scales fill / mode /
   priority. **Wind is canonical as its u/v (eastward / northward) components** — both `linear`, so
   linear interpolation of u/v *is* correct wind interpolation and **speed / direction are derived
-  views** (Calculators above u/v), keeping the coupling out of per-parameter resamplers. Every v1
-  canonical quantity is `linear`; the non-linear scales are declared-but-unexercised seams.
+  views** (Calculators above u/v), keeping the coupling out of per-parameter resamplers. Provider-facing
+  catalogues may remain linear while derived views use the declared non-linear scales.
 
 - **Units are canonical and mono per parameter — the interior is unit-blind.** Each parameter has
   **exactly one** unit, `ParameterDef.canonical_unit`; every value of that parameter, everywhere in the
@@ -345,8 +346,8 @@ classDiagram
   is *not* in the parameter key, *not* in a `Capability` clause (a vendor emitting °F is the same
   parameter, not a different one), and *not* in a `Selection`. Unit conversion happens at **exactly two
   boundaries** — the Provider's **Normalizer** on ingest (vendor unit → canonical, write-time, in the
-  data) and the **surface adapter** on egress (canonical → a requested presentation unit, read-time;
-  deferred in v1, which returns canonical per [§4](../v1-requirements.md)). In between, the whole tree —
+  data) and the **surface adapter** on egress (canonical → a requested presentation unit, read-time,
+  when presentation conversion is offered). In between, the whole tree —
   Capability matching, the Arbiter's fold, Calculators, the `Store` — is **unit-blind**: physics relies
   on the canonical *convention*, never a runtime conversion. The concrete canonical-unit choice per
   parameter is a deferred **parameter convention** ([#10](../concerns.md#10-parameter-conventions)).
@@ -371,7 +372,7 @@ classDiagram
   statistic + quantity form the key; the **extent is requested through the Selection's `valid_time`
   cells**, never in the parameter name. Ergonomic **aliases** (e.g. `precip_3h`) are **surface sugar**
   that desugars at the edge into *(parameter `(precipitation, ·)`, valid_time cells = 3h)* — the on-ramp
-  to later formula injection, **not** a second identity. v1's surface accepts a bare quantity name =
+  to formula injection, **not** a second identity. A surface may accept a bare quantity name as
   `point(quantity)`.
 
 - **An extensive quantity's extent is producer-intrinsic.** Unlike an intensive quantity (resampleable
@@ -422,7 +423,7 @@ classDiagram
   per-level exclusive over a single extent ("daily max of hourly accumulation" is a two-window calculator
   chain).
 - An explicit `present` mask makes partial coverage representable from day one without retrofitting the
-  value layout when the first partial producer or coverage reconciler lands.
+  value layout when partial producers or coverage reconcilers are introduced.
 
 ## Considered options
 
@@ -442,8 +443,8 @@ classDiagram
   is never interpolated, so pairing it into every coordinate would tax `Coordinate` (forcing it past
   `float | datetime`) and every axis for a Z-only fact. It moves to an **attribute of the Z-axis
   representation**; coordinates stay plain scalars, and the whole `Cell` / `bounds` apparatus is untouched.
-  *(Reversible: restore the pair if a single Domain ever needs to mix references on one axis — but mixed
-  references are a `Calculator` today, so the axis carries exactly one.)*
+  *(Reversible: restore the pair if a single Domain ever needs to mix references on one axis — but
+  cross-reference conversion is modeled as a `Calculator`, so the axis carries exactly one.)*
 - **A single per-parameter `cell_method` carrying both statistic and extent.** Rejected: duplicates the
   extent into every `ParameterData` and can disagree with the Domain — split extent (Domain) from
   statistic (parameter).
@@ -481,9 +482,9 @@ classDiagram
 - The **materialized key is `(quantity, statistic)`**: "instantaneous temperature" and "daily-max
   temperature" sit at different keys, not one parameter with two cell-methods.
 - **Mixed *periods* of one parameter in one Coverage are not yet representable** — `precipitation` over
-  1h vs 3h `valid_time` cells would need different `Cell` `bounds` for the same coordinate (a future
-  **per-parameter bounds override** seam). An extent/Domain matter, not identity; v1's precipitation is
-  **uniformly hourly** (one shared `valid_time` cell serves every parameter), so the override is deferred.
+  1h vs 3h `valid_time` cells would need different `Cell` `bounds` for the same coordinate (a
+  **per-parameter bounds override** seam). An extent/Domain matter, not identity; a profile using one
+  uniform time grid does not need the override, while mixed periods do.
 - The statistic vocabulary and canonical quantity set are the deferred **parameter conventions**
   ([#10](../concerns.md#10-parameter-conventions)); this ADR fixes the *structure* (quantity identity,
   `extent_scaling`, the cell axes), while the concrete quantity table, conversion edges, and their
@@ -491,11 +492,10 @@ classDiagram
 - **Curvilinear domains** and the **sampling-kernel choice** remain interface promises / edge-deferred
   ([#12](../concerns.md#12-curvilinear-domains), [#5](../concerns.md#5-read-time-homogenization-fidelity)).
 - **The model degenerates cleanly.** Unfilled slots — `present = None`, the `Uniform` / `PerParameter`
-  provenance plane (`PerPoint` later), windowed `CellStatistic` (`max` / `min` / `mean`), the
+  provenance plane (`PerPoint`), windowed `CellStatistic` (`max` / `min` / `mean`), the
   per-parameter bounds override, a **navigable Z axis** (pressure levels / 3-D columns; the surface
-  bundle is the degenerate near-surface fat cell) — cost nothing, so each is purely additive. v1's
-  concrete positions on these slots (including precipitation as the one `extensive` parameter) live in
-  [`v1-requirements.md`](../v1-requirements.md).
+  bundle is the degenerate near-surface fat cell) — cost nothing, so each is purely additive. Concrete
+  profiles select positions on these slots without changing the model.
 - **Offering / resolution-aware selection is an additive Domain seam.** Continuous footprint axes gain
   an optional native **`step`**; **`Domain.match(other) -> scalar`** is the ranking sibling of
   `contains` (hard admission unchanged). Only axes the **request constrains** (carries a step)
@@ -503,5 +503,5 @@ classDiagram
   prefer `o <= r` (at least as fine), among those closest to `r`; any `o > r` ranks below all
   fine-enough peers — upsampling invents detail, downsampling is the normal path. Surfaced as
   **`Capability.score`** so the covered Domain stays private; equal-priority tie-break only
-  (ADR-0004). Deferred build,
+  (ADR-0004). Deferred decision,
   [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
