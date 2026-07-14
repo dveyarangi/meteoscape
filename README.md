@@ -7,14 +7,19 @@
 
 ## What it is
 
-Meteoscape is a **cross-provider weather access layer**: ask for weather once, over a point
-and time, and get back one normalized, provenance-stamped answer — drawn from the best
-available vendor, cached, and fetched again only when it goes stale. It hides vendor
-heterogeneity (units, shapes, geometries), source selection, and freshness behind one small
-contract, surfaced over **MCP** so an AI agent can ask for weather without integrating a
-single vendor itself.
+Meteoscape is a **cross-provider weather access layer** for normalized, provenance-stamped weather
+answers. Its v1 target is to hide vendor heterogeneity, source selection, fallback, and freshness
+behind one small contract, surfaced over **MCP** so an AI agent can ask for weather without integrating
+each vendor itself.
 
-**What it gives a caller**
+> **Current status:** early v1 development. The walking skeleton is complete:
+> `forecast_hourly` runs end to end through Open-Meteo for canonical `air_temperature`, including
+> source provenance and expiration. The broader canonical parameter set, derived wind, request
+> shaping, second-provider fallback, retentive caching, and off-grid read-back are active v1 work.
+> See the [v1 delivery status](./docs/tickets/README.md) for the authoritative capability matrix and
+> execution order.
+
+## v1 target
 
 - **One API, every vendor** — canonical units and geometry; integrate once, not once per vendor.
 - **Best-source selection with automatic fallback** — the best obtainable provider per
@@ -26,17 +31,17 @@ single vendor itself.
   relayed: v1 serves wind speed/direction from canonical wind components, so you get a
   consistent answer no matter how each vendor represents wind. User-defined derivations
   (dewpoint, heat index, …) are roadmap.
-- **MCP-native** — one tool, `get_forecast`, returning an hourly point-forecast `Timeline`
-  for the core surface parameters (temperature, wind, precipitation, humidity).
+- **MCP-native** — one tool, `forecast_hourly`, returning an hourly point-forecast `Timeline`
+  for the core surface parameters (temperature, wind, precipitation, humidity, cloud cover).
 
-**Roadmap.** Usage monitoring and quota/rate-limit control over vendor APIs (a wired-but-null
-Gateway seam in v1), user-defined derived parameters, and surfaces beyond MCP.
+Beyond v1, the roadmap includes usage monitoring and quota/rate-limit control over vendor APIs,
+user-defined derived parameters, and surfaces beyond MCP.
 
-**Under the hood.** Meteoscape resolves each request through a recursive **Manifold** algebra
-that normalizes, selects, caches, and homogenizes provider data behind one uniform contract —
-the engine that makes the cross-provider guarantees hold. See
+**Under the hood.** Meteoscape is organized around a recursive **Manifold** algebra that gives
+normalization, selection, caching, and homogenization one uniform contract. See
 [`docs/architecture.md`](./docs/architecture.md) for the design and
-[`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 build scope.
+[`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 release contract. The
+[documentation map](./docs/README.md) identifies the owner of each kind of project information.
 
 ## Setup
 
@@ -56,9 +61,10 @@ uv run pytest
 uv run meteoscape
 ```
 
-Configuration is via environment / typed settings (Pydantic Settings). Optional secrets degrade
-gracefully — a missing provider key or a missing `SENTRY_DSN` simply disables that capability
-rather than failing startup.
+Configuration is via environment / typed settings (Pydantic Settings). The current keyless
+Open-Meteo path requires no provider secret, and a missing `SENTRY_DSN` disables error reporting
+without failing startup. Complete key-present/key-absent multi-provider construction is tracked by
+[ticket 008](./docs/tickets/008-config-secrets-degrade.md).
 
 ## Requirements
 

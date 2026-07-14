@@ -16,7 +16,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..catalog.vocabulary import ParameterId
+from ..identity import SourceKey
+from ..parameters import ParameterId
 
 
 class Origin:
@@ -27,11 +28,11 @@ class Origin:
 class AtomicOrigin(Origin):
     """A single upstream fetch, authored in full at fetch time.
 
-    `issue_time` is the run identity (the forecast issuance the values came from), carried here rather
-    than as a Domain axis (ADR-0002).
+    `source` is the producing `SourceKey`; `issue_time` is the run identity (the forecast issuance the
+    values came from), carried here rather than as a Domain axis (ADR-0002).
     """
 
-    source: str
+    source: SourceKey
     issue_time: datetime
 
 
@@ -51,7 +52,9 @@ class Provenance:
     origin: Origin
     fetched_at: datetime
     expiration: datetime
-    native_resolution: str | None = None
+    # No native-fidelity field: after read-back homogenization the Coverage's Domain is the request
+    # lattice; the offering's native resolution is recoverable from `origin`'s SourceKey. Ranking of
+    # multi-resolution offerings reads footprint Domain axis steps (concern #20), not a provenance field.
 
 
 class ProvenanceField(ABC):

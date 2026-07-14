@@ -38,9 +38,9 @@ One `build` job on `ubuntu-latest`:
 
 Remote: `github.com/dveyarangi/meteoscape`.
 
-> A packaging import smoke test ([`tests/test_packaging.py`](../tests/test_packaging.py)) keeps
-> the pytest step meaningful before behaviour-bearing suites land. The MCP-startup smoke test and
-> behavioural tests arrive with issue 001+.
+> The pytest suite includes packaging and MCP-startup smoke coverage, unit and property tests, and
+> mocked-provider integration coverage. Last-observed health and outstanding gate failures live in
+> the [v1 delivery status](./tickets/README.md); CI remains authoritative.
 
 ## Deployment form
 
@@ -60,8 +60,8 @@ configuration is out of scope.
   the same optional-secret rule v1 applies to provider keys. `METEOSCAPE_ENV` tags the
   environment when set.
 - The typed error taxonomy (`bad-request` / `capability-mismatch` / `runtime-failure`) is normal
-  control flow, not telemetry; Sentry is for *unexpected* failures, wired in when the composition
-  root and `errors.py` exist (issue 000/001+).
+  control flow, not telemetry; Sentry is for *unexpected* failures initialized at the composition
+  root.
 
 ## License
 

@@ -10,6 +10,9 @@ inputs/outputs, acceptance criteria). The contract's seams themselves live in
 > tool specifics, parameter conventions). The architecture/glossary/ADRs remain the source of truth
 > for the *contract*; nothing here may contradict them. Future/unscoped ideas live in
 > [`ideas.md`](./ideas.md).
+>
+> This is a **release contract, not a progress tracker**. Current implementation state, ticket
+> readiness, and execution order live in the [v1 delivery status](./tickets/README.md).
 
 ## Goal
 
@@ -19,9 +22,9 @@ provider per parameter, falling back on failure, and returning one normalized, p
 
 ## User stories
 
-Two actors: the **agent** (an MCP client / AI tool calling `get_forecast`) and the **operator** (whoever
-configures and runs the server). Stories are numbered for stable reference from
-[issues](#acceptance-criteria-definition-of-done); each maps to an acceptance criterion below.
+Two actors: the **agent** (an MCP client / AI tool calling `forecast_hourly`) and the **operator** (whoever
+configures and runs the server). Stories are numbered for stable reference from the
+[acceptance criteria](#acceptance-criteria-definition-of-done); each maps to a criterion below.
 
 **Agent**
 
@@ -70,31 +73,37 @@ configures and runs the server). Stories are numbered for stable reference from
 
 - Priority order **is** the quality policy (implicit-priority Arbiter; selects, never combines).
   Reconfigurable via Arbiter config.
-- **Missing TWC key → graceful degrade**: the Registry simply does not instantiate the unconfigured
-  provider; the server starts and serves with Open-Meteo alone. (No fail-fast in v1.)
+- **Missing TWC key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
+  emitted), so the server starts and serves with Open-Meteo alone. Degrade is **enablement policy,
+  owned by `Settings`**; the binder itself is **strict** — every def that reaches it is explicit
+  operator intent, and it either binds or startup fails (`CompositionError`, build-time only — never a
+  request-path taxonomy error).
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).
 
-### Parameters (5 canonical + 2 derived)
+### Parameters (6 canonical + 2 derived)
 
-The agent-facing **product is 5**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
-**direction** (10 m), relative humidity (2 m). But **wind is canonical as u/v components** — providers
+The agent-facing **product is 6**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
+**direction** (10 m), relative humidity (2 m), **cloud cover** (total column).
+But **wind is canonical as u/v components** — providers
 deliver native speed/direction, the **Normalizer converts to `wind_u` / `wind_v` on ingest** (both
 linear, so linear interpolation of u/v *is* correct wind interpolation), and **`wind_speed` /
 `wind_direction` are derived views served by Calculators** over `(wind_u, wind_v)`
 ([ADR-0002](./adr/0002-data-model.md) / [ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
 
-So the table holds **7 `ParameterDef`s**:
+So the table holds **8 `ParameterDef`s**:
 
-- **5 canonical** (provider-served): `air_temperature`, `precipitation`, `wind_u`, `wind_v`,
-  `relative_humidity`. `wind_u` / `wind_v` are **internal-only** — not requestable in v1.
+- **6 canonical** (provider-served): `air_temperature`, `precipitation`, `wind_u`, `wind_v`,
+  `relative_humidity`, `cloud_cover`. `wind_u` / `wind_v` are **internal-only** — not requestable in v1.
 - **2 derived** (Calculators over u/v): `wind_speed`, `wind_direction` — the **requestable** wind
   parameters. Both are lossless functions of the vector (`speed = hypot(u,v)`, `direction = atan2(...)`),
   so serving them is exact.
 
 The set is deliberately **heterogeneous** to exercise homogenization *and* derivation: precipitation is
 **extensive** (accumulation over the cell); temperature / relative-humidity / `wind_u` / `wind_v` are
-**intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`. v1's
+**intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`;
+**`cloud_cover` is the first cell-statistic (column) parameter** — a statistic over its Z cell's
+`bounds` (`[0, TOA]`) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). v1's
 degenerate nearest-neighbor read-back does **not interpolate**, so neither the linear u/v kernel nor an
 angular direction kernel is exercised; any future direction kernel must be **angular** (via u/v),
 never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
@@ -114,15 +123,17 @@ the per-parameter provenance `expiration`.
 
 ### Request / tool contract
 
-- **One MCP tool: `get_forecast`.**
-- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **5 product**
-  params — temperature, precipitation, wind speed, wind direction, humidity; the internal `wind_u` /
-  `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
+- **One MCP tool: `forecast_hourly`** — the shape is in the name: a future daily/aggregated product
+  is a **sibling tool** (different statistics, its own narratable description), never a `step` knob
+  on this one (Phase C align, session 0009).
+- Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **6 product**
+  params — temperature, precipitation, wind speed, wind direction, humidity, cloud cover; the internal
+  `wind_u` / `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
   `step` input; coarser re-aggregation and
   sub-hourly stay deferred ([concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)).
 - **Location is lat/lon only** in v1 (place-name + geocoding deferred → `ideas.md`).
 - The edge builds the request Selection (lat/lon **point** + hourly `valid_time` over the horizon). Each
-  `Countable` `Reservoir` internally **quantizes to its own declared store grid** for retention and
+  storing `Reservoir` internally **quantizes to its own private store lattices** for retention and
   **homogenizes back onto the requested point at read** (read-time **S**), so the
   answer lands on the **requested** lat/lon — rounding is the store lattice's own business
   ([ADR-0002](./adr/0002-data-model.md)).
@@ -133,8 +144,10 @@ the per-parameter provenance `expiration`.
   the canonical unit from the `capability` descriptor block, and per-parameter provenance (incl. origin
   and `expiration`).
 
-- Response is at the **requested** lat/lon (homogenized from the store grid; the underlying native/store
-  resolution rides in provenance).
+- Response is at the **requested** lat/lon (homogenized from the store grid). The underlying native
+  fidelity is **recoverable server-side via the provenance `SourceKey`**, not emitted as a dedicated field
+  (offering ranking reads footprint Domain axis `step`s →
+  [concern #20](./concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 - CoverageJSON compliance and a request `format` selector are **deferred** → `ideas.md`.
 
 ### Time axis
@@ -145,8 +158,8 @@ the per-parameter provenance `expiration`.
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
   (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is the **clock-anchored
   footprint window** around the run anchor (the provider's cadence,
-  [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the continuous `FootprintDomain`
-  ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
+  [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the `FootprintDomain`'s continuous
+  T axis ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
   [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
 - A configurable **default horizon** (≈ 7 days) applies only when the caller omits `end`; `start` / `end`
   stay a **free window** (no interval enum — the `Domain` already models arbitrary extents).
@@ -188,8 +201,9 @@ lifts **without a contract change** — see the seams in
   (one run, one `expiration`); v1 never **temporally splices**, so a temporal miss or window-extension
   refetches the **whole window** from the selected provider, a primary failure **falls back wholesale**
   (the entire window from the next provider), and a window no provider can serve whole is an **error** —
-  never cached-primary ∪ fallback along `valid_time`. A non-retentive pass-through `Store` survives only
-  as a **test double**, not a wired position. (In-memory only; a *persisting* `Store` stays deferred.)
+  never cached-primary ∪ fallback along `valid_time`. The v1 graph wires retentive Stores in both
+  positions; a non-retentive Store is only a **test double**. (In-memory only; a *persisting* `Store`
+  stays deferred.)
 - **`priority`-reconciler Arbiter** — implicit-priority select + fallback per parameter; only the
   default `priority` reconciler (no `tile` / `consensus` / `feather` coverage reconcilers), no explicit
   scoring.
@@ -200,13 +214,14 @@ lifts **without a contract change** — see the seams in
 - **Null Gateway** policy (identity/limits pass through).
 - **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
   — i.e. the run is still current. `expiration` derives from the provider's **cadence** (`CadenceDef`)
-  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 ships conservative per-provider `{Δ, L}` defaults
+  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 specifies conservative per-provider `{Δ, L}` defaults
   ([concern #18](./concerns.md#18-clock-anchored-footprint-fidelity)).
 
 ### Config & secrets
 
-- One typed config (Pydantic Settings): enabled providers, provider secrets (TWC key), Arbiter
-  ordering. Secrets **injected at construction**, never read from globals.
+- One typed config (Pydantic Settings): the enabled **`OfferingDef`s** (v1 degenerate case — one per
+  provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
+  per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
   coarser = more cache sharing, more interpolation; the Source's is provider-exact or a configured guess)
   and **hourly** time step; cache **TTL = `expiration`**
@@ -234,8 +249,8 @@ lifts **without a contract change** — see the seams in
 
 ## Acceptance criteria (definition of done)
 
-1. `get_forecast(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
-   with the 5 product parameters (wind as speed/direction) — units canonicalized, per-parameter
+1. `forecast_hourly(lat, lon[, parameters, start, end])` returns a normalized **hourly Timeline**
+   with the 6 product parameters (wind as speed/direction) — units canonicalized, per-parameter
    provenance incl. `expiration`.
 2. **Select + fallback**: with both providers enabled, results come from the primary; on primary
    failure the Arbiter falls back to the other (demonstrable, e.g. via a forced provider failure).
@@ -270,9 +285,10 @@ cross-run combination, **synthetic parameters beyond the derived wind views** (d
 coverage `reconciler`s (obs + forecast), persisting `Store`,
 real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector, HTTP transport.
 
-## Open / TBD during build
+## Remaining v1 design choices and explicit deferrals
 
-- Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`).
+- Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`) is
+  owned by [ticket 005](./tickets/005-per-parameter-selection.md).
 - The v1 canonical units are **committed** in [`parameters.md`](./parameters.md); conventions *beyond* the
   v1 set stay deferred at the contract level ([concern #10](./concerns.md#10-parameter-conventions)).
 - **Single-flight** coalescing of concurrent same-key refills (cache-stampede guard) — already a

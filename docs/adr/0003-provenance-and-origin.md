@@ -21,11 +21,23 @@ came from — **forecast-only**: an **observation** is run-free, so `issue_time`
 form its **lineage**, each parent carrying its own `issue_time`). `issue_time` is a **provenance stamp,
 not a Domain axis** ([ADR-0002](./0002-data-model.md)). **Freshness** is read off `expiration` (per
 parameter, via `summary`): **fresh** while `expiration > now`, and a **synthetic** origin's `expiration`
-is the **worst-case (`min`)** of its parents (freshness inheritance); its `summary` `issue_time` likewise takes the **`min`** over parents (the oldest run; per-parent detail in `lineage`). v1 builds **`Uniform`** (a
-single-fetch Source — one origin for the whole Coverage) and **`PerParameter`** (the assembled best view
-— one single-origin slice per parameter); **`PerPoint`** (origin varying over geometry — the
+is the **worst-case (`min`)** of its parents (freshness inheritance); its `summary` `issue_time` likewise takes the **`min`** over parents (the oldest run; per-parent detail in `lineage`). **`Uniform`** represents a
+single-fetch Source — one origin for the whole Coverage — and **`PerParameter`** represents an assembled
+view with one single-origin slice per parameter; **`PerPoint`** (origin varying over geometry — the
 parameter × point corner) is the additive seam. "One provider per parameter" is the special case of
 **"one origin per parameter, possibly synthetic."**
+
+**Origin identity.** An atomic origin names its producer by a structured **`SourceKey`** (`provider` +
+`dataset`) — not a bare string — shared with config/`SourceRegistry` identity and rendered as the SourceRegistry /
+config token (→ [glossary: SourceKey](../glossary.md); defined in `identity.py`). Derived at build from
+`ProviderManifest.provider_id` + `OfferingSpec.name` (or Provider-authored on expand). `dataset` is **always named** (never a partial
+provider-only identity; the default offering is implementation-supplied — for example, Open-Meteo → `best_match`), so a stamp
+is unambiguous; dataset-level candidacy is [ADR-0004](./0004-producer-resolution-and-capability.md). **Native fidelity is not a provenance
+field**: after read-back homogenization the Coverage's `Domain` is the request lattice, and the offering's
+native resolution is recoverable server-side from the `SourceKey`. Ranking of multi-resolution offerings
+reads the footprint Domain's axis **`step`s**
+(→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)) — never a free
+`native_resolution` string, and never a parallel provenance / Capability `Resolution` bag.
 
 ## Run identity & freshness — the cadence
 
@@ -47,8 +59,8 @@ A(now) = floor(now − L, Δ)      # latest run whose publication (r + L) has al
   [ADR-0004](./0004-producer-resolution-and-capability.md)).
 
 Each run reigns over `[A + L, A + Δ + L]`, so runs tile with no gap or overlap, and flooring makes `A` a
-**step function** — no boundary flicker. v1 ships a **conservative per-provider default** for `{Δ, L}`;
-their concrete values, and preferring a provider's **real** reference / availability signal when it
+**step function** — no boundary flicker. A provider may supply conservative defaults for `{Δ, L}`;
+their concrete values, and whether to prefer a provider's **real** reference / availability signal when it
 exposes one, are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 ## Why
@@ -63,7 +75,7 @@ exposes one, are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 ## Guardrails (keep it additive)
 
 1. Provenance is a **plane realized at the cardinality each axis needs** — uniform across parameter
-   and/or geometry collapses to O(1) storage, so `PerParameter` (v1) and `PerPoint` are purely additive
+   and/or geometry collapses to O(1) storage, so `PerParameter` and `PerPoint` are purely additive
    over `Uniform`.
 2. A synthetic origin's lineage records **each parent's contributed sub-domain** (one bound per parent),
    so segment boundaries are explicit and time-stable.
@@ -82,10 +94,10 @@ class ProvenanceField(ABC):
 class Uniform(ProvenanceField):            # one origin, whole Coverage — single-fetch Source
     value: Provenance                      # summary(_) = at(_, _) = value
 
-class PerParameter(ProvenanceField):       # one origin per parameter, geometry-uniform — v1 best view
+class PerParameter(ProvenanceField):       # one origin per parameter, geometry-uniform assembled view
     by_parameter: Mapping[ParameterId, Provenance]   # summary(p) = at(p, _) = by_parameter[p]
 
-class PerPoint(ProvenanceField):           # origin varies over geometry — consensus / feather (future)
+class PerPoint(ProvenanceField):           # origin varies over geometry — consensus / feather
     ...                                    # summary(p) = synthetic rollup; at(p, i) = per-cell
 ```
 
@@ -107,8 +119,8 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
   geometry point, and the Arbiter assembles one Coverage from many single-origin sources — so it is a
   Coverage-level plane, and a per-slice field would force a rewrite of each slice on assembly.
   `PerParameter` is the per-parameter view as one plane representation.
-- **Per-point (per-coordinate) provenance as the base shape.** Rejected for now: drags freshness and
-  residual narrowing to per-point with no present use case; kept reachable as the additive `PerPoint`
+- **Per-point (per-coordinate) provenance as the base shape.** Rejected as the base: drags freshness and
+  residual narrowing to per-point for every Coverage; kept reachable as the additive `PerPoint`
   representation.
 - **A bare union `Provenance | Sequence[Provenance]` for the slot.** Rejected: pushes a cardinality
   type-check onto every consumer; the `ProvenanceField` interface gives a uniform `summary` / `at(i)`
@@ -120,17 +132,17 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
 
 - Point-level attribution (a value → a specific parent) is the `PerPoint` representation — required by a
   **`consensus` / `feather`** reconciler ([ADR-0004](./0004-producer-resolution-and-capability.md)); a
-  `priority` / `tile` reconciler stays `Uniform` / `PerParameter`. v1 builds `Uniform` + `PerParameter`.
+  `priority` / `tile` reconciler stays `Uniform` / `PerParameter`.
 - A synthetic `ParameterData` re-derives whenever any parent expires (`min` expiration); incremental
-  recompute is an unmodeled later optimization ([#11](../concerns.md#11-incremental-synthetic-recompute)).
+  recompute is an unmodeled optimization ([#11](../concerns.md#11-incremental-synthetic-recompute)).
 - A `Reservoir` only ever **spatially fuses its own cache** (cached ∪ freshly-fetched **same-run** units)
   and stays **`Uniform`** / atomic-equivalent: identity is the **run (`issue_time`)**, not the fetch
   moment, so same-run multi-fetch is one origin, not a synthetic blend. It never fuses **along
   `valid_time`**: `assimilate` replaces **whole units**, a unit's window is **single-origin**, and
   combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
   coexist in a unit (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
-  read-back homogenization and is **in v1** ([#5](../concerns.md#5-read-time-homogenization-fidelity),
-  freshness via the cadence above); only the kernel sophistication stays deferred.
+  read-back homogenization ([#5](../concerns.md#5-read-time-homogenization-fidelity), freshness via
+  the cadence above); kernel sophistication remains a separate decision.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`
   descriptor block are the [data model](./0002-data-model.md); this ADR owns the provenance plane the
   `Coverage` carries.
