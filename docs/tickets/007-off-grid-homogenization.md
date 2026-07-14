@@ -1,0 +1,46 @@
+# 007 — Off-grid homogenization
+
+- **Status:** Planned
+- **Depends on:** [006 — Retentive store](./006-retentive-store-freshness.md)
+- **Outcome:** Nearest-neighbor read-back onto the requested point.
+
+## Parent PRD
+
+`docs/v1-requirements.md`
+
+## What to build
+
+Answer an **off-grid** lat/lon **at the requested point** via read-time homogenization (S). Each
+`Reservoir` quantizes the request onto its `Store`'s declared spatial grid for retention and
+**homogenizes back onto the request at read**: when the request rides the grid it is a lossless crop
+(identity); when it is off-grid the value is read from the **nearest** enclosing store cell
+(cached-fresh or refilled) and reported at `sel.domain`. The v1 read-back kernel is **degenerate
+(nearest-neighbor, kind-agnostic)**; `valid_time` stays hourly-aligned (identity). The store's spatial
+step is **configurable** (coarser = more cache sharing + more interpolation).
+
+Per-kind / higher-order kernels and a provider `exact` capability stay deferred. See
+`docs/v1-requirements.md` (Request / tool contract, acceptance §4) and `docs/architecture.md`
+(Normalization vs. homogenization, Reservoir).
+
+## Acceptance criteria
+
+- [ ] A request for an off-grid lat/lon returns values **at the requested point**, sourced from the
+      nearest store cell (cached-fresh or refilled).
+- [ ] An on-grid request degenerates to a lossless crop (identity kernel).
+- [ ] `valid_time` remains hourly-aligned (identity on the time axis).
+- [ ] The store spatial step is configurable (not hardcoded); native/store fidelity is recoverable
+      server-side via the provenance `SourceKey` — **not** a dedicated provenance field
+      ([ADR-0003](../adr/0003-provenance-and-origin.md)).
+- [ ] `store_spatial_step` defaults to **0.0001° (~11 m)** — a per-point cache: near-exact values
+      under nearest-neighbor read-back, spatial sharing only for repeat coordinates (the agent case).
+      Verify here that the **source-store `StoreSpec` guess is comparably fine** (fidelity is the
+      coarsest link in the chain — a coarse Open-Meteo source `StoreSpec` upstream would waste the
+      fine root store; the OM catalogue ships `spatial_step=0.0001°`, operator-overridable via
+      `OfferingDef.store` — session 0009).
+- [ ] Unit + mocked-transport integration tests cover on-grid crop and off-grid nearest-neighbor
+      read-back.
+
+## User stories addressed
+
+- User story 7
+- User story 15

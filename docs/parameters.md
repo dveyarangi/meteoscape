@@ -6,13 +6,17 @@ Domain — is fixed by [ADR-0002](./adr/0002-data-model.md). This file records t
 **v1 set**, which ADR-0002 and [concern #10](./concerns.md#10-parameter-conventions) deliberately defer at
 the contract level.
 
-> Source of truth is `StaticParameterTable.core()` in [`catalog/table.py`](../src/meteoscape/catalog/table.py);
-> this doc mirrors it with rationale. If the two ever disagree, the code wins — update this file.
+> This file is the normative **v1 convention set**. `StaticParameterTable.core()` in
+> [`nodes/catalog/paramtable.py`](../src/meteoscape/nodes/catalog/paramtable.py) is the runtime
+> realization and may temporarily trail the contract during delivery. For definitions already
+> implemented, code and this reference must agree; current delivery state lives in the
+> [v1 delivery status](./tickets/README.md).
 
 ## The v1 canonical set
 
-Seven `ParameterDef`s: **5 canonical** (provider-served, post-Normalizer) + **2 derived** (Calculators over
-`wind_u` / `wind_v`). Every one shares `statistic = point` (v1 is hourly, no windowed `max` / `min` / `mean`).
+Eight `ParameterDef`s: **6 canonical** (provider-served, post-Normalizer) + **2 derived** (Calculators over
+`wind_u` / `wind_v`). Every one shares `statistic = point` on the T axis (v1 is hourly, no windowed
+`max` / `min` / `mean`); `cloud_cover` is additionally a **cell statistic on Z** (session 0011).
 
 | ParameterId | Quantity | extent_scaling | scale | canonical_unit | requestable | notes |
 |---|---|---|---|---|---|---|
@@ -21,13 +25,43 @@ Seven `ParameterDef`s: **5 canonical** (provider-served, post-Normalizer) + **2 
 | `wind_u` | eastward_wind | intensive | linear | `m/s` | **no** (internal) | canonical wind component |
 | `wind_v` | northward_wind | intensive | linear | `m/s` | **no** (internal) | canonical wind component |
 | `relative_humidity` | relative_humidity | intensive | linear | `percent` | yes | 2 m |
+| `cloud_cover` | cloud_area_fraction | intensive | linear | `percent` | yes | total column — value is a **statistic over the Z cell** `[0, TOA]` |
 | `wind_speed` | wind_speed | intensive | linear | `m/s` | yes | derived `= hypot(u, v)` |
 | `wind_direction` | wind_direction | intensive | **circular** | `degree` | yes | derived `= atan2(...)`; first non-linear `scale`, unexercised under v1 nearest-neighbor read-back |
 
-The agent-facing **product is 5**: air temperature, precipitation, wind **speed**, wind **direction**,
-relative humidity. Wind is **canonical as u/v components** (both `linear`, so linear interpolation of u/v
+The agent-facing **product is 6**: air temperature, precipitation, wind **speed**, wind **direction**,
+relative humidity, cloud cover (total). Wind is **canonical as u/v components** (both `linear`, so linear interpolation of u/v
 *is* correct wind interpolation); providers deliver native speed/direction and the Normalizer converts to
 u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
+
+## Vertical carriage (v1 declarations — session 0011)
+
+Leaves declare **native vertical facts, never widened** — footprint Z is a **sample** level
+(`RegularAxis` count-1 **point cell**, e.g. `[2,2]`) or a **statistic cell** (`IntervalAxis` **span**,
+e.g. `[0,TOA]`), extents only. The request's Z **axis kind** carries the mode: a **`VantageAxis`** (the
+default bundle aperture, `[0, ~10 m]` `above_ground`) is **vantage**; a count-1 `RegularAxis` / layer
+`IntervalAxis` is exact **addressing**. Admission is the request-side gate `requested.matches(declared)`
+— the `VantageAxis` uses **`intersects`** (which *is* membership against a point cell, inclusion against
+a span), the default axis `Interval.contains` → [ADR-0002](./adr/0002-data-model.md),
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md). *Which* overlapping cell answers (maximal
+served cell / resampler) is a separate selection step. (`ContinuousAxis` no longer appears on Z — it
+stays only for the global X/Y footprint reach.)
+
+| ParameterId | native Z declaration | kind | vantage `[0,10]` |
+|---|---|---|---|
+| `air_temperature` | sample @ `2 m` `above_ground` | sample | ✓ membership |
+| `relative_humidity` | sample @ `2 m` | sample | ✓ |
+| `wind_u` / `wind_v` | sample @ `10 m` (v1 single level) | sample | ✓ |
+| `precipitation` | surface flux @ `0 m` | sample | ✓ |
+| `wind_speed` / `wind_direction` | derived — inherit u/v carriage | sample | ✓ |
+| `cloud_cover` | served statistic cell `[0, TOA]` (vendor layers `[0,2]` / `[2,6]` / `[6,TOA]` km are cells of this same functional, addressed exactly — **not** ids) | cell statistic | ✓ maximal served cell |
+
+- **`cloud_cover` (total)**: a 1:1 scalar channel on the same vendor fetch — the first live exercise
+  of cell-statistic matching and the maximal-served-cell rule. Layer aliases (`cloud_cover_low` …)
+  and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
+  a resampler) are post-v1.
+- [Ticket 002](./tickets/002-core-5-parameters.md) owns the runtime realization of these declarations;
+  readiness and completion are tracked in the [v1 delivery status](./tickets/README.md).
 
 ## Rationale (only where the choice is non-obvious)
 
@@ -43,7 +77,7 @@ u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
 
 ## Deferred (still open at the contract level)
 
-- The **canonical set beyond the v1 seven**, and the **conversion-edge qualities** (which vendor→canonical
+- The **canonical set beyond v1**, and the **conversion-edge qualities** (which vendor→canonical
   edges are lossless vs degrading), stay deferred → [concern #10](./concerns.md#10-parameter-conventions).
 - Windowed statistics (`max` / `min` / `mean`) and their request surface → [concern #15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics).
 - **Spatial-ref encoding** (CRS / datum conventions) — deferred with the broader parameter conventions.
