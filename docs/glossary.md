@@ -1,251 +1,344 @@
 # Meteoscape
 
-A manifold-based **Coverage-resolution engine** that resolves a request for a field into one normalized,
-provenance-stamped **Coverage** under a stated policy/objective. v1 ships one objective — the **best view**
-(best-obtainable source + fallback) over timeline provider data — surfaced via MCP (other surfaces later).
-
-> Lookup only: each entry defines **what a term is**. Behaviour, rationale, and mechanics live in
-> [`architecture.md`](./architecture.md) and the [ADRs](./adr); follow the `→` pointers.
+Meteoscape is a manifold-based weather-coverage context that resolves field requests into normalized, provenance-stamped Coverages under a chosen objective.
 
 ## Language
 
 ### Domains
 
 **Domain**:
-A **coordinate set** over the 4 axes (the *where*) — **continuous** (a region) or **enumerable** (a lattice / point set). → [ADR-0002](./adr/0002-data-model.md).
+A coordinate set over longitude, latitude, vertical position, and valid time; it may be continuous or enumerable. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Bounds, extent, region
 
 **EnumerableDomain**:
-The **enumerable case of a Domain** — an indexable set of coordinate positions, **regular lattice** or **irregular point set** (cardinality-1 is a single coordinate); enumeration (`enumerate` / index / `len`) lives here, not on the base `Domain`. Only the regular case can be a `quantize` target. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Geometry (suggests GIS vector shapes), Lattice (the regular subset only — a point set may be irregular)
+An indexable Domain of coordinate positions, arranged as either a regular lattice or an irregular point set. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Geometry, lattice
+
+**GridDomain**:
+An EnumerableDomain whose axes may use different enumerable representations. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: RegularDomain, Grid
 
 **Axis**:
-The geometry along one dimension of a **`Separable`** Domain. Mirrors Domain vs EnumerableDomain: the base **`Axis`** is just a span (`extent`); the **`EnumerableAxis`** refinement adds an ordered sequence of `Cell`s, positional to a parameter's values. Enumerable representations: **`RegularAxis`** (uniform, parametric, the only snappable one). Continuous representations: **`ContinuousAxis`** (plain explicit span) and **`RollingAxis`** (clock-anchored `valid_time` bound — the footprint's time axis, defined with the cadence it reads so `domain` stays pure geometry). → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Dimension, Coordinate array
+The geometry of one dimension of a separable Domain; an EnumerableAxis adds an ordered sequence of Cells. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Dimension, coordinate array
+
+**IntervalAxis**:
+A single-cell EnumerableAxis whose Cell spans an interval. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: ContinuousAxis, fat cell
+
+**VantageAxis**:
+A request-only vertical aperture whose admission is based on overlap rather than containment. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Vantage cell, footprint axis
+
+**Admission predicate**:
+The per-axis rule that decides whether a request lies within a producer's declared reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Serves, contains
 
 **Cell**:
-One position on an `Axis` — a representative **coordinate** with optional **bounds**; no bounds ⇒ an **instant / point**. The unit a parameter's value aligns to; coordinate and bounds are independent (the coordinate sits *within* the bounds by convention, not by definition). → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Tick (the coordinate alone), Pixel
+One position on an Axis, represented by a coordinate and optional Bounds. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Tick, pixel
 
 **Bounds**:
-A `Cell`'s span on one axis (its `Interval`); absent ⇒ the coordinate is an **instant / point**. The geometry an extensive or windowed parameter reads as its **extent** — the statistic / integration window. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Range (collides with a Coverage's `ranges`), Extent (the parameter-side window that *rides on* these bounds), span
+The interval spanned by a Cell; without Bounds, the Cell represents an instant or point. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Range, extent
 
 **Interpolable axis**:
-An axis whose values may be **synthesized between samples** (homogenization) — the 3 spatial axes and `valid_time`. → [ADR-0002](./adr/0002-data-model.md).
+A spatial or valid-time axis on which values may be synthesized between samples. → [ADR-0002](./adr/0002-data-model.md)
 
 **Vertical reference**:
-The datum a vertical (Z) axis is measured in — `above_ground` (the home of near-surface offsets like 2 m / 10 m), `isobaric` (pressure), `height_above_msl`. An **attribute of the Z axis** (**one per Domain**), *not* part of the coordinate, which stays a plain scalar; references are not linearly comparable, so stacking them is a `Calculator`. A surface parameter's fixed height is a Z `Cell`, not part of its key (`temperature_2m` is an alias); a producer's native offset is a `Capability` fact. A **fat (layer) tick** — a Z `Cell` with layer-spanning `bounds` (e.g. 2–10 m) — lets near-surface parameters (2 m temperature, 10 m wind) share **one** Domain, precise offsets kept in provenance. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Altitude (ambiguous across references), level (one value, not the datum)
+The datum against which a Domain's vertical coordinates are measured. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Altitude, level
+
+**Vantage**:
+A vertical request mode that expresses the requester's position or acceptance window rather than an exact level or layer. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Ground mode, Z tolerance
+
+**Maximal served cell**:
+The declared statistic Cell that contains every other Cell for the same Functional and therefore answers a Vantage request. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Canonical cell, default cell, total
 
 **Categorical key**:
-A discrete dimension you **select / group / iterate**, never interpolate — the **collection-layer** mechanism for `issue_time` archives and future **ensemble / scenario** keys. **Not** a core field-Domain axis (the v1 `Domain`'s 4 axes are all **field axes** — resamplable, per each parameter's `scale`). → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Categorical axis (it is not a Domain axis), Label axis, index axis
+A discrete collection-layer dimension used for selection, grouping, or iteration rather than interpolation. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Categorical axis, label axis, index axis
 
 ### Data
 
 **Coverage**:
-A **field sampled onto an enumerable Domain** — the shape-agnostic data exchange unit; itself a Manifold (`Coverage <: Manifold`), equivalently a Selection filled with data. **Self-describing**: carries its `capability` (the `ParameterDef` per parameter × Domain — the descriptor block) beside its `ranges` and `provenance` plane, so it interprets standalone without the global Parameter table. → [ADR-0002](./adr/0002-data-model.md).
+A field sampled onto an EnumerableDomain and carrying the parameter semantics and provenance needed to interpret it. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: DataBlock, single-parameter Coverage
 
 **Field**:
-A Manifold (or projected view) **before sampling** — the general result of `project`; a Coverage is its sampled (`Countable`) case. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: Coverage (the sampled leaf), Parameter
+A Manifold or projected view before it is sampled into a Coverage. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: Coverage, Parameter
+
+**CoverageRecord**:
+The canonical materialized form of Coverage, independent of Domain shape. → [architecture.md](./architecture.md#canonical-data-model)
+_Avoid_: Timeline, Grid, Tensor, DataBlock
 
 **Timeline**:
-A Coverage whose domain is a time axis (fixed location, varying `valid_time`); its provenance plane is `PerParameter` (each parameter single-origin), the run identity stamped as `issue_time` on each origin. → [architecture.md](./architecture.md#canonical-data-model).
+A Coverage Domain shape that varies only along valid time at a fixed location. → [architecture.md](./architecture.md#canonical-data-model)
 
 **Grid**:
-A Coverage whose domain is a spatial axis (fixed `valid_time`, varying location); its provenance plane may vary per geometry point (a mosaic), the `PerPoint` case. → [architecture.md](./architecture.md#canonical-data-model).
+A Coverage Domain shape that varies spatially at a fixed valid time. → [architecture.md](./architecture.md#canonical-data-model)
 
 **Parameter**:
-A single weather variable (e.g. temperature) that identifies a **`ParameterData`** within a Coverage — **not** a coordinate axis. → [architecture.md](./architecture.md#canonical-data-model).
+A weather variable that identifies one ParameterData within a Coverage. → [architecture.md](./architecture.md#canonical-data-model)
 _Avoid_: Variable, field, metric
 
 **ParameterData**:
-One parameter's **materialized data slice** in a Coverage — pure numbers `(values, present mask)`, positional to the Domain. Carries **no** descriptors: under the canonical-mono-unit invariant every interpreting fact (`quantity` / `extent_scaling` / `unit` / `statistic`) is id-entailed and lives in the `ParameterDef`, surfaced via the Coverage's `capability`. Its `ParameterId` is the `ranges` key (identity is referenced, not restated); provenance is the Coverage's plane. One per parameter; not itself a Manifold. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Range (reads as an interval — collides with a `Cell`'s `bounds`), DataBlock, slice
+The materialized values and presence information for one Parameter, positioned on a Coverage's Domain. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Range, DataBlock, slice
 
 **ParameterDef**:
-The **canonical definition** of a parameter — its stored facts `(id, quantity, canonical_unit, statistic)`, with `extent_scaling` and `scale` **entailed by its `quantity`** (the identity root), not restated — the single home of every fact entailed by its id; a Coverage surfaces it via its `capability` **descriptor block**, and producers / the edge resolve it by `ParameterId` from the **Parameter table**. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Parameter (the identifier), schema
+The canonical semantic definition associated with a Parameter identity. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Parameter, schema
 
 **Canonical unit**:
-A parameter's **single** unit (`ParameterDef.canonical_unit`) — every value of that parameter, everywhere in the algebra, is in it (the **canonical-mono-unit invariant**). Unit is id-entailed, never in a key / `Capability` / `Selection`; conversion happens only at the **Normalizer** (vendor → canonical, ingest) and the **surface adapter** (canonical → presentation, egress, deferred in v1). The interior is unit-blind. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: display unit (a surface-egress concern), per-value unit
+The single unit in which a Parameter is represented inside Meteoscape. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Display unit, per-value unit
 
 **Parameter table**:
-The injected **lookup of `ParameterDef`s** (keyed by `ParameterId`) that producers and the edge resolve canonical parameter facts from; a swappable interface (v1 ships a static one). → [architecture.md](./architecture.md#config-registry-weaver).
-_Avoid_: Registry (the provider leaf-factory, and the Derivation registry), Catalogue
+The authoritative lookup of ParameterDefs by Parameter identity. → [architecture.md](./architecture.md#config-binders-weaver)
+_Avoid_: Catalogue, SourceBinder, CalculatorCatalog
 
 **CellStatistic**:
-The **window statistic** a value summarizes its cell with — `point | max | min | mean`; *dimension-preserving*; fixed by parameter identity (lives on `ParameterDef`). The calculus axis (accumulation) is the quantity **`extent_scaling`**, not a value here. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Operator (too generic), aggregation (connotes the extensive integral — the very thing this is *not*), sum (that is integration — extent-scaling), cell-method (statistic × extent, not the verb alone)
+The dimension-preserving statistic a value summarizes over its Cell, such as point, minimum, maximum, or mean. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Operator, aggregation, sum, cell method
 
 **Quantity**:
-The **identity root** of a parameter — a physical field carrying an **`extent_scaling`** (`intensive` / `extensive`) and a **`scale`** (measurement scale); rain-intensity (`intensive` rate) and precipitation (`extensive` integral) are *distinct* quantities, related by integration. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Parameter (that is the functional `(quantity, statistic)`), variable
+The physical field at the root of Parameter identity, characterized by its ExtentScaling and MeasurementScale. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Parameter, variable
 
 **ExtentScaling**:
-A quantity's relationship to a cell's temporal extent — **intensive** (instantaneous, extent-independent: temperature, rain-rate; window statistics apply) or **extensive** (additive, the integral over the extent: precipitation; extent required). → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Kind (vague), state / rate / accumulation (those conflate identity with the integration edge)
+A Quantity classification describing whether values are extent-independent (intensive) or additive over Cell extent (extensive). → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Kind, state, rate, accumulation
 
 **MeasurementScale**:
-A quantity's measurement scale — `linear` / `circular` / `nominal` / `ordinal` — which selects the **refine-up resampler**. v1's canonical quantities are all `linear` (wind rides as u/v components); the derived `wind_direction` declares `circular` but stays unexercised under v1's nearest-neighbor read-back. → [ADR-0002](./adr/0002-data-model.md).
+A Quantity's linear, circular, nominal, or ordinal value structure. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Type, dtype
 
 **Resampler**:
-The per-parameter, **asymmetric** rule for moving a value across resolutions — **refine-up** from the `scale`, **coarsen-down** from the `statistic` (whole phase-aligned aggregation; never disaggregation). Entailed by `(scale, statistic, extent_scaling)`, so interpolability is a **parameter** fact, not a Domain/axis one; kernels are a deferred registry (mirror of the `reconciler`). `serves` admits on a **lossless** resampler path. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md) · [concern #5](./concerns.md#5-read-time-homogenization-fidelity).
-_Avoid_: Interpolator (only the refine-up, linear half), kernel (one implementation)
+The Parameter-specific rule for mapping values between resolutions. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Interpolator, kernel
 
 **Functional**:
-A **requestable parameter** = `statistic(quantity)` — the materialized key `(quantity, statistic)`; neither extent **nor vertical height** is in it (extent rides the Domain's `valid_time` `Cell` `bounds`, height rides the Z `Cell`). Aliases like `precip_3h` or `temperature_2m` are surface sugar desugaring to functional + Domain cells. → [ADR-0002](./adr/0002-data-model.md).
-_Avoid_: Alias (the sugar), parameter name (ambiguous)
+A requestable Parameter identity formed from a Quantity and CellStatistic; spatial and temporal extent remain on the Domain. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Alias, parameter name
 
 **Nodata**:
-A **cell-level data gap** — a producer succeeded but has no value at a cell (`present[i] = False`); **data, not a fault**. → [architecture.md](./architecture.md#failure-nodata-and-availability).
-_Avoid_: Missing (ambiguous with an absent parameter), failure, error, null
+A successful cell-level result in which no value is present. → [architecture.md](./architecture.md#failure-nodata-and-availability)
+_Avoid_: Missing, failure, error, null
 
 **ProvenanceField**:
-A **Coverage's provenance plane** over (parameter, geometry-point) — `Uniform` / `PerParameter` (v1) / `PerPoint` (later) behind one interface: `summary(parameter)` the **O(1)** per-parameter handle, `at(parameter, i)` the exact per-cell record. → [ADR-0003](./adr/0003-provenance-and-origin.md).
-_Avoid_: provenance array, per-point provenance (the `PerPoint` case only), per-`ParameterData` attribute
+A Coverage's provenance plane across Parameters and geometry points. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Provenance array, per-point provenance
 
 **Provenance**:
-One **origin record** — what a (parameter, point) value derives from (origin, fetched-at, native resolution, `expiration`); held by a Coverage's `ProvenanceField`. → [ADR-0003](./adr/0003-provenance-and-origin.md).
-_Avoid_: Lineage (part of a *synthetic* Origin)
+The record of an Origin and its retrieval and expiration times for a value. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Lineage
 
 **Origin**:
-What a (parameter, point) value derives from — **atomic** (a single Provider fetch) or **synthetic** (derived from multiple parent provenances, its **lineage**). → [ADR-0003](./adr/0003-provenance-and-origin.md).
-_Avoid_: Source (the Manifold)
+What a value derives from, either one Provider fetch or a synthetic combination of parent Provenances. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Source
+
+**SourceKey**:
+The stable identity of a configured producer, distinguished by provider and named dataset. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Source, raw source string
 
 **Valid time**:
-The time a value describes (what the weather *is* at). → [architecture.md](./architecture.md#canonical-data-model).
+The time at which a weather value applies. → [architecture.md](./architecture.md#canonical-data-model)
 
 **Issue time**:
-Which forecast **issuance** a value came from — the **model run (reference) time in UTC**, a **provenance stamp (run identity)** on the atomic `Origin`, **not** a Domain axis; derived via the provider's **cadence** (`CadenceDef`) and the basis of freshness. Cross-run lives in the collection / reconciler seam. → [ADR-0003](./adr/0003-provenance-and-origin.md).
-_Avoid_: issue_time *axis* (it is a stamp, not an axis)
+The forecast issuance represented by a value, recorded as Origin provenance rather than as a Domain axis. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Issue-time axis
 
 **Quality**:
-How good a source's data is for a parameter — the basis for the Arbiter's selection. → [architecture.md](./architecture.md#arbiter).
+The fitness of a producer's data for a Parameter under an Arbiter's objective. → [architecture.md](./architecture.md#arbiter)
 
 **Cadence**:
-A **Provider**'s run interval `Δ` (with publication latency `L` and `max_lead`) — the **`CadenceDef`** from which `issue_time`, `expiration`, and the footprint forward edge derive. → [ADR-0003](./adr/0003-provenance-and-origin.md).
-
-**Clock**:
-The system time source — the single wall-clock read, a **build-time** dependency injected into **Provider**s (never threaded through `project`), like a configured logger. `Metronome` floors `now()` to a coarse resolution tick (so the run anchor is a step function); `StoppedClock` freezes an instant for tests. → [ADR-0003](./adr/0003-provenance-and-origin.md).
+A Provider's forecast-cycle timing, including run interval, publication latency, and maximum lead. → [ADR-0003](./adr/0003-provenance-and-origin.md)
 
 **Consensus**:
-An Arbiter **`reconciler`** that **blends** overlapping contributors instead of picking one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+A Reconciler that blends overlapping contributors instead of selecting one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
 ### Outcomes
 
-**Capability-mismatch**:
-A requested parameter that **no producer declares** — caught at the capability filter. One of the three error-taxonomy categories. → [architecture.md](./architecture.md#failure-nodata-and-availability).
-_Avoid_: Not-found, unsupported (vague), nodata (that is successful data)
+**Capability mismatch**:
+An unavailable requested Parameter because no producer declares support for it. → [architecture.md](./architecture.md#failure-nodata-and-availability)
+_Avoid_: Not found, unsupported, Nodata
 
-**Runtime-failure**:
-A producer that **couldn't produce** (5xx / timeout / malformed) — an exception that triggers fall-through. One of the three error-taxonomy categories. → [architecture.md](./architecture.md#failure-nodata-and-availability).
-_Avoid_: Error (the supertype), nodata, outage
+**Runtime failure**:
+A producer's failure to return usable data despite declaring the requested Capability. → [architecture.md](./architecture.md#failure-nodata-and-availability)
+_Avoid_: Nodata, outage
 
 **Partial success**:
-The normal outcome: the Coverage holds the **producible subset**; an unserved parameter is **absent**, its reason derived at the edge. → [architecture.md](./architecture.md#failure-nodata-and-availability).
-_Avoid_: Degraded, best-effort
+A successful Coverage containing the producible subset of requested Parameters. → [architecture.md](./architecture.md#failure-nodata-and-availability)
+_Avoid_: Degraded, best effort
 
 ### Requests
 
 **Selection**:
-The **one request type**: a `Domain` + parameters; the Domain's **shape** **is** the mode. → [ADR-0002](./adr/0002-data-model.md).
+The canonical request formed by a Domain and a set of Parameters. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Need
 
 **Selection mode**:
-Which kind of Domain a Selection carries — **Continuous** / **Snapped** / **Enumerable** (region / snapped / exact). → [ADR-0002](./adr/0002-data-model.md).
+The continuous, snapped, or enumerable form of Domain carried by a Selection. → [ADR-0002](./adr/0002-data-model.md)
 
 **Canonical lattice**:
-The enumerable grid a `Reservoir` declares (via its `Store`) that `quantize` snaps to — **per-`Countable`-node** (provider-exact where a vendor declares one, a configured guess otherwise). → [architecture.md](./architecture.md#store--one-type-several-positions).
+A Store-private per-axis grid used to determine storable coordinates. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 
 **Quantize**:
-The `Store`-side operation that maps a Selection to the store's **storable shape**: it snaps the requested axes (3 spatial + `valid_time`) onto the declared grid **and widens the extent outward to whole assimilable units** (v1: a parameter's timeline at a spatial cell), so the result **encloses** the request (extent ≥ request) and `assimilate` only ever replaces whole units. Resolving stored cells back onto the requested coordinates is **Homogenization** (read-back), not quantize. → [architecture.md](./architecture.md#reservoir).
-_Avoid_: snap (only quantize's grid-alignment half), align / round (align is homogenization)
+The Store transformation from a Selection to enclosing, atomically storable units on its Canonical lattice. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Snap, align, round
+
+### Composition
+
+**CalculatorCatalog**:
+The available Calculator plugin declarations, keyed by function identity. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: CalculatorRegistry, live Calculator map, DerivationCatalog
+
+**CalculatorManifest**:
+A Calculator plugin's function and invocation constraints. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Calculator instance, data-flow edge, DerivationManifest
+
+**CalculatorSpec**:
+A profile declaration of a co-produced output group, its inputs, function identity, and retention choice. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Calculator, RegisteredCalculator, DerivationSpec
+
+**CalculatorRegistry**:
+The bound Calculator declarations for a ProfileDef, keyed by output. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: CalculatorCatalog, live Calculator map, DerivationRegistry
+
+**RegisteredCalculator**:
+One catalog-resolved Calculator binding. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Calculator, CalculatorSpec, RegisteredDerivation
+
+**CalculatorBinder**:
+The build-time role that resolves CalculatorSpecs against a CalculatorCatalog. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Weaver, SourceBinder, DerivationBinder
+
+**SourceBinder**:
+The build-time role that resolves OfferingDefs against a ProviderCatalog. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Weaver, CalculatorBinder, OfferingBinder
+
+**SourceRegistry**:
+The bound producer declarations for a ProfileDef, keyed by SourceKey. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: OfferingRegistry, ProviderCatalog, live Source map
+
+**RegisteredSource**:
+One configured producer with its selection priority and storage lattice. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Source, OfferingDef, RegisteredOffering
+
+**ProviderCatalog**:
+The available Provider plugin declarations, keyed by implementation identity. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Provider instance map, Parameter table
+
+**ProviderManifest**:
+A Provider plugin's identity, offerings, secret requirement, and construction contract. → [ADR-0005](./adr/0005-build-time-composition.md)
+
+**SecretSlot**:
+A ProviderManifest's named secret requirement. → [architecture.md](./architecture.md#config-binders-weaver)
+_Avoid_: Secret value, API key field
+
+**OfferingSpec**:
+A catalog declaration of a named Provider offering and its exact Parameter set. → [architecture.md](./architecture.md#config-binders-weaver)
+_Avoid_: OfferingDef, ParameterDef
+
+**StoreSpec**:
+The operator or catalog declaration of a Store's configured spatial and retention assumptions. → [architecture.md](./architecture.md#store--one-type-several-positions)
+_Avoid_: RootStoreSpec, default lattice
+
+**OfferingDef**:
+A profile's enablement and configuration of one catalog offering. → [architecture.md](./architecture.md#config-binders-weaver)
+_Avoid_: SourceDef, Source, OfferingSpec, Provider
+
+**ProfileConfig**:
+The operator-facing declaration of a profile's offerings, Calculators, root Store, and Arbiter policy. → [architecture.md](./architecture.md#config-binders-weaver)
+_Avoid_: Sources, derivations, RootStoreSpec
+
+**ProfileDef**:
+The bound build-time definition from which one served profile root is woven. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: WeavePlan, ProfileConfig
+
+**Weaver**:
+The build-time role that constructs a served profile graph from a ProfileDef. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: Builder, compiler, orchestrator, planner
 
 ### Roles
 
 **Gateway**:
-The surface-neutral **caller-policy boundary** (authz, rate-limit, quota) in front of the best-view Manifold; not a Manifold itself. → [architecture.md](./architecture.md#gateway--caller-policy-boundary).
-_Avoid_: Orchestrator, Translator
+The caller-policy boundary in front of a served profile. → [architecture.md](./architecture.md#gateway--caller-policy-boundary)
+_Avoid_: Orchestrator, translator
 
 **Manifold**:
-The single recursive abstraction every component below the Gateway is built from — a projectable space with one closed operation, `project(selection) -> Manifold`. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: Repository, Orchestrator, Tensor
+The recursive abstraction for a projectable weather space. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: Repository, orchestrator, tensor
 
 **Leaf Manifold**:
-A Manifold backed by its own **substrate** (a Provider or a Coverage) — the only Manifolds that own data. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
+A Manifold backed by its own data substrate. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
 _Avoid_: Atomic Manifold
 
 **Composite Manifold**:
-A Manifold defined over **child Manifolds + a combine rule**, owning no substrate (the Arbiter, a Calculator, the Reservoir). → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: ManifoldProduct, Operation, Combinator
+A Manifold defined by child Manifolds and a combination rule rather than its own data substrate. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: ManifoldProduct, operation, combinator
 
 **Calculator**:
-A synthetic composite that **derives a parameter** from inputs via a function — a **selectable producer** the Arbiter picks like any Source; holds its own scoped Arbiter. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Derivation, Formula node, DewpointManifold
-
-**Derivation registry**:
-Flat config for derived parameters — per parameter `(function, inputs, stored?)`; the Weaver wires it, memoizing one node per parameter. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Plan, calculator tree, formula DSL
-
-**Weaver**:
-The **build-time graph constructor**: wires the static DAG from producers' `Capability` + policy config and allocates every `Store`; absent from the request path. → [architecture.md](./architecture.md#config-registry-weaver) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Builder, Compiler, Orchestrator, Planner
+A composite producer that derives a co-produced output group from inputs and participates in Arbiter selection. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Formula node, DewpointManifold, derivation
 
 **Countable**:
-A Manifold facet: **node-Countable** declares an enumerable grid (its canonical lattice); **result** countability is conferred by the Selection's Domain. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: Enumerable, Browsable, Indexed
+The property of a materialized result whose Domain can be enumerated. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: Node-Countable, Enumerable, browsable, indexed
 
 **Writable**:
-A Manifold facet: accepts `assimilate(coverage)` — the materialization boundary. The **`Store`** is the only Writable Manifold. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
-_Avoid_: Materialized, Scratchboard, MaterializedManifold, SourceCache, ManifoldCache
+The Manifold facet that accepts materialized Coverage. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: Materialized, Scratchboard, ManifoldCache
 
 **Store**:
-The substrate a `Reservoir` owns — a `Writable`, `Countable` Manifold leaf holding sampled Coverages on its **declared grid `Domain`** (the canonical lattice — **provider-exact or a configured guess**) in **whole assimilable units** (`assimilate` replaces a unit atomically); the only `assimilate` target. → [architecture.md](./architecture.md#store--one-type-several-positions).
-_Avoid_: Cache (over-claims transience), Buffer, Vault, Pool
+The Writable substrate owned by a Reservoir, holding independently replaceable per-Parameter units on private lattices. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Cache, buffer, vault, pool
 
 **Reservoir**:
-The **generic retention wrapper** — a read-only Manifold composed of a **`Store` + one child**; one reusable node that may sit at a **profile's root or inside it** (a Source is a Reservoir; the best view's root is a Reservoir). Adds retention, **not** selection — reduction lives in the **Arbiter** it may wrap. → [architecture.md](./architecture.md#reservoir).
-_Avoid_: CachingManifold, Cache, Keeper, Sentinel;
+A retention composite formed from a Store and one child Manifold. → [architecture.md](./architecture.md#reservoir)
+_Avoid_: Cache, CachingManifold, keeper, sentinel
 
 **Task-oriented profile**:
-A **named root composition** that resolves a requested view into a **`Coverage` on a target `Domain`** under an **objective** — the served root. **A profile is the whole composition + its objective; a `Reservoir` is one reusable node that may sit at a profile's root or inside it.** v1 ships one profile (the **best view**); a server may host several. Some profiles may expose **diagnostics / traces as sidecars**, but the **data product remains a `Coverage`** ([concern #14](./concerns.md#14-resolution-trace-and-observability)). Distinct from the **reduction policy** (the Arbiter's reconciler). → [architecture.md](./architecture.md#guiding-principles).
-_Avoid_: View, Mode, Pipeline
+A named root composition that resolves requests under one objective. → [architecture.md](./architecture.md#guiding-principles)
+_Avoid_: View, mode, pipeline
 
 **Best view**:
-The **v1 task-oriented profile** — `Reservoir(store, top Arbiter)`: resolves the most suitable `Coverage` for a request under v1's objective (best-obtainable source + fallback). The `Reservoir` adds retention; the **Arbiter** carries the policy. → [architecture.md](./architecture.md#reservoir).
-_Avoid_: Best provider, Router result
+The task-oriented profile whose objective is best-obtainable source with fallback. → [architecture.md](./architecture.md#reservoir)
+_Avoid_: Best provider, router result
 
 **Capability**:
-What a Manifold serves — a **facet of every Manifold, the dual of `project`**: a `serves(parameter, requested)` predicate + the served `parameters` (`ParameterId → ParameterDef`). A concrete covered `Domain` is **not** on the interface — it stays private to a leaf's `serves`, surfacing publicly only as `EnumerableCapability.domain` on a materialized `Coverage`. Leaves declare (`FootprintCapability` per-parameter footprint, `EnumerableCapability` co-domained); composites derive bottom-up (`UnionCapability` = Arbiter, `DerivedCapability` = Calculator, `Reservoir` forwards). Distinct from the `Countable` / `Writable` facets. A parameter's native offset / accumulation window is `Domain` geometry, not a separate clause; matching (the `extent_scaling`-branched predicate, closure under exact conversion edges) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+The Parameters and request Domains a Manifold declares it can serve. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Coverage, clause
 
 **Footprint**:
-A producer's **declared reach** — the continuous region its `FootprintCapability` tests `serves` against: static spatial/Z extent plus a **clock-anchored** `valid_time` window around the run anchor (the provider's cadence, [ADR-0003](./adr/0003-provenance-and-origin.md)). Modelled as the continuous `FootprintDomain` (its `contains` is clock-relative), distinct from a materialized `Coverage`'s enumerable grid. → [ADR-0002](./adr/0002-data-model.md) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: coverage, grid, extent
+A producer's declared spatial, vertical, and valid-time reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Coverage, grid, extent
 
 **Arbiter**:
-The one **producer-resolution composite**: per parameter it folds candidate producers with a `reconciler` (default `priority` = selection). The **top** Arbiter spans all servable parameters; each Calculator holds its **own** scoped one. → [architecture.md](./architecture.md#arbiter) · [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Selector, Dispatcher, Router, Resolver, Gateway
+The composite that resolves competing producers per Parameter under a Reconciler. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Selector, dispatcher, router, resolver, Gateway
 
 **Reconciler**:
-The per-parameter strategy the Arbiter folds its producers with at each cell — `priority` (default; pick + fallback = selection), `tile`, `consensus`, `feather`. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
-_Avoid_: Mosaic, Combiner, Stitcher, Merger, Tiler
+The per-Parameter strategy by which an Arbiter selects or combines producers. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Mosaic, combiner, stitcher, merger, tiler
 
 **Provider**:
-A leaf Manifold: the vendor adapter + its **Normalizer** + capability / cadence declarations; authors the Coverage's provenance (a single-fetch `Uniform` plane) at fetch. → [architecture.md](./architecture.md#provider-leaf-manifold).
+A leaf Manifold that adapts one external weather-data producer into Meteoscape semantics. → [architecture.md](./architecture.md#provider-leaf-manifold)
 _Avoid_: Vendor, backend, driver
 
 **Source**:
-A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. Forwards its Provider's **Capability** to the Arbiter unchanged. → [architecture.md](./architecture.md#source).
+The role of a Reservoir that serves retained data or fetches it from one Provider. → [architecture.md](./architecture.md#source)
 
 **Normalizer**:
-The provider-specific mapping from vendor shape to canonical *semantics* (parameter identity, units, time encoding) in native geometry; lives inside a Provider. → [architecture.md](./architecture.md#normalization-vs-homogenization).
+The Provider-owned translation from vendor semantics to Meteoscape semantics without changing native geometry. → [architecture.md](./architecture.md#normalization-vs-homogenization)
+
+**Native record**:
+A co-domained Coverage materialized by one fetch for Parameters that share native geometry. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Z-group, raw response
 
 **Homogenization**:
-**Sampling a field onto a target enumerable Domain** so its `ParameterData` are conformable — read-time, strictly geometric / temporal (distinct from normalization). The kernel degenerates to **identity when the target rides the grid** (a snapped read = a lossless crop); an off-grid point is nearest-neighbor (v1). → [architecture.md](./architecture.md#normalization-vs-homogenization).
+The geometric or temporal sampling of a Field onto a target EnumerableDomain so its ParameterData are conformable. → [architecture.md](./architecture.md#normalization-vs-homogenization)

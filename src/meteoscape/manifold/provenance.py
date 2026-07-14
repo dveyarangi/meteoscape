@@ -3,8 +3,9 @@
 Origin varies over **two** axes - parameter and geometry point - so it is a pluggable `ProvenanceField`
 plane (peer of `domain` / `ranges`), not a per-`ParameterData` attribute; that is what lets the Arbiter
 assemble one Coverage from many single-origin sources. v1 builds the `Uniform` and `PerParameter` planes
-(`PerPoint` is a declared seam) over both `Origin` kinds - atomic and synthetic (the latter a
-Calculator's derived-wind lineage).
+(`PerPoint` is a declared seam). A lossless, invertible Calculator (v1's derived wind) **propagates** its
+input's atomic origin verbatim, so v1 exercises only the **atomic** `Origin`. `SyntheticOrigin` — minted by
+a method-bearing or multi-origin derivation — stays a declared seam, unexercised in v1.
 
 See ADR-0003.
 """
@@ -16,7 +17,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
-from ..catalog.vocabulary import ParameterId
+from ..identity import SourceKey
+from ..parameters import ParameterId
 
 
 class Origin:
@@ -27,17 +29,20 @@ class Origin:
 class AtomicOrigin(Origin):
     """A single upstream fetch, authored in full at fetch time.
 
-    `issue_time` is the run identity (the forecast issuance the values came from), carried here rather
-    than as a Domain axis (ADR-0002).
+    `source` is the producing `SourceKey`; `issue_time` is the run identity (the forecast issuance the
+    values came from), carried here rather than as a Domain axis (ADR-0002).
     """
 
-    source: str
+    source: SourceKey
     issue_time: datetime
 
 
 class SyntheticOrigin(Origin):
-    """Derived from multiple parent provenances (its lineage) - a Calculator's output (v1: the derived
-    wind views over their `wind_u` / `wind_v` inputs). Concrete lineage shape lands with behaviour."""
+    """A composite's record of a derivation - its `lineage` of contributing parents plus a
+    calculation-method tag. Minted by a **method-bearing** computation (even over a single shared-origin
+    input - the method is what it records) or a **multi-origin** blend (`expiration = min` over parents).
+    A lossless, invertible transform is *not* synthetic: it propagates its input's `AtomicOrigin` instead.
+    Declared seam - concrete lineage / method shape lands with the first synthetic Calculator (post-v1)."""
 
 
 @dataclass(frozen=True)
@@ -51,7 +56,9 @@ class Provenance:
     origin: Origin
     fetched_at: datetime
     expiration: datetime
-    native_resolution: str | None = None
+    # No native-fidelity field: after read-back homogenization the Coverage's Domain is the request
+    # lattice; the offering's native resolution is recoverable from `origin`'s SourceKey. Ranking of
+    # multi-resolution offerings reads footprint Domain axis steps (concern #20), not a provenance field.
 
 
 class ProvenanceField(ABC):
