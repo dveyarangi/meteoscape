@@ -1,7 +1,7 @@
 # 002b — Derived wind calculator
 
-- **Status:** Ready
-- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md) (done)
+- **Status:** Done
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md) (done)
 - **Outcome:** The first multi-parameter Coverage assembly (top Arbiter stitches disjoint single-parameter
   winners) plus a single wind Calculator serving `wind_speed` / `wind_direction`, provenance propagated
   from the provider (no synthesis).
@@ -49,12 +49,12 @@ group iff all inputs are servable through the scoped resolver. Because the group
 resolve, requesting both wind params together is a **single winner** — the assembly in (1) is exercised
 by wind *beside* the canonical parameters, not by the wind pair itself.
 
-**Combine kernel — `fn: Coverage → Coverage`.** The kernel (`CalculatorManifest.fn`, `CombineFn`) receives
-the resolved input Coverage (ranges + domain, so it is shape-general: timeline now, grid/station later) and
-returns the output group's ranges. The **`Calculator` node**, not the kernel, owns **provenance
-authorship** and **output well-formedness** (ranges keyed by the declared output group, aligned to the
-domain). The wind kernel is `speed = hypot(u, v)`, `direction = atan2(...)`, with the output present-mask
-the elementwise AND of the inputs'.
+**Combine kernel — `fn: Coverage → (EnumerableDomain, ranges)`.** The kernel (`CalculatorManifest.fn`,
+`CombineFn`) receives the resolved input Coverage and returns the output domain plus ranges. The
+**`Calculator` node**, not the kernel, owns **provenance authorship** and **output well-formedness**
+(ranges keyed by the declared output group, aligned to the domain). The wind kernel is
+`speed = hypot(u, v)`, `direction = atan2(...)`, with the output present-mask the elementwise AND of
+the inputs'.
 
 **Provenance propagates — no synthesis.** The wind outputs carry the **atomic** provider origin of their
 `u/v` inputs verbatim: the transform is lossless and single-source, and Open-Meteo natively serves wind
@@ -71,32 +71,31 @@ degree average — [concern #5](../concerns.md#5-read-time-homogenization-fideli
 
 ## Acceptance criteria
 
-- [ ] The default `forecast_hourly(lat, lon)` returns canonical parameters (from a provider node) **and**
+- [x] The default `forecast_hourly(lat, lon)` returns canonical parameters (from a provider node) **and**
       `wind_speed` / `wind_direction` (from the Calculator node) in **one Coverage** — i.e. the top
-      Arbiter **assembles disjoint single-parameter winners** on the shared domain via `PerParameter`;
-      the old "winners not all one node → raise" guard is gone.
-- [ ] `wind_speed` and `wind_direction` are served by **one multi-output Calculator** that resolves
+      Arbiter **assembles disjoint single-parameter winners** on the shared domain via `PerParameter`.
+- [x] `wind_speed` and `wind_direction` are served by **one multi-output Calculator** that resolves
       `(wind_u, wind_v)` **once**; the derived values are exact functions of u/v (`speed = hypot`,
       `direction = atan2`) in their canonical units (m/s, degree).
-- [ ] The combine kernel is **`fn: Coverage → Coverage`** (`CombineFn`); the **node** (not the kernel)
-      stamps provenance and validates output well-formedness (ranges keyed by the declared output group,
-      aligned to the domain). The kernel authors no lineage.
-- [ ] Sources and Calculators are one **`Producer{node, key}`** shape; the Arbiter is
+- [x] The combine kernel is **`fn: Coverage → (EnumerableDomain, ranges)`** (`CombineFn`); the **node**
+      (not the kernel) stamps provenance and validates output well-formedness (ranges keyed by the
+      declared output group, aligned to the domain). The kernel authors no lineage.
+- [x] Sources and Calculators are one **`Producer{node, key}`** shape; the Arbiter is
       `Arbiter(producers, reconciler)`; the **`Reconciler`** is a first-class object holding a
       `ProducerKey → priority` lookup built from both registries by `build_reconciler`. The Weaver wraps
       producers and constructs the reconciler; it never ranks.
-- [ ] **`CalculatorKey(method, name)`** identifies a calculator (peer of `SourceKey`); `CalculatorSpec`
-      is renamed **`CalculatorDef`** (peer of `OfferingDef`) with `priority` + `name?` + `outputs`;
+- [x] **`CalculatorKey(method, name)`** identifies a calculator (peer of `SourceKey`);
+      **`CalculatorDef`** (peer of `OfferingDef`) carries `priority` + `name?` + `outputs`;
       `CalculatorRegistry` is keyed by `CalculatorKey`; two same-output/different-method calculators are
       distinct competing producers.
-- [ ] Requesting both wind params together routes to a **single winner** (one node), while requesting a
+- [x] Requesting both wind params together routes to a **single winner** (one node), while requesting a
       wind param beside a canonical one exercises the multi-node assembly.
-- [ ] Each derived `ParameterData` **propagates the provider's atomic origin** (Open-Meteo) — no
+- [x] Each derived `ParameterData` **propagates the provider's atomic origin** (Open-Meteo) — no
       `SyntheticOrigin` in v1; provenance/freshness match the `u/v` inputs.
-- [ ] The `Calculator` resolves its inputs through a **scoped `Arbiter`** (inputs only); the `Weaver`
+- [x] The `Calculator` resolves its inputs through a **scoped `Arbiter`** (inputs only); the `Weaver`
       memoizes one `Calculator` node per derived **output group**; the graph is acyclic.
-- [ ] `wind_u` / `wind_v` stay **internal-only** — not directly requestable via `forecast_hourly`.
-- [ ] Unit + mocked-transport integration tests cover the u/v → speed/direction derivation, the
+- [x] `wind_u` / `wind_v` stay **internal-only** — not directly requestable via `forecast_hourly`.
+- [x] Unit + mocked-transport integration tests cover the u/v → speed/direction derivation, the
       **provider-origin propagation**, and the **multi-node Coverage assembly** (derived beside canonical).
 
 ## User stories addressed

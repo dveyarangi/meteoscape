@@ -327,7 +327,7 @@ The composite that resolves competing producers per Parameter under a Reconciler
 _Avoid_: Selector, dispatcher, router, resolver, Gateway
 
 **Reconciler**:
-The per-Parameter strategy by which an Arbiter selects or combines producers. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The per-Parameter policy by which an Arbiter ranks competing producers; as built it orders candidates and the Arbiter picks the first admitted (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 
 **Provider**:

@@ -126,4 +126,4 @@ leaf, the MCP tool body, catalogue registration + `open_meteo_enabled=True` flip
   [issue 001](../tickets/done/001-walking-skeleton.md).
 - Store-grid representation decision → [issue 006](../tickets/006-retentive-store-freshness.md).
 - Wind `CalculatorSpec`s return to `Settings` at
-  [002b](../tickets/002b-derived-wind-calculator.md).
+  [002b](../tickets/done/002b-derived-wind-calculator.md).

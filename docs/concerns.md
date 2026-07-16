@@ -115,10 +115,12 @@ v1 sidesteps it entirely — **hourly-only, `point` statistic**, no `step` input
 
 **Kind:** algebra-shaped (extension) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
-ADR-0004 settles the reconciler **topology** (one Arbiter, one declared `reconciler`, per-cell fold), but
+ADR-0004 settles the reconciler **topology** (one Arbiter, one declared `reconciler`), but
 the concrete catalogue beyond the default `priority` — `tile` (disjoint union), `consensus` (blend),
 `feather` (smoothed seam) — and their precise per-cell semantics are **unspecified**. Unproven until a
-real partial-coverage producer set exists. `consensus` / `feather` press toward per-point provenance
+real partial-coverage producer set exists. Note the per-cell fold these need is **not the built
+interface** — today's `Reconciler` only orders producers, so the catalogue arrives together with an
+interface widening → [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold). `consensus` / `feather` press toward per-point provenance
 ([ADR-0003](./adr/0003-provenance-and-origin.md)) and require the nodata / mask
 slot ([ADR-0002](./adr/0002-data-model.md)).
 
@@ -269,3 +271,85 @@ ADR-0002 makes the `Domain` interface **non-separable by default** so curvilinea
 geotangent slices, satellite swaths — can be a **representation** later without a contract change.
 Curvilinear implementations are deferred: interface conformance is a **promise**, proven by the first non-separable producer. Until then
 it is only a constraint on the Domain interface (don't assume per-axis separability), not a v1 work item.
+
+## 26. Provider / calculator plugin scaffolding
+
+**Kind:** room-left (composition) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md),
+[architecture §Config, binders, Weaver](./architecture.md#config-binders-weaver)
+
+Plugin faces are settled (`ProviderManifest` / `CalculatorManifest` co-located with each impl;
+catalogues are `impl_id` / `fn_id` maps; profile recipes enable rows). What is not: **where the filled
+default catalogues live**, how **built-in vs optional** plugins are partitioned, and how
+`compose` takes both catalogues symmetrically.
+
+Today the composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
+`server.py`) and injects both into `compose`. That works while the shipped set is tiny. When
+optional providers/calculators arrive, the root should select among **named shipped sets** (e.g.
+builtin vs extended) without owning the membership lists, and `catalog/` should stay faces-only —
+not import every concrete plugin.
+
+Open: module home for shipped sets (`nodes/calculators/builtin` peer for providers?); whether
+optional plugins are second maps, entry-point discovery, or install extras; keep enablement in
+`Settings` / `ProfileConfig` separate from availability. No v1 blocker — mark before the second
+optional calculator or a non-default provider packaging story forces an ad-hoc split.
+
+## 27. Stored-calculator store binding
+
+**Kind:** room-left (composition) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md),
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md),
+[architecture §Store](./architecture.md#store--one-type-several-positions)
+
+`CalculatorDef` carries `stored?` but **no store knobs**, so the Weaver has nothing to allocate a
+stored Calculator's `Store` *from*. [ADR-0005](./adr/0005-build-time-composition.md) fixes only the
+**timing** ("a stored Calculator's store can only be weave-allocated"), never **which spec**. Today
+`weaver.py` passes `profile.root_store` into `stores.create(...)` for the `stored` branch — a
+stand-in, not a decision. Nothing is wrong yet: v1's only calculator (wind) is `stored=False`, so the
+branch is dead, and `StoreSpec` is an immutable value (each `create` still yields a distinct `Store`,
+so ADR-0005's rejected *shared-instance* case is not what happens here). But a stored calc would
+silently inherit the profile root's retention.
+
+**Suggested resolution — not a new shape:** add an optional `store: StoreSpec | None` to
+`CalculatorDef`, the exact peer of `OfferingDef.store`, carried onto `RegisteredCalculator` and read
+by the Weaver when `stored=True`. This is ADR-0005's own rule — *same knobs shape everywhere,
+separate instances per store position* (it rejected sharing one store **instance** while accepting one
+`StoreSpec` **shape**). A `stored=True` def with no spec then becomes a `CompositionError` rather than
+a silent root-store inheritance, mirroring `SourceBinder`'s "missing store for non-Countable source".
+
+Open: whether a stored calc's lattice should instead derive from its resolved input domain (a
+Calculator has no native lattice of its own), and whether "heavy" is a catalogue-side hint on
+`CalculatorManifest` rather than a per-profile flag. No v1 work — this bites with the first heavy or
+shared intermediate (the single-flight / common-subexpression case in
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md)), alongside
+[#11](#11-incremental-synthetic-recompute).
+
+## 28. Reconciler interface: selection-ordering vs per-cell fold
+
+**Kind:** algebra-shaped (interface widening) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#6](#6-reconciler-catalogue), [ticket 009](./tickets/009-error-taxonomy-partial-success.md)
+
+The **`reconciler` slot** is real and the "one Arbiter shape" intent holds, but the **built interface is
+narrower than the fold the design language assumes**, and the gap is not a configuration away.
+
+As built, a `Reconciler` is a **selection-ordering** policy:
+`select(parameter, candidates: Sequence[Producer]) -> Sequence[Producer]` — it ranks **producers** and
+never sees values. The Arbiter then applies admission (`serves(parameter, sel.domain)`), takes the
+**first admitted** candidate, and projects **that one producer whole** for the parameter. There is no
+per-cell gather: no *0 → nodata / 1 → passthrough / ≥2 → reconcile* branch, and no sampling of *every*
+producer onto the target lattice. Admission lives in the **Arbiter**, not the reconciler, so a
+reconciler also cannot score geometry.
+
+**Consequence — a combining reconciler cannot be dropped into this signature.** `tile` / `consensus` /
+`feather` need the resolved contributions, so the Arbiter must project **all** admitted producers and
+hand their values to the reconciler — a second, wider method (shape: `fold(parameter, contributions) →
+ParameterData`), not another `select` implementation. Three claims in the design language depend on that
+widening and are **not true of the current build**: (1) the per-cell fold itself; (2) the
+**gap-filler** story (a low-priority whole-coverage producer filling where a hi-res one does not reach —
+today the hi-res producer simply wins the whole parameter); (3) **runtime-fault fall-through** to the
+next candidate, which is [ticket 009](./tickets/009-error-taxonomy-partial-success.md)'s
+per-parameter partial-success contract.
+
+Not a v1 gap: v1 ships only `priority`, and point/timeline producers fully overlap, so selection *is*
+the whole job and the narrow interface is exactly sufficient. This concern records the **cost of the
+extension** so it is not mistaken for a config change: it lands with the catalogue
+([#6](#6-reconciler-catalogue)), presses toward `PerPoint` provenance
+([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
+set to prove it.
