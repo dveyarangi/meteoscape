@@ -97,8 +97,7 @@ class Axis(ABC):
         ...
 
     def matches(self, declared: Axis) -> bool:
-        """Whether this *requested* axis matches a *declared* axis — default: full containment.
-        """
+        """Whether this *requested* axis matches a *declared* axis — default: full containment."""
         return declared.extent.contains(self.extent)  # type: ignore[arg-type]
 
 

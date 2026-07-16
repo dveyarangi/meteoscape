@@ -22,7 +22,9 @@ def test_normalizer_contract_takes_raw_and_provenance() -> None:
     domain = point_timeline_domain(hours=1)
     table = StaticParameterTable.core()
     provenance = Provenance(
-        origin=AtomicOrigin(SourceKey("open-meteo", "best_match"), datetime(2026, 7, 11, tzinfo=UTC)),
+        origin=AtomicOrigin(
+            SourceKey("open-meteo", "best_match"), datetime(2026, 7, 11, tzinfo=UTC)
+        ),
         fetched_at=datetime(2026, 7, 11, 12, tzinfo=UTC),
         expiration=datetime(2026, 7, 11, 13, tzinfo=UTC),
     )

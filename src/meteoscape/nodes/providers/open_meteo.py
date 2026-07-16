@@ -194,9 +194,7 @@ class OpenMeteoNormalizer:
             ranges: dict[ParameterId, ParameterData] = {}
             defs: dict[ParameterId, ParameterDef] = {}
             for tap in group:
-                values = tap.decode(
-                    {var.name: converted[var.name] for var in tap.vendor_vars}
-                )
+                values = tap.decode({var.name: converted[var.name] for var in tap.vendor_vars})
                 if len(values) != n:
                     raise RuntimeFailure(
                         f"open-meteo decode length mismatch for {tap.produces}: "
