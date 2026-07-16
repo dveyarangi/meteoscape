@@ -1,7 +1,7 @@
 # 006 — Retentive store and freshness
 
 - **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
 - **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
 
 ## Parent PRD

@@ -1,7 +1,7 @@
 # 010 — Unit-conversion catalogue
 
 - **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
 - **Trigger:** First real multi-vendor unit spread, expected in
   [004 — Second-provider fallback](./004-second-provider-fallback.md)
 - **Outcome:** Shared verified native-to-canonical conversion edges.
@@ -19,7 +19,7 @@ degrading** quality ([concern #10](../concerns.md#10-parameter-conventions); deg
 quality signal, not silent).
 
 **Not this ticket — the v1 per-`Tap` convert-on-ingest position** (verify-always, no request knob,
-wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./002-core-5-parameters.md). This ticket
+wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./done/002-core-5-parameters.md). This ticket
 is only the shared catalogue those inline factors graduate into.
 
 **Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely TWC at

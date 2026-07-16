@@ -1,7 +1,7 @@
 # 004 — Second-provider fallback
 
 - **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md),
+- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md),
   [003 — Request shaping](./003-request-shaping.md)
 - **Outcome:** TWC provider leaf and wholesale priority fallback.
 

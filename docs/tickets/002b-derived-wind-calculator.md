@@ -1,7 +1,7 @@
 # 002b — Derived wind calculator
 
-- **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
+- **Status:** Ready
+- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md) (done)
 - **Outcome:** The first multi-parameter Coverage assembly (top Arbiter stitches disjoint single-parameter
   winners) plus a single wind Calculator serving `wind_speed` / `wind_direction`, provenance propagated
   from the provider (no synthesis).

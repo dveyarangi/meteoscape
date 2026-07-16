@@ -1,7 +1,7 @@
 # 003 — Request shaping
 
 - **Status:** Partial
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md),
+- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md),
   [002b — Derived wind](./002b-derived-wind-calculator.md)
 - **Outcome:** Free request windows, exact-mode aliases, and capability-envelope narration.
 
