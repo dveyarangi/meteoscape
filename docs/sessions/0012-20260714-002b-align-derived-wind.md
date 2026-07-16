@@ -2,7 +2,7 @@
 
 Continues [session 0011](./0011-20260713-002-align-z-carriage.md). Session opened by committing the
 **002 implementation** (commit `5af5c95` — Tap table, native Z carriage, edge exposure), then ran an
-`align` pass on [ticket 002b](../tickets/002b-derived-wind-calculator.md). Three decisions crystallised,
+`align` pass on [ticket 002b](../tickets/done/002b-derived-wind-calculator.md). Three decisions crystallised,
 each reversing or sharpening a prior contract; docs updated inline.
 
 ## The decisions

@@ -196,17 +196,28 @@ same shape. The abstraction these are shapes of is the
 
 ## Reconcilers — the coverage fold
 
-- **One shape, parameterized by a `reconciler`.** Per parameter the Arbiter samples each producer onto
-  the Selection's **target lattice** (fixed by the `Domain`, **independent of any child's coverage**) and
-  folds the contributors **per cell**: **0** contributors → **nodata**, **1** → passthrough, **≥2** → the
-  reconciler decides. The default is **`priority`** — take the top-priority contributor with data, **fall
-  through on a runtime fault** (*not* on nodata, which is a successful gap) — **this is selection**.
-  Coverage reconcilers (`tile` disjoint union, `consensus` blend, `feather` smoothed seam) are the same
-  shape with a different fold. So tiling, gap-fill, radar / regional mosaicking, **observation +
-  forecast along `valid_time`**, and **cross-run combination** (folding **run-stamped contributor
-  Coverages** — different `issue_time`s — along `valid_time`; `issue_time` is each contributor's
-  provenance stamp, [ADR-0003](./0003-provenance-and-origin.md), not a Domain axis) are all the Arbiter
-  under a reconciler. The catalogue beyond `priority` is deferred ([#6](../concerns.md#6-reconciler-catalogue)).
+- **One slot, parameterized by a `reconciler` — today a selection-ordering policy.** As built, the
+  `Reconciler` **ranks producers**: `select(parameter, candidates) → ordered candidates`. The Arbiter
+  then applies admission (`serves(parameter, sel.domain)`), takes the **first admitted** candidate, and
+  projects **that producer whole** for the parameter. The default `priority` orders by the flattened
+  `ProducerKey → int` lookup — **this is selection**, and for v1's fully-overlapping point / timeline
+  producers it is the whole job. Admission stays on the **Arbiter**, not the reconciler.
+
+- **The coverage fold is the slot's intended generalization — and a real interface widening, not a
+  config swap.** Coverage reconcilers (`tile` disjoint union, `consensus` blend, `feather` smoothed
+  seam) must fold contributors **per cell** (**0** → **nodata**, **1** → passthrough, **≥2** → the
+  reconciler decides), which needs the resolved **values** — so the Arbiter must project *all* admitted
+  producers and hand their contributions to a **second, wider method**, not another `select`. That
+  target is what makes tiling, gap-fill, radar / regional mosaicking, **observation + forecast along
+  `valid_time`**, and **cross-run combination** (folding **run-stamped contributor Coverages** —
+  different `issue_time`s — along `valid_time`; `issue_time` is each contributor's provenance stamp,
+  [ADR-0003](./0003-provenance-and-origin.md), not a Domain axis) all "the Arbiter under a reconciler".
+  The **slot** and the one-Arbiter shape are settled; the **fold interface** is not yet built. Catalogue
+  → [#6](../concerns.md#6-reconciler-catalogue); the widening and its cost →
+  [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Per-candidate
+  **fall-through on a runtime fault** (*not* on nodata, which is a successful gap) rides the same
+  widening and is [ticket 009](../tickets/009-error-taxonomy-partial-success.md)'s contract; until then a
+  `RuntimeFailure` fails the whole request.
 
 - **The `reconciler` is declared config, defaulting to `priority`** — **not inferred** from geometry.
   Point / timeline producers fully overlap on one location, so they engage no spatial machinery: the
@@ -214,8 +225,11 @@ same shape. The abstraction these are shapes of is the
   geometry degenerates to a pick on its own.
 
 - **A whole-coverage producer is a gap-filler, not a separate fallback.** It joins the **same** Arbiter's
-  producer set at **low priority**; the per-cell `priority` reconciler then yields the high-resolution
+  producer set at **low priority**; a per-cell `priority` reconciler then yields the high-resolution
   source where it reaches and the whole model in the gaps. No separate node, no whole-vs-partial branch.
+  **Not yet built:** this needs the per-cell fold — under today's selection-ordering interface the
+  high-resolution producer wins the **whole parameter** and never yields gaps to the model
+  ([#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
 
 - **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
   analysis surface) is a **single** `Provider` whose `FootprintCapability` advertises the network's
@@ -331,9 +345,12 @@ same shape. The abstraction these are shapes of is the
   `priority: Mapping[ProducerKey, int]` lookup (bind order breaks ties) and returns a **`PriorityReconciler`
   holding that map** — not the registries, so it stays a bare, testable lookup. The Weaver **invokes the
   factory** and injects the reconciler into each Arbiter; it orders nothing. The Arbiter delegates the
-  per-parameter choice to `reconciler.select(parameter, candidates)`; another reconciler can ignore
-  priority or combine (consensus, [#6](../concerns.md#6-reconciler-catalogue)). Scoped calculator Arbiters
-  reuse the **same reconciler** over their producer subset, so ranking stays consistent everywhere.
+  per-parameter **candidate ordering** to `reconciler.select(parameter, candidates)` and keeps admission
+  and the pick itself; another reconciler can ignore priority or order differently. A reconciler that
+  **combines** (consensus, [#6](../concerns.md#6-reconciler-catalogue)) does **not** fit this signature —
+  it needs the resolved values, i.e. the interface widening in
+  [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Scoped calculator
+  Arbiters reuse the **same reconciler** over their producer subset, so ranking stays consistent everywhere.
 
 - **A response is assembled from disjoint single-parameter winners.** When the per-parameter winners are
   one node, the Arbiter projects once through it. When they span **>1 producer** (any request mixing a

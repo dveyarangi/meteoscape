@@ -1,17 +1,17 @@
 # RFC 0001 — Derived wind calculator (ticket 002b)
 
 - **Date:** 2026-07-16
-- **Ticket:** [002b — Derived wind calculator](../tickets/002b-derived-wind-calculator.md)
+- **Ticket:** [002b — Derived wind calculator](../../tickets/done/002b-derived-wind-calculator.md)
 - **Depends on:** 002 (done) — canonical `wind_u` / `wind_v` served by Open-Meteo
-- **Status:** Ready (implementation not started)
-- **Owning docs:** [ADR-0004](../adr/0004-producer-resolution-and-capability.md) (producer resolution),
-  [ADR-0005](../adr/0005-build-time-composition.md) (build-time composition),
-  [ADR-0003](../adr/0003-provenance-and-origin.md) (provenance propagation)
-- **Planning source:** [session 0012 — 002b align](../sessions/0012-20260714-002b-align-derived-wind.md)
+- **Status:** Accepted (implemented)
+- **Owning docs:** [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) (producer resolution),
+  [ADR-0005](../../adr/0005-build-time-composition.md) (build-time composition),
+  [ADR-0003](../../adr/0003-provenance-and-origin.md) (provenance propagation)
+- **Planning source:** [session 0012 — 002b align](../../sessions/0012-20260714-002b-align-derived-wind.md)
   (the 7 align decisions + the "002b implementation deltas" this RFC turns into a build plan)
 
-> **Do-not-change-code planning artifact.** This RFC records the plan; it prescribes no edits by
-> itself. Code shapes below are *targets*, shown beside the *current* shape they replace.
+> Accepted plan for ticket 002b (implemented). Stages S0–S6 and decisions D1–D3 / F6–F7 below are the
+> record of what shipped.
 
 ---
 
@@ -383,27 +383,27 @@ Each stage is a vertical slice that stays green at its boundary; write the faili
 
 ## 10. Follow-ups
 
-**Doc alignment (this RFC changed accepted-doc contracts — done 2026-07-16, code parts deferred to the
-build pass):**
+**Doc alignment (this RFC changed accepted-doc contracts — docs done 2026-07-16; the code parts have
+since landed in the build pass):**
 
-- **F1 — ✅ ADR-0005 + [module-layout.md](../module-layout.md):48:** `CalculatorBinder.build` now takes
+- **F1 — ✅ ADR-0005 + [module-layout.md](../../module-layout.md):48:** `CalculatorBinder.build` now takes
   `parameters: ParameterTable`; `RegisteredCalculator` carries resolved output defs (D1). *(docs done)*
 - **F2 — ✅ ADR-0004 (bullet + Calculator sketch):** kernel returns `(Domain, ranges)`, not `Coverage`;
-  the node builds the Coverage + authors capability (D2). **Code part deferred:** the `calculators.py`
-  `CombineFn` type/docstring changes with S4.
+  the node builds the Coverage + authors capability (D2). **Code landed (S4):** `calculators.py`
+  `CombineFn` is `Callable[[Coverage], tuple[EnumerableDomain, Mapping[ParameterId, ParameterData]]]`.
 - **F3 — ✅ ADR-0004 Calculator pseudocode:** `sel.with_params(self.inputs)` → `Selection(sel.domain,
   self.inputs)` (D3). *(docs done)*
-- **F4 — ✅ [tickets/README.md](../tickets/README.md):** the two stale "synthetic provenance" cells for
-  002b now say propagated provider provenance + first multi-node assembly. **Code part deferred:** the
-  retired guard's `"005"` message is removed in S3. (005's ticket file was already reframed by
-  session 0012 as provider-competition over this assembly.)
+- **F4 — ✅ [tickets/README.md](../../tickets/README.md):** the two stale "synthetic provenance" cells for
+  002b now say propagated provider provenance + first multi-node assembly. **Code landed (S3):** the
+  not-all-one-node guard and its `"005"` message are gone from `arbiter.py`. (005's ticket file was
+  already reframed by session 0012 as provider-competition over this assembly.)
 - **F5 — ✅ glossary `CalculatorKey`:** `name` binder-defaults to `"default"` (D-#3). *(docs done)*
-- **F6 — ✅ ADR-0004 “Static / dynamic split” + [architecture.md](../architecture.md) §Arbiter
+- **F6 — ✅ ADR-0004 “Static / dynamic split” + [architecture.md](../../architecture.md) §Arbiter
   (+ data-flow step 4):** retargeted to `Arbiter(producers, reconciler)` / `build_reconciler` (align A1).
-  *(docs done; code lands with S2)*
+  *(docs done; code landed S2)*
 - **F7 — ✅ Failure / partial-success ownership:** architecture §Failure and ADR-0004 Outcomes name
   per-parameter runtime-fault omission as the contract owned by
-  [ticket 009](../tickets/009-error-taxonomy-partial-success.md). Until 009, a `RuntimeFailure` fails the
+  [ticket 009](../../tickets/009-error-taxonomy-partial-success.md). Until 009, a `RuntimeFailure` fails the
   whole request (align A2; see §8). *(docs done)*
 
 **Align decisions (2026-07-16 planning pass):** A1 = F6; A2 = F7; A3 = ticket 002 marked Done.

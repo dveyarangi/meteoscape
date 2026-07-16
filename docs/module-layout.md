@@ -49,6 +49,6 @@ src/meteoscape/
 #   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler)  # producers = Producer{node, key}; reconciler owns priority
-#   compose(profile, catalog, secrets, clock, stores) → Gateway
+#   compose(profile, providers, calculators, secrets, clock, stores) → Gateway
 # tests/ mirrors src; provider tests mock the HTTP transport.
 ```
