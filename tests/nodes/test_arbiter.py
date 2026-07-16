@@ -1,4 +1,4 @@
-"""Arbiter — priority ranking + Phase C admission / single-candidate projection."""
+"""Arbiter — Producer + PriorityReconciler + admission / single-winner projection."""
 
 from __future__ import annotations
 
@@ -30,9 +30,10 @@ from meteoscape.manifold.domain import (
     Interval,
     RegularAxis,
 )
-from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
-from meteoscape.nodes.arbiter import Arbiter
+from meteoscape.manifold.provenance import AtomicOrigin, PerParameter, Provenance, Uniform
+from meteoscape.nodes.arbiter import Arbiter, Producer, build_reconciler
 from meteoscape.nodes.composition import (
+    CalculatorRegistry,
     CompositionError,
     RegisteredSource,
     SourceBinder,
@@ -51,15 +52,33 @@ def _bind(*offerings: OfferingDef, catalog=None):
     )
 
 
-def _source_nodes(registry):
+def _producers(registry: SourceRegistry) -> list[Producer]:
     stores = StoreFactory()
-    return {
-        key: Reservoir(
-            stores.create(reg.store if reg.store is not None else reg.provider.domain),
-            reg.provider,
+    return [
+        Producer(
+            node=Reservoir(
+                stores.create(reg.store if reg.store is not None else reg.provider.domain),
+                reg.provider,
+            ),
+            key=key,
         )
         for key, reg in registry.sources.items()
-    }
+    ]
+
+
+def _arbiter(
+    registry: SourceRegistry,
+    *,
+    policy: ArbiterPolicy | None = None,
+    producers: list[Producer] | None = None,
+) -> Arbiter:
+    producers = producers if producers is not None else _producers(registry)
+    reconciler = build_reconciler(
+        policy or ArbiterPolicy(),
+        registry,
+        CalculatorRegistry(calculators={}),
+    )
+    return Arbiter(producers, reconciler)
 
 
 def _point_selection(
@@ -88,16 +107,17 @@ def _point_selection(
     )
 
 
-def _coverage(*pids) -> CoverageRecord:
+def _coverage(*pids, origin_key: SourceKey | None = None) -> CoverageRecord:
     table = core_parameters()
     domain = point_timeline_domain(hours=1, lon=13.41, lat=52.52)
     parameters = {pid: table.get(pid) for pid in pids}
+    key = origin_key or SourceKey("fake", "default")
     return CoverageRecord(
         capability=EnumerableCapability(domain=domain, parameters=parameters),
         ranges={pid: ParameterData(values=[1.0], present=None) for pid in pids},
         provenance=Uniform(
             Provenance(
-                origin=AtomicOrigin(SourceKey("fake", "default"), datetime(2026, 7, 11, tzinfo=UTC)),
+                origin=AtomicOrigin(key, datetime(2026, 7, 11, tzinfo=UTC)),
                 fetched_at=datetime(2026, 7, 11, 12, tzinfo=UTC),
                 expiration=datetime(2026, 7, 11, 13, tzinfo=UTC),
             )
@@ -126,30 +146,30 @@ def test_priority_reconciler_orders_candidates() -> None:
         OfferingDef(impl="b", name="default", priority=0),
         catalog=catalog,
     )
-    arbiter = Arbiter(_source_nodes(registry), registry, ArbiterPolicy())
-    candidates = arbiter.candidates[AIR_TEMPERATURE]
-    assert len(candidates) == 2
-    first, second = candidates
-    assert isinstance(first, Reservoir) and isinstance(second, Reservoir)
-    assert isinstance(first.source, Provider) and isinstance(second.source, Provider)
-    assert first.source.source_key.provider == "b"
-    assert second.source.source_key.provider == "a"
+    arbiter = _arbiter(registry)
+    ordered = arbiter.reconciler.select(AIR_TEMPERATURE, arbiter.by_parameter[AIR_TEMPERATURE])
+    assert len(ordered) == 2
+    first, second = ordered
+    assert isinstance(first.node, Reservoir) and isinstance(second.node, Reservoir)
+    assert isinstance(first.node.source, Provider) and isinstance(second.node.source, Provider)
+    assert first.key.provider == "b"
+    assert second.key.provider == "a"
 
 
 def test_unsupported_reconciler_raises() -> None:
     registry = _bind(OfferingDef(impl="fake", name="default", priority=0))
     with pytest.raises(CompositionError, match="reconciler"):
-        Arbiter(
-            _source_nodes(registry),
-            registry,
+        build_reconciler(
             ArbiterPolicy(default_reconciler="consensus"),
+            registry,
+            CalculatorRegistry(calculators={}),
         )
 
 
-def test_empty_registry_empty_candidates() -> None:
+def test_empty_registry_empty_index() -> None:
     registry = SourceRegistry(sources={})
-    arbiter = Arbiter({}, registry, ArbiterPolicy())
-    assert arbiter.candidates == {}
+    arbiter = _arbiter(registry, producers=[])
+    assert arbiter.by_parameter == {}
     assert arbiter.capability.parameters == {}
 
 
@@ -165,7 +185,7 @@ async def test_beyond_footprint_raises_without_projecting() -> None:
     registry = SourceRegistry(
         sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
     )
-    arbiter = Arbiter(_source_nodes(registry), registry, ArbiterPolicy())
+    arbiter = _arbiter(registry)
     with pytest.raises(CapabilityMismatch):
         await arbiter.project(_point_selection(lat=100.0))  # outside Y footprint
     assert provider.calls == []
@@ -183,7 +203,7 @@ async def test_in_footprint_projects_once_with_admitted_params() -> None:
     registry = SourceRegistry(
         sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
     )
-    arbiter = Arbiter(_source_nodes(registry), registry, ArbiterPolicy())
+    arbiter = _arbiter(registry)
     selection = _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
     result = await arbiter.project(selection)
     assert result is coverage
@@ -193,7 +213,7 @@ async def test_in_footprint_projects_once_with_admitted_params() -> None:
 
 
 @pytest.mark.asyncio
-async def test_different_winning_candidates_guard() -> None:
+async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     table = core_parameters()
     footprint = FootprintDomain(
         axes={
@@ -206,19 +226,21 @@ async def test_different_winning_candidates_guard() -> None:
             ),
         }
     )
+    temp_cov = _coverage(AIR_TEMPERATURE, origin_key=SourceKey("a", "default"))
+    precip_cov = _coverage(PRECIPITATION, origin_key=SourceKey("b", "default"))
     temp_provider = _RecordingProvider(
         source_key=SourceKey("a", "default"),
         capability=FootprintCapability(
             footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
         ),
-        coverage=_coverage(AIR_TEMPERATURE),
+        coverage=temp_cov,
     )
     precip_provider = _RecordingProvider(
         source_key=SourceKey("b", "default"),
         capability=FootprintCapability(
             footprints={PRECIPITATION: (table.get(PRECIPITATION), footprint)}
         ),
-        coverage=_coverage(PRECIPITATION),
+        coverage=precip_cov,
     )
     registry = SourceRegistry(
         sources={
@@ -230,10 +252,23 @@ async def test_different_winning_candidates_guard() -> None:
             ),
         }
     )
-    arbiter = Arbiter(_source_nodes(registry), registry, ArbiterPolicy())
-    with pytest.raises(NotImplementedError, match="005"):
-        await arbiter.project(
-            _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
-        )
-    assert temp_provider.calls == []
-    assert precip_provider.calls == []
+    arbiter = _arbiter(registry)
+    selection = _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
+    result = await arbiter.project(selection)
+
+    assert isinstance(result, CoverageRecord)
+    assert set(result.ranges) == {AIR_TEMPERATURE, PRECIPITATION}
+    assert result.ranges[AIR_TEMPERATURE] is temp_cov.ranges[AIR_TEMPERATURE]
+    assert result.ranges[PRECIPITATION] is precip_cov.ranges[PRECIPITATION]
+    assert result.domain == temp_cov.domain == precip_cov.domain
+    assert isinstance(result.provenance, PerParameter)
+    temp_origin = result.provenance.summary(AIR_TEMPERATURE).origin
+    precip_origin = result.provenance.summary(PRECIPITATION).origin
+    assert isinstance(temp_origin, AtomicOrigin)
+    assert isinstance(precip_origin, AtomicOrigin)
+    assert temp_origin.source == SourceKey("a", "default")
+    assert precip_origin.source == SourceKey("b", "default")
+    assert len(temp_provider.calls) == 1
+    assert len(precip_provider.calls) == 1
+    assert temp_provider.calls[0].parameters == frozenset({AIR_TEMPERATURE})
+    assert precip_provider.calls[0].parameters == frozenset({PRECIPITATION})

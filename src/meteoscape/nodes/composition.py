@@ -5,8 +5,8 @@ registries, which compose the `ProfileDef` the Weaver consumes:
 
 - `SourceBinder(ProviderCatalog).build(...)` → `SourceRegistry` (`SourceKey` → configured producer +
   extrinsic priority + optional Source `StoreSpec`).
-- `CalculatorBinder(CalculatorCatalog).build(...)` → `CalculatorRegistry` (output `ParameterId` →
-  catalog-resolved binding, *not* a Calculator node — the Weaver builds those).
+- `CalculatorBinder(CalculatorCatalog).build(...)` → `CalculatorRegistry` (`CalculatorKey` →
+  catalog-resolved binding with resolved output defs, *not* a Calculator node — the Weaver builds those).
 
 Binders instantiate/resolve; neither wires the DAG nor allocates the profile-root `Store` (the Weaver
 owns that). Both take plain values by injection, never the `config.py` `Settings` type. See
@@ -19,10 +19,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..clock import Clock
-from ..config import ArbiterPolicy, CalculatorSpec, OfferingDef, StoreSpec
-from ..identity import SourceKey
+from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
+from ..identity import CalculatorKey, SourceKey
 from ..manifold.core import Countable
-from ..parameters import ParameterId
+from ..parameters import ParameterDef, ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
 from .catalog.providers import ProviderCatalog
@@ -109,37 +109,51 @@ class SourceBinder:
 class RegisteredCalculator:
     """Catalog-resolved calculator binding — not a Calculator node (Weaver builds those)."""
 
-    output: ParameterId
+    key: CalculatorKey
+    outputs: Mapping[ParameterId, ParameterDef]
     inputs: frozenset[ParameterId]
     manifest: CalculatorManifest
+    priority: int
     stored: bool = False
 
 
 @dataclass(frozen=True)
 class CalculatorRegistry:
-    """Read-only, output-keyed surface the Weaver consumes — resolved calculator bindings."""
+    """Read-only, `CalculatorKey`-keyed surface the Weaver consumes — resolved calculator bindings."""
 
-    calculators: Mapping[ParameterId, RegisteredCalculator]
+    calculators: Mapping[CalculatorKey, RegisteredCalculator]
 
 
 class CalculatorBinder:
-    """Resolves `CalculatorSpec` tickets against a `CalculatorCatalog` → `CalculatorRegistry`."""
+    """Resolves `CalculatorDef` tickets against a `CalculatorCatalog` → `CalculatorRegistry`."""
 
     def __init__(self, catalog: CalculatorCatalog) -> None:
         self.catalog = catalog
 
-    def build(self, specs: Sequence[CalculatorSpec]) -> CalculatorRegistry:
-        """Lookup each `fn_id`; fail unknown ids; return bindings keyed by output parameter."""
-        calculators: dict[ParameterId, RegisteredCalculator] = {}
-        for spec in specs:
-            manifest = self.catalog.get(spec.fn_id)
+    def build(
+        self, defs: Sequence[CalculatorDef], parameters: ParameterTable
+    ) -> CalculatorRegistry:
+        """Lookup each `fn_id`; resolve output defs; key by `CalculatorKey` (name defaults to default)."""
+        calculators: dict[CalculatorKey, RegisteredCalculator] = {}
+        for recipe in defs:
+            manifest = self.catalog.get(recipe.fn_id)
             if manifest is None:
-                raise CompositionError(f"unknown calculator fn_id {spec.fn_id!r}")
-            calculators[spec.output] = RegisteredCalculator(
-                output=spec.output,
-                inputs=spec.inputs,
+                raise CompositionError(f"unknown calculator fn_id {recipe.fn_id!r}")
+            name = "default" if recipe.name is None else recipe.name
+            key = CalculatorKey(method=recipe.fn_id, name=name)
+            if key in calculators:
+                raise CompositionError(f"duplicate CalculatorKey {key}")
+            try:
+                outputs = {pid: parameters.get(pid) for pid in recipe.outputs}
+            except KeyError as exc:
+                raise CompositionError(f"unknown calculator output {exc.args[0]!r}") from exc
+            calculators[key] = RegisteredCalculator(
+                key=key,
+                outputs=outputs,
+                inputs=recipe.inputs,
                 manifest=manifest,
-                stored=spec.stored,
+                priority=recipe.priority,
+                stored=recipe.stored,
             )
         return CalculatorRegistry(calculators=calculators)
 

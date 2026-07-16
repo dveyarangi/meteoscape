@@ -2,7 +2,7 @@
 
 `CalculatorCatalog` is `fn_id → CalculatorManifest`. Each manifest is a cohesive plugin face — the
 combine function alongside the declarative constraints on the shapes it may be invoked over. A
-`CalculatorSpec` (in `ProfileConfig`) only enables one against this catalogue. See ADR-0005.
+`CalculatorDef` (in `ProfileConfig`) only enables one against this catalogue. See ADR-0005.
 """
 
 from __future__ import annotations
@@ -11,16 +11,21 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from ...parameters import ParameterId
+
 if TYPE_CHECKING:
     from ...manifold.core import Coverage
+    from ...manifold.data import ParameterData
+    from ...manifold.domain import EnumerableDomain
 
 CalculatorCatalog = Mapping[str, "CalculatorManifest"]
 
-CombineFn = Callable[["Coverage"], "Coverage"]
-"""The kernel: `Coverage -> Coverage`. Receives the resolved input Coverage (ranges + domain, any shape)
-and returns the output group's ranges on a possibly-transformed domain. Pure structure/computation — the
-`Calculator` node owns provenance authorship and output well-formedness, so the kernel authors no lineage
-and its output provenance (if any) is not authoritative (ADR-0004)."""
+CombineFn = Callable[
+    ["Coverage"],
+    tuple["EnumerableDomain", Mapping[ParameterId, "ParameterData"]],
+]
+"""The kernel: Coverage → (domain, ranges). Pure structure/computation — the `Calculator` node owns
+capability, provenance authorship, and output well-formedness (ADR-0004)."""
 
 
 @dataclass(frozen=True)

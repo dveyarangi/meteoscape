@@ -87,18 +87,14 @@ class UnionCapability:
 
 @dataclass(frozen=True)
 class DerivedCapability:
-    """A `Calculator`'s induced capability: serves its `output` iff *all* its inputs are servable
-    through the scoped resolver (its input Arbiter's capability)."""
+    """A `Calculator`'s induced capability: serves each co-produced parameter iff *all* inputs are
+    servable through the scoped resolver (its input Arbiter's capability)."""
 
-    output: ParameterDef
+    parameters: Mapping[ParameterId, ParameterDef]
     inputs: frozenset[ParameterId]
     upstream: Capability
 
-    @property
-    def parameters(self) -> Mapping[ParameterId, ParameterDef]:
-        return {self.output.id: self.output}
-
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
-        return parameter == self.output.id and all(
+        return parameter in self.parameters and all(
             self.upstream.serves(i, requested) for i in self.inputs
         )
