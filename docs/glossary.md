@@ -206,7 +206,7 @@ A profile enablement of one calculator — its function identity, co-produced ou
 _Avoid_: CalculatorSpec, Calculator, RegisteredCalculator, DerivationSpec
 
 **CalculatorKey**:
-The identity of a configured calculator — its method plus a named variant (`method`, `name`); the calculator peer of `SourceKey`, one arm of `ProducerKey`. → [ADR-0005](./adr/0005-build-time-composition.md)
+The identity of a configured calculator — its method plus a named variant (`method`, `name`); the calculator peer of `SourceKey`, one arm of `ProducerKey`. `name` is binder-defaulted to `"default"` when the `CalculatorDef` omits it. → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: fn_id (that is only the method arm), output group
 
 **CalculatorRegistry**:

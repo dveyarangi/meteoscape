@@ -1,7 +1,7 @@
 # 002 — Core canonical parameters
 
-- **Status:** In progress
-- **Depends on:** [001 — Walking skeleton](./done/001-walking-skeleton.md) (done)
+- **Status:** Done
+- **Depends on:** [001 — Walking skeleton](./001-walking-skeleton.md) (done)
 - **Outcome:** Open-Meteo canonical parameter set, native Z carriage, and edge exposure.
 
 ## Parent PRD
@@ -46,13 +46,13 @@ negotiates units (no `wind_speed_unit` knob) — Open-Meteo wind arrives `km/h` 
 convert `× 1/3.6` to `m/s` before `decode`'s trig, so `decode` sees canonical inputs. Every other v1
 tap is a unit no-op (vendor default already canonical). A `VendorVar.unit` mismatch against the
 vendor's reported units is `runtime-failure`, never a guess. The shared conversion **catalogue** is
-deferred to [ticket 010](./010-unit-conversion-edge.md) (forced by 004's second vendor); 002 ships the
+deferred to [ticket 010](../010-unit-conversion-edge.md) (forced by 004's second vendor); 002 ships the
 one `km/h→m/s` factor inline.
 
 **Decision recorded — canonical units (session 0011):** `air_temperature` `degC` (Phase C),
 `precipitation` `mm`, `relative_humidity` `percent`, `cloud_cover` `percent`, `wind_u` / `wind_v`
 `m/s` (`wind_speed` / `wind_direction` → `m/s` / `degree` at 002b). Mirrors
-[parameters.md](../parameters.md).
+[parameters.md](../../parameters.md).
 
 **Decision recorded — precipitation vendor variable (session 0011):** Open-Meteo `precipitation`
 (the vendor **total** — rain + showers + snow water-equivalent, `mm`), matching the canonical
@@ -60,9 +60,9 @@ quantity's "all falling water, liquid-equivalent" meaning and the agent's "will 
 `rain` / `snowfall` / `showers` component decomposition is a post-v1 parameter family, not the total.
 
 **Build here — Z carriage (concern #24 resolved, session 0011 →
-[ADR-0002](../adr/0002-data-model.md) /
-[ADR-0004](../adr/0004-producer-resolution-and-capability.md); encoding settled at the 002 align →
-[ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)):** native per-parameter Z
+[ADR-0002](../../adr/0002-data-model.md) /
+[ADR-0004](../../adr/0004-producer-resolution-and-capability.md); encoding settled at the 002 align →
+[ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md)):** native per-parameter Z
 declarations replace `_NEAR_SURFACE_Z` — footprint Z is a **sample** level (`RegularAxis` count-1
 **point cell**: `[2,2]` temperature/humidity, `[10,10]` wind, `[0,0]` precipitation) or a **statistic
 cell** (`IntervalAxis` **span**: `[0,TOA]` cloud), extents only. The default bundle request carries
@@ -77,10 +77,10 @@ inclusion `[0,10] ⊆ [0,TOA]` against a span), the default axis uses `Interval.
 predicate, no new public verb. By closed projection the `VantageAxis` rides onto the served Coverage
 (`resample` sets `domain = selection.domain`); *which* admitted cell answers (maximal served cell /
 resampler) is a separate selection step, trivial in v1. Declarations per parameter →
-[parameters.md §Vertical carriage](../parameters.md).
+[parameters.md §Vertical carriage](../../parameters.md).
 
 **Data-plane contract landing here
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)):**
+([ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md)):**
 `Normalizer.normalize(raw, provenance) → Sequence[Coverage]` — **native records** grouped by shared
 native Domain (Open-Meteo: `{air_temperature, relative_humidity}` @ 2 m · `{wind_u, wind_v}` @ 10 m ·
 `{precipitation}` @ 0 m · `{cloud_cover}` @ `[0,TOA]`). With the store still a stub the leaf
@@ -101,32 +101,32 @@ facts. 003 extends this same table with alias desugaring.
 
 ## Acceptance criteria
 
-- [ ] `forecast_hourly(lat, lon)` returns the directly-requestable canonical parameters (air temperature,
+- [x] `forecast_hourly(lat, lon)` returns the directly-requestable canonical parameters (air temperature,
       precipitation, relative humidity, cloud cover) as `ParameterData` on one shared hourly `valid_time`
       axis (wind speed / direction arrive in 002b).
-- [ ] The `Normalizer` ingests the vendor's native wind speed/direction as `wind_u` / `wind_v` (both
+- [x] The `Normalizer` ingests the vendor's native wind speed/direction as `wind_u` / `wind_v` (both
       linear, m/s), verified at the `Normalizer` / Coverage level.
-- [ ] Units are canonicalized per parameter by **convert-on-ingest** in the `Tap` (wind `km/h→m/s`;
+- [x] Units are canonicalized per parameter by **convert-on-ingest** in the `Tap` (wind `km/h→m/s`;
       others no-op), verified against `hourly_units`; **no `*_unit` URL knob**; mismatch →
       `runtime-failure`. Canonical units recorded above.
-- [ ] `precipitation` reads Open-Meteo's **total** `precipitation` variable (liquid-equivalent `mm`).
-- [ ] Precipitation reads its accumulation extent from the shared hourly `bounds`; intensive params
+- [x] `precipitation` reads Open-Meteo's **total** `precipitation` variable (liquid-equivalent `mm`).
+- [x] Precipitation reads its accumulation extent from the shared hourly `bounds`; intensive params
       sample at the tick.
-- [ ] Each `ParameterData` carries `present = None` and `Uniform` provenance with `expiration`.
-- [ ] `wind_u` / `wind_v` are declared by the `Capability` but absent from the edge exposure table,
+- [x] Each `ParameterData` carries `present = None` and `Uniform` provenance with `expiration`.
+- [x] `wind_u` / `wind_v` are declared by the `Capability` but absent from the edge exposure table,
       so the tool's default set, narration, and validation (exposure ∩ capability) never surface them.
-- [ ] The request carries a **`VantageAxis`** Z aperture over a **`GridDomain`** (edge default); leaf
+- [x] The request carries a **`VantageAxis`** Z aperture over a **`GridDomain`** (edge default); leaf
       `Capability` declares **native** per-parameter Z facts — samples as `RegularAxis` count-1
       point cells, the cloud statistic cell as an `IntervalAxis` span (`_NEAR_SURFACE_Z` removed);
       admission is the request-side gate `requested.matches(declared)` (`VantageAxis` → `Interval.intersects`,
       default → `Interval.contains`)
-      ([ADR-0002](../adr/0002-data-model.md) /
-      [ADR-0004](../adr/0004-producer-resolution-and-capability.md)).
-- [ ] `normalize` returns native records grouped by shared native Domain; the leaf assembles the
+      ([ADR-0002](../../adr/0002-data-model.md) /
+      [ADR-0004](../../adr/0004-producer-resolution-and-capability.md)).
+- [x] `normalize` returns native records grouped by shared native Domain; the leaf assembles the
       served Coverage on `sel.domain`. `Countable` **stays** in 002 (`StubStore.domain` dummy, retyped
       `GridDomain`); its retirement is deferred to ticket 006
-      ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)).
-- [ ] Unit + mocked-transport integration tests cover the canonical set, the vendor-speed/dir → u/v
+      ([ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md)).
+- [x] Unit + mocked-transport integration tests cover the canonical set, the vendor-speed/dir → u/v
       conversion, and the extensive precipitation case.
 
 ## User stories addressed

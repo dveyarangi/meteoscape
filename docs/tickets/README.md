@@ -1,8 +1,8 @@
 # v1 delivery status
 
-**Last updated:** 2026-07-14
+**Last updated:** 2026-07-16
 
-**Current stage:** walking skeleton complete; ticket 002 implementation in progress.
+**Current stage:** ticket 002 done; ticket 002b (derived wind + multi-node assembly) ready to implement.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -30,16 +30,16 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Capability | Status | Current behavior |
 |---|---|---|
 | MCP `forecast_hourly` | Partial | Registered and callable with latitude/longitude; the default window is fixed and `start`/`end` are rejected. |
-| Open-Meteo forecast | Partial | Fetches and normalizes `temperature_2m` as canonical `air_temperature`. |
-| Parameter selection | Partial | An optional subset is accepted within the woven capability; the current runtime envelope contains only `air_temperature`. |
+| Open-Meteo forecast | Available | Fetches and normalizes the six provider-served canonical parameters (`air_temperature`, `relative_humidity`, `precipitation`, `cloud_cover`, `wind_u`, `wind_v`). |
+| Parameter selection | Partial | An optional subset is accepted within the woven capability ∩ edge exposure; requestable surface is the four product params (wind speed/direction wait on 002b). |
 | Provenance and freshness metadata | Available | Atomic source/run provenance and `expiration` are authored; the compact MCP response exposes source and expiration. |
 | Error surface | Partial | Stable `bad-request`, `capability-mismatch`, and `runtime-failure` prefixes exist; per-parameter partial-failure reasons remain. |
 | Resolution logging/trace | Unassigned | The Phase 1 product roadmap calls for minimal resolution logging, but no v1 acceptance criterion or active ticket owns it yet. |
-| Canonical v1 parameter set | In progress | Contract and parameter conventions are settled; ticket 002 implementation is active but completion is not yet verified. |
-| Derived wind | Planned | Calculator behavior and synthetic provenance are ticket 002b. |
+| Canonical v1 parameter set | Done | Six provider-served canonical parameters, native Z carriage, convert-on-ingest, and the edge exposure table (ticket 002). |
+| Derived wind | Ready | Calculator behavior and provider-origin propagation (lossless u/v→speed/direction; no synthesis in v1) are ticket 002b. |
 | Free request windows | Planned | Existing parameter input and validation are partial ticket 003 delivery; real `start`/`end` shaping remains. |
 | Second provider and fallback | Planned | TWC/provider fallback behavior is ticket 004; the current provider catalogue contains only Open-Meteo. |
-| Per-parameter multi-source assembly | Planned | Candidate admission exists; assembling results from different winning producers is ticket 005. |
+| Per-parameter multi-source assembly | Planned | Candidate admission exists; assembling results from different winning producers is ticket 005 (over the assembly that lands in 002b). |
 | Retentive cache/freshness | Planned | Stores are non-retentive placeholders; retention and refill semantics are ticket 006. |
 | Off-grid homogenization | Planned | The v1 nearest-neighbor read-back path is ticket 007. |
 | Configured TWC startup | Partial | Typed settings and the key-absent Open-Meteo path exist; key-present TWC composition waits on tickets 004 and 008. |
@@ -50,8 +50,8 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 |---|---|---|---|
 | [000 — Project bootstrap](./done/000-project-bootstrap.md) | Done | — | Package, contracts, and initial module seams. |
 | [001 — Walking skeleton](./done/001-walking-skeleton.md) | Done | 000 | One real Open-Meteo temperature request through MCP. |
-| [002 — Core canonical parameters](./002-core-5-parameters.md) | **In progress** | 001 (done) | Six provider-served canonical parameters, native Z carriage, and the edge exposure table. |
-| [002b — Derived wind](./002b-derived-wind-calculator.md) | Planned | 002 | Requestable wind speed/direction with synthetic provenance. |
+| [002 — Core canonical parameters](./done/002-core-5-parameters.md) | Done | 001 (done) | Six provider-served canonical parameters, native Z carriage, and the edge exposure table. |
+| [002b — Derived wind](./002b-derived-wind-calculator.md) | **Ready** | 002 (done) | Requestable wind speed/direction (multi-output Calculator) with propagated provider provenance; first multi-node Coverage assembly. |
 | [003 — Request shaping](./003-request-shaping.md) | Partial | 002, 002b | Free `start`/`end` windows, aliases, and envelope narration. |
 | [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003 | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |
@@ -63,11 +63,8 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 
 ## Recommended execution order
 
-1. Finish **002** in three green slices:
-   1. mixed enumerable domains, vantage/exact Z axes, and request-side matching;
-   2. `Tap`-driven multi-parameter normalization and canonical units;
-   3. edge exposure, serialization, and end-to-end canonical forecasts.
-2. Run **002b** and **006** as independent follow-ons once 002 is stable.
+1. Implement **002b** per [RFC 0001](../rfc/0001-20260716-derived-wind-calculator.md) (Producer/Reconciler, multi-node assembly, wind Calculator).
+2. Run **006** as an independent follow-on.
 3. Complete **003** after 002b, and **007** after 006.
 4. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
 5. Close the v1 multi-provider surface with **005**, **008**, and **009**.

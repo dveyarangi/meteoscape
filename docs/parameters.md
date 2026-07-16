@@ -60,7 +60,7 @@ stays only for the global X/Y footprint reach.)
   of cell-statistic matching and the maximal-served-cell rule. Layer aliases (`cloud_cover_low` …)
   and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
   a resampler) are post-v1.
-- [Ticket 002](./tickets/002-core-5-parameters.md) owns the runtime realization of these declarations;
+- [Ticket 002](./tickets/done/002-core-5-parameters.md) owns the runtime realization of these declarations;
   readiness and completion are tracked in the [v1 delivery status](./tickets/README.md).
 
 ## Rationale (only where the choice is non-obvious)

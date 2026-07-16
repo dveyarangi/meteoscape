@@ -19,7 +19,7 @@ than originally planned. Deliverable: the decisions below + the TDD cycle list.
   parameters (last cell's accumulation span pokes past the footprint) is **per-parameter, owned by the
   `extent_scaling`-branched `serves`**, not by geometry — an intensive parameter serves to the final
   forecast instant; an extensive one goes `capability-mismatch` (omitted, producible subset), never a
-  padded nodata cell. Filed on [issue 002](../tickets/002-core-5-parameters.md) with
+  padded nodata cell. Filed on [issue 002](../tickets/done/002-core-5-parameters.md) with
   precipitation; not Phase B.
 - **Four axes mandatory on every Domain, validated at construction** (`ValueError` in
   `__post_init__`). Absence never has a meaning: a point is a count-1 axis, near-surface is the fat
@@ -122,5 +122,5 @@ The `serves` resampler / extensive-edge branch (002) · kernel registry + neares
 ## Continuation
 
 - Phase C (the spine) per [issue 001](../tickets/done/001-walking-skeleton.md).
-- Extensive `serves` edge → [issue 002](../tickets/002-core-5-parameters.md);
+- Extensive `serves` edge → [issue 002](../tickets/done/002-core-5-parameters.md);
   store-grid representation + kernel registry → issues 006 / 007.

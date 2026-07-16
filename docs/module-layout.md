@@ -45,7 +45,7 @@ src/meteoscape/
 # Catalogue is a role: parameters.py is the vocabulary leaf; provider/calculator/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
 # Injection (never the Settings type):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
-#   CalculatorBinder(CalculatorCatalog).build(defs) → CalculatorRegistry  # keyed by CalculatorKey(method, name)
+#   CalculatorBinder(CalculatorCatalog).build(defs, parameters) → CalculatorRegistry  # keyed by CalculatorKey; resolves output ParameterDefs
 #   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler)  # producers = Producer{node, key}; reconciler owns priority

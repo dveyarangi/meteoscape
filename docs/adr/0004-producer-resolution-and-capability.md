@@ -157,20 +157,24 @@ same shape. The abstraction these are shapes of is the
   into 1h by assumption) is deferred ([#7](../concerns.md#7-quality-scoring)); adding it only
   *grows* a producer's closure — purely additive. Match is **boolean**; ranking stays static priority.
 
-- **Static / dynamic split.** The **Weaver** allocates Stores and builds the Source map
-  (`SourceKey → Reservoir(store, Provider)`). The **Arbiter** receives that map plus the raw
-  **`SourceRegistry`** and an **`ArbiterPolicy`**: it indexes producers by parameter, applies
-  range-containment + extent reachability per request to filter the set, and walks it under its
-  **reconciler**. A candidate is a **configured producer** identified by a **`SourceKey`**
-  (`provider` + `dataset`; → [glossary: SourceKey](../glossary.md)) — **not** a bare provider — so
-  priority discriminates *within* a provider (`best_match ≻ gfs_seamless`). An **offering** (a distinct
+- **Static / dynamic split.** The **Weaver** allocates Stores, wraps each source and calculator node as a
+  **`Producer{node, key}`**, and constructs the **`Reconciler`** via
+  `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)`. The **Arbiter** is
+  `Arbiter(producers, reconciler)`: it indexes producers by parameter under `node.capability.parameters`,
+  applies range-containment + extent reachability per request to filter the set, and walks it under its
+  **reconciler**. A candidate is a **configured producer** identified by a **`ProducerKey`**
+  (`SourceKey` = `provider` + `dataset`, or `CalculatorKey` = `method` + `name`; →
+  [glossary: Producer](../glossary.md)) — **not** a bare provider — so
+  priority discriminates *within* a provider (`best_match ≻ gfs_seamless`) and between same-output
+  calculators of different methods. An **offering** (a distinct
   resolution / cadence *product*) is a distinct `SourceKey` via its `dataset` tag — the tag
   **discriminates identity opaquely**; the offering's native geometry is **not** in the key and **not**
   a second provenance identifier — ranking reads the footprint Domain's per-axis **`step`** via
   `Domain.match`
   (→ [ADR-0002](./0002-data-model.md); design concern [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
   The two selection tiers differ by **timing and precedence**: **quality / model** is **static
-  `priority`** (on `RegisteredSource` in the registry; the **`priority` reconciler** reads it and
+  `priority`** (recipe fields on both registries, flattened into the reconciler's `ProducerKey → int`
+  lookup; the **`priority` reconciler** reads it and
   always wins across bands); **resolution** is **dynamic `Capability.score` → `Domain.match`**
   (project-time), firing only as a **tie-break among equal-`priority`** peers (contiguous band:
   admit via boolean `serves`, then try peers in **`score` order** — `project` the best, on runtime
@@ -237,19 +241,25 @@ same shape. The abstraction these are shapes of is the
   A co-producing Calculator resolves its inputs **once** and emits the whole group, so a request for the
   full group is a single winner — no cross-node assembly for the group itself.
 
-- **The combine `fn` is `Coverage → Coverage`; the node owns provenance and well-formedness.** The
-  kernel speaks the algebra's own exchange unit — it receives the resolved input `Coverage` (**domain and
-  all**, so it adapts to any shape: timeline, grid, station, volumetric) and returns a `Coverage` bearing
-  the output group's `ranges` on a possibly-transformed domain. This is what lets a shape-aware calculator
-  (spatial gradient, advection, vertical integral) exist without widening the boundary. Three
-  responsibilities stay **off** the kernel and **on** the node, so they cannot drift across plugins:
+- **The combine `fn` is `Coverage → (Domain, ranges)`; the node builds the output `Coverage` and owns
+  provenance and well-formedness.** The kernel speaks the algebra's own exchange unit on the way *in* — it
+  receives the resolved input `Coverage` (**domain and all**, so it adapts to any shape: timeline, grid,
+  station, volumetric) — and returns only the **structural payload**: the output group's `ranges` plus the
+  (possibly-transformed) output `Domain`. It returns a `(Domain, ranges)` pair rather than a full
+  `Coverage` because a kernel holds no `ParameterTable` and so **cannot author** the output capability's
+  `ParameterDef`s; keeping the `Domain` explicit still lets a shape-aware calculator (spatial gradient,
+  advection, vertical integral) transform it, so the boundary stays shape-general **without** collapsing to
+  a values-only leak. The **node** assembles the `Coverage`. Four responsibilities stay **off** the kernel
+  and **on** the node, so they cannot drift across plugins:
+  - **Capability authorship.** The node builds the output `EnumerableCapability` over its **declared
+    output `ParameterDef`s** (resolved at bind, [ADR-0005](./0005-build-time-composition.md)) on the
+    returned `Domain`; the kernel names no parameter facts.
   - **Provenance authorship.** The node *replaces* the result's provenance plane — propagate the input's
     origin for a lossless transform, or mint `SyntheticOrigin` (lineage + the **method tag** declared on
     the `CalculatorManifest`) for a method-bearing one
-    ([ADR-0003](./0003-provenance-and-origin.md) owns the propagate-vs-synthesize rule); the kernel's own
-    provenance, if any, is not authoritative.
-  - **Well-formedness validation.** The node checks the kernel's output: `ranges` keyed exactly by the
-    declared output group, aligned to a well-formed domain — a malformed kernel is a build/derivation
+    ([ADR-0003](./0003-provenance-and-origin.md) owns the propagate-vs-synthesize rule).
+  - **Well-formedness validation.** The node checks the payload: `ranges` keyed exactly by the
+    declared output group, aligned to the returned `Domain` — a malformed kernel is a build/derivation
     failure, not silent corruption.
   - **Structure only for the kernel.** The kernel is pure computation over the input Coverage; units are
     canonical in and out (entailed by the input/output `ParameterDef`s), and it authors no lineage.
@@ -265,10 +275,11 @@ same shape. The abstraction these are shapes of is the
       def __init__(self, outputs, inputs, fn, resolver):  # outputs: 1..N co-produced; resolver: ONE scoped Arbiter
           self.outputs, self.inputs, self.fn, self.resolver = outputs, inputs, fn, resolver
       async def project(self, sel):
-          ins = await self.resolver.project(sel.with_params(self.inputs))  # input Coverage: ranges + domain
-          out = self.fn(ins)                       # Coverage -> Coverage: kernel computes structure
-          validate(out, self.outputs)              # node: ranges == output group, aligned to domain
-          return restamp_provenance(out, ins)      # node: propagate input origin, or mint synthetic + method
+          ins = await self.resolver.project(Selection(sel.domain, self.inputs))  # swap params (inputs ⊄ sel)
+          domain, ranges = self.fn(ins)            # kernel returns (Domain, ranges): pure structure
+          validate(ranges, self.outputs)           # node: ranges == output group, aligned to domain
+          cov = build_coverage(domain, ranges, self.outputs)   # node: capability over declared output defs
+          return restamp_provenance(cov, ins)      # node: propagate input origin, or mint synthetic + method
   ```
 
 - **The graph is woven once by the Weaver; runtime nodes are dumb.** A **`CalculatorRegistry`** of
@@ -288,7 +299,7 @@ same shape. The abstraction these are shapes of is the
       if key in memo: return memo[key]
       if key in visiting: raise CycleError(key)
       visiting.add(key)
-      outputs, inputs, fn, stored = calc_registry[key]
+      outputs, inputs, fn, stored = calc_registry[key]  # outputs: resolved ParameterDefs (bind-time)
       # scoped Arbiter: the Producers serving this calc's inputs (sources and/or other calcs) + reconciler
       input_arb = Arbiter(producers_for(inputs), reconciler)
       calc      = Calculator(outputs, inputs, fn, input_arb)
@@ -352,6 +363,9 @@ fault** (an exception that triggers per-cell / per-candidate fall-through), and 
 producer can serve — is **omitted** from the record; how that absence surfaces at the request edge is the
 request-level contract, whose canonical home is
 [architecture: Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability).
+Per-parameter runtime-fault omission ships with
+[ticket 009](../tickets/009-error-taxonomy-partial-success.md); until then a `RuntimeFailure` fails the
+whole request.
 
 ## Why
 
