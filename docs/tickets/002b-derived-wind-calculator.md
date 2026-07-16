@@ -12,7 +12,7 @@
 
 ## What to build
 
-Two coupled deliverables — this is the **first response the top Arbiter assembles from more than one
+Three coupled deliverables — this is the **first response the top Arbiter assembles from more than one
 node**, and the derived-wind Calculator is the case that forces it.
 
 **1. Top-Arbiter multi-parameter assembly (the real subject).** A Calculator is a distinct graph node
@@ -23,12 +23,26 @@ requested domain**, into one Coverage via the **`PerParameter`** provenance plan
 this). Every winner's slice is single-origin; the Arbiter never folds origins *within* a parameter. This
 retires the current `Arbiter.project` guard that raises when winners are not all the same node.
 
+**1a. Unify producers + extract the reconciler (the structure that makes the Calculator a candidate).**
+Sources and Calculators become one **`Producer{node, key}`** shape, `ProducerKey = SourceKey |
+CalculatorKey`. **`CalculatorKey(method, name)`** is the calculator peer of `SourceKey(provider,
+dataset)` (keyed on the *method*, not the output, so same-output/different-method calculators are distinct
+producers). **`CalculatorDef`** (rename of `CalculatorSpec`, peer of `OfferingDef`) gains `priority` +
+`name?` and `output → outputs`; `CalculatorRegistry` is **re-keyed by `CalculatorKey`** (was
+`ParameterId`); `RegisteredCalculator` gains `key` + `priority`. The Arbiter becomes
+`Arbiter(producers, reconciler)` and indexes every producer through one path. The **`Reconciler`** is
+extracted to a first-class object built by `build_reconciler(ArbiterPolicy, SourceRegistry,
+CalculatorRegistry)`, which flattens **both** registries' `priority` recipe fields into its
+`ProducerKey → int` lookup — `Producer` carries no priority. The Weaver wraps both node kinds as
+`Producer`s and *invokes* the factory; it never ranks. The two binders / registries stay distinct
+([ADR-0005](../adr/0005-build-time-composition.md)).
+
 **2. A single wind Calculator (`{wind_speed, wind_direction}` from `{wind_u, wind_v}`).** One
 **multi-output** Calculator node — `speed = hypot(u, v)`, `direction = atan2(...)`, both **lossless**
 functions of the canonical vector — resolving `(u, v)` **once** and emitting both outputs. It carries its
 own **scoped input `Arbiter`** (resolving `wind_u` / `wind_v` and nothing else, so every edge points
 downward and the graph stays an acyclic DAG), is woven from the **`CalculatorRegistry`** (bound by
-`CalculatorBinder` from `CalculatorSpec`s against the `CalculatorCatalog`,
+`CalculatorBinder` from `CalculatorDef`s against the `CalculatorCatalog`,
 [ADR-0005](../adr/0005-build-time-composition.md)) with **memoization** (one node per derived output
 group; both member parameters route to it), and advertises a **`DerivedCapability`** serving the output
 group iff all inputs are servable through the scoped resolver. Because the group is co-produced from one
@@ -67,6 +81,14 @@ degree average — [concern #5](../concerns.md#5-read-time-homogenization-fideli
 - [ ] The combine kernel is **`fn: Coverage → Coverage`** (`CombineFn`); the **node** (not the kernel)
       stamps provenance and validates output well-formedness (ranges keyed by the declared output group,
       aligned to the domain). The kernel authors no lineage.
+- [ ] Sources and Calculators are one **`Producer{node, key}`** shape; the Arbiter is
+      `Arbiter(producers, reconciler)`; the **`Reconciler`** is a first-class object holding a
+      `ProducerKey → priority` lookup built from both registries by `build_reconciler`. The Weaver wraps
+      producers and constructs the reconciler; it never ranks.
+- [ ] **`CalculatorKey(method, name)`** identifies a calculator (peer of `SourceKey`); `CalculatorSpec`
+      is renamed **`CalculatorDef`** (peer of `OfferingDef`) with `priority` + `name?` + `outputs`;
+      `CalculatorRegistry` is keyed by `CalculatorKey`; two same-output/different-method calculators are
+      distinct competing producers.
 - [ ] Requesting both wind params together routes to a **single winner** (one node), while requesting a
       wind param beside a canonical one exercises the multi-node assembly.
 - [ ] Each derived `ParameterData` **propagates the provider's atomic origin** (Open-Meteo) — no

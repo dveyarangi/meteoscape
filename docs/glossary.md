@@ -201,20 +201,24 @@ _Avoid_: CalculatorRegistry, live Calculator map, DerivationCatalog
 A Calculator plugin's function and invocation constraints. → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: Calculator instance, data-flow edge, DerivationManifest
 
-**CalculatorSpec**:
-A profile declaration of a co-produced output group, its inputs, function identity, and retention choice. → [ADR-0005](./adr/0005-build-time-composition.md)
-_Avoid_: Calculator, RegisteredCalculator, DerivationSpec
+**CalculatorDef**:
+A profile enablement of one calculator — its function identity, co-produced output group, inputs, priority, and retention choice (the calculator peer of `OfferingDef`). → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: CalculatorSpec, Calculator, RegisteredCalculator, DerivationSpec
+
+**CalculatorKey**:
+The identity of a configured calculator — its method plus a named variant (`method`, `name`); the calculator peer of `SourceKey`, one arm of `ProducerKey`. → [ADR-0005](./adr/0005-build-time-composition.md)
+_Avoid_: fn_id (that is only the method arm), output group
 
 **CalculatorRegistry**:
-The bound Calculator declarations for a ProfileDef, keyed by output. → [ADR-0005](./adr/0005-build-time-composition.md)
+The bound Calculator declarations for a ProfileDef, keyed by `CalculatorKey`. → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: CalculatorCatalog, live Calculator map, DerivationRegistry
 
 **RegisteredCalculator**:
 One catalog-resolved Calculator binding. → [ADR-0005](./adr/0005-build-time-composition.md)
-_Avoid_: Calculator, CalculatorSpec, RegisteredDerivation
+_Avoid_: Calculator, CalculatorDef, RegisteredDerivation
 
 **CalculatorBinder**:
-The build-time role that resolves CalculatorSpecs against a CalculatorCatalog. → [ADR-0005](./adr/0005-build-time-composition.md)
+The build-time role that resolves CalculatorDefs against a CalculatorCatalog. → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: Weaver, SourceBinder, DerivationBinder
 
 **SourceBinder**:
@@ -332,6 +336,10 @@ _Avoid_: Vendor, backend, driver
 
 **Source**:
 The role of a Reservoir that serves retained data or fetches it from one Provider. → [architecture.md](./architecture.md#source)
+
+**Producer**:
+A ranked candidate an Arbiter selects over for a Parameter — a live node (a Source or a Calculator) paired with a `ProducerKey` identity (`SourceKey | CalculatorKey`). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: candidate, node
 
 **Normalizer**:
 The Provider-owned translation from vendor semantics to Meteoscape semantics without changing native geometry. → [architecture.md](./architecture.md#normalization-vs-homogenization)

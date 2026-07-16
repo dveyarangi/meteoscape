@@ -12,7 +12,7 @@ module placement and responsibilities, not milestone status; delivery state live
 src/meteoscape/
 ├── __init__.py                # re-exports SourceKey (from identity) + main
 ├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → weave → Gateway
-├── config.py                  # Settings + OfferingDef + CalculatorSpec + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
+├── config.py                  # Settings + OfferingDef + CalculatorDef + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
 ├── observability.py           # Sentry init seam (no-op without a DSN)
 ├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request (pure leaf)
 ├── clock.py                   # Clock protocol + Metronome + StoppedClock; injected by SourceBinder.build
@@ -45,9 +45,10 @@ src/meteoscape/
 # Catalogue is a role: parameters.py is the vocabulary leaf; provider/calculator/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
 # Injection (never the Settings type):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
-#   CalculatorBinder(CalculatorCatalog).build(specs) → CalculatorRegistry
+#   CalculatorBinder(CalculatorCatalog).build(defs) → CalculatorRegistry  # keyed by CalculatorKey(method, name)
 #   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
-#   Arbiter(sources, SourceRegistry, ArbiterPolicy)  # reconciler owns priority
+#   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
+#   Arbiter(producers, reconciler)  # producers = Producer{node, key}; reconciler owns priority
 #   compose(profile, catalog, secrets, clock, stores) → Gateway
 # tests/ mirrors src; provider tests mock the HTTP transport.
 ```

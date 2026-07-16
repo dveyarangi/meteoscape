@@ -222,7 +222,7 @@ rejected splits); this section fixes the roles.
   `ParameterTable`); a plugin **manifest** keeps declarations and construction together (geometry and
   canonical `ParameterDef`s stay off it — Capability + `ParameterTable` own those). Catalogue is an
   architectural role, not a directory rule; secrets are an injected map, not a catalogue.
-- **`ProfileConfig`** (operator, per profile) — `OfferingDef` declarations, `CalculatorSpec`s,
+- **`ProfileConfig`** (operator, per profile) — `OfferingDef` declarations, `CalculatorDef`s,
   root `StoreSpec`, and `ArbiterPolicy`. Offering names are explicit; catalogue validation occurs
   during composition.
   Sources whose provider declares no native lattice carry their own `StoreSpec` (configured guess);
@@ -235,10 +235,12 @@ rejected splits); this section fixes the roles.
   language over the fixed node family, not a freeform DAG DSL. Profile-root lattice is **separate**
   from Source lattices.
 - **Weaver** — `Weaver(stores: StoreFactory).weave(profile: ProfileDef) → Manifold`; allocates every
-  `Store` via `stores.create`, builds the Source map (`SourceKey → Reservoir(store, Provider)`),
-  constructs `Arbiter(sources, SourceRegistry, ArbiterPolicy)`, wraps the best-view `Reservoir`,
-  steps out. Holds no catalogue; **does not interpret priority** (that is the Arbiter's reconciler).
-  Memoized Calculator wiring → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+  `Store` via `stores.create`, wraps each source and calculator node as a **`Producer{node, key}`**,
+  constructs the **`Reconciler`** via `build_reconciler(ArbiterPolicy, SourceRegistry,
+  CalculatorRegistry)`, builds `Arbiter(producers, reconciler)`, wraps the best-view `Reservoir`,
+  steps out. Holds no catalogue; **does not interpret priority** (that is the reconciler).
+  `Producer` unification + memoized Calculator wiring →
+  [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **Composition root** — `server.py`: `compose(profile, catalog, secrets, clock, stores) → Gateway`
   is the fixed call sequence (binders → `ProfileDef` → `weave` → Gateway). **No ordering or
   construction logic of its own.** Catalogues are module-level data; `Settings` projects
@@ -257,7 +259,7 @@ Every seam in one place — the *promise* only; behaviour and rationale are in M
 - **Surface adapter** — `protocol ↔ canonical`; exposes the same Coverage-resolution engine through any supported protocol. Builds the Selection's `Domain` and resolves the output lattice / default resolution at the edge, and desugars parameter **aliases** to functionals `(quantity, statistic)` → [ADR-0002](./adr/0002-data-model.md).
 - **Error taxonomy** — `capability-mismatch | runtime-failure | bad-request`; adapters map to protocol errors. Distinct from successful **nodata**; partial success is the norm → [Failure, nodata, and availability](#failure-nodata-and-availability).
 - **Typed config** — catalogues (provider / calculator / parameter) + secrets + `ProfileConfig`
-  (`OfferingDef`s, `CalculatorSpec`s, root store, arbiter) → `SourceRegistry` + `CalculatorRegistry` →
+  (`OfferingDef`s, `CalculatorDef`s, root store, arbiter) → `SourceRegistry` + `CalculatorRegistry` →
   `ProfileDef`.
 
 ## Data / request flow

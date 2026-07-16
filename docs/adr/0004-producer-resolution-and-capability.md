@@ -237,24 +237,17 @@ same shape. The abstraction these are shapes of is the
   A co-producing Calculator resolves its inputs **once** and emits the whole group, so a request for the
   full group is a single winner — no cross-node assembly for the group itself.
 
-- **Output provenance is propagated or synthetic, by the nature of the derivation — not by input count.**
-  A derivation that **preserves its input unchanged** (a lossless, invertible transform — e.g. wind
-  speed/direction, which is the inverse of the `u/v` normalization) **propagates** the input's origin
-  verbatim: there is no method worth recording, and a single shared input origin passes through. A
-  **method-bearing** computation **mints a `SyntheticOrigin`** carrying its **lineage** and a
-  **calculation-method** tag — including when its inputs share one origin (the method is the thing
-  recorded). A blend across **≥2 distinct origins** is always synthetic (`expiration = min` over parents;
-  [ADR-0003](./0003-provenance-and-origin.md)).
-
 - **The combine `fn` is `Coverage → Coverage`; the node owns provenance and well-formedness.** The
   kernel speaks the algebra's own exchange unit — it receives the resolved input `Coverage` (**domain and
   all**, so it adapts to any shape: timeline, grid, station, volumetric) and returns a `Coverage` bearing
   the output group's `ranges` on a possibly-transformed domain. This is what lets a shape-aware calculator
   (spatial gradient, advection, vertical integral) exist without widening the boundary. Three
   responsibilities stay **off** the kernel and **on** the node, so they cannot drift across plugins:
-  - **Provenance authorship.** The node *replaces* the result's provenance plane per the rule above
-    (propagate the input origin, or mint `SyntheticOrigin` with the **method tag declared on the
-    `CalculatorManifest`**); the kernel's own provenance, if any, is not authoritative.
+  - **Provenance authorship.** The node *replaces* the result's provenance plane — propagate the input's
+    origin for a lossless transform, or mint `SyntheticOrigin` (lineage + the **method tag** declared on
+    the `CalculatorManifest`) for a method-bearing one
+    ([ADR-0003](./0003-provenance-and-origin.md) owns the propagate-vs-synthesize rule); the kernel's own
+    provenance, if any, is not authoritative.
   - **Well-formedness validation.** The node checks the kernel's output: `ranges` keyed exactly by the
     declared output group, aligned to a well-formed domain — a malformed kernel is a build/derivation
     failure, not silent corruption.
@@ -279,8 +272,9 @@ same shape. The abstraction these are shapes of is the
   ```
 
 - **The graph is woven once by the Weaver; runtime nodes are dumb.** A **`CalculatorRegistry`** of
-  catalog-resolved **`RegisteredCalculator`**s (output → manifest + inputs + `stored?`) — produced by
-  `CalculatorBinder` from profile **`CalculatorSpec`**s against a **`CalculatorCatalog`**
+  catalog-resolved **`RegisteredCalculator`**s (**`CalculatorKey` → outputs + inputs + manifest +
+  priority + `stored?`**) — produced by `CalculatorBinder` from profile **`CalculatorDef`**s against a
+  **`CalculatorCatalog`**
   (`fn_id → CalculatorManifest`; layering → [ADR-0005](./0005-build-time-composition.md)) — feeds the
   Weaver. The Weaver constructs the graph, **memoizing one Calculator instance per derived output group**
   (every member parameter routes to the same node; a shared intermediate is a **shared node** —
@@ -288,27 +282,58 @@ same shape. The abstraction these are shapes of is the
   registry, no lookup. Omniscience lives only in the build-time Weaver.
 
   ```python
-  def build_calc(param):                       # memoized: one (maybe stored) node per derived param
-      if param in memo: return memo[param]
-      if param in visiting: raise CycleError(param)
-      visiting.add(param)
-      fn, inputs, stored = registry[param]
-      # scoped Arbiter: subset of source_nodes + same SourceRegistry; reconciler reads priority
-      input_arb = Arbiter(source_nodes_for(inputs), source_registry, policy)
-      calc      = Calculator(param, inputs, fn, input_arb)
-      node      = Reservoir(store, calc) if stored else calc
-      visiting.remove(param); memo[param] = node; return node
+  reconciler = build_reconciler(policy, source_registry, calc_registry)  # holds priority[ProducerKey]
 
-  top       = Arbiter(all_source_nodes, source_registry, policy)  # + calc nodes when competing
+  def build_calc(key):                         # memoized: one (maybe stored) node per CalculatorKey
+      if key in memo: return memo[key]
+      if key in visiting: raise CycleError(key)
+      visiting.add(key)
+      outputs, inputs, fn, stored = calc_registry[key]
+      # scoped Arbiter: the Producers serving this calc's inputs (sources and/or other calcs) + reconciler
+      input_arb = Arbiter(producers_for(inputs), reconciler)
+      calc      = Calculator(outputs, inputs, fn, input_arb)
+      node      = Reservoir(store, calc) if stored else calc
+      producer  = Producer(node, key)
+      visiting.remove(key); memo[key] = producer; return producer
+
+  top       = Arbiter(source_producers + calc_producers, reconciler)  # one uniform candidate list
   best_view = Reservoir(store, top)
   ```
 
-- **Priority is registry data; the reconciler interprets it.** `RegisteredSource.priority` stays on
-  the `SourceRegistry`. The Weaver never ranks: it builds `SourceKey → Source` and passes the map +
-  registry + `ArbiterPolicy` into each Arbiter. The **`priority` reconciler** indexes by parameter and
-  orders by that field (bind order breaks ties); another reconciler can ignore priority. Scoped
-  calculator Arbiters get a **subset of source nodes**, not a pre-ranked list — ranking stays
-  consistent wherever the same registry + reconciler apply.
+- **Sources and Calculators unify as `Producer`s — the candidate the Arbiter selects over.** A
+  **`Producer`** is a **neutral ranked candidate**: `{ node: Manifold, key: ProducerKey }` — a live
+  `Reservoir(store, Provider)` (a Source) or a `Calculator` (maybe `Reservoir`-wrapped), paired with an
+  identity (`ProducerKey = SourceKey | CalculatorKey`, keyed on the producing method/offering — never the
+  output — so two calculators serving one output by different methods are **distinct competing producers**,
+  identical to two providers competing for a parameter; keys →
+  [ADR-0005](./0005-build-time-composition.md)). This pays down the "a Calculator is just another
+  candidate producer" claim in the *type*: the Arbiter is `Arbiter(producers, reconciler)` and indexes
+  every producer under `node.capability.parameters` through **one code path**, no source-vs-calc branch.
+  `Producer` carries **no priority** — priority is policy, not an intrinsic node attribute (a reconciler
+  that ignores priority must not see a field it has to ignore).
+
+- **Priority is registry data; a first-class `Reconciler` interprets it — the Weaver never ranks.**
+  Priority is a **recipe field on both registries** (`RegisteredSource.priority`,
+  `RegisteredCalculator.priority`). The **`Reconciler`** is the per-parameter selection policy made an
+  explicit object (not inline Arbiter control flow). At weave, `build_reconciler(ArbiterPolicy,
+  SourceRegistry, CalculatorRegistry)` flattens those recipe fields into a plain
+  `priority: Mapping[ProducerKey, int]` lookup (bind order breaks ties) and returns a **`PriorityReconciler`
+  holding that map** — not the registries, so it stays a bare, testable lookup. The Weaver **invokes the
+  factory** and injects the reconciler into each Arbiter; it orders nothing. The Arbiter delegates the
+  per-parameter choice to `reconciler.select(parameter, candidates)`; another reconciler can ignore
+  priority or combine (consensus, [#6](../concerns.md#6-reconciler-catalogue)). Scoped calculator Arbiters
+  reuse the **same reconciler** over their producer subset, so ranking stays consistent everywhere.
+
+- **A response is assembled from disjoint single-parameter winners.** When the per-parameter winners are
+  one node, the Arbiter projects once through it. When they span **>1 producer** (any request mixing a
+  provider-served parameter with a derived one — a `Calculator` is a distinct node), the Arbiter **groups
+  admitted parameters by winning producer**, projects each distinct producer **once** with its
+  param-group on the shared `sel.domain`, and **merges** the results into one `CoverageRecord`: unioned
+  `ranges`, an `EnumerableCapability` over the union on the shared domain, and a **`PerParameter`**
+  provenance plane (each parameter single-origin, its `Provenance` = that winner's `summary(param)`;
+  [ADR-0003](./0003-provenance-and-origin.md)). Closed projection guarantees every winner returns
+  `sel.domain`, so the merge asserts domain identity rather than resampling. This is the *record-building*
+  half of the two combine axes above — orthogonal parameters side by side, no coverage-axis collision.
 
 - **Retention lives in `Store`s, added by wrapping; only `Store`s hold state.** A heavy or
   shared intermediate — a Calculator's output included — is always retained by wrapping it in a
