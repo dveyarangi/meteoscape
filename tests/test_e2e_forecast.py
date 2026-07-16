@@ -14,7 +14,7 @@ from meteoscape.clock import StoppedClock
 from meteoscape.config import Settings
 from meteoscape.nodes.providers.open_meteo import BASE_URL, CADENCE
 from meteoscape.nodes.store import StoreFactory
-from meteoscape.server import PROVIDER_CATALOG, compose
+from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
 _CLOCK = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
 _HOURS = 168
@@ -57,6 +57,7 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
         settings.secrets(),
         _CLOCK,
         StoreFactory(),
@@ -73,7 +74,8 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
             {"latitude": 52.52, "longitude": 13.41},
         )
 
-    assert route.call_count == 2  # StubStore: no retention — 006 flips this
+    # StubStore: no retention — one source fetch + one wind u/v fetch per request; 006 flips this.
+    assert route.call_count == 4
 
     payload = first.data
     assert len(payload["valid_time"]) == _HOURS
@@ -89,6 +91,8 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     assert "precipitation" in payload
     assert "relative_humidity" in payload
     assert "cloud_cover" in payload
+    assert "wind_speed" in payload
+    assert "wind_direction" in payload
     assert "wind_u" not in payload
     assert "wind_v" not in payload
 
@@ -97,4 +101,16 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         "source": "open-meteo:best_match",
         "exp": CADENCE.expiration(now).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
+
+    wind = payload["wind_speed"]
+    assert wind["unit"] == "m/s"
+    assert wind["values"][0] == pytest.approx(1.0)  # 3.6 km/h → 1 m/s
+    assert wind["provenance"] == {
+        "source": "open-meteo:best_match",
+        "exp": CADENCE.expiration(now).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    assert payload["wind_direction"]["unit"] == "degree"
+    assert payload["wind_direction"]["values"][0] == pytest.approx(0.0)
+    assert payload["wind_direction"]["provenance"] == wind["provenance"]
+
     assert second.data["air_temperature"]["values"] == first.data["air_temperature"]["values"]

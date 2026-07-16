@@ -13,6 +13,7 @@ from .api.gateway import Gateway
 from .api.mcp_app import build_mcp_app
 from .clock import Clock, Metronome
 from .config import ProfileConfig, Settings
+from .nodes.calculators.wind import MANIFEST as WIND_UV_MANIFEST
 from .nodes.catalog.calculators import CalculatorCatalog
 from .nodes.catalog.paramtable import StaticParameterTable
 from .nodes.catalog.providers import ProviderCatalog
@@ -22,28 +23,31 @@ from .nodes.store import StoreFactory
 from .nodes.weaver import Weaver
 from .observability import init_observability
 
-# Vendor modules each export a MANIFEST; the root assembles — data, not logic.
+# Vendor / calculator modules each export a MANIFEST; the root assembles — data, not logic.
 PROVIDER_CATALOG: ProviderCatalog = {
     OPEN_METEO_MANIFEST.impl_id: OPEN_METEO_MANIFEST,
 }
-CALCULATOR_CATALOG: CalculatorCatalog = {}
+CALCULATOR_CATALOG: CalculatorCatalog = {
+    WIND_UV_MANIFEST.fn_id: WIND_UV_MANIFEST,
+}
 
 
 def compose(
     profile: ProfileConfig,
-    catalog: ProviderCatalog,
+    providers: ProviderCatalog,
+    calculators: CalculatorCatalog,
     secrets: Mapping[str, str],
     clock: Clock,
     stores: StoreFactory,
 ) -> Gateway:
     """Fixed pipeline: binders → ProfileDef → weave → Gateway. No branches."""
     parameters = StaticParameterTable.core()
-    sources = SourceBinder(catalog).build(profile.offerings, secrets, clock, parameters)
-    calculators = CalculatorBinder(CALCULATOR_CATALOG).build(profile.calculators)
+    sources = SourceBinder(providers).build(profile.offerings, secrets, clock, parameters)
+    calc_registry = CalculatorBinder(calculators).build(profile.calculators, parameters)
     woven = Weaver(stores).weave(
         ProfileDef(
             sources=sources,
-            calculators=calculators,
+            calculators=calc_registry,
             root_store=profile.root_store,
             arbiter=profile.arbiter,
         )
@@ -58,6 +62,7 @@ def main() -> None:
     gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
         StoreFactory(),

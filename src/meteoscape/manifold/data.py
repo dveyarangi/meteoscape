@@ -21,3 +21,14 @@ class ParameterData:
 
     values: Sequence[float]
     present: Sequence[bool] | None
+
+
+def and_present(
+    left: Sequence[bool] | None, right: Sequence[bool] | None, *, n: int
+) -> Sequence[bool] | None:
+    """Elementwise AND of two present masks; `None` means all-present."""
+    if left is None and right is None:
+        return None
+    a = left if left is not None else (True,) * n
+    b = right if right is not None else (True,) * n
+    return [x and y for x, y in zip(a, b, strict=True)]

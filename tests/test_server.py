@@ -10,8 +10,8 @@ from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
 from meteoscape.config import ArbiterPolicy, OfferingDef, ProfileConfig, Settings, StoreSpec
 from meteoscape.nodes.store import StoreFactory
-from meteoscape.parameters import AIR_TEMPERATURE
-from meteoscape.server import PROVIDER_CATALOG, compose
+from meteoscape.parameters import AIR_TEMPERATURE, WIND_SPEED
+from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
 
 def test_compose_advertises_enabled_offerings() -> None:
@@ -21,7 +21,7 @@ def test_compose_advertises_enabled_offerings() -> None:
         root_store=StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14)),
         arbiter=ArbiterPolicy(),
     )
-    gateway = compose(profile, fake_catalog(), {}, STOPPED, RecordingStoreFactory())
+    gateway = compose(profile, fake_catalog(), {}, {}, STOPPED, RecordingStoreFactory())
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
 
 
@@ -30,12 +30,15 @@ def test_default_settings_compose_open_meteo() -> None:
     gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
         settings.secrets(),
         STOPPED,
         StoreFactory(),
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
+    assert WIND_SPEED in gateway.best_view.capability.parameters
     assert "open-meteo" in PROVIDER_CATALOG
+    assert "wind_uv" in CALCULATOR_CATALOG
 
 
 def test_default_compose_and_forecast_hourly_registered() -> None:
@@ -44,6 +47,7 @@ def test_default_compose_and_forecast_hourly_registered() -> None:
     gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
         StoreFactory(),

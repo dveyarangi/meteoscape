@@ -29,7 +29,7 @@ from meteoscape.nodes.catalog.providers import (
 )
 from meteoscape.nodes.providers.base import Provider
 from meteoscape.nodes.store import Store, StoreFactory
-from meteoscape.parameters import AIR_TEMPERATURE
+from meteoscape.parameters import AIR_TEMPERATURE, ParameterId
 
 STOPPED = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
 
@@ -93,6 +93,13 @@ def _footprint(clock: Clock) -> FootprintDomain:
 def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> FootprintCapability:
     definition = parameters.get(AIR_TEMPERATURE)
     return FootprintCapability(footprints={definition.id: (definition, _footprint(clock))})
+
+
+def footprint_capability(
+    clock: Clock, parameters: ParameterTable, pids: frozenset[ParameterId]
+) -> FootprintCapability:
+    footprint = _footprint(clock)
+    return FootprintCapability(footprints={pid: (parameters.get(pid), footprint) for pid in pids})
 
 
 class FakeProvider(Provider):
@@ -172,7 +179,7 @@ def fake_catalog(
     ) -> Provider:
         record.append((spec, settings, secret_value))
         key = SourceKey(provider=provider_id, dataset=spec.name)
-        capability = air_temperature_capability(clock, parameters)
+        capability = footprint_capability(clock, parameters, spec.parameters)
         if countable:
             return CountableFakeProvider(
                 source_key=key, capability=capability, domain=sample_lattice(count=2)

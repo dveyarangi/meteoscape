@@ -7,13 +7,13 @@ from datetime import timedelta
 import pytest
 
 from fakes import SAMPLE_STORE, STOPPED, core_parameters, fake_catalog
-from meteoscape.config import CalculatorSpec, OfferingDef, StoreSpec
-from meteoscape.identity import SourceKey
+from meteoscape.config import CalculatorDef, OfferingDef, StoreSpec
+from meteoscape.identity import CalculatorKey, SourceKey
 from meteoscape.manifold.core import Countable
 from meteoscape.nodes.catalog.calculators import CalculatorManifest
 from meteoscape.nodes.catalog.providers import OfferingSpec, SecretSlot
 from meteoscape.nodes.composition import CalculatorBinder, CompositionError, SourceBinder
-from meteoscape.parameters import AIR_TEMPERATURE, WIND_SPEED, WIND_U, WIND_V
+from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 
 
 def test_one_offering_binds_to_registry() -> None:
@@ -153,32 +153,116 @@ def test_expand_name_none_not_implemented() -> None:
         )
 
 
-def test_calculator_binder_empty_and_unknown() -> None:
-    empty = CalculatorBinder({}).build(())
+def test_calculator_binder_empty() -> None:
+    empty = CalculatorBinder({}).build((), core_parameters())
     assert empty.calculators == {}
 
+
+def test_calculator_binder_resolves_key_outputs_and_priority() -> None:
     catalog = {
-        "wind_speed": CalculatorManifest(fn_id="wind_speed", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+    }
+    parameters = core_parameters()
+    bound = CalculatorBinder(catalog).build(
+        [
+            CalculatorDef(
+                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+                inputs=frozenset({WIND_U, WIND_V}),
+                fn_id="wind_uv",
+                priority=0,
+            )
+        ],
+        parameters,
+    )
+    key = CalculatorKey(method="wind_uv", name="default")
+    assert set(bound.calculators) == {key}
+    entry = bound.calculators[key]
+    assert entry.key == key
+    assert entry.priority == 0
+    assert entry.inputs == frozenset({WIND_U, WIND_V})
+    assert entry.manifest.fn_id == "wind_uv"
+    assert entry.outputs == {
+        WIND_SPEED: parameters.get(WIND_SPEED),
+        WIND_DIRECTION: parameters.get(WIND_DIRECTION),
+    }
+
+
+def test_calculator_binder_name_override() -> None:
+    catalog = {
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
     }
     bound = CalculatorBinder(catalog).build(
         [
-            CalculatorSpec(
-                output=WIND_SPEED,
+            CalculatorDef(
+                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
                 inputs=frozenset({WIND_U, WIND_V}),
-                fn_id="wind_speed",
+                fn_id="wind_uv",
+                priority=1,
+                name="variant",
             )
-        ]
+        ],
+        core_parameters(),
     )
-    assert set(bound.calculators) == {WIND_SPEED}
-    assert bound.calculators[WIND_SPEED].manifest.fn_id == "wind_speed"
+    assert set(bound.calculators) == {CalculatorKey(method="wind_uv", name="variant")}
 
+
+def test_calculator_binder_unknown_fn_id_raises() -> None:
+    catalog = {
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+    }
     with pytest.raises(CompositionError, match="fn_id"):
         CalculatorBinder(catalog).build(
             [
-                CalculatorSpec(
-                    output=WIND_SPEED,
+                CalculatorDef(
+                    outputs=frozenset({WIND_SPEED}),
                     inputs=frozenset({WIND_U, WIND_V}),
                     fn_id="missing",
+                    priority=0,
                 )
-            ]
+            ],
+            core_parameters(),
+        )
+
+
+def test_same_outputs_different_methods_are_distinct_keys() -> None:
+    catalog = {
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+        "wind_uv_alt": CalculatorManifest(fn_id="wind_uv_alt", fn=lambda *a: None),
+    }
+    outputs = frozenset({WIND_SPEED, WIND_DIRECTION})
+    inputs = frozenset({WIND_U, WIND_V})
+    bound = CalculatorBinder(catalog).build(
+        [
+            CalculatorDef(outputs=outputs, inputs=inputs, fn_id="wind_uv", priority=0),
+            CalculatorDef(outputs=outputs, inputs=inputs, fn_id="wind_uv_alt", priority=1),
+        ],
+        core_parameters(),
+    )
+    assert set(bound.calculators) == {
+        CalculatorKey(method="wind_uv", name="default"),
+        CalculatorKey(method="wind_uv_alt", name="default"),
+    }
+
+
+def test_duplicate_calculator_key_raises() -> None:
+    catalog = {
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+    }
+    with pytest.raises(CompositionError, match="duplicate"):
+        CalculatorBinder(catalog).build(
+            [
+                CalculatorDef(
+                    outputs=frozenset({WIND_SPEED}),
+                    inputs=frozenset({WIND_U, WIND_V}),
+                    fn_id="wind_uv",
+                    priority=0,
+                ),
+                CalculatorDef(
+                    outputs=frozenset({WIND_DIRECTION}),
+                    inputs=frozenset({WIND_U, WIND_V}),
+                    fn_id="wind_uv",
+                    priority=1,
+                ),
+            ],
+            core_parameters(),
         )

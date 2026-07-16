@@ -14,7 +14,14 @@ from meteoscape.manifold.capability import (
 )
 from meteoscape.manifold.domain import AxisName, GridDomain, RegularAxis
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
-from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_SPEED, WIND_U, WIND_V
+from meteoscape.parameters import (
+    AIR_TEMPERATURE,
+    PRECIPITATION,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    WIND_U,
+    WIND_V,
+)
 
 
 def _point(at: datetime) -> GridDomain:
@@ -59,7 +66,10 @@ def test_capability_family_serves() -> None:
     assert PRECIPITATION in union.parameters
 
     derived = DerivedCapability(
-        output=table.get(WIND_SPEED),
+        parameters={
+            WIND_SPEED: table.get(WIND_SPEED),
+            WIND_DIRECTION: table.get(WIND_DIRECTION),
+        },
         inputs=frozenset({WIND_U, WIND_V}),
         upstream=FootprintCapability(
             footprints={
@@ -69,5 +79,7 @@ def test_capability_family_serves() -> None:
         ),
     )
     assert derived.serves(WIND_SPEED, inside) is True
+    assert derived.serves(WIND_DIRECTION, inside) is True
     assert derived.serves(WIND_SPEED, outside) is False
     assert derived.serves(AIR_TEMPERATURE, inside) is False
+    assert set(derived.parameters) == {WIND_SPEED, WIND_DIRECTION}

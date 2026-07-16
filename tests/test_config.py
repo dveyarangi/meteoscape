@@ -4,19 +4,27 @@ from datetime import timedelta
 
 from meteoscape.config import (
     ArbiterPolicy,
+    CalculatorDef,
     OfferingDef,
     ProfileConfig,
     Settings,
     StoreSpec,
 )
+from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 
 _OM = OfferingDef(impl="open-meteo", name="best_match", priority=0)
+_WIND = CalculatorDef(
+    outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+    inputs=frozenset({WIND_U, WIND_V}),
+    fn_id="wind_uv",
+    priority=0,
+)
 
 
 def test_defaults_emit_open_meteo_primary() -> None:
     settings = Settings()
     assert settings.offerings() == (_OM,)
-    assert settings.calculators() == ()
+    assert settings.calculators() == (_WIND,)
     assert settings.secrets() == {}
 
 
@@ -56,7 +64,7 @@ def test_profile_projects_root_store_and_open_meteo() -> None:
     profile = settings.profile()
     assert profile == ProfileConfig(
         offerings=(_OM,),
-        calculators=(),
+        calculators=(_WIND,),
         root_store=StoreSpec(
             spatial_step=0.0001,
             retention_interval=timedelta(days=14),

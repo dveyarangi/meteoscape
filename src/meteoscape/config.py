@@ -13,7 +13,7 @@ from datetime import timedelta
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .parameters import ParameterId
+from .parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V, ParameterId
 
 
 @dataclass(frozen=True)
@@ -42,12 +42,18 @@ class OfferingDef:
 
 
 @dataclass(frozen=True)
-class CalculatorSpec:
-    """Profile recipe for one derived parameter — bound via `CalculatorBinder` before weave."""
+class CalculatorDef:
+    """Profile enablement of one calculator — peer of `OfferingDef`.
 
-    output: ParameterId
+    Points at a `CalculatorManifest` via `fn_id`; `outputs` is the co-produced output group.
+    `name=None` binder-defaults to `"default"`. Bound via `CalculatorBinder` before weave.
+    """
+
+    outputs: frozenset[ParameterId]
     inputs: frozenset[ParameterId]
     fn_id: str
+    priority: int
+    name: str | None = None
     stored: bool = False
 
 
@@ -63,7 +69,7 @@ class ProfileConfig:
     """Operator-side, per-profile enablement — offerings, calculators, root store, arbiter."""
 
     offerings: tuple[OfferingDef, ...]
-    calculators: tuple[CalculatorSpec, ...]
+    calculators: tuple[CalculatorDef, ...]
     root_store: StoreSpec
     arbiter: ArbiterPolicy
 
@@ -104,9 +110,16 @@ class Settings(BaseSettings):
             )
         return tuple(defs)
 
-    def calculators(self) -> tuple[CalculatorSpec, ...]:
-        """Derived-parameter recipes — empty until issue 002b can bind them."""
-        return ()
+    def calculators(self) -> tuple[CalculatorDef, ...]:
+        """Derived-parameter recipes enabled for the default profile."""
+        return (
+            CalculatorDef(
+                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+                inputs=frozenset({WIND_U, WIND_V}),
+                fn_id="wind_uv",
+                priority=0,
+            ),
+        )
 
     def profile(self) -> ProfileConfig:
         """v1 single best-view profile projected from env scalars."""
