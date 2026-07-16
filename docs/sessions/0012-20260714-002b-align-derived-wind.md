@@ -25,7 +25,7 @@ each reversing or sharpening a prior contract; docs updated inline.
    one native field. Consequence: requesting both wind params together is a **single winner** (no
    assembly for the pair); the assembly in (1) is exercised by wind *beside* the canonical params. Type
    ripple (code, settled here, applied in the build pass): `output → outputs` on `Calculator`,
-   `DerivedCapability`, `RegisteredCalculator`, `CalculatorSpec`; `fn` returns the pair; Weaver memoizes
+   `DerivedCapability`, `RegisteredCalculator`, `CalculatorDef`; `fn` returns the pair; Weaver memoizes
    one node per derived **output group** (both member params route to it).
 
 3. **Wind propagates the provider's atomic origin — no synthesis.** Because the derivation is **lossless
@@ -51,6 +51,43 @@ each reversing or sharpening a prior contract; docs updated inline.
    output well-formedness validation** (ranges keyed by the declared output group, aligned to the domain).
    So the propagate-vs-synthesize rule lives in exactly one place and cannot drift across plugin authors.
 
+5. **Sources and Calculators unify as `Producer{node, key}` — the Arbiter's candidate.** Honours
+   ADR-0004's own "a Calculator is just another candidate producer," which the types had betrayed by
+   special-casing Sources. `Arbiter(producers, reconciler)` indexes every producer through one path
+   (`ProducerKey = SourceKey | CalculatorKey`). The unification lands at the **candidate the Arbiter
+   consumes**, *not* at construction: the two binders / registries stay distinct (ADR-0005), and the
+   **Weaver** is the convergence point that wraps both built node kinds as `Producer`s. `Producer` carries
+   **no priority** — a neutral candidate.
+
+6. **The `Reconciler` becomes a first-class object; the Weaver never ranks.** Caught a real overlap:
+   "priority on `Producer`, drop the registry" (an earlier sub-decision, now **reverted**) forced the
+   Weaver to assemble ranking inputs — contradicting ADR-0004's "priority is registry data; the reconciler
+   interprets it; the Weaver never ranks." Fix (the user's option 3): extract the `Reconciler` from inline
+   Arbiter control flow. Priority stays a **recipe field on both registries** (`RegisteredSource.priority`,
+   add `RegisteredCalculator.priority`); `build_reconciler(ArbiterPolicy, SourceRegistry,
+   CalculatorRegistry)` flattens them into a plain `priority: Mapping[ProducerKey, int]` and returns a
+   `PriorityReconciler` holding **that map, not the registries** (bare, testable). The Weaver *invokes the
+   factory* and injects the reconciler into every Arbiter (top + scoped) — it orders nothing. The
+   priority-data path: **registries → `build_reconciler` → `ProducerKey→int` map → `PriorityReconciler` →
+   Arbiter**, joined because the Weaver stamps each `Producer` with the same key its priority is registered
+   under.
+
+7. **Calculators are identified by method, keyed like sources.** Output-group-as-identity was rejected —
+   it collapses two calculators serving one output by *different methods*, the exact competing-producer
+   case ranking exists for. **`CalculatorKey(method, name)`** is the calculator peer of
+   `SourceKey(provider, dataset)` (`method = fn_id`; `name` a binder-defaulted variant); the
+   `CalculatorRegistry` is **re-keyed by `CalculatorKey`** (was `ParameterId`). **`CalculatorSpec` →
+   `CalculatorDef`** (peer of `OfferingDef`), gaining `priority` + `name?` + `outputs`;
+   `RegisteredCalculator` gains `key` + `priority`. Net: **both registries keyed by their `ProducerKey`,
+   both carrying `priority`, both flattened into `build_reconciler`** — same-output/different-method
+   calculators become ordinary competing producers, exactly parallel to competing providers.
+
+**Assembly mechanics (decision 1's realization, agreed).** Single winner → project once (fast path).
+`>1` winning producer → group admitted params by producer, project each **once** on `sel.domain`, merge
+into a `CoverageRecord` (unioned `ranges` + `EnumerableCapability` + a `PerParameter` plane, each param's
+`Provenance` = its winner's `summary`). Closed projection guarantees the shared domain, so the merge
+asserts identity, never resamples.
+
 ## Layer distinction that unlocked it (grilling artefact)
 
 Two "sameness" claims had been bleeding together. Separated:
@@ -75,22 +112,46 @@ Two "sameness" claims had been bleeding together. Separated:
   (kernel owns structure; node owns provenance + validation); memoization keyed by **output group**.
 - **`catalog/calculators.py`** — `CalculatorManifest.fn` retyped `CombineFn = Callable[[Coverage],
   Coverage]`; method-tag note added.
-- **`provenance.py`** — module + `SyntheticOrigin` docstrings retagged: synthetic = genuine ≥2-origin
-  blend (post-v1 seam); wind propagates atomic.
+- **ADR-0004** — `Producer{node, key}` unification; the **assembly** bullet (disjoint winners →
+  `PerParameter` `CoverageRecord`); `Priority is registry data` rewritten around a first-class
+  `Reconciler` + `build_reconciler`; weave sketch updated to `Arbiter(producers, reconciler)`.
+- **ADR-0005** — Weaver builds `Producer`s from both registries and constructs the reconciler via the
+  policy-keyed factory; two registries stay distinct, Weaver is the convergence point.
+- **glossary** — added `Producer` + `CalculatorKey`; `CalculatorSpec` → `CalculatorDef` (re-keyed by
+  `CalculatorKey`). All definition-only.
+- **ADR-0005 / architecture / module-layout** — `CalculatorSpec` → `CalculatorDef` (peer of
+  `OfferingDef`, +`priority`/`name?`/`outputs`); `CalculatorRegistry` keyed by `CalculatorKey` (peer of
+  `SourceKey`); both registries keyed by `ProducerKey`, both carry `priority`.
+- **`provenance.py`** — module + `SyntheticOrigin` docstrings retagged: synthetic = a method-bearing
+  *or* multi-origin derivation record (post-v1 seam); a lossless invertible transform (wind) propagates
+  its input's atomic origin.
 - **glossary** — `Calculator` entry tightened to a **definition only** (co-produced output group,
   selectable producer, own scoped Arbiter); the provenance rule lives in the ADRs, not here.
-- **ticket 002b** — outcome + What-to-build + acceptance criteria reframed around the two deliverables
-  (multi-parameter assembly; single multi-output wind Calculator) and provider-origin propagation.
+- **ticket 002b** — outcome + What-to-build + acceptance criteria reframed around three deliverables
+  (multi-parameter assembly; `Producer` / `Reconciler` unification; single multi-output wind Calculator),
+  the `fn: Coverage → Coverage` boundary, and provider-origin propagation.
 - **ticket 005** — reframed as provider-competition over the assembly that now lands in 002b.
 
 ## Open / continuation
 
-- **002b implementation deltas** (for the `/to-tickets` / TDD build pass): the multi-output `Calculator`
-  type change (`output → outputs`) across the Calculator / `DerivedCapability` / `RegisteredCalculator` /
-  `CalculatorSpec` shapes and `fn`; the top-Arbiter **`PerParameter` assembly** (retire the
-  not-all-one-node guard); the `Weaver` Calculator weave (memoize per output group, scoped input Arbiter
-  over a subset of source nodes); provenance **propagation** (no `SyntheticOrigin` construction);
-  `wind_speed_10m` / `wind_direction_10m` round-trip verified against 002's `u/v` normalizer.
+- **002b implementation deltas** (for the `/to-tickets` / TDD build pass):
+  - **Producer / Reconciler refactor** (touches shipped 002): introduce `Producer{node, key}` +
+    `ProducerKey = SourceKey | CalculatorKey`; extract `Reconciler` (a `PriorityReconciler` holding a
+    `ProducerKey → int` map) + `build_reconciler(policy, SourceRegistry, CalculatorRegistry)`; change
+    `Arbiter` to `Arbiter(producers, reconciler)`.
+  - **Calculator identity + config symmetry**: add `CalculatorKey(method, name)` (in `identity.py`,
+    peer of `SourceKey`); rename `CalculatorSpec → CalculatorDef` (peer of `OfferingDef`) with `priority`
+    + `name?` + `outputs`; re-key `CalculatorRegistry` by `CalculatorKey`; `RegisteredCalculator` gains
+    `key` + `priority`; `CalculatorBinder` + `ProfileConfig` follow.
+  - **Multi-output `Calculator`** (`output → outputs`) across `Calculator` / `DerivedCapability` /
+    `RegisteredCalculator` / `CalculatorDef`; `fn: Coverage → Coverage` (`CombineFn`), node owns
+    provenance stamping + output validation.
+  - **Top-Arbiter assembly**: group admitted params by winning producer, project each once, merge into a
+    `PerParameter` `CoverageRecord` (retire the not-all-one-node guard).
+  - **Weaver Calculator weave**: memoize per output group; scoped input Arbiter over the `Producer` subset
+    serving the calc's inputs; wrap both node kinds as `Producer`s; construct the reconciler via factory.
+  - **Provenance propagation** (no `SyntheticOrigin` construction); `wind_speed_10m` / `wind_direction_10m`
+    round-trip verified against 002's `u/v` normalizer.
 - **Deferred seams named here:** the Weaver **co-production well-formedness assertion** → 004;
   `SyntheticOrigin` behaviour (lineage + method tag) → first synthetic Calculator, method-bearing or
   multi-origin (post-v1).
