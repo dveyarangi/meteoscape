@@ -17,7 +17,5 @@ class Gateway:
     async def resolve(self, selection: Selection) -> Coverage:
         result = await self.best_view.project(selection)
         if not isinstance(result, Coverage):
-            raise TypeError(
-                f"best view must project to Coverage, got {type(result).__name__}"
-            )
+            raise TypeError(f"best view must project to Coverage, got {type(result).__name__}")
         return result

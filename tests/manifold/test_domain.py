@@ -134,7 +134,9 @@ def test_regular_axis_getitem_and_len() -> None:
     with pytest.raises(IndexError):
         _ = axis[-1]
 
-    cellular = RegularAxis(AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), 3, True)
+    cellular = RegularAxis(
+        AxisName.T, datetime(2026, 7, 11, tzinfo=UTC), timedelta(hours=1), 3, True
+    )
     assert cellular[0] == Cell(
         datetime(2026, 7, 11, tzinfo=UTC),
         Interval(datetime(2026, 7, 11, tzinfo=UTC), datetime(2026, 7, 11, 1, tzinfo=UTC)),

@@ -56,7 +56,9 @@ def _selection(*, hours: int = 4, parameters=None) -> Selection:
                 AxisName.T: RegularAxis(AxisName.T, start, timedelta(hours=1), hours, True),
             }
         ),
-        parameters=frozenset(parameters) if parameters is not None else frozenset({AIR_TEMPERATURE}),
+        parameters=frozenset(parameters)
+        if parameters is not None
+        else frozenset({AIR_TEMPERATURE}),
     )
 
 
@@ -167,7 +169,14 @@ def test_capability_declares_six_native_z_facts() -> None:
         parameters=core_parameters(),
     )
     caps = provider.capability.parameters
-    assert set(caps) == {AIR_TEMPERATURE, RELATIVE_HUMIDITY, WIND_U, WIND_V, PRECIPITATION, CLOUD_COVER}
+    assert set(caps) == {
+        AIR_TEMPERATURE,
+        RELATIVE_HUMIDITY,
+        WIND_U,
+        WIND_V,
+        PRECIPITATION,
+        CLOUD_COVER,
+    }
     assert len(TAPS) == 6
 
     footprints = provider.capability.footprints  # type: ignore[attr-defined]
@@ -193,9 +202,7 @@ def test_malformed_payload_raises_runtime_failure() -> None:
     ragged = _canned_hourly(hours=4)
     ragged["hourly"]["temperature_2m"] = [1.0, 2.0]
     with pytest.raises(RuntimeFailure, match="malformed"):
-        normalizer.normalize(
-            ragged, _sample_provenance(), parameters=frozenset({AIR_TEMPERATURE})
-        )
+        normalizer.normalize(ragged, _sample_provenance(), parameters=frozenset({AIR_TEMPERATURE}))
 
 
 @pytest.mark.asyncio
@@ -243,7 +250,9 @@ def test_wind_direction_from_north() -> None:
     wind = records[0]
     assert wind.ranges[WIND_U].values[0] == pytest.approx(0.0, abs=1e-9)
     assert wind.ranges[WIND_V].values[0] == pytest.approx(-1.0, abs=1e-9)
-    assert math.isclose(wind.ranges[WIND_U].values[0] ** 2 + wind.ranges[WIND_V].values[0] ** 2, 1.0)
+    assert math.isclose(
+        wind.ranges[WIND_U].values[0] ** 2 + wind.ranges[WIND_V].values[0] ** 2, 1.0
+    )
 
 
 def _sample_provenance() -> Provenance:
@@ -258,9 +267,7 @@ def _sample_provenance() -> Provenance:
 @pytest.mark.asyncio
 @respx.mock
 async def test_httpx_transport_decodes_json() -> None:
-    respx.get(f"{BASE_URL}/v1/forecast").mock(
-        return_value=httpx.Response(200, json={"ok": True})
-    )
+    respx.get(f"{BASE_URL}/v1/forecast").mock(return_value=httpx.Response(200, json={"ok": True}))
     transport = HttpxTransport(BASE_URL)
     result = await transport.fetch(FetchRequest(path="/v1/forecast", params={"latitude": "1"}))
     assert result == {"ok": True}
