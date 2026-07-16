@@ -29,3 +29,6 @@ domain definitions.
 (obvious dupes, non-load-bearing evolution, link normalization) → pause on
 ambiguous homes, cross-layer moves, large deletions, or contradictions →
 verify links → summarize.
+
+**Completion**
+Make sure fully resolved tickets and RFCs are moved to their corresponding /docs/../done folder.
