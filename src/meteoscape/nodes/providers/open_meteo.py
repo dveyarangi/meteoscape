@@ -54,8 +54,8 @@ from .timeline import (
     PointSeriesTap,
     VendorVar,
     axis,
-    cell,
     passthrough,
+    pointwise,
 )
 
 BASE_URL = "https://api.open-meteo.com"
@@ -75,27 +75,18 @@ _CANONICAL_IDS: frozenset[ParameterId] = frozenset(
 )
 
 
-def _wind_u(arrays: Mapping[str, Sequence[float | None]]) -> list[float]:
-    return [
-        _wind_component(cell(s), cell(d), u=True)
-        for s, d in zip(arrays["wind_speed_10m"], arrays["wind_direction_10m"], strict=True)
-    ]
-
-
-def _wind_v(arrays: Mapping[str, Sequence[float | None]]) -> list[float]:
-    return [
-        _wind_component(cell(s), cell(d), u=False)
-        for s, d in zip(arrays["wind_speed_10m"], arrays["wind_direction_10m"], strict=True)
-    ]
-
-
-def _wind_component(speed_ms: float, direction_deg: float, *, u: bool) -> float:
-    if math.isnan(speed_ms) or math.isnan(direction_deg):
-        return float("nan")
-    rad = math.radians(direction_deg)
+def _u_component(speed_ms: float, direction_deg: float) -> float:
     # Meteorological direction: degrees FROM which the wind blows.
-    return (-speed_ms * math.sin(rad)) if u else (-speed_ms * math.cos(rad))
+    rad = math.radians(direction_deg)
+    return -speed_ms * math.sin(rad)
 
+
+def _v_component(speed_ms: float, direction_deg: float) -> float:
+    return -speed_ms * math.cos(math.radians(direction_deg))
+
+
+_wind_u = pointwise("wind_speed_10m", "wind_direction_10m", fn=_u_component)
+_wind_v = pointwise("wind_speed_10m", "wind_direction_10m", fn=_v_component)
 
 _WIND_VARS = (
     VendorVar("wind_speed_10m", "km/h"),
@@ -194,13 +185,13 @@ class OpenMeteoNormalizer:
             ranges: dict[ParameterId, ParameterData] = {}
             defs: dict[ParameterId, ParameterDef] = {}
             for tap in group:
-                values = tap.decode({var.name: converted[var.name] for var in tap.vendor_vars})
-                if len(values) != n:
+                data = tap.decode({var.name: converted[var.name] for var in tap.vendor_vars})
+                if len(data.values) != n:
                     raise RuntimeFailure(
                         f"open-meteo decode length mismatch for {tap.produces}: "
-                        f"{len(values)} != {n}"
+                        f"{len(data.values)} != {n}"
                     )
-                ranges[tap.produces] = ParameterData(values=values, present=None)
+                ranges[tap.produces] = data
                 defs[tap.produces] = self._parameters.get(tap.produces)
 
             domain = GridDomain(

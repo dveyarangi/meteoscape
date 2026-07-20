@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 
+from ...manifold.data import ParameterData
 from ...manifold.domain import AxisName, Interval, IntervalAxis, RegularAxis
 from ...parameters import ParameterId
 
@@ -39,8 +40,8 @@ class VendorVar:
     unit: str
 
 
-Decode = Callable[[Mapping[str, Sequence[float | None]]], list[float]]
-"""Quantity transform over already unit-converted vendor series (None cells stay None → nan)."""
+Decode = Callable[[Mapping[str, Sequence[float | None]]], ParameterData]
+"""Quantity transform over already unit-converted vendor series → one parameter's slice."""
 
 
 @dataclass(frozen=True)
@@ -67,18 +68,33 @@ def axis(spec: AxisSpec, *, name: AxisName = AxisName.Z) -> RegularAxis | Interv
     return IntervalAxis(name, spec.interval)
 
 
-def cell(value: float | None) -> float:
-    """Map a nullable vendor sample to a float (`None` → nan)."""
-    return float("nan") if value is None else float(value)
+def pointwise(*vars: str, fn: Callable[..., float]) -> Decode:
+    """A tick is present iff every input var is; `fn` sees only present ticks.
+
+    The value at an absent tick is unspecified filler (`nan`) — the mask is the sole
+    presence authority. This is the only site that *writes* filler; downstream kernels
+    then compute over it (`hypot(nan, nan)`), which the mask discards.
+    """
+
+    def decode(arrays: Mapping[str, Sequence[float | None]]) -> ParameterData:
+        series = [arrays[v] for v in vars]
+        values: list[float] = []
+        present: list[bool] = []
+        for cells in zip(*series, strict=True):
+            if any(c is None for c in cells):
+                values.append(float("nan"))
+                present.append(False)
+            else:
+                values.append(fn(*cells))
+                present.append(True)
+        return ParameterData.of(values, present)
+
+    return decode
 
 
 def passthrough(var: str) -> Decode:
     """Decode that copies one already-converted vendor series into canonical values."""
-
-    def decode(arrays: Mapping[str, Sequence[float | None]]) -> list[float]:
-        return [cell(v) for v in arrays[var]]
-
-    return decode
+    return pointwise(var, fn=lambda v: v)
 
 
 # --- Shared hourly / vertical presets (tap building blocks) ---

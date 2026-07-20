@@ -23,10 +23,10 @@ produced. The MCP adapter maps the taxonomy — `bad-request` (e.g. invalid lat/
 
 **Already landed at 001 (Phase C):** taxonomy → `ToolError` **stable prefixes**, lat/lon and
 unknown-parameter `bad-request` validation, and producible-subset serving with whole-request
-`capability-mismatch` only when nothing is produced. The nodata → `null` serializer branch exists but
-is **unreachable for real responses** until [002c](./002c-provider-nodata-mask.md) builds the
-`present` mask (providers emit `present=None`, so a vendor null currently reaches the wire as `NaN`);
-this ticket's nodata-vs-failure distinction assumes 002c has landed. This ticket's
+`capability-mismatch` only when nothing is produced. The nodata → `null` serializer branch is **live
+as of [002c](./002c-provider-nodata-mask.md)**: providers emit a real `present` mask, so a vendor null
+reaches the wire as JSON `null`. What 002c deliberately did *not* build is the **reason** for an
+absence — `present[i] = False` says *no value*, never *why* — which is this ticket's premise. This ticket's
 remaining substance: the **edge-derived per-parameter absence reason** (capable ⇒ `runtime-failure`,
 else `capability-mismatch`) on partial responses, and the capable-but-all-candidates-fault omission
 path (needs 004's fallback machinery — Phase C propagates a lone candidate's `RuntimeFailure` whole).

@@ -12,7 +12,6 @@ from ..parameters import ParameterId
 from .capability import EnumerableCapability
 from .core import Coverage, Selection
 from .coverage import CoverageRecord
-from .data import ParameterData
 from .domain import (
     AXIS_ORDER,
     AxisName,
@@ -90,12 +89,7 @@ def resample(coverage: Coverage, selection: Selection) -> CoverageRecord:
         source_indices.append(encode_flat_index(source_counts, mapped))
 
     parameters = {pid: held[pid] for pid in selection.parameters}
-    ranges = {}
-    for pid in selection.parameters:
-        data = coverage.ranges[pid]
-        values = [data.values[i] for i in source_indices]
-        present = None if data.present is None else [data.present[i] for i in source_indices]
-        ranges[pid] = ParameterData(values=values, present=present)
+    ranges = {pid: coverage.ranges[pid].take(source_indices) for pid in selection.parameters}
 
     return CoverageRecord(
         capability=EnumerableCapability(domain=target, parameters=parameters),
