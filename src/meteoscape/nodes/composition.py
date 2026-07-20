@@ -1,6 +1,6 @@
 """Build-time binders and their products — the seam between `ProfileConfig` and the `Weaver`.
 
-Two symmetrical binders resolve operator tickets against process-wide catalogues into read-only
+Two symmetrical binders resolve operator declarations against process-wide catalogues into read-only
 registries, which compose the `ProfileDef` the Weaver consumes:
 
 - `SourceBinder(ProviderCatalog).build(...)` → `SourceRegistry` (`SourceKey` → configured producer +
@@ -30,7 +30,7 @@ from .providers.base import Provider
 
 
 class CompositionError(Exception):
-    """Build-time failure — unknown ticket, dangling secret, duplicate key, missing StoreSpec."""
+    """Build-time failure — unknown catalogue entry, dangling secret, duplicate key, or missing StoreSpec."""
 
 
 @dataclass(frozen=True)
@@ -125,7 +125,7 @@ class CalculatorRegistry:
 
 
 class CalculatorBinder:
-    """Resolves `CalculatorDef` tickets against a `CalculatorCatalog` → `CalculatorRegistry`."""
+    """Resolves `CalculatorDef` declarations into a `CalculatorRegistry`."""
 
     def __init__(self, catalog: CalculatorCatalog) -> None:
         self.catalog = catalog

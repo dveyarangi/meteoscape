@@ -12,14 +12,11 @@
 
 ## What to build
 
-Make failures and partial results first-class. The `Arbiter` resolves each parameter independently and
-**omits** any whose candidates all fault, so a partially-served request returns the **producible
-subset** (an unserved parameter is simply absent, never persisted). `project` stays closed — failures
-are not Coverage state. The **edge** derives each absent parameter's reason (capable ⇒
-`runtime-failure`, else `capability-mismatch`) and raises a whole-request error only when **nothing** is
-produced. The MCP adapter maps the taxonomy — `bad-request` (e.g. invalid lat/lon),
-`capability-mismatch`, `runtime-failure` — to MCP protocol errors. **nodata** (a successful gap,
-`present[i] = False`) is never conflated with failure.
+Make failures and partial results first-class, implementing
+→ [architecture: Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability)
+(per-parameter omission, producible subset, edge-derived reasons, nodata never conflated with failure).
+The MCP adapter maps the taxonomy — `bad-request` (e.g. invalid lat/lon), `capability-mismatch`,
+`runtime-failure` — to MCP protocol errors.
 
 **Already landed at 001 (Phase C):** taxonomy → `ToolError` **stable prefixes**, lat/lon and
 unknown-parameter `bad-request` validation, and producible-subset serving with whole-request
@@ -31,8 +28,8 @@ remaining substance: the **edge-derived per-parameter absence reason** (capable 
 else `capability-mismatch`) on partial responses, and the capable-but-all-candidates-fault omission
 path (needs 004's fallback machinery — Phase C propagates a lone candidate's `RuntimeFailure` whole).
 
-**Scope note (session 0013).** Fall-through reaches only **admitted** candidates. So when a long-reach
-primary faults on a window the fallback cannot contain, the fallback is never in the candidate set and
+**Scope note (session 0013).** Fall-through reaches only **admitted** candidates. So when a
+long-footprint primary faults on a window the fallback cannot contain, the fallback is never in the candidate set and
 the parameter is **omitted whole** — even though the fallback holds most of the window. That is the
 intended terminus here: omission + reason carries the same information a partial tail would, without
 conflating "cannot reach" with **nodata**'s successful gap. Serving that residual data (nodata-padded

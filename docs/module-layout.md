@@ -3,8 +3,7 @@
 Implementation-level layout for `src/meteoscape/`. Kept out of the
 [architecture contract](./architecture.md); organized **by architectural layer**, not
 folder-per-role — see each module's inline note and the dependency rule below. This document owns
-module placement and responsibilities, not milestone status; delivery state lives in
-[tickets/README.md](./tickets/README.md).
+module placement and responsibilities, not milestone status.
 
 **Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices live in [`v1-requirements.md`](./v1-requirements.md).*
 
@@ -29,7 +28,7 @@ src/meteoscape/
 │   # reservoir.py — Reservoir composite only (Store + child)
 │   # arbiter.py — Source map + SourceRegistry + ArbiterPolicy (reconciler owns priority)
 │   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef
-│   ├── weaver.py              # allocate Stores + Source map; hand registry to Arbiter
+│   ├── weaver.py              # allocate Stores; wire Source/Calculator Producers and scoped/top Arbiters
 │   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog

@@ -2,7 +2,7 @@
 
 Realizations satisfy the contract *structurally*, not by inheritance: a frozen dataclass field would
 clash with the protocol's `domain` property descriptor. v1 ships `CoverageRecord` — the one
-memory-backed realization; Timeline / Grid are domain *shapes*, not classes (session 0008).
+memory-backed realization; Timeline / Grid are domain *shapes*, not classes.
 """
 
 from __future__ import annotations
@@ -24,8 +24,8 @@ class CoverageRecord:
 
     `capability` is the materialized `EnumerableCapability` - it carries the parameter set co-domained on
     its one enumerable grid, so the `Countable.domain` derives from `capability.domain` rather than being
-    stored twice. `ranges` are positional to `domain`. Implementations may vary by backing later;
-    never by domain shape.
+    stored twice. `ranges` are positional to `domain`. Alternative implementations may vary by
+    backing, never by domain shape.
     """
 
     capability: EnumerableCapability

@@ -1,7 +1,7 @@
 """Open-Meteo vendor leaf — provider, normalizer, cadence, and catalogue `MANIFEST`.
 
-Serves the 6 canonical parameters via a `PointSeriesTap` table (timeline shape — see `timeline.py`).
-Session 0009 owns the HTTP mapping; ticket 002 owns the tap / native-record contract.
+Serves the 6 canonical parameters via a `PointSeriesTap` table, mapping vendor HTTP responses into
+native timeline records (see `timeline.py`).
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ IMPL_ID = "open-meteo"
 PROVIDER_ID = "open-meteo"
 BEST_MATCH = "best_match"
 
-# Conservative cadence — concern #18 owns refinement; not operator-tunable before it means something.
+# Conservative cadence estimate; provider-real availability can refine it behind the same seam.
 CADENCE = CadenceDef(
     cadence=timedelta(hours=1),
     publication_latency=timedelta(hours=1),
@@ -314,7 +314,7 @@ def _forecast_request(selection: Selection, taps: Sequence[PointSeriesTap]) -> F
 
 
 def _assemble(records: Sequence[Coverage], selection: Selection) -> CoverageRecord:
-    """Interim fold: native records → one Coverage on `sel.domain` (value passthrough; Z relabel)."""
+    """Project native records into one Coverage on `sel.domain` by value passthrough and Z relabeling."""
     if not isinstance(selection.domain, GridDomain):
         raise RuntimeFailure("open-meteo assemble requires a GridDomain selection")
 

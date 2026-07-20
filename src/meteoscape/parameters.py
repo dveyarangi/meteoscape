@@ -90,10 +90,7 @@ class ParameterDef:
         return self.quantity.extent_scaling
 
 
-# v1 parameter identifiers. Ids are the functional `(quantity, statistic)`, never the surface height:
-# `temperature_2m` / `wind_u_10m` are edge aliases desugaring to a functional id + a Domain Z cell
-# (ADR-0002). With v1's uniform `point` statistic the id collapses to the quantity name. The canonical
-# `ParameterDef`s these resolve to live in `nodes/catalog/paramtable.py`.
+# v1 functional identifiers; their `ParameterDef`s live in `nodes/catalog/paramtable.py`.
 AIR_TEMPERATURE = ParameterId("air_temperature")
 PRECIPITATION = ParameterId("precipitation")
 WIND_U = ParameterId("wind_u")

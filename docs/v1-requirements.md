@@ -11,8 +11,8 @@ inputs/outputs, acceptance criteria). The contract's seams themselves live in
 > for the *contract*; nothing here may contradict them. Future/unscoped ideas live in
 > [`ideas.md`](./ideas.md).
 >
-> This is a **release contract, not a progress tracker**. Current implementation state, ticket
-> readiness, and execution order live in the [v1 delivery status](./tickets/README.md).
+> This is a **release contract, not a progress tracker**. Implementation state and execution order
+> are intentionally outside its scope.
 
 ## Goal
 
@@ -36,7 +36,7 @@ configures and runs the server). Stories are numbered for stable reference from 
    reaches), so that I control the forecast extent without learning per-provider limits.
 4. As an agent, I want every value returned in a canonical unit, so that I can use and compare them
    without per-vendor unit handling.
-5. As an agent, I want per-parameter provenance — origin and `expiration` — on each `ParameterData`, so
+5. As an agent, I want per-parameter provenance — origin and `expiration` — for each returned parameter, so
    that I know which provider/run produced each value and how fresh it is.
 6. As an agent, I want the best obtainable provider chosen per parameter with automatic fallback on
    failure, so that a single vendor outage doesn't break my request.
@@ -71,7 +71,7 @@ configures and runs the server). Stories are numbered for stable reference from 
 | **Open-Meteo** | keyless | **primary** | global, free; exercises the keyless path |
 | **TWC** (The Weather Company) | API key | fallback | exercises secrets-injection seam |
 
-- Priority order **is** the quality policy (implicit-priority Arbiter; selects, never combines).
+- Priority order **is** the quality policy (the `priority` reconciler selects, never combines).
   Reconfigurable via Arbiter config.
 - **Missing TWC key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
   emitted), so the server starts and serves with Open-Meteo alone. Degrade is **enablement policy,
@@ -122,11 +122,11 @@ reader may interpret it. `present = None` is the **elided all-present case**, no
 gaps cannot occur: v1 expects Open-Meteo's hourly series to be complete, so `None` is the common
 shape, but a null that does arrive is represented honestly rather than substituted. Presence is read
 through `ParameterData` behaviour, so the elision is representation, not contract. A NaN sentinel is rejected because it is not dtype-agnostic and cannot be told apart from
-a legitimate not-a-number value — and, at this surface, because `NaN` is not valid JSON. Ownership:
-[ticket 002c](./tickets/done/002c-provider-nodata-mask.md).
+a legitimate not-a-number value — and, at this surface, because `NaN` is not valid JSON.
 
-Every atomic `ParameterData` carries a `Uniform` provenance; the derived wind views **propagate** their
-u/v inputs' atomic origin verbatim (the derivation is lossless and invertible — [ADR-0003](./adr/0003-provenance-and-origin.md)).
+The Coverage's provenance plane is `Uniform` for an atomic result; the derived wind views
+**propagate** their u/v inputs' atomic origin verbatim (the derivation is lossless and invertible —
+[ADR-0003](./adr/0003-provenance-and-origin.md)).
 
 Every value is in its parameter's **canonical unit** (the Normalizer reconciles vendor units on ingest);
 the unit rides the Coverage's `capability` descriptor block, not the `ParameterData` slice. Freshness is
@@ -136,7 +136,7 @@ the per-parameter provenance `expiration`.
 
 - **One MCP tool: `forecast_hourly`** — the shape is in the name: a future daily/aggregated product
   is a **sibling tool** (different statistics, its own narratable description), never a `step` knob
-  on this one (Phase C align, session 0009).
+  on this one.
 - Inputs: `latitude`, `longitude` (required); optional `parameters` (subset of the **6 product**
   params — temperature, precipitation, wind speed, wind direction, humidity, cloud cover; the internal
   `wind_u` / `wind_v` are **not** requestable; default all), `start`, `end`. **Output resolution is hourly** — no
@@ -167,29 +167,26 @@ the per-parameter provenance `expiration`.
   per parameter the Arbiter admits only providers whose Capability **temporally contains** the requested
   extent (whole-request `Domain`-containment), picks the highest-priority such provider, and **falls back
   wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
-  (omitted) — no splicing along `valid_time` in v1. The reach each Capability tests is the **clock-anchored
-  footprint window** around the run anchor (the provider's cadence,
+  (omitted) — no splicing along `valid_time` in v1. The temporal footprint each Capability tests is a
+  **clock-anchored window** around the run anchor (the provider's cadence,
   [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the `FootprintDomain`'s continuous
   T axis ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
   [concern #18](./concerns.md#18-clock-anchored-footprint-fidelity).
 - Omitting `end` runs the window to the profile's **reach end** — what the caller gets when they do
   not say how far. There is **no configured default horizon**; `start` / `end` stay a **free window**
   (no interval enum — the `Domain` already models arbitrary extents).
-- The **available envelope** the tool description narrates is the served parameters plus the profile's
-  **reach**, read off the woven root's `Capability` — which exposes a per-parameter
-  **`reach` `Domain`** alongside `serves` ([ADR-0004](./adr/0004-producer-resolution-and-capability.md),
-  [concern #29](./concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)). A
-  composite joins reach **per axis**: **point** axes (X/Y/Z) union — an outer bound — and **extent**
-  axes (`valid_time`) intersect — a guarantee, which is what makes the omitted-`end` default
-  admissible wherever the profile serves. The T fold is deliberately **conservative** (it understates
-  where one provider is spatially universal); a shorter narrated reach is a correct product
-  statement, and a longer product is another surface. `reach` is **never authoritative** — `serves`
-  remains the sole admission authority. Because it folds off the woven graph, it reflects config
-  resolution (enabled providers + present secrets) automatically, so a missing optional provider (for
-  example, no TWC key) cannot advertise parameters or horizons the running server will not attempt.
-  **Quality is not narrated** — it is a policy outcome the response reports per parameter via
-  provenance, not a capability; quality tiers belong in separate profiles behind separate tools. A
-  separate capabilities-introspection tool/resource remains a deferred seam.
+- The **available envelope** the tool description narrates is the served parameters (off the woven
+  root's `Capability`) plus the profile's **reach** — an inner bound resolved **once at build** from
+  the producers' declared footprints; semantics, the `grid` rule, and the admissible-by-construction
+  default → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md),
+  [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection). v1 positions: because it
+  resolves off the composed `ProfileDef`, it reflects config resolution (enabled providers + present
+  secrets) automatically, so a missing optional provider (for example, no TWC key) cannot advertise
+  parameters or horizons the running server will not attempt. **Quality is not narrated** — a policy
+  outcome the response reports per parameter via provenance
+  (→ [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection)); quality tiers belong in
+  separate profiles behind separate tools. A separate capabilities-introspection tool/resource remains
+  a deferred seam.
 - Current conditions fall out as the near-now sample. Observations/past data deferred.
 
 ### v1 invariants (positions on contract seams)
@@ -215,8 +212,8 @@ lifts **without a contract change** — see the seams in
   Coverage has no response-level run identity, and v1 performs no cross-run combination.
 - **Retentive in-memory `Store`s** wired into both positions (Source + best view): they **retain across
   requests** — **freshness** read off each `ParameterData`'s `expiration` (serve-vs-refill), with a
-  separate **configurable retention interval** bounding memory — and **declare their grid `Domain`**
-  (hourly + spatial; the Source's is **provider-exact or a configured guess**,
+  separate **configurable retention interval** bounding memory — and hold **private per-axis lattices**
+  (hourly + spatial; a Source's lattice is **provider-exact or a configured guess**,
   [ADR-0002](./adr/0002-data-model.md)). A request is resolved by **`quantize`** — serve fresh
   **assimilable units** (v1: a per-parameter timeline at a spatial cell) ∪ a **store-shaped refill** of
   the missing/stale ones, each fetched **whole** (`provider.project(store_shape)`), then **homogenized
@@ -230,7 +227,7 @@ lifts **without a contract change** — see the seams in
   never cached-primary ∪ fallback along `valid_time`. The v1 graph wires retentive Stores in both
   positions; a non-retentive Store is only a **test double**. (In-memory only; a *persisting* `Store`
   stays deferred.)
-- **`priority`-reconciler Arbiter** — implicit-priority select + fallback per parameter; only the
+- **`priority`-reconciler Arbiter** — priority-ordered select + fallback per parameter; only the
   default `priority` reconciler (no `tile` / `consensus` / `feather` coverage reconcilers), no explicit
   scoring.
 - **Derived parameters (wind only)** — v1 exercises the Calculator seam with exactly the derived wind
@@ -239,10 +236,6 @@ lifts **without a contract change** — see the seams in
   chill, …) stay deferred — as does origin **synthesis**, which arrives with the first method-bearing or
   multi-origin Calculator.
 - **Null Gateway** policy (identity/limits pass through).
-- **Freshness** read straight off each parameter's provenance `expiration` (the Coverage plane's `summary`; `fresh ⇔ expiration > now`)
-  — i.e. the run is still current. `expiration` derives from the provider's **cadence** (`CadenceDef`)
-  ([ADR-0003](./adr/0003-provenance-and-origin.md)); v1 specifies conservative per-provider `{Δ, L}` defaults
-  ([concern #18](./concerns.md#18-clock-anchored-footprint-fidelity)).
 
 ### Config & secrets
 
@@ -327,11 +320,11 @@ real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector,
   **numerically**, so without the tag `1000 hPa` would match `1000 m above ground` — a silent,
   physically meaningless admission of exactly the kind ADR-0002 rules out ("not linearly comparable";
   cross-frame conversion is a Calculator, not a resampler). No roadmap phase introduces a second frame,
-  so the trigger is the **first such parameter**, and building the slot belongs to that ticket rather
-  than to v1. Absorbing it later is additive but not free — it touches the core geometry types and
+  so the trigger is the **first such parameter**, and the slot must be built with that parameter rather
+  than in v1. Absorbing it later is additive but not free — it touches the core geometry types and
   every Domain construction site, and `matches` must compare references before extents.
-- Which specific core parameter is single-provider for the §3 demo (config-driven `Capability`) is
-  owned by [ticket 005](./tickets/005-per-parameter-selection.md).
+- The specific core parameter used for the §3 single-provider demonstration is intentionally open;
+  the requirement is config-driven `Capability` routing rather than a particular parameter choice.
 - The v1 canonical units are **committed** in [`parameters.md`](./parameters.md); conventions *beyond* the
   v1 set stay deferred at the contract level ([concern #10](./concerns.md#10-parameter-conventions)).
 - **Single-flight** coalescing of concurrent same-key refills (cache-stampede guard) — already a

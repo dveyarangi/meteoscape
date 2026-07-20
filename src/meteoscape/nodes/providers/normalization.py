@@ -6,7 +6,7 @@ encoding) in native geometry - vendor knowledge, so it lives inside a Provider. 
 the Reservoir's read-back). Returns one or more native `Coverage` records grouped by shared native
 Domain ([ADR-0006](../../../docs/adr/0006-materialization-granularity-and-store-shape.md)).
 
-Conversion factors here are the seed of the shared unit catalogue ([ticket 010](../../../docs/tickets/010-unit-conversion-edge.md)).
+Conversion factors here are shared by provider normalizers and seed the planned unit catalogue.
 """
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from typing import Protocol, runtime_checkable
 from ...manifold.core import Coverage
 from ...manifold.provenance import Provenance
 
-# Lossless factor edges (concern #10). Catalogue lookup by unit pair lands at ticket 010.
 KMH_TO_MS = 1.0 / 3.6
 
 

@@ -373,7 +373,7 @@ def test_grid_domain_matches_by_extent() -> None:
     assert outer.matches(off_span) is False
 
 
-# --- hypothesis property cycles (session 0008) ---
+# --- Hypothesis properties ---
 
 
 @given(

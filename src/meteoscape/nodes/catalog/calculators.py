@@ -1,8 +1,8 @@
-"""Calculator plugin catalogue: the formula plus its invocation constraints.
+"""Calculator plugin catalogue: formulas plus their invocation constraints.
 
 `CalculatorCatalog` is `fn_id → CalculatorManifest`. Each manifest is a cohesive plugin face — the
 combine function alongside the declarative constraints on the shapes it may be invoked over. A
-`CalculatorDef` (in `ProfileConfig`) only enables one against this catalogue. See ADR-0005.
+`CalculatorDef` (in `ProfileConfig`) enables one against this catalogue. See ADR-0005.
 """
 
 from __future__ import annotations
@@ -34,5 +34,5 @@ class CalculatorManifest:
 
     fn_id: str
     fn: CombineFn
-    # Method tag (for a method-bearing output's SyntheticOrigin) + invocation constraints land with
-    # behaviour; the node reads the tag to stamp provenance. Catalogue row stays settings, not data-flow.
+    # A method tag for SyntheticOrigin and further invocation constraints belong with the behavior;
+    # the node reads them to stamp provenance. Catalogue rows remain settings, not data flow.

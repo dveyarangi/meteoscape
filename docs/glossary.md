@@ -31,7 +31,7 @@ A request-only vertical aperture whose admission is based on overlap rather than
 _Avoid_: Vantage cell, footprint axis
 
 **Admission predicate**:
-The per-axis rule that decides whether a request lies within a producer's declared reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The per-axis rule that decides whether a request lies within a producer's declared Footprint. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Serves, contains
 
 **Cell**:
@@ -192,7 +192,7 @@ The Store transformation from a Selection to enclosing, atomically storable unit
 _Avoid_: Snap, align, round
 
 **Envelope**:
-The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)
+The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection)
 _Avoid_: Capability (the admission authority), coverage
 
 ### Composition
@@ -319,16 +319,20 @@ The task-oriented profile whose objective is best-obtainable source with fallbac
 _Avoid_: Best provider, router result
 
 **Capability**:
-The Parameters and request Domains a Manifold declares it can serve, admitting via a predicate and advertising an advisory Reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The Parameters and request Domains a Manifold declares it can serve, admitting via a predicate. Carries no Reach — that is profile-level and resolved at build. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Coverage, clause
 
 **Footprint**:
-A producer's declared spatial, vertical, and valid-time reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
-_Avoid_: Coverage, grid, extent
+One producer's declared spatial, vertical, and valid-time span — the unit a Reach is selected from. Interpreted by `serves`; the internal notion, never the product promise. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Coverage, grid, reach (Reach is profile-level; a producer has a Footprint)
 
 **Reach**:
-A Capability's per-Parameter Domain describing what it can serve, joined per axis by a composite: point axes union, extent axes intersect. Never an admission input. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
-_Avoid_: Range, limit, horizon (a projection of Reach, not Reach)
+A **profile's** per-Parameter Domain, an inner bound on what it serves — every point it names is servable. Selected from the producers' Footprints by a Reach rule, resolved once at build; not a Capability member, and never an admission input. → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
+_Avoid_: Range, limit, horizon (a projection of Reach, not Reach); envelope (the narration, not the Domain); footprint (a producer's, not the profile's)
+
+**Reach rule**:
+The named policy selecting which producer's Footprint becomes a profile's Reach; an unresolved selection fails composition. v1 ships one rule, `grid`. → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
+_Avoid_: Reach fold, reach join (Reach is selected, not folded)
 
 **Arbiter**:
 The composite that resolves competing producers per Parameter under a Reconciler. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)

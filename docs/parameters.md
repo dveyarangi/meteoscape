@@ -8,15 +8,13 @@ the contract level.
 
 > This file is the normative **v1 convention set**. `StaticParameterTable.core()` in
 > [`nodes/catalog/paramtable.py`](../src/meteoscape/nodes/catalog/paramtable.py) is the runtime
-> realization and may temporarily trail the contract during delivery. For definitions already
-> implemented, code and this reference must agree; current delivery state lives in the
-> [v1 delivery status](./tickets/README.md).
+> realization. Implemented definitions and this reference must agree.
 
 ## The v1 canonical set
 
 Eight `ParameterDef`s: **6 canonical** (provider-served, post-Normalizer) + **2 derived** (Calculators over
 `wind_u` / `wind_v`). Every one shares `statistic = point` on the T axis (v1 is hourly, no windowed
-`max` / `min` / `mean`); `cloud_cover` is additionally a **cell statistic on Z** (session 0011).
+`max` / `min` / `mean`); `cloud_cover` is additionally a **cell statistic on Z**.
 
 | ParameterId | Quantity | extent_scaling | scale | canonical_unit | requestable | notes |
 |---|---|---|---|---|---|---|
@@ -34,7 +32,7 @@ relative humidity, cloud cover (total). Wind is **canonical as u/v components** 
 *is* correct wind interpolation); providers deliver native speed/direction and the Normalizer converts to
 u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
 
-## Vertical carriage (v1 declarations — session 0011)
+## Vertical carriage
 
 Leaves declare **native vertical facts, never widened** — footprint Z is a **sample** level
 (`RegularAxis` count-1 **point cell**, e.g. `[2,2]`) or a **statistic cell** (`IntervalAxis` **span**,
@@ -44,8 +42,8 @@ default bundle aperture, `[0, ~10 m]` `above_ground`) is **vantage**; a count-1 
 — the `VantageAxis` uses **`intersects`** (which *is* membership against a point cell, inclusion against
 a span), the default axis `Interval.contains` → [ADR-0002](./adr/0002-data-model.md),
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md). *Which* overlapping cell answers (maximal
-served cell / resampler) is a separate selection step. (`ContinuousAxis` no longer appears on Z — it
-stays only for the global X/Y footprint reach.)
+served cell / resampler) is a separate selection step. `ContinuousAxis` is used only for the global
+X/Y footprint, not Z.
 
 | ParameterId | native Z declaration | kind | vantage `[0,10]` |
 |---|---|---|---|
@@ -60,9 +58,6 @@ stays only for the global X/Y footprint reach.)
   of cell-statistic matching and the maximal-served-cell rule. Layer aliases (`cloud_cover_low` …)
   and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
   a resampler) are post-v1.
-- [Ticket 002](./tickets/done/002-core-5-parameters.md) owns the runtime realization of these declarations;
-  readiness and completion are tracked in the [v1 delivery status](./tickets/README.md).
-
 ## Rationale (only where the choice is non-obvious)
 
 - **`degC` (not K)** — the surface is an MCP agent answering human-facing weather questions; Celsius is the

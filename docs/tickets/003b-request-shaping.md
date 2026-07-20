@@ -1,7 +1,7 @@
 # 003b — Request shaping
 
 - **Status:** Partial
-- **Depends on:** [003a — `Capability.reach`](./003a-capability-reach.md) (which depends on 002, 002b)
+- **Depends on:** [003a — Profile reach](./003a-profile-reach.md) (which depends on 002, 002b)
 - **Outcome:** Free request windows, plus reach-based narration and default windows at the edge.
 
 ## Parent PRD
@@ -19,30 +19,26 @@ profile's **reach end** — what the caller gets when they do not say how far; `
 free window (no interval enum — the `Domain` models
 arbitrary extents). The `Arbiter` admits a provider per parameter only when its `Capability`
 **temporally contains** the requested extent (whole-request `Domain`-containment). The tool description
-**narrates the available envelope** — the served parameters plus the profile's **reach**, read off the
-woven root's `Capability`.
+**narrates the available envelope** — the served parameters, read off the woven root's `Capability`,
+plus the profile's **reach**, resolved at build.
 
-`reach` itself — the per-parameter `Domain` and its per-axis composite folds — is
-[003a](./003a-capability-reach.md). This ticket **consumes** it: the surface folds `min` over the
+`reach` itself — the per-parameter `Domain` and the producer-selection rule — is
+[003a](./003a-profile-reach.md). This ticket **consumes** it: the surface folds `min` over the
 parameters *it* exposes (a surface-specific fold, so it stays at the edge) and uses the result for
-both narration and the omitted-`end` default. Reach is **advisory** — `serves` stays the sole
-admission authority, and the edge never pre-rejects a request against it.
+both narration and the omitted-`end` default. Reach never feeds admission — `serves` stays the sole
+authority, and the edge never pre-rejects a request against it.
 
-**One reach, not a quality ladder.** Intermediate drafts narrated a quality/completeness pair; dropped
-because **quality is a policy outcome, not a capability** — the response already reports it per
-parameter via provenance, and declaring it leaked priority, flipped meaning with the reconciler mode,
-and was unverifiable through `serves`. Quality tiers belong in **separate profiles behind separate
-tools**, matching the sibling-tool precedent (session 0009). Consequently there is **no** `CadenceDef`
-hoist onto `OfferingSpec`, no composition-time envelope derivation, no `ArbiterPolicy` threading, and
-no consistency test: reach has exactly one source, and mode-correctness is inherited because the
-capability composite already encodes the admission semantics
-([#29](../concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)).
+**One reach, not a quality ladder** (→ [#29: quality is a policy outcome, not a capability](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection)).
+Build consequence: there is **no** `CadenceDef` hoist onto `OfferingSpec`, no composition-time envelope
+derivation, no `ArbiterPolicy` threading, and no consistency test — reach has exactly one source, the
+producers' declared footprints, read once at build.
 
 **Already landed at 001 (Phase C):** the `parameters` input (unknown name → `bad-request`, default =
 the woven root capability), dynamic served-parameters narration, `serves`-containment admission in the
 `Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This ticket's remaining substance:
 make the window real (free `start`/`end` → exact-window fetch mapping), default an omitted `end` to
 the reach end, extend narration with reach, **delete `Settings.default_horizon`**,
+wire `resolve_reach` into `compose()` (below),
 and exercise out-of-envelope
 admission with real free windows (Phase C's fixed 168 h window never leaves the envelope). Concern #24
 is **resolved** (session 0011 → [ADR-0002](../adr/0002-data-model.md) /
@@ -84,9 +80,21 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
     window is `[start, reach_end]` — `start` clips the beginning; it does not push the end outward.
     (A length-from-`start` reading would overshoot the footprint whenever `start` is in the future.)
   - **Degenerate case** — `start` beyond the reach end yields `count ≤ 0`. Build a **single tick at
-    `start`** and let admission answer. The edge must not pre-reject: the T fold is *conservative*, so
-    a `start` past it may still be servable by some member, and the edge would be overruling the
-    authority with an understatement.
+    `start`** and let admission answer. The edge must not pre-reject: reach may *understate* (it is
+    the spatially-dominant producer's window, and a regional producer may reach further), so a `start`
+    past it may still be servable, and the edge would be overruling the authority with an
+    understatement.
+
+**Wiring reach into the surface (session 0014).** [003a](./003a-profile-reach.md) delivers
+`resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`; this ticket **calls it**. `compose()`
+gains one step — `binders → ProfileDef → weave → resolve_reach → Gateway` — and hands the map to the
+surface adapter alongside the woven root. The Weaver is untouched: it stays a pure graph constructor,
+and reach never becomes a node member.
+
+A misconfigured profile therefore fails at **startup** with a `CompositionError` naming the conflicting
+producers, and — because the selection is made at build while the winner's `RollingAxis` stays live —
+the narrated window and the default `end` still track the clock with no staleness and no per-request
+resolution.
 
 No maximum-window guard: reach already bounds the request, an absurd `end` is an ordinary
 `capability-mismatch`, and an axis is `anchor + step + count`, so a large `count` costs O(1) to build
@@ -106,16 +114,21 @@ contract, Time axis).
       `reach(p)`'s `valid_time` upper bound, read live — and that default request is admissible by
       construction. `Settings.default_horizon` is gone. Given `start`, the reach end is absolute (it
       clips, it does not shift); `start` past it yields a single tick that admission judges.
-- [ ] A profile with `{Europe × 16 d, Americas × 10 d}` narrates 10 d, and its default window is
-      admissible at both a European and an American point (003a supplies the fold; this verifies the
-      edge consumes it correctly).
+- [ ] A profile with `{Europe × 16 d, Global × 10 d}` narrates 10 d, and its default window is
+      admissible at both a European and an American point (003a supplies the reach rule; this verifies
+      the edge consumes it correctly).
 - [ ] A request whose extent exceeds a provider's temporal `Capability` is not admitted for that
       provider (whole-request containment). Out-of-envelope windows (past `start`, over-horizon `end`)
       resolve through admission as `capability-mismatch` — the edge never pre-rejects against `reach`,
-      which understates on T and over-states on X/Y (session 0013); `bad-request` is reserved for
+      which understates on T (a regional producer may reach further than the profile's dominating one)
+      and is exact on X/Y; `bad-request` is reserved for
       windows malformed in themselves (unparsable, `start > end`).
-- [ ] The tool description narrates the served parameters plus the profile's reach, read off the woven
-      root's `Capability`.
+- [ ] The tool description narrates the served parameters (off the woven root's `Capability`) plus the
+      profile's reach (off the build-time map).
+- [ ] `compose()` calls `resolve_reach` and hands the map to the surface; a profile with unresolvable
+      X/Y dominance fails at **startup** with a `CompositionError`, never on the request path. The
+      selection is fixed at build while the winner's `RollingAxis` stays live, so the default window
+      still tracks the clock.
 - [ ] Unit + mocked-transport integration tests cover subset selection, the reach-end default, and
       out-of-envelope extents.
 

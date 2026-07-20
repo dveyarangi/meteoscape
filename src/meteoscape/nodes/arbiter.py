@@ -79,7 +79,7 @@ class Arbiter:
         """Admit per parameter; project each winning producer once; assemble if winners span nodes.
 
         Unserved parameters are omitted; an empty admitted set → `CapabilityMismatch`.
-        `RuntimeFailure` propagates (whole-request fail until ticket 009).
+        `RuntimeFailure` propagates and fails the whole request.
         """
         winners: dict[ParameterId, Producer] = {}
         for parameter in selection.parameters:

@@ -16,8 +16,8 @@ class ParameterData:
     """`present is None` => all cells present; `present[i] is False` => nodata (a successful gap).
 
     Presence is read through behaviour (`is_present` / `of` / `take`); `None` is an elided all-present
-    representation, not a contract consumers should branch on. Concrete array backing stays behind
-    this interface (numpy/xarray later).
+    representation, not a contract consumers should branch on. Planned numpy/xarray backing stays
+    behind this interface.
     """
 
     values: Sequence[float]

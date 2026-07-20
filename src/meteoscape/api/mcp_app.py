@@ -38,7 +38,7 @@ from .gateway import Gateway
 
 _HOUR = timedelta(hours=1)
 _SPATIAL_STEP = 1.0
-# Edge-authored near-surface observation aperture (session 0011 / ticket 002).
+# Edge-authored near-surface observation aperture.
 _VANTAGE_Z = Interval(0.0, 10.0)
 
 # Surface menu: requestable names. Presence here ⇔ requestable (not a ParameterDef flag).

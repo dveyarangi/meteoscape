@@ -28,17 +28,18 @@ plane. The capability/matching half is
   producer knows its native layout. The partition is a property of the **answer**. Co-domain is an
   invariant of the **exchange record** (one `Coverage`), never of a store or of a fetch.
 
-- **The partition reaches the store because the question asks `ANY`** (session 0013). A Source asks its
+- **The partition reaches the store because the question asks `ANY`.** A Source asks its
   Provider **once** — asking per parameter group would multiply vendor fetches for data one call
   returns — with `ANY` on the axes its unit spans wholly. By shape-correspondence
   ([ADR-0001](./0001-manifold-algebra-and-composition.md)) that answer is legitimately
   **multi-domain**: temperature at 2 m beside wind at 10 m. This is what preserves native geometry
   through the boundary; a fully-enumerable question would force a flattened answer and destroy the
-  native cells before the store could key units by them. **Tentative (revisit when the shapes are
-  built at ticket 006):** the **store** slices that answer per parameter, because only it holds both
+  native cells before the store could key units by them. The **store** slices that answer per
+  parameter, because only it holds both
   halves of each unit `Selection` — `X/Y`+`T` from its private lattice, the native cell from the
   answer. `assimilate` therefore consumes **the answer** and samples the units it retains, rather than
-  being handed one pre-sliced record by a caller that would have to know the store's lattice.
+  being handed one pre-sliced record by a caller that would have to know the store's lattice. The exact
+  slicing API remains provisional until a retentive Store implements this contract.
 
 - **The store is unit-granular, never co-domained.** A `Store` holds **per-parameter units**
   (`(parameter, per-axis cells, window)`); `assimilate` consumes the producer's answer and samples it
@@ -74,7 +75,7 @@ plane. The capability/matching half is
   `matches` / the report — no second public verb.
 
 - **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
-  **capability** (reach — a Source admits uncached-but-in-footprint requests precisely because
+  **capability** (footprint — a Source admits uncached-but-in-footprint requests precisely because
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
   `Store`; a provider-exact lattice is a **build-time declaration** handed to the `StoreFactory` at
@@ -88,7 +89,7 @@ plane. The capability/matching half is
 - **Losslessness where it matters:** a stored unit carries the geometry it was measured on. Flattened
   records would need `SourceKey` → the then-active Tap table to recover heights — version-fragile against
   tap changes and useless for cross-provider reconciliation or verification.
-- **The Arbiter stays a pure fold:** admission on reach, reads on the handed shape, positional
+- **The Arbiter stays a pure fold:** admission on footprint, reads on the handed shape, positional
   assembly. Geometry work lives only in nodes that own data.
 - **Store heterogeneity without contract leaks:** with the lattice private and units per-parameter,
   stores may differ by substrate, persistence, and lattice structure behind one face; the

@@ -1,1 +1,1 @@
-"""Provider leaves: the vendor adapters + their Normalizers. One deep module per vendor (later)."""
+"""Provider leaves: vendor adapters and their Normalizers, one deep module per vendor."""

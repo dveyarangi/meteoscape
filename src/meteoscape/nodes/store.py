@@ -15,7 +15,7 @@ from ..manifold.capability import Capability
 from ..manifold.core import Countable, Coverage, Manifold, Selection, Writable
 from ..manifold.domain import AxisName, EnumerableDomain, GridDomain, RegularAxis
 
-# Structural Countable placeholder only — not a fidelity claim. Replaced at issue 006.
+# Structural Countable placeholder only — not a fidelity claim. A retentive Store will replace it.
 _STUB_DOMAIN = GridDomain(
     axes={
         AxisName.X: RegularAxis(AxisName.X, 0.0, 1.0, 1, False),
@@ -40,7 +40,7 @@ class Store(Manifold, Countable, Writable, Protocol):
 
 
 class StubStore:
-    """Weave-time placeholder — no retention; real store lands at issue 006.
+    """Non-retentive weave-time placeholder for the planned retentive Store.
 
     Exists so `Reservoir` can be constructed. `assimilate` is a no-op; `project` / `capability`
     raise until a retentive store replaces this. `domain` is a harmless dummy GridDomain
@@ -63,7 +63,7 @@ class StubStore:
 
 
 class StoreFactory:
-    """Allocates interim `StubStore`s (ignores grid). Retentive factory lands at issue 006."""
+    """Allocates interim `StubStore`s; a retentive factory will honor the construction grid."""
 
     def create(self, grid: EnumerableDomain | StoreSpec | None) -> Store:
         return StubStore()
