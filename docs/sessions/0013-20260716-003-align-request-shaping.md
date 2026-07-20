@@ -139,7 +139,7 @@ is. The usual "no driver" argument does not apply — the driver exists, it was 
 error/nodata taxonomy and where the failure is live in the core answer path — not Phase 2's
 operational substrate. Doc home **`v1-requirements`**, whose job is v1's positions on contract seams;
 the `present = None` assertion is now qualified as the *elided all-present case* rather than a claim
-that gaps cannot occur. Work owner **[ticket 002c](../tickets/002c-provider-nodata-mask.md)** — 002's
+that gaps cannot occur. Work owner **[ticket 002c](../tickets/done/002c-provider-nodata-mask.md)** — 002's
 unfinished business (002 specified it, the build missed it), the same relationship 002b had to 002,
 and a **blocker for 009**, whose nodata-vs-failure distinction assumes the mask exists.
 
@@ -194,7 +194,7 @@ change the disposition: the fix is **one `__post_init__`** rather than a change 
 site, and **002c makes the invariant load-bearing** — `present` stops being always-`None` and becomes a
 real array that must align with `values` *and* the domain.
 
-So: **folded into [002c](../tickets/002c-provider-nodata-mask.md)** rather than given its own ticket,
+So: **folded into [002c](../tickets/done/002c-provider-nodata-mask.md)** rather than given its own ticket,
 and fixed on the **type** rather than in `Calculator`. That covers all five sites at once, satisfies
 ADR-0004's node requirement as a consequence, and follows the architecture's own "deep modules"
 principle instead of asking every caller to remember. The failure it prevents is the bad kind: a

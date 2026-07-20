@@ -1,23 +1,23 @@
 # RFC 0002 — Provider nodata mask (ticket 002c)
 
 - **Date:** 2026-07-20
-- **Ticket:** [002c — Provider nodata mask](../tickets/002c-provider-nodata-mask.md)
+- **Ticket:** [002c — Provider nodata mask](../../tickets/done/002c-provider-nodata-mask.md)
 - **Depends on:** 002 (done) — the tap table, `Decode`, and the `present=None` shape it shipped
 - **Status:** Accepted (implemented — 113 tests green, ruff + pyright clean; stages S1–S5 shipped as planned)
-- **Owning docs:** [ADR-0002](../adr/0002-data-model.md) (nodata encoding, `ParameterData`),
-  [ADR-0004](../adr/0004-producer-resolution-and-capability.md) (node well-formedness),
-  [architecture.md §Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability)
+- **Owning docs:** [ADR-0002](../../adr/0002-data-model.md) (nodata encoding, `ParameterData`),
+  [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) (node well-formedness),
+  [architecture.md §Failure, nodata, and availability](../../architecture.md#failure-nodata-and-availability)
 - **Planning source:** session 0014 — the 002c align pass that cut the ticket to its live defect and
   moved presence behind `ParameterData` behaviour (committed as `c5dd2b9`; not yet written up)
-- **Blocks:** [009](../tickets/009-error-taxonomy-partial-success.md)
+- **Blocks:** [009](../../tickets/009-error-taxonomy-partial-success.md)
 
 ---
 
 ## 1. Summary
 
 One live defect: a vendor `null` reaches the MCP wire as the token `NaN`, which is **not valid JSON**
-(RFC 8259). [`cell()`](../../src/meteoscape/nodes/providers/timeline.py) substitutes `nan` for a null
-sample and [`open_meteo.normalize`](../../src/meteoscape/nodes/providers/open_meteo.py) hardcodes
+(RFC 8259). [`cell()`](../../../src/meteoscape/nodes/providers/timeline.py) substitutes `nan` for a null
+sample and [`open_meteo.normalize`](../../../src/meteoscape/nodes/providers/open_meteo.py) hardcodes
 `present=None`, so the serializer's `null` branch is **dead for every real response**.
 
 The fix is Provider-side and small. Three things follow from it:
@@ -31,9 +31,9 @@ The fix is Provider-side and small. Three things follow from it:
    `None`-means-all-present convention.
 
 **Deliberately not in scope** (each cut during align, with the reasoning recorded): alignment
-validation on `CoverageRecord` (→ [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)),
+validation on `CoverageRecord` (→ [#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked)),
 wire-level NaN verification, per-parameter absence *reasons* (→ 009), and any change to
-[`wind.py`](../../src/meteoscape/nodes/calculators/wind.py) or `and_present`.
+[`wind.py`](../../../src/meteoscape/nodes/calculators/wind.py) or `and_present`.
 
 ## 2. Decisions resolved during planning
 
@@ -69,7 +69,7 @@ kernel, which is exactly what taps exist to hold. Consequence: `_wind_component(
 u: bool)` splits into two thin binders, `_u_component` / `_v_component`, since `fn` takes no keywords.
 
 **D3 — The serializer needs no change for the defect to die.**
-[`serialize_coverage`](../../src/meteoscape/api/mcp_app.py) already emits `null` when
+[`serialize_coverage`](../../../src/meteoscape/api/mcp_app.py) already emits `null` when
 `present[i]` is `False`; it was only ever unreachable because provider data never carried a mask. So
 **stages S1–S3 fix the live defect end-to-end**, and the `mcp_app` / `sampling` work (S4–S5) is pure
 refactor that must keep it green. This orders the build and is why the tracer test can be written
@@ -96,7 +96,7 @@ first.
 
 **Ownership invariants preserved.** Units are converted *before* decode
 (`_converted_vendor_arrays`) and geometry is decided *outside* it, so decode still touches values only
-— the Normalizer boundary in [architecture.md §Normalization vs. homogenization](../architecture.md#normalization-vs-homogenization)
+— the Normalizer boundary in [architecture.md §Normalization vs. homogenization](../../architecture.md#normalization-vs-homogenization)
 is unmoved. `open_meteo`'s explicit length checks stay: they attribute cause to the **vendor** and
 correctly raise `RuntimeFailure`, which a type-level check could not do (#31).
 
@@ -245,7 +245,7 @@ Vertical slices; write the failing test first **within each stage**, and finish 
 **The live defect dies at S3**; S4–S5 are refactors that must keep S3's test green (D3).
 
 *(No cross-stage tracer. An end-to-end test written at S1 would sit red through S2 and S3 — which is
-the horizontal slicing the [tdd skill](../../.claude/skills/tdd/SKILL.md) rules out, and it would
+the horizontal slicing the [tdd skill](../../../.claude/skills/tdd/SKILL.md) rules out, and it would
 leave the suite red for three stages behind an `xfail` someone has to remember to flip. The
 end-to-end assertion is still written test-first; it just belongs at the head of S3, the slice that
 makes it pass.)*
@@ -293,14 +293,14 @@ makes it pass.)*
 ## 8. Failure handling & observability
 
 - **Nodata is not a failure.** An absent cell is a *successful gap* and never raises, never omits the
-  parameter, never reaches the error taxonomy → [architecture §Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability).
+  parameter, never reaches the error taxonomy → [architecture §Failure, nodata, and availability](../../architecture.md#failure-nodata-and-availability).
 - **An all-absent parameter is legal here** and serializes as an array of `null`s. Whether it should
   instead be *omitted with a reason* is 009's question.
 - **Vendor-attributable malformity stays `RuntimeFailure`** — unit mismatch, wrong array length,
   non-numeric cell, non-hourly time axis: all unchanged, all raised by `open_meteo` where the cause is
   known.
 - **Caller-attributable malformity is non-taxonomy** — `ParameterData`'s length checks raise
-  `ValueError`, matching the precedent at [sampling.py:67](../../src/meteoscape/manifold/sampling.py)
+  `ValueError`, matching the precedent at [sampling.py:67](../../../src/meteoscape/manifold/sampling.py)
   and architecture's "bug → non-taxonomy error".
 - **No new observability surface.** Counting nodata cells per response is plausible telemetry and
   belongs with 009's reason channel, not here (concern #14 still unassigned).
@@ -310,7 +310,7 @@ makes it pass.)*
 - **No absence *reason*.** `present[i] = False` says *no value*, never *why* — 009 owns the
   distinction between nodata and a suppressed fault, and assumes this mask exists.
 - **No alignment enforcement.** `CoverageRecord` is untouched; positional alignment stays asserted and
-  unchecked → [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked), which names the
+  unchecked → [#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked), which names the
   two events that would open the hole and records that a length check is only a proxy (it cannot catch
   transposed axis order).
 - **`values` stays `Sequence[float]`.** A nullable value array was rejected at align: it contradicts
@@ -328,7 +328,7 @@ makes it pass.)*
 session 0013 supersession note all landed with the align pass in `c5dd2b9`. This RFC introduces **no**
 new contract that the accepted docs do not already state.
 
-**One correction this RFC makes to a prior RFC:** [RFC 0001 §10](./done/0001-20260716-derived-wind-calculator.md)
+**One correction this RFC makes to a prior RFC:** [RFC 0001 §10](./0001-20260716-derived-wind-calculator.md)
 says nodata masks are "ticket 009, not 002b" and predicts the wind kernel will "inherit them through
 the AND with **zero rework**". The ownership moved to 002c, but the prediction holds exactly —
 `wind.py` and `and_present` are untouched by this RFC, and the kernel inherits real masks through the

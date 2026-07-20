@@ -518,7 +518,7 @@ told up front — [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-
 `ranges[pid].values[i]` is `pid` at the domain's i-th point — and nothing verifies it.
 
 **Not a live defect** (session 0013 established this while aligning
-[002c](./tickets/002c-provider-nodata-mask.md)). Every construction site is safe *by construction*,
+[002c](./tickets/done/002c-provider-nodata-mask.md)). Every construction site is safe *by construction*,
 not by luck: `sampling` maps over an index list sized to the target domain; `arbiter` moves whole
 `ParameterData` objects between Coverages whose domains it has already compared; `open_meteo` checks
 length explicitly at both sites; and `Calculator`'s kernel is the one caller that authors `domain`

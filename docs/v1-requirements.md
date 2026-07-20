@@ -123,7 +123,7 @@ gaps cannot occur: v1 expects Open-Meteo's hourly series to be complete, so `Non
 shape, but a null that does arrive is represented honestly rather than substituted. Presence is read
 through `ParameterData` behaviour, so the elision is representation, not contract. A NaN sentinel is rejected because it is not dtype-agnostic and cannot be told apart from
 a legitimate not-a-number value — and, at this surface, because `NaN` is not valid JSON. Ownership:
-[ticket 002c](./tickets/002c-provider-nodata-mask.md).
+[ticket 002c](./tickets/done/002c-provider-nodata-mask.md).
 
 Every atomic `ParameterData` carries a `Uniform` provenance; the derived wind views **propagate** their
 u/v inputs' atomic origin verbatim (the derivation is lossless and invertible — [ADR-0003](./adr/0003-provenance-and-origin.md)).
