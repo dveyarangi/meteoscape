@@ -206,4 +206,4 @@ fork (002/003).
 - Build Phase C per the cycle list; the e2e closes
   [issue 001](../tickets/done/001-walking-skeleton.md).
 - Concern #24 decision point arrives at [issue 002](../tickets/done/002-core-5-parameters.md) /
-  [issue 003](../tickets/003-request-shaping.md).
+  [issue 003](../tickets/003b-request-shaping.md).

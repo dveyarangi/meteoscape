@@ -69,11 +69,30 @@ same shape. The abstraction these are shapes of is the
     mirroring how a provider co-produces `u/v` from one native field.
   - a **`Reservoir`** **forwards** its child's unchanged (the `Store` grid is a fidelity floor, not a
     capability boundary).
-  Composition only ever **unions parameter sets and ANDs/ORs the predicate** — it never *synthesises* a
-  `Domain`, so the multi-candidate union has no representation problem: it collapses to one concrete
-  `EnumerableCapability.domain` only when you `project`. A coarse `parameters × max-horizon`
-  **introspection envelope** aggregates from leaf reach (composites publish no `Domain`); a surface may
-  narrate or expose that envelope without changing the capability model.
+  For **admission**, composition only ever **unions parameter sets and ANDs/ORs the predicate** — it
+  never *synthesises* a `Domain` on the `serves` path, so the multi-candidate union has no
+  representation problem: it collapses to one concrete `EnumerableCapability.domain` only when you
+  `project`.
+
+- **Capability also publishes an advisory per-parameter `reach` `Domain`** (amended session 0013;
+  supersedes an earlier note that an introspection envelope "aggregates from leaf reach", which had no
+  path — leaf footprints are private to `serves`). A surface needs to state how far a profile reaches
+  and to author default windows, so `reach` folds by the same leaf/composite algebra: leaf → its
+  footprint; **derived → per-axis intersection** (a Calculator needs *all* its inputs); reservoir →
+  forwards. Three rules make this safe:
+  - **A composite's join differs per axis, following the request's shape there.** Admission is
+    whole-request containment, and a request is a **point** on X/Y/Z but an **interval** on
+    `valid_time`. So point axes **union** ("could anything serve here?") and extent axes
+    **intersect** ("is this whole span servable?" — one member must contain it all).
+  - **Reach is therefore mixed: spatially an outer bound, temporally a guarantee.** The spatial fold
+    drops inter-axis correlation — `{Europe × 16 d, Americas × 10 d}` yields a trans-Atlantic span
+    neither member serves — so read it as *nothing outside is servable; not everything inside is*.
+    The temporal intersection is conservative but sound: the folded window is servable wherever the
+    composite serves at all, which is what lets a surface author a default window from it.
+  - **It is advisory and never authoritative.** `serves` remains the sole admission authority; `reach`
+    must never feed an admission path, or the spatial bound silently over-serves. This is the
+    discipline the earlier "composites publish no `Domain`" rule was protecting, now stated directly
+    rather than enforced by omission → [#29](../concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes).
 
 - **A leaf's temporal reach is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
@@ -274,7 +293,10 @@ same shape. The abstraction these are shapes of is the
     ([ADR-0003](./0003-provenance-and-origin.md) owns the propagate-vs-synthesize rule).
   - **Well-formedness validation.** The node checks the payload: `ranges` keyed exactly by the
     declared output group, aligned to the returned `Domain` — a malformed kernel is a build/derivation
-    failure, not silent corruption.
+    failure, not silent corruption. A kernel defect raises a **non-taxonomy** error, never
+    `runtime-failure`: degrading it into "producer unavailable" would let the Arbiter fall through and
+    hide it. (Alignment is *unenforced* while every kernel is pointwise →
+    [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked).)
   - **Structure only for the kernel.** The kernel is pure computation over the input Coverage; units are
     canonical in and out (entailed by the input/output `ParameterDef`s), and it authors no lineage.
 

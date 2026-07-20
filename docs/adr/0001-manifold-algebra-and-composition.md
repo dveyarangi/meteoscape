@@ -23,6 +23,22 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   *semantic* view over sampleable provider data — projectable / interpolable — **not** a claim of
   analytic continuity; providers are discrete and homogenization interpolates between samples.)
 
+- **Closure is shape-correspondence: the answer mirrors the question's shape** (session 0013). The
+  rule is not "answers are co-domained" — it is that a Selection's shape *dictates* its answer's:
+  - a **fully enumerable** Selection samples, so the answer is a **`Coverage` co-domained on
+    `sel.domain`** (the case [ADR-0002](./0002-data-model.md) states);
+  - an axis left **`ANY`** — "whatever you natively have here" — is answered at the producer's own
+    cells on that axis. `ANY` is not a new mechanism: it is the **limit case of `quantize`'s
+    widening** ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)), the point where
+    "widen outward to whole assimilable units" reaches the producer's whole native extent.
+  - therefore an `ANY`-bearing Selection over **several parameters** may be answered **multi-domain**
+    (temperature at 2 m *beside* wind at 10 m). That is not a co-domain violation: co-domain binds the
+    **exchange record** (one `Coverage`), never a fetch — and the partition here was **asked for**.
+
+  This is what lets a Source fetch **once** and still retain native geometry. Without it, a
+  co-domained question forces a flattened answer and the native cells are destroyed before the store
+  can key units by them.
+
 - **`capability` — the dual of `project`.** Alongside `project`, every Manifold exposes a `capability`:
   `project` *consumes* a `Selection`; `capability` *advertises* which Selections are servable
   (`serves(parameter, requested)` + the served `parameters`). It is a **base-`Manifold` member on every
@@ -109,9 +125,10 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 
 - **Derived parameters are generic composites.** A Calculator deriving a parameter from input parameters
   is **one generic composite** parameterized by an **output⟸input parameter mapping** and a function —
-  **no class per formula** — and is **itself the derived field**. It emits a **synthetic origin**
-  ([ADR-0003](./0003-provenance-and-origin.md)); its topology relative to the Arbiter is
-  [ADR-0004](./0004-producer-resolution-and-capability.md).
+  **no class per formula** — and is **itself the derived field**. Its provenance follows
+  [ADR-0003](./0003-provenance-and-origin.md): a lossless transform propagates its input origin, while a
+  method-bearing or multi-origin derivation emits a **synthetic origin**. Its topology relative to the
+  Arbiter is [ADR-0004](./0004-producer-resolution-and-capability.md).
 
 - **Parameters stay first-class in the `Selection`.** `project` takes `Selection = Domain + parameters`;
   parameters are **never folded into the `Domain`** as a non-interpolable tag-set. This is exactly what

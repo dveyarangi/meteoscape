@@ -172,8 +172,11 @@ classDiagram
   becoming part of the unit key
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). At
   **read** the `Reservoir` **homogenizes** the stored cells back onto the requested `Domain` — extent
-  **=** request (`snapped → exact` above) — so `project(sel)` always returns a Coverage on `sel.domain`
-  ([ADR-0001](./0001-manifold-algebra-and-composition.md)). Resolving to the caller's exact output is the
+  **=** request (`snapped → exact` above) — so a **fully enumerable** `project(sel)` returns a Coverage
+  on `sel.domain` ([ADR-0001](./0001-manifold-algebra-and-composition.md)). *(The qualifier is
+  load-bearing: an axis left `ANY` is answered at the producer's native cells, and closure is
+  **shape-correspondence** — the answer mirrors the question — not a blanket co-domain guarantee;
+  session 0013.)* Resolving to the caller's exact output is the
   **read-back, not the `Store`'s job**; the two steps move extent in **opposite directions** (quantize
   widens past the request, read-back crops back to it). The per-axis snap is `quantize`'s internal
   mechanism (no standalone operation): an open-anchor regular axis borrows the grid's anchor (the
@@ -220,6 +223,16 @@ classDiagram
   every axis's `Cell` already has. Projecting onto a Z cell is vertical **homogenization** — the exact
   analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
+
+- **`ANY` is a third axis kind, on any axis** (session 0013): "answer this axis at your own native
+  cells." It is the **limit of `quantize`'s widening** — where a declared lattice snaps and widens to
+  the next unit boundary, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
+  is derived from the store's assimilable unit, not from the axis**: an axis is `ANY` exactly when the
+  unit spans it entirely. A timeline store (unit = one parameter's whole timeline at a spatial cell)
+  asks `ANY` on `T` and `Z` with `X/Y` snapped; a grid store (unit = one parameter's whole field at a
+  time step) inverts it. So nothing here is vertical- or timeline-specific — the Source stays generic
+  and only the unit definition varies. Read-back is unchanged: the stored extent encloses the request
+  on every axis, and homogenization crops or relabels each axis back independently.
 
 - **Request Z carries the mode as an axis kind: `VantageAxis` = vantage, `RegularAxis` cell = exact.**
   The near-surface bundle **request** is a vantage
@@ -304,6 +317,12 @@ classDiagram
   present (the elided common case). An explicit boolean mask — **not** a NaN sentinel — because it is
   dtype-agnostic (categorical / integer parameters can't carry NaN) and keeps "no data" distinct from a
   legitimate not-a-number value. Per-parameter, since each parameter's coverage footprint differs.
+  **The value at a masked cell is unspecified** — the mask is the sole presence authority, so no reader
+  may interpret `values[i]` where `present[i] is False` (v1 fills `nan` as *filler*, never as a signal:
+  a reader that consulted it instead of the mask would be reading the sentinel this decision rejects).
+  **Presence is read through `ParameterData` behaviour** (`is_present` / `take` / `co_present`), never
+  off the field: `None`-vs-all-`True` is representation — an elision that keeps the all-present common
+  case free — and stays swappable for an array-backed mask because no consumer branches on it.
 
 - **A parameter's extent → the optional `bounds` on each axis `Cell`.** An axis is a `Sequence[Cell]`,
   and a `Cell` pairs its representative `coordinate` with optional `bounds: Interval`; `bounds is None` ⇒
