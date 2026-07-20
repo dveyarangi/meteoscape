@@ -71,8 +71,8 @@ class UnionCapability:
     (the admission half of the per-parameter fold; the reconciler decides *which* member at `project`).
 
     Takes members flat: each `Capability` already carries its own `parameters`, so no per-parameter
-    pre-indexing is needed, and `serves` self-filters. (Its future dual is an intersection/consensus
-    fold - `serves` iff *all* members do - the capability of the deferred `consensus` reconcilers.)
+    pre-indexing is needed, and `serves` self-filters. Its planned intersection/consensus dual serves
+    only when every member does.
     """
 
     members: Sequence[Capability]

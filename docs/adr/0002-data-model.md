@@ -112,19 +112,18 @@ classDiagram
   - **`GridDomain`** — a `Mapping[AxisName, EnumerableAxis]`, **mixed** per axis: `RegularAxis` on
     X/Y/T, and on Z a `VantageAxis` (request / result aperture), a count-1 `RegularAxis` (native
     sample level), or an `IntervalAxis` (native column cell). This is the enumerable representation;
-    index math uses only `len` / `[]`, so mixed axes need no new arithmetic. (Was `RegularDomain`,
-    uniform-only; widening it subsumes `RectilinearDomain` — explicit-cell axes are just
-    non-`RegularAxis` `EnumerableAxis` members of the same mapping.)
-  - **`FootprintDomain`** — a separable provider reach, **never claiming enumerability** (even when its
+    index math uses only `len` / `[]`, so mixed axes need no new arithmetic. Explicit-cell axes are
+    non-`RegularAxis` `EnumerableAxis` members of the same mapping.
+  - **`FootprintDomain`** — a separable provider footprint, **never claiming enumerability** (even when its
     Z axis is an enumerable `IntervalAxis`): per-axis **extent** declarations of mixed kind — a
-    **`ContinuousAxis`** on X/Y (region reach — the only continuous axes left), the clock-anchored
+    **`ContinuousAxis`** on X/Y (region bounds — the only continuous axes left), the clock-anchored
     **`RollingAxis`** on `valid_time` (`extent = [A, A + max_lead]` around the run anchor `A` — the
     provider's cadence, [ADR-0003](./0003-provenance-and-origin.md)), and on **Z** either a **point
     cell** (`RegularAxis` count-1, e.g. `[2,2]`; count-N declares multiple sample levels) or a
     **statistic-cell span** (`IntervalAxis`, e.g. `[0,TOA]` cloud). The footprint declares only
     extents; admission is the **request-side** gate `requested.matches(declared)` (`VantageAxis` →
     `Interval.intersects`, default → `Interval.contains`, [ADR-0004](./0004-producer-resolution-and-capability.md)), so
-    `matches` reads each declared axis's `.extent`, never its kind. Its `RollingAxis` makes the reach
+    `matches` reads each declared axis's `.extent`, never its kind. Its `RollingAxis` makes the footprint
     **clock-relative** — the one intentional exception to Domain-as-pure-geometry, isolated to this
     representation — so the Capability filter tracks a rolling horizon while `serves` stays a plain
     `matches` ([#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
@@ -146,7 +145,7 @@ classDiagram
   **span cell** (`extent == bounds == its interval`, one cell) — the native column (`[0,TOA]`) and the
   base of the request **`VantageAxis`** (which only overrides `matches`); a span has no `RegularAxis`
   form (it is not `(anchor, step, count)`, so no `step = inf`/`nan`). A **continuous** axis carries only
-  its bound — a plain `ContinuousAxis` (X/Y reach) or a clock-anchored `RollingAxis` (`valid_time` reach) —
+  its bound — a plain `ContinuousAxis` (X/Y bounds) or a clock-anchored `RollingAxis` (`valid_time` window) —
   a `FootprintDomain`'s X/Y and time axes. Curvilinear domains satisfy the base interface without being
   separable. **Only a regular axis can be snapped-to.**
 
@@ -175,8 +174,8 @@ classDiagram
   **=** request (`snapped → exact` above) — so a **fully enumerable** `project(sel)` returns a Coverage
   on `sel.domain` ([ADR-0001](./0001-manifold-algebra-and-composition.md)). *(The qualifier is
   load-bearing: an axis left `ANY` is answered at the producer's native cells, and closure is
-  **shape-correspondence** — the answer mirrors the question — not a blanket co-domain guarantee;
-  session 0013.)* Resolving to the caller's exact output is the
+  **shape-correspondence** — the answer mirrors the question — not a blanket co-domain guarantee.)*
+  Resolving to the caller's exact output is the
   **read-back, not the `Store`'s job**; the two steps move extent in **opposite directions** (quantize
   widens past the request, read-back crops back to it). The per-axis snap is `quantize`'s internal
   mechanism (no standalone operation): an open-anchor regular axis borrows the grid's anchor (the
@@ -209,9 +208,8 @@ classDiagram
   — `2 m above_ground` and `1000 hPa` relate only through physics (surface pressure, hydrostatics) — so a
   single Domain's Z axis carries **one** reference, and **stacking references is a `Calculator`** (a
   reinterpolation), never a free axis read.
-  *(Amends the original `(reference, value)` pair-coordinate framing — see
-  [Considered options](#considered-options): the reference is axis-level, so `Coordinate` stays
-  `float | datetime` and only the Z-axis representation grows a field.)*
+  The reference is axis-level, so `Coordinate` stays `float | datetime` and only the Z-axis
+  representation carries the field.
 
 - **Level vs layer is the `Cell`'s `bounds`, like everywhere else.** A thin Z `Cell` (`bounds = None`)
   is a single level / offset; a **fat** Z `Cell` carries `bounds` spanning a layer — `[~0, 10 m]
@@ -224,7 +222,7 @@ classDiagram
   analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
 
-- **`ANY` is a third axis kind, on any axis** (session 0013): "answer this axis at your own native
+- **`ANY` is a third axis kind, on any axis**: "answer this axis at your own native
   cells." It is the **limit of `quantize`'s widening** — where a declared lattice snaps and widens to
   the next unit boundary, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
   is derived from the store's assimilable unit, not from the axis**: an axis is `ANY` exactly when the
@@ -459,7 +457,7 @@ classDiagram
 ## Considered options
 
 - **Keep `mode` as an explicit `Selection` field.** Rejected: it restates the Domain shape and the two
-  can disagree (a snapped flag on an irregular point set). *(Reversible as a derived accessor.)*
+  can disagree (a snapped flag on an irregular point set).
 - **A single separable (per-axis product) Domain as the base type.** Rejected: bakes separability into
   the contract, excluding curvilinear geometries; separability is a facet.
 - **Keep `issue_time` as a 5th (categorical) axis.** Rejected: it is never interpolated, snapped, or
@@ -467,15 +465,15 @@ classDiagram
   keeps **cross-run / forecast-convergence** expressible — cross-run is a **reconciler over run-stamped
   contributors** ([ADR-0004](./0004-producer-resolution-and-capability.md)) and convergence a **derived
   enumerable view** over those contributors, both with `issue_time` as a stamp. The categorical-key
-  shape survives as a **collection-layer seam** (archives, ensemble, scenario). *(Reversible: restore the
-  axis if a native 2-D `valid_time × issue_time` Coverage is ever wanted.)*
-- **The vertical reference as part of the coordinate — `(reference, value)`.** Originally recorded that
-  way; **amended**. The reference is one-per-Domain (hence one-per-Z-axis), never varies cell to cell, and
+  shape survives as a **collection-layer seam** (archives, ensemble, scenario). Revisit the axis only
+  if a native two-dimensional `valid_time × issue_time` Coverage becomes a product requirement.
+- **The vertical reference as part of the coordinate — `(reference, value)`.** Rejected: the reference
+  is one-per-Domain (hence one-per-Z-axis), never varies cell to cell, and
   is never interpolated, so pairing it into every coordinate would tax `Coordinate` (forcing it past
   `float | datetime`) and every axis for a Z-only fact. It moves to an **attribute of the Z-axis
-  representation**; coordinates stay plain scalars, and the whole `Cell` / `bounds` apparatus is untouched.
-  *(Reversible: restore the pair if a single Domain ever needs to mix references on one axis — but
-  cross-reference conversion is modeled as a `Calculator`, so the axis carries exactly one.)*
+  representation**; coordinates stay plain scalars, and the whole `Cell` / `bounds` apparatus is
+  untouched. Cross-reference conversion is modeled as a `Calculator`, so the axis carries exactly one.
+  Revisit the pair only if one Domain must mix references on a single axis.
 - **A single per-parameter `cell_method` carrying both statistic and extent.** Rejected: duplicates the
   extent into every `ParameterData` and can disagree with the Domain — split extent (Domain) from
   statistic (parameter).

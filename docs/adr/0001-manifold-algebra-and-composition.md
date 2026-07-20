@@ -23,7 +23,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   *semantic* view over sampleable provider data — projectable / interpolable — **not** a claim of
   analytic continuity; providers are discrete and homogenization interpolates between samples.)
 
-- **Closure is shape-correspondence: the answer mirrors the question's shape** (session 0013). The
+- **Closure is shape-correspondence: the answer mirrors the question's shape.** The
   rule is not "answers are co-domained" — it is that a Selection's shape *dictates* its answer's:
   - a **fully enumerable** Selection samples, so the answer is a **`Coverage` co-domained on
     `sel.domain`** (the case [ADR-0002](./0002-data-model.md) states);

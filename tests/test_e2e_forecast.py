@@ -1,4 +1,4 @@
-"""End-to-end spine — `forecast_hourly` over woven Open-Meteo with mocked HTTP (issue 001)."""
+"""End-to-end `forecast_hourly` over woven Open-Meteo with mocked HTTP."""
 
 from __future__ import annotations
 
@@ -74,7 +74,8 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
             {"latitude": 52.52, "longitude": 13.41},
         )
 
-    # StubStore: no retention — one source fetch + one wind u/v fetch per request; 006 flips this.
+    # StubStore has no retention: each request performs one source fetch plus one wind u/v fetch.
+    # A retentive Store will make the second request reuse both.
     assert route.call_count == 4
 
     payload = first.data

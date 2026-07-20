@@ -71,10 +71,7 @@ class StaticParameterTable(ParameterTable):
         return cls(_CORE)
 
 
-# The 6 canonical parameters providers deliver (post-Normalizer). Precipitation is the only extensive
-# one; wind is canonical as u/v components (both linear), so linear interpolation of u/v is correct
-# wind interpolation and the vector coupling stays out of per-parameter resamplers (ADR-0002).
-# `cloud_cover` is the first cell-statistic-on-Z parameter (value over `[0, TOA]`).
+# Provider-served canonical parameters.
 _CANONICAL: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=AIR_TEMPERATURE,
@@ -114,9 +111,7 @@ _CANONICAL: tuple[ParameterDef, ...] = (
     ),
 )
 
-# The 2 derived wind views served by Calculators over `(wind_u, wind_v)` - both lossless functions of
-# the vector: `speed = hypot(u, v)`, `direction = atan2(...)`. `wind_direction` is `circular`, the
-# first non-linear scale, but v1's nearest-neighbor read-back never interpolates it (ADR-0004 / #5).
+# Calculator-served wind views.
 _DERIVED: tuple[ParameterDef, ...] = (
     ParameterDef(
         id=WIND_SPEED,

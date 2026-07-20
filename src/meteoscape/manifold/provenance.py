@@ -41,8 +41,8 @@ class SyntheticOrigin(Origin):
     """A composite's record of a derivation - its `lineage` of contributing parents plus a
     calculation-method tag. Minted by a **method-bearing** computation (even over a single shared-origin
     input - the method is what it records) or a **multi-origin** blend (`expiration = min` over parents).
-    A lossless, invertible transform is *not* synthetic: it propagates its input's `AtomicOrigin` instead.
-    Declared seam - concrete lineage / method shape lands with the first synthetic Calculator (post-v1)."""
+    A lossless, invertible transform is *not* synthetic: it propagates its input's `AtomicOrigin`
+    instead. Concrete lineage and method fields arrive with the first synthetic Calculator."""
 
 
 @dataclass(frozen=True)
@@ -56,9 +56,6 @@ class Provenance:
     origin: Origin
     fetched_at: datetime
     expiration: datetime
-    # No native-fidelity field: after read-back homogenization the Coverage's Domain is the request
-    # lattice; the offering's native resolution is recoverable from `origin`'s SourceKey. Ranking of
-    # multi-resolution offerings reads footprint Domain axis steps (concern #20), not a provenance field.
 
 
 class ProvenanceField(ABC):

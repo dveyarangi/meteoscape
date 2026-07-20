@@ -39,9 +39,9 @@ same shape. The abstraction these are shapes of is the
 
 ## Capability & matching
 
-- **Capability is a `Manifold` facet — `serves(parameter, requested)` + `parameters` — the dual of
-  `project`**, on *every* node (a base-`Manifold` member,
-  [ADR-0001](./0001-manifold-algebra-and-composition.md)), not an opaque per-producer `can_serve()`.
+- **Capability is a base `Manifold` member — `serves(parameter, requested)` + `parameters` — the dual of
+  `project`**, on *every* node
+  ([ADR-0001](./0001-manifold-algebra-and-composition.md)), not an opaque per-producer `can_serve()`.
   `parameters` is the served `ParameterId → ParameterDef` map (a parameter's canonical facts: quantity,
   statistic, `extent_scaling`, canonical unit). A concrete covered `Domain` is deliberately **off the
   interface** — it lives only where it is singular and exact: **privately** inside a leaf's `serves`, and
@@ -53,7 +53,8 @@ same shape. The abstraction these are shapes of is the
 
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
   - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
-    `Domain` footprint, kept private to `serves`.
+    `Domain` footprint, kept private to `serves` (the *Provider* separately publishes the same
+    declaration for the build-time reach resolver → [ADR-0007](./0007-reach-is-an-inner-bound.md)).
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
     enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it
     (not a second copy).
@@ -74,25 +75,14 @@ same shape. The abstraction these are shapes of is the
   representation problem: it collapses to one concrete `EnumerableCapability.domain` only when you
   `project`.
 
-- **Capability also publishes an advisory per-parameter `reach` `Domain`** (amended session 0013;
-  supersedes an earlier note that an introspection envelope "aggregates from leaf reach", which had no
-  path — leaf footprints are private to `serves`). A surface needs to state how far a profile reaches
-  and to author default windows, so `reach` folds by the same leaf/composite algebra: leaf → its
-  footprint; **derived → per-axis intersection** (a Calculator needs *all* its inputs); reservoir →
-  forwards. Three rules make this safe:
-  - **A composite's join differs per axis, following the request's shape there.** Admission is
-    whole-request containment, and a request is a **point** on X/Y/Z but an **interval** on
-    `valid_time`. So point axes **union** ("could anything serve here?") and extent axes
-    **intersect** ("is this whole span servable?" — one member must contain it all).
-  - **Reach is therefore mixed: spatially an outer bound, temporally a guarantee.** The spatial fold
-    drops inter-axis correlation — `{Europe × 16 d, Americas × 10 d}` yields a trans-Atlantic span
-    neither member serves — so read it as *nothing outside is servable; not everything inside is*.
-    The temporal intersection is conservative but sound: the folded window is servable wherever the
-    composite serves at all, which is what lets a surface author a default window from it.
-  - **It is advisory and never authoritative.** `serves` remains the sole admission authority; `reach`
-    must never feed an admission path, or the spatial bound silently over-serves. This is the
-    discipline the earlier "composites publish no `Domain`" rule was protecting, now stated directly
-    rather than enforced by omission → [#29](../concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes).
+- **Capability carries no `reach`; a leaf exposes its declared footprint.** A surface needs to state
+  how far a profile reaches and to author default windows, but that value is **profile-level and
+  resolved at build** from the producers' footprints — it is not a facet of every Manifold
+  → **[ADR-0007](./0007-reach-is-an-inner-bound.md)**. A **`Provider` publishes the per-parameter footprint it declares**,
+  so the build-time resolver can read it; `Capability` itself is untouched.
+  - **`serves` remains the sole admission authority**, and reach never feeds an admission path —
+    **structurally**, since nothing on the request path can reach it →
+    [#29](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection).
 
 - **A leaf's temporal reach is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
@@ -114,8 +104,8 @@ same shape. The abstraction these are shapes of is the
   is not containment (6h ⊄ 3h) and lives in `serves`, which holds the `def`. Interpolability is thus a
   **parameter** fact (its scale), never a `Domain`/axis one.
 
-- **Admission is a request-side, per-axis gate: `requested.matches(declared)`.** This supersedes the
-  `declared.matches(requested)` framing. `serves` composes, per axis, a
+- **Admission is a request-side, per-axis gate: `requested.matches(declared)`.** `serves` composes,
+  per axis, a
   predicate the **request** axis owns — the aperture knows its own admission semantics; the declared
   footprint axis is read only for its `.extent`:
   - **default axis** (exact / `RegularAxis` request): `declared.extent.contains(self.extent)` — the
@@ -148,8 +138,7 @@ same shape. The abstraction these are shapes of is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
   per-unit availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
-  This supersedes a fat near-surface footprint (`[0,10]` for a 2 m product): interpretation belongs
-  in the fact slot, and producers declare native cells instead.
+  Producers declare native cells; interpretation belongs in the request's aperture and the kernel.
 
 - **The resampler/Calculator boundary.** A **resampler** is *the same value in new geometry, no
   assumptions* — entailed by `(scale, statistic, extent_scaling)`; multiple samples inside one
@@ -215,7 +204,7 @@ same shape. The abstraction these are shapes of is the
 
 ## Reconcilers — the coverage fold
 
-- **One slot, parameterized by a `reconciler` — today a selection-ordering policy.** As built, the
+- **One slot, parameterized by a `reconciler` — implemented as a selection-ordering policy.** The
   `Reconciler` **ranks producers**: `select(parameter, candidates) → ordered candidates`. The Arbiter
   then applies admission (`serves(parameter, sel.domain)`), takes the **first admitted** candidate, and
   projects **that producer whole** for the parameter. The default `priority` orders by the flattened
@@ -231,12 +220,11 @@ same shape. The abstraction these are shapes of is the
   `valid_time`**, and **cross-run combination** (folding **run-stamped contributor Coverages** —
   different `issue_time`s — along `valid_time`; `issue_time` is each contributor's provenance stamp,
   [ADR-0003](./0003-provenance-and-origin.md), not a Domain axis) all "the Arbiter under a reconciler".
-  The **slot** and the one-Arbiter shape are settled; the **fold interface** is not yet built. Catalogue
-  → [#6](../concerns.md#6-reconciler-catalogue); the widening and its cost →
+  The **slot** and the one-Arbiter shape are settled; the **fold interface** is deferred. Catalogue →
+  [#6](../concerns.md#6-reconciler-catalogue); the widening and its cost →
   [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Per-candidate
   **fall-through on a runtime fault** (*not* on nodata, which is a successful gap) rides the same
-  widening and is [ticket 009](../tickets/009-error-taxonomy-partial-success.md)'s contract; until then a
-  `RuntimeFailure` fails the whole request.
+  widening; the implemented selection path still propagates `RuntimeFailure` for the whole request.
 
 - **The `reconciler` is declared config, defaulting to `priority`** — **not inferred** from geometry.
   Point / timeline producers fully overlap on one location, so they engage no spatial machinery: the
@@ -246,8 +234,8 @@ same shape. The abstraction these are shapes of is the
 - **A whole-coverage producer is a gap-filler, not a separate fallback.** It joins the **same** Arbiter's
   producer set at **low priority**; a per-cell `priority` reconciler then yields the high-resolution
   source where it reaches and the whole model in the gaps. No separate node, no whole-vs-partial branch.
-  **Not yet built:** this needs the per-cell fold — under today's selection-ordering interface the
-  high-resolution producer wins the **whole parameter** and never yields gaps to the model
+  This needs the per-cell fold: under the selection-ordering interface the high-resolution producer
+  wins the **whole parameter** and never yields gaps to the model
   ([#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
 
 - **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
@@ -402,9 +390,9 @@ fault** (an exception that triggers per-cell / per-candidate fall-through), and 
 producer can serve — is **omitted** from the record; how that absence surfaces at the request edge is the
 request-level contract, whose canonical home is
 [architecture: Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability).
-Per-parameter runtime-fault omission ships with
-[ticket 009](../tickets/009-error-taxonomy-partial-success.md); until then a `RuntimeFailure` fails the
-whole request.
+The implemented selection path still propagates `RuntimeFailure` for the whole request; the widening
+required for per-candidate fall-through and per-parameter omission is tracked in
+[#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold).
 
 ## Why
 

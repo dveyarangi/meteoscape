@@ -26,7 +26,7 @@ class StoreSpec:
 
 @dataclass(frozen=True)
 class OfferingDef:
-    """Profile enablement ticket for one catalogue offering.
+    """Profile enablement declaration for one catalogue offering.
 
     Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
     `name=None` selects the expand path. Optional `store` whole-spec-replaces the catalogue
@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     """Forward horizon applied only when the caller omits `end`."""
 
     def offerings(self) -> tuple[OfferingDef, ...]:
-        """Enabled producer tickets — explicit offering names (no catalogue import)."""
+        """Enabled producer declarations with explicit offering names."""
         defs: list[OfferingDef] = []
         if self.open_meteo_enabled:
             defs.append(OfferingDef(impl="open-meteo", name="best_match", priority=0))

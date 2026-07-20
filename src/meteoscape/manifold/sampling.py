@@ -1,9 +1,9 @@
 """Private sampling engine behind `Coverage.project` — aligned crop only in v1.
 
-Public face is `Coverage.project`; this module is the engine it delegates to. Kernel registry lands
-at issue 007 when nearest-neighbor becomes the second kernel (ADR-0001: no separate `sample` verb).
+Public face is `Coverage.project`; this module is the engine it delegates to. A planned kernel
+registry adds nearest-neighbor without introducing a separate `sample` verb.
 
-Consumes any `Coverage` (protocol); always produces a `CoverageRecord` (session 0008).
+Consumes any `Coverage` protocol implementation and produces a `CoverageRecord`.
 """
 
 from __future__ import annotations

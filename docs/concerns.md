@@ -6,8 +6,7 @@ this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when
 **moves out** to its owning ADR, leaving a gap (what each ADR owns →
 [architecture: ADR index](./architecture.md#adr-index)).
 
-This file owns unresolved design pressure, not delivery sequencing. Current implementation and ticket
-readiness live in the [v1 delivery status](./tickets/README.md).
+This file owns unresolved design pressure, not delivery sequencing.
 
 ---
 
@@ -42,13 +41,13 @@ seam. This concern owns **how accurately** a coarsened value is computed;
 **which** cell statistic it should be, and how a request asks for it, is
 [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
-## 21. `serves` reach vs `project` crop-ability
+## 21. `serves` extent vs `project` crop-ability
 
-**Kind:** algebra-shaped (Capability dual) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](#5-read-time-homogenization-fidelity), session 0008
+**Kind:** algebra-shaped (Capability dual) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](#5-read-time-homogenization-fidelity)
 
 ADR-0004 defines `serves` as *whether a valid non-lossy resampler path exists* from offered → requested;
 `Domain.matches` is only the **geometric half**. The implementation seam under concern is a mismatch:
-`EnumerableCapability.serves` (and leaf footprints) admit by **extent reach**, while
+`EnumerableCapability.serves` (and leaf footprints) admit by **extent containment**, while
 `Coverage.project` / the sampling engine only
 perform an **aligned identical-step crop** — off-phase or non-identical-step selections that still sit
 inside the span are admitted, then fail at `project` with `NotImplementedError` instead of a clean
@@ -62,7 +61,7 @@ correctness unchanged — blast radius stays behind the Capability facet. Until 
 
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
-**Kind:** room-left (module layout) · **Refs:** session 0008
+**Kind:** room-left (module layout)
 
 Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by `domain.py`;
 `sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
@@ -72,7 +71,7 @@ pure refactor, no contract change. Not blocking; do not split preemptively.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
-**Kind:** room-left (types / hot path) · **Refs:** ADR-0002, session 0008
+**Kind:** room-left (types / hot path) · **Refs:** [ADR-0002](./adr/0002-data-model.md)
 
 `RegularAxis` is one type over `Coordinate = float | datetime` and `Step = float | timedelta`.
 `sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
@@ -119,7 +118,7 @@ ADR-0004 settles the reconciler **topology** (one Arbiter, one declared `reconci
 the concrete catalogue beyond the default `priority` — `tile` (disjoint union), `consensus` (blend),
 `feather` (smoothed seam) — and their precise per-cell semantics are **unspecified**. Unproven until a
 real partial-coverage producer set exists. Note the per-cell fold these need is **not the built
-interface** — today's `Reconciler` only orders producers, so the catalogue arrives together with an
+interface** — the implemented `Reconciler` only orders producers, so the catalogue arrives together with an
 interface widening → [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold). `consensus` / `feather` press toward per-point provenance
 ([ADR-0003](./adr/0003-provenance-and-origin.md)) and require the nodata / mask
 slot ([ADR-0002](./adr/0002-data-model.md)).
@@ -140,9 +139,9 @@ never combine", no horizon splicing. The open question: when coverage reconciler
 at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
 intersection). Additive; no v1 work.
 
-**Z half settled (session 0011):** vertical matching is **axis-kind-owned** — neither containment nor
-intersection globally → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). The open part of
-this concern is now only the **partial spatial/temporal producer** admission above.
+Vertical matching is **axis-kind-owned** — neither containment nor intersection globally →
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md). The open part of this concern is only the
+**partial spatial/temporal producer** admission above.
 
 ## 9. Cross-run combination
 
@@ -186,17 +185,11 @@ this line.
 
 **Kind:** edge-isolated · **Refs:** [architecture.md](./architecture.md#deferred-decisions), [ADR-0002](./adr/0002-data-model.md)
 
-Canonical **parameter names, units, and spatial-ref encoding** are deferred at the contract level.
-Normalizers reconcile vendor units into the **one canonical unit per parameter** (the
-canonical-mono-unit invariant, [ADR-0002](./adr/0002-data-model.md)), but the canonical set itself is
-unspecified. The *structure* the vocabulary must fill is fixed — quantity identity, the quantity
-`extent_scaling`, and the extent-scaling–driven conversion graph ([ADR-0002](./adr/0002-data-model.md))
-— as is the **delivery seam**: `ParameterDef`s are fetched from an injected **parameter table** (a
-swappable interface; the v1 contract uses a static one hosting the v1 parameters). The **v1 canonical set** (the 5
-canonical + 2 derived parameters and their committed units) is recorded in
-[`parameters.md`](./parameters.md); what remains deferred is the **concrete quantity table content (beyond
-the v1 set) and the conversion-edge qualities**. Contained inside the Provider / Normalizer seam — safe to
-defer.
+Canonical **parameter names, units, and spatial-ref encoding** remain open beyond v1. The structure
+and mono-unit invariant are owned by [ADR-0002](./adr/0002-data-model.md); the **v1 canonical set**
+(6 provider-served + 2 derived parameters) is recorded in [`parameters.md`](./parameters.md).
+This concern owns the **quantity-table content beyond v1 and conversion-edge qualities**, contained
+inside the Provider / Normalizer seam.
 
 ## 14. Resolution trace and observability
 
@@ -216,8 +209,8 @@ the read-only algebra untouched. v1 may emit a **minimal structured log**; the s
 
 **Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
-The anchoring **mechanism is settled** ([ADR-0003](./adr/0003-provenance-and-origin.md)); what stays open
-is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 specifies a **conservative
+→ [ADR-0003: cadence](./adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence).
+What stays open is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 specifies a **conservative
 default** — floor to the hour, generous `L` — accepting occasional edge nodata), and the residual
 **estimate error** (under-estimating `L` still over-promises → edge nodata; over-estimating
 under-promises). The real fix is a provider's **actual reference / availability signal** when it exposes
@@ -235,16 +228,15 @@ Purely a performance concern; correctness is unaffected by deferring it.
 
 **Kind:** algebra-shaped (extension) · **Refs:** [#5](#5-read-time-homogenization-fidelity), [#7](#7-quality-scoring), [#15](#15-coarser-grid-resampling-and-aggregation-semantics), [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
-**Contract settled** — offerings as `SourceKey` instances; priority-first band walk with in-band
-`score` fall-through; boolean `serves` + leaf `Capability.score` → `Domain.match`
-(→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); axis `step` + request-constrained
-product / fine-enough fit (→ [ADR-0002](./adr/0002-data-model.md)); no native-fidelity provenance field
-(→ [ADR-0003](./adr/0003-provenance-and-origin.md)). Provider `exact` and native-coarse-as-distinct-origin
-→ [#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
+The contract is owned by [ADR-0004](./adr/0004-producer-resolution-and-capability.md) (offering
+identity and the priority-first band walk), [ADR-0002](./adr/0002-data-model.md) (axis `step` and
+`Domain.match`), and [ADR-0003](./adr/0003-provenance-and-origin.md) (no native-fidelity provenance
+field). Provider `exact` and native-coarse-as-distinct-origin remain with
+[#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
 **Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
 continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.score`**, and the Arbiter
-equal-priority band walk. Note (session 0011): **multi-level samples inside one vantage window**
+  equal-priority band walk. **Multi-level samples inside one vantage window**
 (wind at 10 m + 80 m under `[0,100]`) are **not** offering selection — the resampler folds them to one
 representative value (→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); `match`/`score`
 applies to *offerings* (distinct `SourceKey`s), not to levels within one product.
@@ -277,12 +269,11 @@ it is only a constraint on the Domain interface (don't assume per-axis separabil
 **Kind:** room-left (composition) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md),
 [architecture §Config, binders, Weaver](./architecture.md#config-binders-weaver)
 
-Plugin faces are settled (`ProviderManifest` / `CalculatorManifest` co-located with each impl;
-catalogues are `impl_id` / `fn_id` maps; profile recipes enable rows). What is not: **where the filled
-default catalogues live**, how **built-in vs optional** plugins are partitioned, and how
+→ [ADR-0005: plugin binding](./adr/0005-build-time-composition.md#plugin-binding). Open: **where the
+filled default catalogues live**, how **built-in vs optional** plugins are partitioned, and how
 `compose` takes both catalogues symmetrically.
 
-Today the composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
+The composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
 `server.py`) and injects both into `compose`. That works while the shipped set is tiny. When
 optional providers/calculators arrive, the root should select among **named shipped sets** (e.g.
 builtin vs extended) without owning the membership lists, and `catalog/` should stay faces-only —
@@ -301,7 +292,7 @@ optional calculator or a non-default provider packaging story forces an ad-hoc s
 
 `CalculatorDef` carries `stored?` but **no store knobs**, so the Weaver has nothing to allocate a
 stored Calculator's `Store` *from*. [ADR-0005](./adr/0005-build-time-composition.md) fixes only the
-**timing** ("a stored Calculator's store can only be weave-allocated"), never **which spec**. Today
+**timing** ("a stored Calculator's store can only be weave-allocated"), never **which spec**.
 `weaver.py` passes `profile.root_store` into `stores.create(...)` for the `stored` branch — a
 stand-in, not a decision. Nothing is wrong yet: v1's only calculator (wind) is `stored=False`, so the
 branch is dead, and `StoreSpec` is an immutable value (each `create` still yields a distinct `Store`,
@@ -324,7 +315,7 @@ shared intermediate (the single-flight / common-subexpression case in
 
 ## 28. Reconciler interface: selection-ordering vs per-cell fold
 
-**Kind:** algebra-shaped (interface widening) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#6](#6-reconciler-catalogue), [ticket 009](./tickets/009-error-taxonomy-partial-success.md)
+**Kind:** algebra-shaped (interface widening) · **Refs:** [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#6](#6-reconciler-catalogue)
 
 The **`reconciler` slot** is real and the "one Arbiter shape" intent holds, but the **built interface is
 narrower than the fold the design language assumes**, and the gap is not a configuration away.
@@ -343,9 +334,8 @@ hand their values to the reconciler — a second, wider method (shape: `fold(par
 ParameterData`), not another `select` implementation. Three claims in the design language depend on that
 widening and are **not true of the current build**: (1) the per-cell fold itself; (2) the
 **gap-filler** story (a low-priority whole-coverage producer filling where a hi-res one does not reach —
-today the hi-res producer simply wins the whole parameter); (3) **runtime-fault fall-through** to the
-next candidate, which is [ticket 009](./tickets/009-error-taxonomy-partial-success.md)'s
-per-parameter partial-success contract.
+the hi-res producer simply wins the whole parameter under the implemented interface); (3) **runtime-fault fall-through** to the
+next candidate and per-parameter partial success.
 
 Not a v1 gap: v1 ships only `priority`, and point/timeline producers fully overlap, so selection *is*
 the whole job and the narrow interface is exactly sufficient. This concern records the **cost of the
@@ -354,82 +344,75 @@ extension** so it is not mistaken for a config change: it lands with the catalog
 ([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
 set to prove it.
 
-## 29. Narrated reach: per-axis join, conservative on extent axes
+## 29. Narrated reach: inner bound by producer selection
 
-**Kind:** surface/product seam · **Refs:** [ticket 003a](./tickets/003a-capability-reach.md) (the fold), [ticket 003b](./tickets/003b-request-shaping.md) (the narration), [#30](#30-response-membership-under-runtime-degraded-fallback), [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0002](./adr/0002-data-model.md)
+**Kind:** surface/product seam · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md) (the rule), [#30](#30-response-membership-under-runtime-degraded-fallback), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 
-Session 0013. A surface needs to tell callers **how far this profile reaches** — the MCP tool
+A surface needs to tell callers **how far this profile reaches** — the MCP tool
 description narrates it, and the edge uses it to author the default window when the caller omits
-`end`. The mechanism: **`Capability` exposes a per-parameter `reach` `Domain`**, folded by the same
-leaf/composite algebra as `serves` (leaf → its footprint; **derived → per-axis intersection**, since a
-Calculator needs *all* its inputs; reservoir → forwards its child's). The surface folds `min` over the
-parameters *it* exposes — surface-specific, so it stays at the edge.
+`end`. The mechanism is **Reach**: a **profile-level** per-parameter `Domain` that is an **inner
+bound** — every point it names is servable — **selected** from the producers' footprints by a named
+**reach rule** and resolved **once at build**, not carried on any Manifold. The rule, its rejected
+alternatives, the `grid` tie-break, and why it is not a `Capability` facet are
+[ADR-0007](./adr/0007-reach-is-an-inner-bound.md); whether a *runtime* consumer would change that is
+[#32](#32-runtime-footprint-awareness-inside-the-algebra). The surface folds `min` over the parameters
+*it* exposes — surface-specific, so it stays at the edge.
 
-**A composite's join differs per axis, and the rule follows the request's own shape.** Admission is
-**whole-request containment**, and a request is not the same shape on every axis:
+Why a per-axis join is invalid →
+[ADR-0007: Why per-axis folding is invalid](./adr/0007-reach-is-an-inner-bound.md#why-per-axis-folding-is-invalid).
 
-- **Point axes (X/Y/Z in v1)** — the request is a *point*, so reach answers "could anything serve
-  here?" → **union**. This is an **outer bound**: per-axis folding drops inter-axis correlation, so
-  `{Europe × 16 d, Americas × 10 d}` yields a span crossing the Atlantic that neither member serves.
-  Read spatially as a necessary condition — *nothing outside is servable; not everything inside is.*
-  (Intersection would be empty for disjoint footprints, and useless.)
-- **Extent axes (`valid_time`)** — the request is an *interval*, and one member must contain the
-  **whole** span, so reach answers "is this entire window servable?" → **intersection**. This is a
-  **guarantee**, and it is what makes the omitted-`end` default admissible: with T intersected to
-  10 d, the Europe caller is served by the 16 d member and the Americas caller by the 10 d member.
-  A spatial miss (mid-Atlantic) still fails, but no temporal fold could fix that.
+`serves` remains the **sole admission authority** and reach must never feed an admission path. That
+discipline is the whole of this concern; violating it silently over-serves. Advisory-in-what-sense and
+the understatement bound → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md#reach-is-advisory-in-exactly-one-sense).
 
-So reach is **mixed by design**: spatially advisory, temporally guaranteed. It remains **advisory in
-the sense that matters** — `serves` is the sole admission authority and reach must never feed an
-admission path. That discipline is the whole of this concern; violating it silently over-serves.
-
-**The T fold is conservative, and deliberately left so.** Intersection is not tight: where a member is
-spatially universal it under-promises — OM global × 16 d plus TWC × 10 d yields 10 d, though OM serves
-16 d everywhere. **Accepted, not a defect to solve.** A surface promising 10 days of fully-served
-coverage is making a *correct* product statement even when the substrate could stretch further;
-callers can still request more explicitly and be admitted, and a deployment that wants the longer
-product declares **another surface**. If it ever does need addressing, the lever is a config
-declaration — marking a provider explicitly **fallback** so it is excluded from the reach promise
-while remaining available for degradation — not location-aware machinery.
-
-**Why one reach and not a quality/completeness ladder.** Intermediate drafts this session narrated two
-or three boundaries, including a **quality reach** (how far every parameter comes from its best
-source). Dropped: **quality is a policy outcome, not a capability.** Capability answers *can you serve
-this*; quality answers *how well did it go*, which the **response** already reports per parameter via
+**Why one reach and not a quality/completeness ladder.** A **quality reach** (how far every parameter
+comes from its best source) is rejected because **quality is a policy outcome, not a capability**.
+Capability answers *can you serve this*; quality answers *how well did it go*, which the **response**
+already reports per parameter via
 provenance. Trying to declare it produced four symptoms of the same error — it leaked priority
 ordering ([#7](#7-quality-scoring)), its meaning flipped with the reconciler mode, it was unverifiable
 through `serves` (which is `any(...)` — it answers *whether*, never *who*), and it gave the agent no
 decision procedure (no "how much worse"). A deployment that genuinely sells quality tiers expresses
-them as **separate profiles behind separate tools**, matching the sibling-tool precedent already set
-for a daily product (session 0009) rather than modulating one tool.
+them as **separate profiles behind separate tools**, matching the sibling-tool precedent for a daily
+product rather than modulating one tool.
 
-The conservative T fold lands near the same place from the other direction: bounded by the shortest
-member, the narrated reach is often *implicitly* the preferred source's own horizon. That is a
-coherent product promise ("this surface serves N days") rather than a leaked policy boundary — the
-difference is that it is stated as **what the surface delivers**, not as **where quality changes**.
+Producer selection lands near the same place from the other direction: the narrated reach *is* the
+spatially-dominant source's own horizon. That is a coherent product promise ("this surface serves N
+days") rather than a leaked policy boundary — the difference is that it is stated as **what the
+surface delivers**, not as **where quality changes**.
 
 A `max`-over-parameters boundary was likewise rejected: a `max` fold is **existential** ("*something*
 reaches this far"), unusable until you know *which*, and it **over-promises**. Existential facts need
 per-parameter structure, and structure needs a surface that can return it.
 
 Deliberately **coarse and profile-level**: no per-parameter matrix in a description string. Per-parameter
-reach is also **never a request axis** — the one-domain `Selection` (session 0009's decline of
-per-parameter domains) encodes the profile as a united bundle; divergence surfaces as per-parameter
-**dropout with reasons** ([ticket 009](./tickets/009-error-taxonomy-partial-success.md)) and, when
-structural, as introspection-tool structure.
+reach is also **never a request axis** — the one-domain `Selection` encodes the profile as a united
+bundle; divergence surfaces as per-parameter **dropout with reasons** and, when structural, as
+introspection-tool structure →
+[architecture: Failure, nodata, and availability](./architecture.md#failure-nodata-and-availability).
 
 Open parts:
 
+- **The shape of the config lever.** ADR-0007's recorded lever lets an operator **narrow the candidate
+  set** — excluding a producer from the promise, so a `Global × 10 d` fallback cannot cap a
+  `Global-minus-poles × 16 d` primary. Its shape is deliberately **unspecified**. Declaring *dense axes*
+  per profile is rejected because density is neither a
+  per-axis boolean nor independent of the request: a polar swath's X/Y is **curvilinear**, not sparse,
+  and its answerability depends on the caller issuing a **"fat" T request** spanning revisits. Whatever
+  the lever becomes, it must only **narrow candidates or assert an invariant** — never declare reach
+  outright, which would be a second source of truth that can drift from the members.
+- **Which compositions hole, and which are products.** Holes come from **observation-shaped and
+  archive-shaped** sources; forecast-grid sources do not hole. Station networks (X/Y point set +
+  irregular T), gapped grid archives (T), radar mosaics (X/Y edges), and polar swaths (curvilinear
+  X/Y, no Z hole) are all real products; **disjoint regionals with no fallback** is a misconfiguration
+  rather than a product, and sparse vertical profiles do not arise until Z is a request axis. **No v1
+  source can hole** (→ ADR-0007 Consequences), so the raise guards a seam v1 cannot reach.
 - **Location-blindness.** A static description string states one number, but reach is a `Domain` —
   with regional providers the servable window genuinely varies by lat/lon and no static prose can say
-  so. The T intersection keeps this *safe* (the narrated window is servable wherever the profile
-  serves at all) at the cost of understating it where coverage is better. Stating the per-location
-  truth is the concrete trigger for the deferred **capabilities-introspection tool**
+  so. Selecting the spatially-dominant producer keeps this *safe* (the narrated window is servable
+  wherever the profile serves at all) at the cost of understating it where coverage is better. Stating
+  the per-location truth is the concrete trigger for the deferred **capabilities-introspection tool**
   (v1-requirements), which takes a lat/lon and can return structure.
-- **The spatial bound can over-promise** (the Atlantic case) — a point inside the folded X/Y span that
-  no member serves. Harmless: it fails as an ordinary `capability-mismatch` at admission, and the
-  alternative (exposing per-member structure through the interface) leaks composite internals with no
-  v1 driver.
 - **Backward reach** (historical provision — the archive / run-collection seam) is the other half of
   the same facet. Because reach is a `Domain` rather than a forward scalar, it should absorb this
   without a contract change.
@@ -439,15 +422,15 @@ Open parts:
 
 ## 30. Response membership under runtime-degraded fallback
 
-**Kind:** serving policy (low priority — no v1 work, no v1 exercise) · **Refs:** [ticket 009](./tickets/009-error-taxonomy-partial-success.md), [#13](#13-candidate-admission-containment-vs-intersection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes), [ADR-0003](./adr/0003-provenance-and-origin.md)
+**Kind:** serving policy (low priority — no v1 work, no v1 exercise) · **Refs:** [#13](#13-candidate-admission-containment-vs-intersection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [ADR-0003](./adr/0003-provenance-and-origin.md)
 
-Session 0013. **The case:** a long-reach primary **faults at runtime** on a request that exceeds the
-fallback's reach. [Ticket 009](./tickets/009-error-taxonomy-partial-success.md)'s fall-through reaches
-only **admitted** candidates, and the shorter fallback failed whole-request containment — so the
+**The case:** a long-footprint primary **faults at runtime** on a request that exceeds the
+fallback's reach. The partial-success fall-through reaches only **admitted** candidates, and the
+shorter fallback failed whole-request containment — so the
 parameter is dropped entirely while the fallback holds most of the window. Real data left on the
 table, and the client must re-request shorter: client load a good product should absorb.
 
-**This is a `priority`-mode artifact, not a standing defect** (session 0013 correction). It exists
+**This is a `priority`-mode artifact, not a standing defect.** It exists
 because **wholesale fallback admits by whole-request containment**, which filters a partial producer
 out of the candidate set before the reconciler ever sees it. Under an **amendment / splice** mode the
 shorter fallback is admitted by **intersection**
@@ -467,32 +450,32 @@ production shapes:
   quality changes. Nothing is lost, so membership has nothing to decide, and the change is visible
   ex post in per-parameter provenance. (The surface does **not** narrate where this happens: quality is
   a policy outcome, not a capability →
-  [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes).) Its one residual want — the primary for the near
+  [#29](#29-narrated-reach-inner-bound-by-producer-selection).) Its one residual want — the primary for the near
   window *and* the fallback for the tail, in one response — is **amendment**, not membership:
   [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s coverage reconciler.
 - **Fallback shorter** (this concern): the fallback is admitted only on requests within its own reach,
   so fall-through is unavailable **precisely on the long requests where a primary fault hurts most**.
   The fallback is useless exactly when it is needed.
 
-**Position (session 0013): nodata-padding is the right answer — the client wants maximum relevant
+**Nodata-padding is the preferred answer — the client wants maximum relevant
 data in one go — but it is low priority.** It needs three widenings, none of which this case alone
 justifies pulling forward: intersection admission
 ([#13](#13-candidate-admission-containment-vs-intersection)), the degenerate per-cell fold
 ([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)), and a **per-cell reason
 channel** — `present=False` currently means a *successful* gap, so a padded tail is indistinguishable
 from measured absence (the `PerPoint` provenance seam,
-[ADR-0003](./adr/0003-provenance-and-origin.md)). Until then, 009's **omission + per-parameter
-reason** is the terminus: it carries the same information a padded tail would, minus the ambiguity.
+[ADR-0003](./adr/0003-provenance-and-origin.md)). Until then, **omission + per-parameter reason** is
+the terminus: it carries the same information a padded tail would, minus the ambiguity.
 The interim cost is payload, not correctness. A server-side **strict mode** is declined — an
 explicit-absence response lets a strict client enforce all-or-nothing with one `if`.
 
 **Cases considered and dissolved** (so they are not re-litigated):
 
-- **Single-vendor short parameter** (ticket 005): *not* heterogeneity. The operator bundles knowing
+- **Single-vendor short parameter**: *not* heterogeneity. The operator bundles knowing
   what the market serves — if soil moisture reaches 7 days, the agriculture profile **is** a 7-day
   product. Supply constrains where the bundle's boundary sits; it does not force a heterogeneous
   bundle. That boundary is the profile's narrated
-  [reach](#29-narrated-reach-per-axis-join-conservative-on-extent-axes), declared up front.
+  [reach](#29-narrated-reach-inner-bound-by-producer-selection), declared up front.
 - **Nowcast blend** (radar ~2 h + NWP beyond): a **taxonomy error** to file here. Radar is not a
   fallback for a 16-day request — the model **amends** the radar, both contributing to one
   `ParameterData` per cell. That is *who fills each cell* (the coverage reconciler,
@@ -509,7 +492,7 @@ is introspection/metadata, not response shape. Filed here only so it is not mist
 
 **Three policies stay distinct:** **fallback** (who serves — the reconciler's),
 **membership** (what a beyond-boundary request gets — this concern), **narration** (what the client is
-told up front — [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes)).
+told up front — [#29](#29-narrated-reach-inner-bound-by-producer-selection)).
 
 ## 31. Positional alignment is asserted, never checked
 
@@ -517,8 +500,7 @@ told up front — [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-
 `provenance` share one parameter key set and **align positionally** over `domain`, so
 `ranges[pid].values[i]` is `pid` at the domain's i-th point — and nothing verifies it.
 
-**Not a live defect** (session 0013 established this while aligning
-[002c](./tickets/done/002c-provider-nodata-mask.md)). Every construction site is safe *by construction*,
+**Not a live defect.** Every construction site is safe *by construction*,
 not by luck: `sampling` maps over an index list sized to the target domain; `arbiter` moves whole
 `ParameterData` objects between Coverages whose domains it has already compared; `open_meteo` checks
 length explicitly at both sites; and `Calculator`'s kernel is the one caller that authors `domain`
@@ -532,7 +514,7 @@ and returns its input domain unchanged, so its ranges cannot differ in length fr
   an off-by-one on a partial trailing window yields a 7-cell domain and 8 values. Validate at the
   plugin boundary in `Calculator.project`, where the error can name the kernel
   ([ADR-0004](./adr/0004-producer-resolution-and-capability.md) already requires this).
-- **Store read-back** ([006](./tickets/006-retentive-store-freshness.md)). ADR-0006's Store holds
+- **Store read-back** ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). The Store holds
   *independently replaceable* per-Parameter units, so reassembly joins separately-persisted pieces —
   a partially-written or stale unit is the first payload that can be the wrong length without a bug
   in the assembling code. Validate on `CoverageRecord` itself, since the pieces arrive from storage
@@ -546,5 +528,99 @@ check that catches the length class should not be described as enforcing alignme
 
 **Deliberately excluded:** the invariant's *provenance* arm. `Uniform` is keyless by construction,
 `PerParameter` has keys, `PerPoint` is deferred — comparing key sets across them needs a
-`ProvenanceField.covers()` seam, a real design decision that belongs with
-[009](./tickets/009-error-taxonomy-partial-success.md)'s per-parameter omission work.
+`ProvenanceField.covers()` seam, a real design decision that belongs with the per-parameter omission
+contract → [architecture: Failure, nodata, and availability](./architecture.md#failure-nodata-and-availability).
+
+## 32. Runtime footprint-awareness inside the algebra
+
+**Kind:** room-left (contract placement) · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [#7](#7-quality-scoring), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
+
+[ADR-0007](./adr/0007-reach-is-an-inner-bound.md) resolves **Reach** at build time and
+keeps it **off** the `Capability` contract, because the surface is its only client. The open question
+is whether a **runtime** consumer ever appears inside the algebra — the concrete candidate being a
+**footprint-aware `reconciler`** that ranks candidates by how tightly each covers the request (prefer a
+regional high-resolution producer over a global one), adjacent to [#7](#7-quality-scoring).
+
+**This is a separate mechanism, not the reach machinery.** They share one primitive —
+*a producer can report its declared footprint* — and nothing above it:
+
+| | Reach | Footprint-aware reconciler |
+|---|---|---|
+| Output | **one** `Domain`, per parameter | an **ordering** over candidates |
+| When | build time, static | per request, dynamic |
+| On ambiguity | **raises** (misconfiguration) | ranks anyway; ambiguity is normal |
+| Purpose | narrate one product promise | pick the best producer for *this* request |
+
+So a reconciler wanting this does **not** want a `ReachRule` — it wants per-candidate footprint access,
+which `build_reconciler` can already obtain from the registries at build, or which would justify
+exposing footprint on the `Capability` surface if it must be read per request.
+
+**Terminology:** Reach (profile-level promise) vs Footprint (producer declaration) is deliberate —
+an internal client wants the footprint, never the promise → [glossary](./glossary.md): Reach, Footprint.
+
+**Trigger to revisit:** a real consumer inside the algebra. Until then, adding `reach` (or footprint)
+to `Capability` buys nothing and costs the structural guarantee ADR-0007 gains — that reach is *not
+reachable* from the request path, so "no admission path may consult reach" is a fact rather than a rule.
+
+## 33. Reach rule and reconciler mode are coupled
+
+**Kind:** policy coherence (contract-level) · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#6](#6-reconciler-catalogue), [#32](#32-runtime-footprint-awareness-inside-the-algebra)
+
+[ADR-0007](./adr/0007-reach-is-an-inner-bound.md) makes the **reach rule** a named slot
+(v1: `grid`), and [ADR-0004](./adr/0004-producer-resolution-and-capability.md) makes the **`reconciler`**
+another (v1: `priority`). They are **not independent**: the reconciler decides what the composite can
+actually serve, and reach can only report on that.
+
+**The evidence.** `{Global × [0, 16 d], Global × [−2 d, 10 d]}` — a forecast source plus one carrying
+hindcast — **raises** under `grid`, because `priority` admits by whole-request containment and nothing
+splices, so the union box is genuinely not servable. Under a **splicing** reconciler the same footprints
+yield a servable `Global × [−2 d, 16 d]`. Same declarations, different truth, and only the reconciler
+changed. `tile` / `feather` are the same story spatially: they serve requests **no single member
+covers**, so their reach is legitimately wider than any *selection* rule can claim.
+
+**The direction of the coupling:** the reconciler **bounds** what a reach rule may truthfully claim; the
+reach rule picks a **product statement** inside that bound. It is not a full determination — within
+`priority`, both "the widest producer's footprint" (v1's `grid` choice, tighter) and "the primary's
+footprint" (more conservative: *we promise what our best source does*) are correct inner bounds. That
+residual is a genuine product judgment, which is why **whether reach follows priority is a property of
+the reach mode**, not a universal law. `grid` **ignores** priority.
+
+**The hazard:** configured independently, an operator can pair `priority` with a splicing-shaped reach
+rule and **narrate a promise the engine cannot keep** — exactly the failure reach exists to prevent.
+
+**Not to be confused with the Arbiter-vs-Calculator difference**, which is *not* a mode question: an
+Arbiter serves where **any** producer serves and a Calculator where **all** its inputs do, so the
+quantifier is a fact about the node, not a policy. Only what the reconciler can actually serve, and the
+product statement chosen inside it, are mode-scoped.
+
+Open: whether the two collapse into **one mode declaration** (a "fallback" / "mosaic" / "splice"
+profile mode selecting both), or the reach rule is **derived from** the reconciler with the product
+judgment as a separate narrow knob. No v1 pressure — v1 ships exactly one of each (`priority` + `grid`)
+and they agree by construction. Decide when the second reconciler lands
+([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold) is the same trigger); until then,
+do not build a coupling mechanism, and do not let a second reach rule ship without revisiting this.
+
+## 34. Producer-DAG walking is duplicated
+
+**Kind:** room-left (build-time structure) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md), [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
+
+Two build-time passes walk the same producer DAG over `ProfileDef`:
+
+- **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, resolving each
+  Calculator's inputs to the producers serving them, with a `visiting` set raising
+  `CompositionError("calculator cycle at ...")`.
+- **`resolve_reach`** — the planned build-time pass resolves each parameter's reach,
+  recursing through Calculators the same way (a Calculator's candidate footprint is the **whole-box
+  dominated** one among its **resolved** inputs', [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)),
+  needing the same cycle guard.
+
+003a carries its own guard so the resolver stays standalone and unit-testable without weaving. That is
+**deliberate duplication of ~3 lines**, not an accident, and it is the right call at two consumers.
+
+**Carve a shared walk when a third consumer appears** — plausible candidates: a footprint-aware
+reconciler ([#32](#32-runtime-footprint-awareness-inside-the-algebra)), stored-calculator store binding
+([#27](#27-stored-calculator-store-binding)), or a resolution-trace builder
+([#14](#14-resolution-trace-and-observability)). The shape would be a pure `ProfileDef` traversal
+yielding a topologically-ordered producer graph, which both the Weaver and the resolver consume; the
+cycle check moves there. Pure refactor, no contract change. Do not extract preemptively — with two
+consumers the indirection costs more than it saves.

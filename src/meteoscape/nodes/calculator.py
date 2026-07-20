@@ -41,7 +41,7 @@ class Calculator:
             raise RuntimeFailure(
                 f"calculator kernel ranges {set(ranges)} != declared outputs {set(self.outputs)}"
             )
-        # Propagate: lossless single-origin transform (v1 wind). Method-bearing synthesis is post-v1.
+        # Current kernels propagate one lossless origin; method-bearing synthesis is a planned extension.
         provenance = Uniform(resolved.provenance.summary(next(iter(self.inputs))))
         return CoverageRecord(
             capability=EnumerableCapability(domain=domain, parameters=dict(self.outputs)),

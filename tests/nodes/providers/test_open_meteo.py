@@ -266,7 +266,7 @@ def _reject_nonfinite(token: str) -> float:
 
 @pytest.mark.asyncio
 async def test_vendor_null_serializes_as_json_null() -> None:
-    """Live defect: a vendor null must reach the MCP wire as JSON null, never NaN."""
+    """A vendor null reaches the MCP wire as JSON null, never NaN."""
     transport = _CapturingTransport(
         _canned_hourly(hours=3, hourly={"temperature_2m": [18.5, None, 19.1]})
     )
