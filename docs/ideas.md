@@ -11,6 +11,11 @@ product/feature ideas that haven't earned a decision yet.
   from v1 (v1 takes lat/lon only) — geocoding is a separate capability from weather access and
   pulls in a geocoding dependency/provider.
 
+- **Composition-serves validation.** An operator building a profile wants to confirm it actually
+  serves the parameter set they expect — graceful degrade deliberately won't hard-fail on a missing
+  *provider* parameter, so this is an **opt-in** "assert my profile serves {…}" check at build/startup,
+  not a hard rule. (Calculator *inputs* are already hard-validated — [#35](./concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade).)
+
 ## Outputs
 
 - **Requested output `format`.** Let the caller choose the response serialization (e.g. compact

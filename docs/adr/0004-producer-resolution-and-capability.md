@@ -84,7 +84,7 @@ same shape. The abstraction these are shapes of is the
     **structurally**, since nothing on the request path can reach it →
     [#29](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection).
 
-- **A leaf's temporal reach is clock-anchored** — its `valid_time` window tracks the provider's run
+- **A leaf's temporal footprint is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
   footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `matches`. The
   per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).

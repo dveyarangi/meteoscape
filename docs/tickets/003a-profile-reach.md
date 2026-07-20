@@ -13,10 +13,11 @@
 ## What to build
 
 Build-time only — **no surface change and no request-path change**.
-[003b](./003b-request-shaping.md) is the consumer.
+[003b](./003b-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
 
 ```
-resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]
+validate_calculators(ProfileDef) -> None                     # is it wired?  (raises)
+resolve_reach(ProfileDef)        -> Mapping[ParameterId, Domain]   # how far?  (assumes validated)
 ```
 
 Reach is an **inner bound**: *every point it names is servable*
@@ -40,9 +41,12 @@ footprint(source, p) = the provider's declared footprint for p
 footprint(calc, p)   = dominated( [ reach(calc.scoped_arbiter, i) for i in calc.inputs ] )  # whole-box
 ```
 
-Memoized per key, with a `visiting` **cycle guard** so the resolver stays standalone and unit-testable
-without weaving — deliberate duplication of the Weaver's ~3 lines
-([#34](../concerns.md#34-producer-dag-walking-is-duplicated)).
+Memoized per key. `validate_calculators` owns the `visiting` **cycle guard** and the *wiring* errors
+(an input no producer serves — a calculator is an operator promise, so this fails the build explicitly,
+never silently at runtime); `resolve_reach` runs after it and handles only *geometry*. Both walk this
+DAG — a third walker beside the Weaver, deliberate ~3-line duplication
+([#34](../concerns.md#34-producer-dag-walking-is-duplicated)); the strict-calculator vs
+graceful-provider tension is [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade).
 
 Build notes, each grounded in [ADR-0007](../adr/0007-reach-is-an-inner-bound.md):
 
@@ -89,24 +93,28 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
 - [ ] `Provider` publishes **`footprints: Mapping[ParameterId, Domain]`** — the per-parameter geometry
       it already declares. That is the **only** contract change: nothing added to `Capability`, no
       composite implementation, no `Reservoir` forwarding, nothing on `Coverage`.
-- [ ] `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]` exists in a new
-      **`nodes/reach.py`**, standalone — testable without weaving, and needing no `ArbiterPolicy` /
-      reconciler. A parameter no producer serves is **absent from the map** (003b's
-      `min`-over-parameters fold skips rather than catches).
-- [ ] The `grid` reach rule exists as a **named unit** in that module (no protocol, no config, no
-      registry), with its two site procedures: **Arbiter** — the producer dominating on **X/Y**, then
-      among X/Y ties on the remaining axes; **Calculator** — the input contained in **every other input
-      on all axes** (whole-box; `{Europe × 10 d, Global × 5 d}` as inputs **raises**, never yields
-      `Europe × 10 d`). **Equal-extent ties resolve to the first candidate** at both sites — two equal
-      `Global × 10 d` footprints yield the first, never a raise (the derived-wind case).
-- [ ] Calculator resolution **recurses** through the scoped-Arbiter shape, memoized per key, with a
-      `visiting` **cycle guard** raising `CompositionError` — verified by a direct unit test on a
-      cyclic `ProfileDef`, without weaving.
+- [ ] `validate_calculators(ProfileDef)` exists in **`nodes/reach.py`** (a **separate method** from
+      `resolve_reach`), standalone — testable without weaving. A calculator input **no producer serves**
+      raises `CompositionError` naming the calculator + input (broken operator promise, not a silent
+      runtime miss); a calculator **cycle** raises naming the cycle. Owns the `visiting` cycle guard.
+- [ ] `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]` exists in the same module, standalone,
+      needing no `ArbiterPolicy` / reconciler. **Precondition: a validated `ProfileDef`** — so its only
+      raises are *geometry*, never wiring. A **provider** parameter no enabled source serves is
+      **absent from the map** (graceful degrade; 003b's `min`-over-parameters fold skips it).
+- [ ] The `grid` reach rule exists as a **named unit** (no protocol, no config, no registry), with its
+      two site procedures: **Arbiter** — the producer dominating on **X/Y**, then among X/Y ties on the
+      remaining axes; **Calculator** — the input contained in **every other input on all axes**
+      (whole-box; `{Europe × 10 d, Global × 5 d}` as inputs **raises**, never yields `Europe × 10 d`).
+- [ ] **An equal-extent tie returns one of the inputs** — the test asserts identity ∈ inputs, not
+      *which* (unobservable). Two equal `Global × 10 d` footprints never raise (the derived-wind case);
+      no sort is imposed.
 - [ ] **No `Domain` is ever synthesized** — every reach returned is an existing declared footprint. No
       `Interval` union or intersection is added; `Domain.intersect` stays a declared seam.
 - [ ] `grid` **ignores producer priority**: `{Global × 10 d @1, Global × 16 d @2}` → **16 d**.
-- [ ] Unresolved dominance raises **`CompositionError`** naming the conflicting producers (by
+- [ ] Unresolved dominance/geometry raises **`CompositionError`** naming the conflicting producers (by
       `SourceKey` / `CalculatorKey`) and the axis on which dominance failed.
+- [ ] A **Calculator competes at the top level like any producer**; a **`stored` calculator is
+      transparent** to reach (the flag is never consulted).
 - [ ] `{Europe × 16 d, Global × 10 d}` → `Global × 10 d`; adding `Arctic × 5 d` still yields
       `Global × 10 d`; `{Global × 16 d, Global × 10 d}` → `Global × 16 d`;
       `{Europe × 16 d, Americas × 10 d}` raises.
