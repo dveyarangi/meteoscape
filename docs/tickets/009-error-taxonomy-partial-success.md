@@ -1,7 +1,8 @@
 # 009 — Error taxonomy and partial success
 
 - **Status:** Partial
-- **Depends on:** [003 — Request shaping](./003-request-shaping.md),
+- **Depends on:** [002c — Provider nodata mask](./002c-provider-nodata-mask.md),
+  [003b — Request shaping](./003b-request-shaping.md),
   [004 — Second-provider fallback](./004-second-provider-fallback.md)
 - **Outcome:** Per-parameter absence reasons and capable-but-faulting partial results.
 
@@ -21,11 +22,22 @@ produced. The MCP adapter maps the taxonomy — `bad-request` (e.g. invalid lat/
 `present[i] = False`) is never conflated with failure.
 
 **Already landed at 001 (Phase C):** taxonomy → `ToolError` **stable prefixes**, lat/lon and
-unknown-parameter `bad-request` validation, producible-subset serving with whole-request
-`capability-mismatch` only when nothing is produced, and nodata → `null` serialization. This ticket's
+unknown-parameter `bad-request` validation, and producible-subset serving with whole-request
+`capability-mismatch` only when nothing is produced. The nodata → `null` serializer branch exists but
+is **unreachable for real responses** until [002c](./002c-provider-nodata-mask.md) builds the
+`present` mask (providers emit `present=None`, so a vendor null currently reaches the wire as `NaN`);
+this ticket's nodata-vs-failure distinction assumes 002c has landed. This ticket's
 remaining substance: the **edge-derived per-parameter absence reason** (capable ⇒ `runtime-failure`,
 else `capability-mismatch`) on partial responses, and the capable-but-all-candidates-fault omission
 path (needs 004's fallback machinery — Phase C propagates a lone candidate's `RuntimeFailure` whole).
+
+**Scope note (session 0013).** Fall-through reaches only **admitted** candidates. So when a long-reach
+primary faults on a window the fallback cannot contain, the fallback is never in the candidate set and
+the parameter is **omitted whole** — even though the fallback holds most of the window. That is the
+intended terminus here: omission + reason carries the same information a partial tail would, without
+conflating "cannot reach" with **nodata**'s successful gap. Serving that residual data (nodata-padded
+tails) is judged worth doing but **low priority**, and needs three widenings this ticket does not open
+→ [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
 See `docs/architecture.md` (Failure, nodata, and availability; Error taxonomy) and
 `docs/v1-requirements.md` (Errors, acceptance §7).

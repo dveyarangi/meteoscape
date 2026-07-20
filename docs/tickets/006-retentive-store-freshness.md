@@ -16,12 +16,36 @@ Replace the stub `Store` with the real **retentive in-memory `Store`** — a
 `(parameter, per-axis cells, window)`; `assimilate` splits a native record into units), wired into
 **both** positions (each `Source` and the best view). `project` runs the `Reservoir` pipeline:
 `quantize` the request onto the store lattices (per axis: snap + widen to whole assimilable units — a
-parameter's timeline at a spatial cell; identity on axes without a lattice, v1: Z — the cell joins
-the unit key), read the per-unit **{held, fresh, origin}** report (held cells matched with the same
-cell arithmetic as `serves`), serve units that are **fresh and single-origin**, and **refill the
-missing/stale units whole** from the child (`child.project(store_shape)`), then `assimilate`
-(replacing whole units atomically). The Source's read-back relabels matched native cells onto the
-handed shape (the fact→product boundary).
+parameter's timeline at a spatial cell; identity on axes without a lattice; **`ANY` on axes the unit
+spans wholly** — for v1's timeline store that is `T` and `Z`, see below), read the per-unit
+**{held, fresh, origin}** report (**held** = the store's own `capability`; **fresh** =
+`expiration > now` off each `ParameterData`'s provenance `summary` — no `is_current` operation
+exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), serve units that are **fresh and
+single-origin**, and **refill the missing/stale parameters whole** from the child in **one** call
+(`child.project(store_shape)`), then `assimilate` (replacing whole units atomically). The Source's
+read-back relabels matched native cells onto the handed shape (the fact→product boundary).
+
+**Native geometry must survive the fetch (session 0013).** `quantize` asks **`ANY`** on the axes the
+unit spans entirely; by shape-correspondence ([ADR-0001](../adr/0001-manifold-algebra-and-composition.md))
+the Provider then answers **multi-domain** — temperature at 2 m beside wind at 10 m — instead of
+flattening onto one requested Z. This is what lets the store key units by **native** cells while still
+paying for **one** vendor fetch; a fully-enumerable ask would force the flatten and destroy the cells
+before they could be stored, and asking per parameter group would multiply vendor traffic for data one
+call returns. **Which axes are `ANY` is derived from the unit definition, not hardcoded** — a grid
+store would invert it (`X/Y` whole, `T` celled), so the `Reservoir` stays generic.
+
+**`assimilate` consumes the answer, not a pre-sliced record.** The store slices it per parameter,
+because only the store holds both halves of each unit `Selection` — `X/Y`+`T` from its private
+lattice, the native cell from the answer. Having the `Reservoir` slice would leak the lattice out of
+the store. *(Tentative — revisit the concrete shapes when building them here.)*
+
+**Retire the eager flatten.** `open_meteo.project` currently ends in `_assemble(records, selection)`,
+labelled an "interim fold". Under a fully-enumerable ask that is *correct* behaviour, not a shortcut —
+which is why it must be the **ask** that changes. `_assemble` remains as the multi-domain answer's own
+`project` (used when someone does hand it a fully enumerable Selection); it stops being applied
+eagerly at fetch. ADR-0006 lists per-fetch flattening among its **rejected** options ("lossy on the
+data plane; the store cannot answer availability honestly") — that rejection becomes live here,
+because this is the ticket where anything is retained at all.
 
 Freshness is read straight off each `ParameterData`'s `expiration` (`fresh ⇔ expiration > now`). Refill
 is **per-parameter and spatial** — a fresh parameter is reused while a stale one is refetched, each
@@ -44,6 +68,13 @@ session 0010) flips here.
 
 - [ ] The retentive in-memory `Store` is wired into both positions (Source + best view) with its
       private per-axis lattices (identity on Z; unit keys carry the Z cell).
+- [ ] `quantize` asks **`ANY`** on the axes the unit spans wholly (v1 timeline store: `T` and `Z`),
+      and the Provider answers **multi-domain** — units land keyed by **native** Z (2 m, 10 m,
+      surface, `[0,TOA]`), not by the request's Z, from a **single** vendor fetch.
+- [ ] `assimilate` consumes the answer and slices it per parameter inside the store; no other node
+      constructs a unit `Selection` or otherwise learns the store's lattice.
+- [ ] `open_meteo.project` no longer flattens eagerly; a request whose Z differs from a prior one
+      **reuses** the stored native units rather than refetching.
 - [ ] A fully-fresh repeat request is served with **no** provider call.
 - [ ] A fresh parameter is reused while another (stale) parameter is refetched (per-parameter, TTL =
       `expiration`).

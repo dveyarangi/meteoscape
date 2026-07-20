@@ -28,17 +28,31 @@ plane. The capability/matching half is
   producer knows its native layout. The partition is a property of the **answer**. Co-domain is an
   invariant of the **exchange record** (one `Coverage`), never of a store or of a fetch.
 
+- **The partition reaches the store because the question asks `ANY`** (session 0013). A Source asks its
+  Provider **once** — asking per parameter group would multiply vendor fetches for data one call
+  returns — with `ANY` on the axes its unit spans wholly. By shape-correspondence
+  ([ADR-0001](./0001-manifold-algebra-and-composition.md)) that answer is legitimately
+  **multi-domain**: temperature at 2 m beside wind at 10 m. This is what preserves native geometry
+  through the boundary; a fully-enumerable question would force a flattened answer and destroy the
+  native cells before the store could key units by them. **Tentative (revisit when the shapes are
+  built at ticket 006):** the **store** slices that answer per parameter, because only it holds both
+  halves of each unit `Selection` — `X/Y`+`T` from its private lattice, the native cell from the
+  answer. `assimilate` therefore consumes **the answer** and samples the units it retains, rather than
+  being handed one pre-sliced record by a caller that would have to know the store's lattice.
+
 - **The store is unit-granular, never co-domained.** A `Store` holds **per-parameter units**
-  (`(parameter, per-axis cells, window)`); `assimilate` consumes one native record and splits it into
-  units, replacing each atomically. Its lattices are **per axis** (and, where native cadences differ,
+  (`(parameter, per-axis cells, window)`); `assimilate` consumes the producer's answer and samples it
+  into units, replacing each atomically. Its lattices are **per axis** (and, where native cadences differ,
   per parameter family) and **private** — consumed by `quantize`, the per-unit report, and read-back;
   never exposed as a node `domain`. Implementations vary by substrate and persistence behind this one
   write/report/read face.
 
-- **`quantize` is per-axis: snap where a lattice is declared, identity where none is.** Each axis
-  with a declared lattice snaps onto it and widens outward to whole units (extent ≥ request); an axis
-  **without** a declared lattice (for example, Z) **passes through unchanged**, its cell becoming part of the
-  unit key. A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
+- **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
+  unit spans the axis wholly.** Each axis with a declared lattice snaps onto it and widens outward to
+  whole units (extent ≥ request); an axis **without** a declared lattice (for example, Z) **passes
+  through unchanged**, its cell becoming part of the unit key; an axis the unit spans **entirely** is
+  asked as **`ANY`** — the same widening carried to its limit, answered at the producer's native
+  extent ([ADR-0002](./0002-data-model.md)). A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
   same rule, no vertical special case. "Quantize preserves Z semantics" is thus by construction.
 
 - **The fact→product boundary sits at the Source's read-back.** One vertical fact travels:

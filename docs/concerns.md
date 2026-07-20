@@ -353,3 +353,198 @@ extension** so it is not mistaken for a config change: it lands with the catalog
 ([#6](#6-reconciler-catalogue)), presses toward `PerPoint` provenance
 ([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
 set to prove it.
+
+## 29. Narrated reach: per-axis join, conservative on extent axes
+
+**Kind:** surface/product seam · **Refs:** [ticket 003a](./tickets/003a-capability-reach.md) (the fold), [ticket 003b](./tickets/003b-request-shaping.md) (the narration), [#30](#30-response-membership-under-runtime-degraded-fallback), [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0002](./adr/0002-data-model.md)
+
+Session 0013. A surface needs to tell callers **how far this profile reaches** — the MCP tool
+description narrates it, and the edge uses it to author the default window when the caller omits
+`end`. The mechanism: **`Capability` exposes a per-parameter `reach` `Domain`**, folded by the same
+leaf/composite algebra as `serves` (leaf → its footprint; **derived → per-axis intersection**, since a
+Calculator needs *all* its inputs; reservoir → forwards its child's). The surface folds `min` over the
+parameters *it* exposes — surface-specific, so it stays at the edge.
+
+**A composite's join differs per axis, and the rule follows the request's own shape.** Admission is
+**whole-request containment**, and a request is not the same shape on every axis:
+
+- **Point axes (X/Y/Z in v1)** — the request is a *point*, so reach answers "could anything serve
+  here?" → **union**. This is an **outer bound**: per-axis folding drops inter-axis correlation, so
+  `{Europe × 16 d, Americas × 10 d}` yields a span crossing the Atlantic that neither member serves.
+  Read spatially as a necessary condition — *nothing outside is servable; not everything inside is.*
+  (Intersection would be empty for disjoint footprints, and useless.)
+- **Extent axes (`valid_time`)** — the request is an *interval*, and one member must contain the
+  **whole** span, so reach answers "is this entire window servable?" → **intersection**. This is a
+  **guarantee**, and it is what makes the omitted-`end` default admissible: with T intersected to
+  10 d, the Europe caller is served by the 16 d member and the Americas caller by the 10 d member.
+  A spatial miss (mid-Atlantic) still fails, but no temporal fold could fix that.
+
+So reach is **mixed by design**: spatially advisory, temporally guaranteed. It remains **advisory in
+the sense that matters** — `serves` is the sole admission authority and reach must never feed an
+admission path. That discipline is the whole of this concern; violating it silently over-serves.
+
+**The T fold is conservative, and deliberately left so.** Intersection is not tight: where a member is
+spatially universal it under-promises — OM global × 16 d plus TWC × 10 d yields 10 d, though OM serves
+16 d everywhere. **Accepted, not a defect to solve.** A surface promising 10 days of fully-served
+coverage is making a *correct* product statement even when the substrate could stretch further;
+callers can still request more explicitly and be admitted, and a deployment that wants the longer
+product declares **another surface**. If it ever does need addressing, the lever is a config
+declaration — marking a provider explicitly **fallback** so it is excluded from the reach promise
+while remaining available for degradation — not location-aware machinery.
+
+**Why one reach and not a quality/completeness ladder.** Intermediate drafts this session narrated two
+or three boundaries, including a **quality reach** (how far every parameter comes from its best
+source). Dropped: **quality is a policy outcome, not a capability.** Capability answers *can you serve
+this*; quality answers *how well did it go*, which the **response** already reports per parameter via
+provenance. Trying to declare it produced four symptoms of the same error — it leaked priority
+ordering ([#7](#7-quality-scoring)), its meaning flipped with the reconciler mode, it was unverifiable
+through `serves` (which is `any(...)` — it answers *whether*, never *who*), and it gave the agent no
+decision procedure (no "how much worse"). A deployment that genuinely sells quality tiers expresses
+them as **separate profiles behind separate tools**, matching the sibling-tool precedent already set
+for a daily product (session 0009) rather than modulating one tool.
+
+The conservative T fold lands near the same place from the other direction: bounded by the shortest
+member, the narrated reach is often *implicitly* the preferred source's own horizon. That is a
+coherent product promise ("this surface serves N days") rather than a leaked policy boundary — the
+difference is that it is stated as **what the surface delivers**, not as **where quality changes**.
+
+A `max`-over-parameters boundary was likewise rejected: a `max` fold is **existential** ("*something*
+reaches this far"), unusable until you know *which*, and it **over-promises**. Existential facts need
+per-parameter structure, and structure needs a surface that can return it.
+
+Deliberately **coarse and profile-level**: no per-parameter matrix in a description string. Per-parameter
+reach is also **never a request axis** — the one-domain `Selection` (session 0009's decline of
+per-parameter domains) encodes the profile as a united bundle; divergence surfaces as per-parameter
+**dropout with reasons** ([ticket 009](./tickets/009-error-taxonomy-partial-success.md)) and, when
+structural, as introspection-tool structure.
+
+Open parts:
+
+- **Location-blindness.** A static description string states one number, but reach is a `Domain` —
+  with regional providers the servable window genuinely varies by lat/lon and no static prose can say
+  so. The T intersection keeps this *safe* (the narrated window is servable wherever the profile
+  serves at all) at the cost of understating it where coverage is better. Stating the per-location
+  truth is the concrete trigger for the deferred **capabilities-introspection tool**
+  (v1-requirements), which takes a lat/lon and can return structure.
+- **The spatial bound can over-promise** (the Atlantic case) — a point inside the folded X/Y span that
+  no member serves. Harmless: it fails as an ordinary `capability-mismatch` at admission, and the
+  alternative (exposing per-member structure through the interface) leaks composite internals with no
+  v1 driver.
+- **Backward reach** (historical provision — the archive / run-collection seam) is the other half of
+  the same facet. Because reach is a `Domain` rather than a forward scalar, it should absorb this
+  without a contract change.
+- What a request *beyond* reach receives is **response membership**, a separate policy →
+  [#30](#30-response-membership-under-runtime-degraded-fallback). Reach says where the edge is;
+  membership says what happens past it.
+
+## 30. Response membership under runtime-degraded fallback
+
+**Kind:** serving policy (low priority — no v1 work, no v1 exercise) · **Refs:** [ticket 009](./tickets/009-error-taxonomy-partial-success.md), [#13](#13-candidate-admission-containment-vs-intersection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes), [ADR-0003](./adr/0003-provenance-and-origin.md)
+
+Session 0013. **The case:** a long-reach primary **faults at runtime** on a request that exceeds the
+fallback's reach. [Ticket 009](./tickets/009-error-taxonomy-partial-success.md)'s fall-through reaches
+only **admitted** candidates, and the shorter fallback failed whole-request containment — so the
+parameter is dropped entirely while the fallback holds most of the window. Real data left on the
+table, and the client must re-request shorter: client load a good product should absorb.
+
+**This is a `priority`-mode artifact, not a standing defect** (session 0013 correction). It exists
+because **wholesale fallback admits by whole-request containment**, which filters a partial producer
+out of the candidate set before the reconciler ever sees it. Under an **amendment / splice** mode the
+shorter fallback is admitted by **intersection**
+([#13](#13-candidate-admission-containment-vs-intersection)) and contributes its 10 days through the
+per-cell fold ([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). So the honest
+framing is: **the mode that fixes this is the same mode padding needs** — padding is not a rival to
+the reconciler widening, it is one of its consequences (plus the reason channel below). What remains
+genuinely open is only whether a profile *stuck on* `priority` should get a padded tail, which is a
+narrower question than it first looked.
+
+**Why only this ordering** (*under `priority`*). Admission compares a candidate's reach to the
+**request**, not to the primary — so the two orderings are structurally different, and both are real
+production shapes:
+
+- **Fallback longer** (short high-priority primary, long fallback): the fallback is admitted wherever
+  the primary was *and further*, so it substitutes **wholesale** and the answer is **complete** — only
+  quality changes. Nothing is lost, so membership has nothing to decide, and the change is visible
+  ex post in per-parameter provenance. (The surface does **not** narrate where this happens: quality is
+  a policy outcome, not a capability →
+  [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes).) Its one residual want — the primary for the near
+  window *and* the fallback for the tail, in one response — is **amendment**, not membership:
+  [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s coverage reconciler.
+- **Fallback shorter** (this concern): the fallback is admitted only on requests within its own reach,
+  so fall-through is unavailable **precisely on the long requests where a primary fault hurts most**.
+  The fallback is useless exactly when it is needed.
+
+**Position (session 0013): nodata-padding is the right answer — the client wants maximum relevant
+data in one go — but it is low priority.** It needs three widenings, none of which this case alone
+justifies pulling forward: intersection admission
+([#13](#13-candidate-admission-containment-vs-intersection)), the degenerate per-cell fold
+([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)), and a **per-cell reason
+channel** — `present=False` currently means a *successful* gap, so a padded tail is indistinguishable
+from measured absence (the `PerPoint` provenance seam,
+[ADR-0003](./adr/0003-provenance-and-origin.md)). Until then, 009's **omission + per-parameter
+reason** is the terminus: it carries the same information a padded tail would, minus the ambiguity.
+The interim cost is payload, not correctness. A server-side **strict mode** is declined — an
+explicit-absence response lets a strict client enforce all-or-nothing with one `if`.
+
+**Cases considered and dissolved** (so they are not re-litigated):
+
+- **Single-vendor short parameter** (ticket 005): *not* heterogeneity. The operator bundles knowing
+  what the market serves — if soil moisture reaches 7 days, the agriculture profile **is** a 7-day
+  product. Supply constrains where the bundle's boundary sits; it does not force a heterogeneous
+  bundle. That boundary is the profile's narrated
+  [reach](#29-narrated-reach-per-axis-join-conservative-on-extent-axes), declared up front.
+- **Nowcast blend** (radar ~2 h + NWP beyond): a **taxonomy error** to file here. Radar is not a
+  fallback for a 16-day request — the model **amends** the radar, both contributing to one
+  `ParameterData` per cell. That is *who fills each cell* (the coverage reconciler,
+  [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold) / the recorded
+  "obs + forecast along `valid_time`" extension point), not *who wins the parameter* (fallback).
+- **Archive breadth**: a decades-long fetch is **batched**, so padding payload never arises; and its
+  right policy is **strict** — a 50-year series with a parameter silently missing is a corrupted
+  dataset, not a partial answer.
+
+**Residue — a different problem.** A station that began measuring humidity in 2003, inside a
+1990–2020 request, is **intra-parameter temporal availability**: genuine nodata (the producer
+succeeded; it has no value there), plus a *slice-extraction* need ("which intervals are useful?") that
+is introspection/metadata, not response shape. Filed here only so it is not mistaken for this concern.
+
+**Three policies stay distinct:** **fallback** (who serves — the reconciler's),
+**membership** (what a beyond-boundary request gets — this concern), **narration** (what the client is
+told up front — [#29](#29-narrated-reach-per-axis-join-conservative-on-extent-axes)).
+
+## 31. Positional alignment is asserted, never checked
+
+[`Coverage`](../src/meteoscape/manifold/core.py) states the invariant — `capability`, `ranges`, and
+`provenance` share one parameter key set and **align positionally** over `domain`, so
+`ranges[pid].values[i]` is `pid` at the domain's i-th point — and nothing verifies it.
+
+**Not a live defect** (session 0013 established this while aligning
+[002c](./tickets/002c-provider-nodata-mask.md)). Every construction site is safe *by construction*,
+not by luck: `sampling` maps over an index list sized to the target domain; `arbiter` moves whole
+`ParameterData` objects between Coverages whose domains it has already compared; `open_meteo` checks
+length explicitly at both sites; and `Calculator`'s kernel is the one caller that authors `domain`
+and `ranges` independently — but the only kernel that exists (`wind_from_uv`) computes element-wise
+and returns its input domain unchanged, so its ranges cannot differ in length from it.
+
+**What opens the hole** — either of these, whichever ships first, should add the check and own it:
+
+- **A non-pointwise kernel.** A windowing calculator ("daily max of hourly accumulation", anticipated
+  by [ADR-0002](./adr/0002-data-model.md)) computes a coarser Domain *and* shorter ranges separately;
+  an off-by-one on a partial trailing window yields a 7-cell domain and 8 values. Validate at the
+  plugin boundary in `Calculator.project`, where the error can name the kernel
+  ([ADR-0004](./adr/0004-producer-resolution-and-capability.md) already requires this).
+- **Store read-back** ([006](./tickets/006-retentive-store-freshness.md)). ADR-0006's Store holds
+  *independently replaceable* per-Parameter units, so reassembly joins separately-persisted pieces —
+  a partially-written or stale unit is the first payload that can be the wrong length without a bug
+  in the assembling code. Validate on `CoverageRecord` itself, since the pieces arrive from storage
+  rather than a caller.
+
+**Length is only a proxy.** It cannot catch transposed axis order or a value list built by iterating
+a `dict` instead of the domain — both are the right length and both silently read values against the
+wrong coordinates. Order is held by the convention that every producer builds values by iterating the
+domain (or index-maps from a source), and by universal agreement on the `AXIS_ORDER` flattening. A
+check that catches the length class should not be described as enforcing alignment.
+
+**Deliberately excluded:** the invariant's *provenance* arm. `Uniform` is keyless by construction,
+`PerParameter` has keys, `PerPoint` is deferred — comparing key sets across them needs a
+`ProvenanceField.covers()` seam, a real design decision that belongs with
+[009](./tickets/009-error-taxonomy-partial-success.md)'s per-parameter omission work.

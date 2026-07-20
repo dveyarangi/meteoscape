@@ -191,6 +191,10 @@ A Store-private per-axis grid used to determine storable coordinates. → [ADR-0
 The Store transformation from a Selection to enclosing, atomically storable units on its Canonical lattice. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Snap, align, round
 
+**Envelope**:
+The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)
+_Avoid_: Capability (the admission authority), coverage
+
 ### Composition
 
 **CalculatorCatalog**:
@@ -315,12 +319,16 @@ The task-oriented profile whose objective is best-obtainable source with fallbac
 _Avoid_: Best provider, router result
 
 **Capability**:
-The Parameters and request Domains a Manifold declares it can serve. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The Parameters and request Domains a Manifold declares it can serve, admitting via a predicate and advertising an advisory Reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Coverage, clause
 
 **Footprint**:
 A producer's declared spatial, vertical, and valid-time reach. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Coverage, grid, extent
+
+**Reach**:
+A Capability's per-Parameter Domain describing what it can serve, joined per axis by a composite: point axes union, extent axes intersect. Never an admission input. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Range, limit, horizon (a projection of Reach, not Reach)
 
 **Arbiter**:
 The composite that resolves competing producers per Parameter under a Reconciler. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)

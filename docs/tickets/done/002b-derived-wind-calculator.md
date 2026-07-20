@@ -35,7 +35,7 @@ extracted to a first-class object built by `build_reconciler(ArbiterPolicy, Sour
 CalculatorRegistry)`, which flattens **both** registries' `priority` recipe fields into its
 `ProducerKey → int` lookup — `Producer` carries no priority. The Weaver wraps both node kinds as
 `Producer`s and *invokes* the factory; it never ranks. The two binders / registries stay distinct
-([ADR-0005](../adr/0005-build-time-composition.md)).
+([ADR-0005](../../adr/0005-build-time-composition.md)).
 
 **2. A single wind Calculator (`{wind_speed, wind_direction}` from `{wind_u, wind_v}`).** One
 **multi-output** Calculator node — `speed = hypot(u, v)`, `direction = atan2(...)`, both **lossless**
@@ -43,7 +43,7 @@ functions of the canonical vector — resolving `(u, v)` **once** and emitting b
 own **scoped input `Arbiter`** (resolving `wind_u` / `wind_v` and nothing else, so every edge points
 downward and the graph stays an acyclic DAG), is woven from the **`CalculatorRegistry`** (bound by
 `CalculatorBinder` from `CalculatorDef`s against the `CalculatorCatalog`,
-[ADR-0005](../adr/0005-build-time-composition.md)) with **memoization** (one node per derived output
+[ADR-0005](../../adr/0005-build-time-composition.md)) with **memoization** (one node per derived output
 group; both member parameters route to it), and advertises a **`DerivedCapability`** serving the output
 group iff all inputs are servable through the scoped resolver. Because the group is co-produced from one
 resolve, requesting both wind params together is a **single winner** — the assembly in (1) is exercised
@@ -60,14 +60,14 @@ the inputs'.
 `u/v` inputs verbatim: the transform is lossless and single-source, and Open-Meteo natively serves wind
 speed/direction (002 converts them *to* `u/v`; here we convert *back*), so the origin is literally its
 wind field (the derivation preserves its input, so it propagates rather than mints — see
-[ADR-0003](../adr/0003-provenance-and-origin.md)). `SyntheticOrigin` stays a declared seam for a future
+[ADR-0003](../../adr/0003-provenance-and-origin.md)). `SyntheticOrigin` stays a declared seam for a future
 **method-bearing or multi-origin** derivation.
 
 `wind_direction` is `circular` (the first non-linear `scale`), but v1's nearest-neighbor read-back never
 interpolates it, so no angular kernel is exercised (a future kernel must be angular via u/v, never a
-degree average — [concern #5](../concerns.md#5-read-time-homogenization-fidelity)). See
+degree average — [concern #5](../../concerns.md#5-read-time-homogenization-fidelity)). See
 `docs/v1-requirements.md` (Parameters) and
-[ADR-0004](../adr/0004-producer-resolution-and-capability.md) (Calculators).
+[ADR-0004](../../adr/0004-producer-resolution-and-capability.md) (Calculators).
 
 ## Acceptance criteria
 
