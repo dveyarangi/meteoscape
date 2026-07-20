@@ -35,7 +35,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Provenance and freshness metadata | Available | Atomic source/run provenance and `expiration` are authored; the compact MCP response exposes source and expiration. |
 | Error surface | Partial | Stable `bad-request`, `capability-mismatch`, and `runtime-failure` prefixes exist; per-parameter partial-failure reasons remain. |
 | Resolution logging/trace | Unassigned | The Phase 1 product roadmap calls for minimal resolution logging, but no v1 acceptance criterion or active ticket owns it yet. |
-| Canonical v1 parameter set | Done | Six provider-served canonical parameters, native Z carriage, convert-on-ingest, and the edge exposure table (ticket 002). Two contract slots are **unbuilt**: nodata representation (vendor nulls become NaN, not a `present` mask — ticket 002c) and the Z axis's `vertical_reference`, which v1 does not need because every declaration is `above_ground` (no owner; required before any second-frame parameter — see v1-requirements deferrals). |
+| Canonical v1 parameter set | Done | Six provider-served canonical parameters, native Z carriage, convert-on-ingest, and the edge exposure table (ticket 002); nodata rides the `present` mask and serializes as JSON `null` (ticket 002c). One contract slot stays **unbuilt**: the Z axis's `vertical_reference`, which v1 does not need because every declaration is `above_ground` (no owner; required before any second-frame parameter — see v1-requirements deferrals). |
 | Derived wind | Done | Multi-output Calculator serves `wind_speed` / `wind_direction` from `wind_u` / `wind_v` with provider-origin propagation (ticket 002b). The node validates output **keys** but not range/domain **alignment**; the v1 kernel is pointwise and cannot violate it, so enforcement is deferred to whichever ticket first opens the hole — a windowing kernel or Store read-back (concern #31). |
 | Free request windows | Planned | Existing parameter input and validation are partial ticket 003b delivery; real `start`/`end` shaping remains, on top of 003a's `Capability.reach`. Alias / exact-Z addressing is **not** v1 — a recorded contract seam awaiting its product driver (roadmap Phase 4). |
 | Second provider and fallback | Planned | TWC/provider fallback behavior is ticket 004; the current provider catalogue contains only Open-Meteo. |
@@ -52,7 +52,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [001 — Walking skeleton](./done/001-walking-skeleton.md) | Done | 000 | One real Open-Meteo temperature request through MCP. |
 | [002 — Core canonical parameters](./done/002-core-5-parameters.md) | Done | 001 (done) | Six provider-served canonical parameters, native Z carriage (single `above_ground` frame; no `vertical_reference` slot), and the edge exposure table. |
 | [002b — Derived wind](./done/002b-derived-wind-calculator.md) | Done | 002 (done) | Requestable wind speed/direction (multi-output Calculator) with propagated provider provenance; first multi-node Coverage assembly. Node well-formedness validation is **partial** — output keys are checked, range/domain alignment is not (unenforced by design while every kernel is pointwise → concern #31). |
-| [002c — Provider nodata mask](./002c-provider-nodata-mask.md) | Ready | 002 (done) | Vendor null → `present[i] = False` → JSON `null`, replacing the NaN substitution that violates the Coverage contract. |
+| [002c — Provider nodata mask](./002c-provider-nodata-mask.md) | Done | 002 (done) | Vendor null → `present[i] = False` → JSON `null`, replacing the NaN substitution that violated the Coverage contract. Presence moved behind `ParameterData` behaviour (`of` / `is_present` / `take`); the `pointwise` decode combinator owns the presence rule. Alignment validation deliberately **not** included → concern #31. |
 | [003a — `Capability.reach`](./003a-capability-reach.md) | Ready | 002, 002b | Per-parameter reach `Domain` with per-axis composite folds; per-axis `Interval` union/intersection. |
 | [003b — Request shaping](./003b-request-shaping.md) | Partial | 003a | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. |
 | [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003b | TWC leaf and wholesale priority fallback. |
@@ -65,8 +65,8 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 
 ## Recommended execution order
 
-1. Land **002c** first — it is small, unblocks 009's nodata semantics, and closes a live
-   contract violation (vendor nulls currently reach the wire as `NaN`).
+1. ~~**002c**~~ — **landed**: the live contract violation (vendor nulls reaching the wire as `NaN`) is
+   closed, and 009's nodata semantics are unblocked.
 2. Run **003a** (self-contained algebra work, no surface change), or **006** as an independent
    follow-on.
 3. Complete **003b** on top of 003a.

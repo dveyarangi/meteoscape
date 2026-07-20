@@ -320,9 +320,21 @@ classDiagram
   **The value at a masked cell is unspecified** — the mask is the sole presence authority, so no reader
   may interpret `values[i]` where `present[i] is False` (v1 fills `nan` as *filler*, never as a signal:
   a reader that consulted it instead of the mask would be reading the sentinel this decision rejects).
-  **Presence is read through `ParameterData` behaviour** (`is_present` / `take` / `co_present`), never
-  off the field: `None`-vs-all-`True` is representation — an elision that keeps the all-present common
-  case free — and stays swappable for an array-backed mask because no consumer branches on it.
+  **Presence is read through `ParameterData` behaviour** (`is_present` / `take`): `None`-vs-all-`True`
+  is representation — an elision that keeps the all-present common case free — and stays swappable for
+  an array-backed mask because **no consumer branches on the `None` convention**. That is the precise
+  rule: passing a mask through opaquely is not a leak (`and_present` remains a module-level function
+  taking two raw masks, domain-length aware), but interpreting `None` outside the type is.
+
+- **A computed value is present iff everything it was computed from is present.** One rule, applied
+  wherever values are derived, so absence propagates instead of being silently filled: at the
+  **normalization** boundary a decoded tick is present only if every vendor variable feeding it is
+  (co-derived outputs therefore share one mask — a null in wind speed alone marks *both* `wind_u` and
+  `wind_v` absent at that tick), and at the **derivation** boundary a Calculator's outputs intersect
+  their inputs' masks. Composition is intersection because presence is a *guarantee*: a value is
+  trustworthy only if every contribution to it was. The alternative — a per-site policy about which
+  inputs may be missing (treat absent snow as zero, say) — is a deliberate exception a producer must
+  write explicitly, never the default.
 
 - **A parameter's extent → the optional `bounds` on each axis `Cell`.** An axis is a `Sequence[Cell]`,
   and a `Cell` pairs its representative `coordinate` with optional `bounds: Interval`; `bounds is None` ⇒

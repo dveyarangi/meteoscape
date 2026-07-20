@@ -25,7 +25,7 @@ from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.calculator import Calculator
 from meteoscape.nodes.calculators.wind import wind_from_uv
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
-from meteoscape.nodes.providers.open_meteo import _wind_component
+from meteoscape.nodes.providers.open_meteo import _u_component, _v_component
 from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 
 
@@ -70,10 +70,8 @@ def _uv_input(*, speed: float = 10.0, direction: float = 90.0) -> CoverageRecord
             parameters={WIND_U: table.get(WIND_U), WIND_V: table.get(WIND_V)},
         ),
         ranges={
-            WIND_U: ParameterData(values=[_wind_component(speed, direction, u=True)], present=None),
-            WIND_V: ParameterData(
-                values=[_wind_component(speed, direction, u=False)], present=None
-            ),
+            WIND_U: ParameterData(values=[_u_component(speed, direction)], present=None),
+            WIND_V: ParameterData(values=[_v_component(speed, direction)], present=None),
         },
         provenance=Uniform(
             Provenance(

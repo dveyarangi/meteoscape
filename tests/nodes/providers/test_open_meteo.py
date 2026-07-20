@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 from datetime import UTC, datetime, timedelta
 
@@ -10,6 +11,7 @@ import pytest
 import respx
 
 from fakes import STOPPED, core_parameters
+from meteoscape.api.mcp_app import serialize_coverage
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.core import Selection
@@ -128,7 +130,10 @@ async def test_project_assembles_onto_selection_domain() -> None:
     assert isinstance(coverage, CoverageRecord)
     assert coverage.domain == selection.domain
     assert list(coverage.ranges[AIR_TEMPERATURE].values) == [18.0, 19.0, 20.0, 21.0]
-    assert coverage.ranges[AIR_TEMPERATURE].present is None
+    temp = coverage.ranges[AIR_TEMPERATURE]
+    assert all(temp.is_present(i) for i in range(4))
+    # Pins the all-present elision optimization, not a presence contract.
+    assert temp.present is None
 
 
 def test_normalize_returns_native_records_by_z() -> None:
@@ -253,6 +258,52 @@ def test_wind_direction_from_north() -> None:
     assert math.isclose(
         wind.ranges[WIND_U].values[0] ** 2 + wind.ranges[WIND_V].values[0] ** 2, 1.0
     )
+
+
+def _reject_nonfinite(token: str) -> float:
+    raise ValueError(f"non-finite JSON constant: {token}")
+
+
+@pytest.mark.asyncio
+async def test_vendor_null_serializes_as_json_null() -> None:
+    """Live defect: a vendor null must reach the MCP wire as JSON null, never NaN."""
+    transport = _CapturingTransport(
+        _canned_hourly(hours=3, hourly={"temperature_2m": [18.5, None, 19.1]})
+    )
+    provider = OpenMeteoProvider(
+        transport=transport,
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    coverage = await provider.project(_selection(hours=3))
+    temp = coverage.ranges[AIR_TEMPERATURE]
+    assert temp.is_present(0) is True
+    assert temp.is_present(1) is False
+    assert temp.is_present(2) is True
+
+    payload = serialize_coverage(coverage)
+    wire = json.dumps(payload)
+    parsed = json.loads(wire, parse_constant=_reject_nonfinite)
+    assert parsed["air_temperature"]["values"] == [18.5, None, 19.1]
+
+
+def test_null_wind_speed_marks_both_components_absent() -> None:
+    normalizer = OpenMeteoNormalizer(core_parameters())
+    raw = _canned_hourly(
+        hours=2,
+        hourly={
+            "wind_speed_10m": [36.0, None],
+            "wind_direction_10m": [90.0, 90.0],
+        },
+    )
+    records = normalizer.normalize(
+        raw, _sample_provenance(), parameters=frozenset({WIND_U, WIND_V})
+    )
+    wind = records[0]
+    assert wind.ranges[WIND_U].is_present(0) is True
+    assert wind.ranges[WIND_U].is_present(1) is False
+    assert wind.ranges[WIND_V].is_present(0) is True
+    assert wind.ranges[WIND_V].is_present(1) is False
 
 
 def _sample_provenance() -> Provenance:

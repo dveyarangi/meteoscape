@@ -127,10 +127,38 @@ async def test_aligned_valid_time_crop() -> None:
     )
     assert result.domain == cropped_domain
     assert list(result.ranges[AIR_TEMPERATURE].values) == [11.0, 12.0, 13.0]
-    present = result.ranges[AIR_TEMPERATURE].present
-    assert present is not None
-    assert list(present) == [True, False, True]
+    temp = result.ranges[AIR_TEMPERATURE]
+    assert temp.is_present(0) is True
+    assert temp.is_present(1) is False
+    assert temp.is_present(2) is True
     assert result.provenance is record.provenance
+
+
+@pytest.mark.asyncio
+async def test_crop_away_absent_ticks_yields_all_present() -> None:
+    domain = point_timeline_domain(hours=4)
+    record = _record(
+        domain,
+        values={AIR_TEMPERATURE: [10.0, 11.0, 12.0, 13.0]},
+        present={AIR_TEMPERATURE: [False, True, True, False]},
+    )
+    cropped_domain = GridDomain(
+        axes={
+            AxisName.X: domain.axes[AxisName.X],
+            AxisName.Y: domain.axes[AxisName.Y],
+            AxisName.Z: domain.axes[AxisName.Z],
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, 1, tzinfo=UTC), timedelta(hours=1), 2, False
+            ),
+        }
+    )
+    result = await _project(
+        record, Selection(domain=cropped_domain, parameters=frozenset({AIR_TEMPERATURE}))
+    )
+    temp = result.ranges[AIR_TEMPERATURE]
+    assert list(temp.values) == [11.0, 12.0]
+    assert all(temp.is_present(i) for i in range(2))
+    assert temp.present is None
 
 
 @pytest.mark.asyncio

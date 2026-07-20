@@ -1,6 +1,6 @@
 # 002c — Provider nodata mask
 
-- **Status:** Ready
+- **Status:** Done
 - **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
 - **Outcome:** A vendor null becomes `present[i] = False` and serializes as JSON `null`, replacing the
   undeclared NaN substitution that violates the Coverage contract — with presence read through

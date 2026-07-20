@@ -15,12 +15,35 @@ from dataclasses import dataclass
 class ParameterData:
     """`present is None` => all cells present; `present[i] is False` => nodata (a successful gap).
 
-    `values` is typed abstractly here; its concrete array backing is decided when behaviour lands
-    (numpy/xarray stay behind this interface).
+    Presence is read through behaviour (`is_present` / `of` / `take`); `None` is an elided all-present
+    representation, not a contract consumers should branch on. Concrete array backing stays behind
+    this interface (numpy/xarray later).
     """
 
     values: Sequence[float]
     present: Sequence[bool] | None
+
+    def __post_init__(self) -> None:
+        if self.present is not None and len(self.present) != len(self.values):
+            raise ValueError(
+                f"present length {len(self.present)} != values length {len(self.values)}"
+            )
+
+    @classmethod
+    def of(cls, values: Sequence[float], present: Sequence[bool]) -> ParameterData:
+        """Construct, eliding an all-present mask. Elides only a *validated* mask."""
+        validated = cls(values=values, present=present)
+        return cls(values=values, present=None) if all(present) else validated
+
+    def is_present(self, i: int) -> bool:
+        return self.present is None or self.present[i]
+
+    def take(self, indices: Sequence[int]) -> ParameterData:
+        """Gather the slice at `indices` — values and presence stay in step by construction."""
+        values = [self.values[i] for i in indices]
+        if self.present is None:
+            return ParameterData(values=values, present=None)
+        return ParameterData.of(values, [self.present[i] for i in indices])
 
 
 def and_present(

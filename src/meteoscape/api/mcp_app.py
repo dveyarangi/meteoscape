@@ -158,12 +158,9 @@ def serialize_coverage(coverage: Coverage) -> dict[str, object]:
     }
     for pid, definition in coverage.capability.parameters.items():
         data = coverage.ranges[pid]
-        values: list[float | None] = []
-        for i, value in enumerate(data.values):
-            if data.present is not None and not data.present[i]:
-                values.append(None)
-            else:
-                values.append(float(value))
+        values = [
+            None if not data.is_present(i) else float(value) for i, value in enumerate(data.values)
+        ]
         provenance = coverage.provenance.summary(pid)
         origin = provenance.origin
         if not isinstance(origin, AtomicOrigin):

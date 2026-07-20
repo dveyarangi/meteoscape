@@ -15,7 +15,7 @@ from meteoscape.manifold.data import ParameterData, and_present
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.calculators.wind import wind_from_uv
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
-from meteoscape.nodes.providers.open_meteo import _wind_component
+from meteoscape.nodes.providers.open_meteo import _u_component, _v_component
 from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 
 
@@ -46,8 +46,8 @@ def _uv_coverage(u_vals: list[float], v_vals: list[float]) -> CoverageRecord:
 def test_wind_round_trips_open_meteo_encoding() -> None:
     speeds = [0.0, 10.0, 3.5]
     directions = [0.0, 90.0, 225.0]
-    u_vals = [_wind_component(s, d, u=True) for s, d in zip(speeds, directions, strict=True)]
-    v_vals = [_wind_component(s, d, u=False) for s, d in zip(speeds, directions, strict=True)]
+    u_vals = [_u_component(s, d) for s, d in zip(speeds, directions, strict=True)]
+    v_vals = [_v_component(s, d) for s, d in zip(speeds, directions, strict=True)]
     cov = _uv_coverage(u_vals, v_vals)
     out_domain, ranges = wind_from_uv(cov)
     assert out_domain is cov.domain
