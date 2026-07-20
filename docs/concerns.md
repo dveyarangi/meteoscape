@@ -562,6 +562,12 @@ an internal client wants the footprint, never the promise → [glossary](./gloss
 to `Capability` buys nothing and costs the structural guarantee ADR-0007 gains — that reach is *not
 reachable* from the request path, so "no admission path may consult reach" is a fact rather than a rule.
 
+A **symptom** to note: 003a's `resolve_reach` re-derives reach by hand-walking each Calculator's input
+`frozenset`, which is why an equal-extent tie has no natural order (harmless — the choice is
+unobservable, [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)). An Arbiter that exposed footprints
+would hand back its **already-ordered** producer list, subsuming the manual walk — the same structural
+move this concern gates.
+
 ## 33. Reach rule and reconciler mode are coupled
 
 **Kind:** policy coherence (contract-level) · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#6](#6-reconciler-catalogue), [#32](#32-runtime-footprint-awareness-inside-the-algebra)
@@ -604,23 +610,44 @@ do not build a coupling mechanism, and do not let a second reach rule ship witho
 
 **Kind:** room-left (build-time structure) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md), [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
 
-Two build-time passes walk the same producer DAG over `ProfileDef`:
+Three build-time passes now walk the same producer DAG over `ProfileDef` (003a added the last two):
 
-- **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, resolving each
-  Calculator's inputs to the producers serving them, with a `visiting` set raising
-  `CompositionError("calculator cycle at ...")`.
-- **`resolve_reach`** — the planned build-time pass resolves each parameter's reach,
-  recursing through Calculators the same way (a Calculator's candidate footprint is the **whole-box
-  dominated** one among its **resolved** inputs', [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)),
-  needing the same cycle guard.
+- **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, with a `visiting` set
+  raising `CompositionError("calculator cycle at ...")`.
+- **`validate_calculators`** — checks every Calculator input is producible; owns a `visiting` cycle
+  guard and the wiring errors ([ADR-0007](./adr/0007-reach-is-an-inner-bound.md)).
+- **`resolve_reach`** — folds footprints by the `grid` rule (whole-box dominated among a Calculator's
+  resolved inputs); assumes a validated graph, so it walks only for geometry.
 
-003a carries its own guard so the resolver stays standalone and unit-testable without weaving. That is
-**deliberate duplication of ~3 lines**, not an accident, and it is the right call at two consumers.
+003a's two carry their own guard so they stay standalone and unit-testable without weaving —
+**deliberate duplication of ~3 lines**, not an accident.
 
-**Carve a shared walk when a third consumer appears** — plausible candidates: a footprint-aware
-reconciler ([#32](#32-runtime-footprint-awareness-inside-the-algebra)), stored-calculator store binding
-([#27](#27-stored-calculator-store-binding)), or a resolution-trace builder
-([#14](#14-resolution-trace-and-observability)). The shape would be a pure `ProfileDef` traversal
-yielding a topologically-ordered producer graph, which both the Weaver and the resolver consume; the
-cycle check moves there. Pure refactor, no contract change. Do not extract preemptively — with two
-consumers the indirection costs more than it saves.
+**The third consumer has now appeared, but the walks diverge** — the Weaver builds `Producer`s,
+`validate_calculators` checks presence, `resolve_reach` folds geometry — so a premature extraction
+would abstract over three different bodies. Extract when they stop diverging (or a fourth appears, e.g.
+a resolution-trace builder [#14](#14-resolution-trace-and-observability)). The shape would be a pure
+`ProfileDef` traversal yielding a topologically-ordered producer graph the consumers share; the cycle
+check moves there. Pure refactor, no contract change. Do not extract preemptively — while the bodies
+diverge, the indirection costs more than it saves.
+
+## 35. Calculator satisfiability vs optional-provider degrade
+
+**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [ticket 003a](./tickets/003a-profile-reach.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
+
+Session 0014. 003a makes a Calculator whose input **no producer serves** a build-time
+`CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so
+an unwired input must fail loudly at build, not surface as an accidental runtime `capability-mismatch`.
+This is strict and correct for v1, where every Calculator input (`wind_u` / `wind_v`) comes from
+Open-Meteo — the always-on keyless primary — so the strict check can never collide with graceful
+degrade.
+
+**The collision is a future question.** If a Calculator input were served *only* by an **optional**
+provider (one that degrades away on a missing secret), the strict rule would fail the build where
+graceful degrade intends the server to start without that capability. Two resolutions, undecided:
+(a) **fail the build** — force the operator to drop the Calculator or keep the provider; matches
+"Calculator = promise". (b) **drop the unsatisfiable Calculator** like a degraded provider and narrate
+the reduced set; matches "optional provider = availability". No v1 driver.
+
+**Related, broader:** an operator wants to assert a composition *serves what they expect* — but
+graceful degrade deliberately won't hard-fail on a missing *provider* parameter, so this is an opt-in
+"validate my profile serves {…}" mode, not a hard rule. A product-side want, not v1 → [ideas](./ideas.md).

@@ -70,17 +70,22 @@ other input** — whole-box, no axis ordering, no judgment. (X/Y-first would tak
 an inner-bound violation.) So:
 
 1. Find the input contained in **every other input on all axes**.
-2. **Raise** if none is.
+2. **Raise** if none is (candidates exist but none is whole-box contained — *sheared* inputs).
 
 When such an input exists, its footprint **is the exact intersection** of the candidates — not merely
-an inner bound — so under never-synthesize it is the *only* correct answer.
+an inner bound — so under never-synthesize it is the *only* correct answer. (A calculator input with
+**no** producer at all is a different failure — a wiring gap, not geometry: a calculator is an operator
+promise, so an unwired input fails the build with a distinct, explicit error. That is composition
+well-formedness, checked before reach → [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade);
+reach assumes every input is producible.)
 
 **A tie is resolved, not unresolved — at either site.** Mutual containment means **equal extents per
-axis**, so tied candidates state the *same promise* and any of them is correct; both procedures take
-the **first** deterministically. This is not the rejected arbitrary tie-break: that hid a choice
-between *incomparable* candidates, whereas here there is no choice to hide. The case is not exotic —
-v1's derived wind presents it on every parameter (`wind_u` / `wind_v` are distinct footprint objects
-with equal extents), so "raise on non-unique" would fail every profile containing a Calculator.
+axis**, so tied candidates state the *same promise*: **any of them may be returned, and the choice is
+unobservable** — in v1 the tied footprints even share the same live axis objects. No ordering is needed
+and none is imposed. This is not the rejected arbitrary tie-break, which hid a choice between
+*incomparable* candidates; here there is no observable choice to hide. The case is not exotic — v1's
+derived wind presents it on every parameter (`wind_u` / `wind_v` are distinct footprint objects with
+equal extents), so "raise on non-unique" would fail every profile containing a Calculator.
 
 Resolution is therefore one small mutual recursion: `reach(arbiter, p)` over its producers' footprints,
 a Source's footprint being its provider's declaration, a Calculator's being the dominated one among
