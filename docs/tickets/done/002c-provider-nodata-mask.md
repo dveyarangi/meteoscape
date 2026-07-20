@@ -1,7 +1,7 @@
 # 002c — Provider nodata mask
 
 - **Status:** Done
-- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md)
 - **Outcome:** A vendor null becomes `present[i] = False` and serializes as JSON `null`, replacing the
   undeclared NaN substitution that violates the Coverage contract — with presence read through
   `ParameterData` behaviour rather than off its representation.
@@ -12,12 +12,12 @@
 
 ## What to build
 
-**The gap.** [ADR-0002](../adr/0002-data-model.md) fixes nodata as an explicit boolean mask and
+**The gap.** [ADR-0002](../../adr/0002-data-model.md) fixes nodata as an explicit boolean mask and
 **rejects a NaN sentinel by name** ("dtype-agnostic… keeps 'no data' distinct from a legitimate
 not-a-number value"). Session 0011 specified the Provider side to match. The 002 build shipped
 `Decode = Callable[..., list[float]]` instead, with
-[`cell()`](../../src/meteoscape/nodes/providers/timeline.py) mapping vendor null → `nan` and
-[`open_meteo.project`](../../src/meteoscape/nodes/providers/open_meteo.py) hardcoding `present=None`.
+[`cell()`](../../../src/meteoscape/nodes/providers/timeline.py) mapping vendor null → `nan` and
+[`open_meteo.project`](../../../src/meteoscape/nodes/providers/open_meteo.py) hardcoding `present=None`.
 The deviation is currently *blessed* by a docstring ("None cells stay None → nan"), so it does not
 read as a defect.
 
@@ -48,7 +48,7 @@ end-to-end.)
 - Retire the docstring that documents the NaN behaviour as intended.
 
 An **all-absent** parameter (every tick null) is a legal outcome here and serializes as an array of
-`null`s. Whether it should instead be *omitted with a reason* is [009](./009-error-taxonomy-partial-success.md)'s
+`null`s. Whether it should instead be *omitted with a reason* is [009](../009-error-taxonomy-partial-success.md)'s
 question, not this ticket's.
 
 ### The masked-cell value is unspecified
@@ -58,7 +58,7 @@ carrying no meaning** — the mask is the sole presence authority, and a reader 
 `values[i]` instead of `present[i]` would be reading the very sentinel ADR-0002 rejects. Consequence
 to state plainly: kernels compute garbage at masked cells by design (`wind_from_uv` will evaluate
 `atan2` over filler), and that is correct — the mask discards it. Do not "fix" a kernel to skip masked
-cells. → [ADR-0002](../adr/0002-data-model.md) (Nodata).
+cells. → [ADR-0002](../../adr/0002-data-model.md) (Nodata).
 
 ### Presence becomes behaviour, not a field read
 
@@ -68,16 +68,16 @@ free. The harm when it leaks is a consumer having to **understand** the conventi
 
 | Site | Today | After |
 |---|---|---|
-| [`mcp_app.py`](../../src/meteoscape/api/mcp_app.py) | `data.present is not None and not data.present[i]` | `data.is_present(i)` |
-| [`sampling.py`](../../src/meteoscape/manifold/sampling.py) | `None if data.present is None else [...]`, beside a parallel `values` comprehension | `data.take(source_indices)` |
+| [`mcp_app.py`](../../../src/meteoscape/api/mcp_app.py) | `data.present is not None and not data.present[i]` | `data.is_present(i)` |
+| [`sampling.py`](../../../src/meteoscape/manifold/sampling.py) | `None if data.present is None else [...]`, beside a parallel `values` comprehension | `data.take(source_indices)` |
 
-**`and_present` and [`wind.py`](../../src/meteoscape/nodes/calculators/wind.py) are deliberately left
+**`and_present` and [`wind.py`](../../../src/meteoscape/nodes/calculators/wind.py) are deliberately left
 alone.** `wind.py` passes both masks to a function that handles `None` internally — it never branches,
 so it never learns the convention, and moving the function onto the class would be aesthetics. It would
 also *cost* something real: `and_present`'s `n=len(cov.domain)` means its `zip(strict=True)`
 incidentally cross-checks each mask against the **domain** length, which a method reading
 `len(self.values)` would lose — the very check deferred by
-[#31](../concerns.md#31-positional-alignment-is-asserted-never-checked). `and_present` already sits in
+[#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked). `and_present` already sits in
 `data.py` beside `ParameterData`; it is at home.
 
 `ParameterData` gains:
@@ -98,9 +98,9 @@ Two tests assert on the representation:
 
 | Test | Issue |
 |---|---|
-| [`test_sampling.py:130-132`](../../tests/manifold/test_sampling.py) | Asserts `list(present) == [True, False, True]` — a raw representation read, and the closest existing cousin of the new `take` criterion. Rewrite through `is_present`; it becomes that criterion's test rather than a second one beside it. |
-| [`test_open_meteo.py:131`](../../tests/nodes/providers/test_open_meteo.py) | Asserts `.present is None` — this is the *one* place the elision may still be asserted directly (criterion 3's "verified once"), so it stays, but should say in a comment that it pins an optimization, not a contract. |
-| [`test_mcp_app.py:229`](../../tests/api/test_mcp_app.py) | The hand-built `present=[True, False]` serializer test. Stays as-is (see above). |
+| [`test_sampling.py:130-132`](../../../tests/manifold/test_sampling.py) | Asserts `list(present) == [True, False, True]` — a raw representation read, and the closest existing cousin of the new `take` criterion. Rewrite through `is_present`; it becomes that criterion's test rather than a second one beside it. |
+| [`test_open_meteo.py:131`](../../../tests/nodes/providers/test_open_meteo.py) | Asserts `.present is None` — this is the *one* place the elision may still be asserted directly (criterion 3's "verified once"), so it stays, but should say in a comment that it pins an optimization, not a contract. |
+| [`test_mcp_app.py:229`](../../../tests/api/test_mcp_app.py) | The hand-built `present=[True, False]` serializer test. Stays as-is (see above). |
 
 Every other `ParameterData(values=…, present=None)` in the suite keeps working — direct construction
 stays legal, which is why `of` was chosen over normalizing in `__post_init__`. That the migration is
@@ -108,7 +108,7 @@ this small is a consequence of that decision, not a coincidence.
 
 ### Not in this ticket
 
-- **Per-parameter absence reasons and partial-failure semantics** — [009](./009-error-taxonomy-partial-success.md),
+- **Per-parameter absence reasons and partial-failure semantics** — [009](../009-error-taxonomy-partial-success.md),
   which distinguishes nodata from failure at the edge and **assumes this mask exists**. 009's claim
   that "nodata → `null` serialization" already landed is only true once this ships.
 - **Positional-alignment validation on `CoverageRecord`.** Folded in at session 0013, **reversed at
@@ -117,8 +117,8 @@ this small is a consequence of that decision, not a coincidence.
   `open_meteo` checks explicitly at both sites, and `Calculator`'s only kernel returns its input domain
   unchanged with element-count-preserving ranges. With `ParameterData` now owning `present`'s length, this ticket gives
   `CoverageRecord` no new reason to be touched. Filed as
-  [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked) with the two events that
-  would open the hole (a windowing kernel; Store read-back in [006](./006-retentive-store-freshness.md)).
+  [#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked) with the two events that
+  would open the hole (a windowing kernel; Store read-back in [006](../006-retentive-store-freshness.md)).
 - **Wire-level NaN verification.** The serializer trusts the mask. Presence and values travel as one
   frozen object through every transform, so the mask cannot desync — a second enforcement point would
   guard an invariant already held by construction.
