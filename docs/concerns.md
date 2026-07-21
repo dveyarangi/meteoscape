@@ -705,3 +705,23 @@ the reduced set; matches "optional provider = availability". No v1 driver.
 **Related, broader:** an operator wants to assert a composition *serves what they expect* — but
 graceful degrade deliberately won't hard-fail on a missing *provider* parameter, so this is an opt-in
 "validate my profile serves {…}" mode, not a hard rule. A product-side want, not v1 → [ideas](./ideas.md).
+
+## 37. Storeless materialized producers and read-back homogenization
+
+**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/m2-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+
+[m2](./tickets/m2-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
+(archive bundle, climatological normals, static fields) *is* its own store, so it wires **storeless** —
+no `Reservoir(store, provider)` mirroring data that is already local. That removes the node whose
+read-back would have homogenized an off-grid request, and
+[architecture §Reservoir](./architecture.md#reservoir) is explicit that homogenization is **not**
+leaf-only: every producer's answer must honour `sel.domain`.
+
+**Open: where a storeless producer's homogenization lives.** The kernel itself is the shared sampling
+seam ([#5](#5-read-time-homogenization-fidelity) owns fidelity); this concern owns only **placement** —
+in the provider base, or a thin non-retentive read-back wrapper the Weaver applies. Also open, smaller:
+whether `isinstance(provider.capability, EnumerableCapability)` remains the right "already
+materialized" discriminator once a provider is enumerable but unholdable (the cloud-ARCO case).
+
+**Trigger to revisit:** the first real materialized provider. No v1 driver — no v1 provider is
+materialized; the storeless path exists only in fakes.

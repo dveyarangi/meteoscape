@@ -30,6 +30,10 @@ _Avoid_: ContinuousAxis, fat cell
 A request-only vertical aperture whose admission is based on overlap rather than containment. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Vantage cell, footprint axis
 
+**Lattice**:
+A Store's private per-axis retention grid — the quantize, report, and read-back target. Never public: a node exposes no lattice, and the only public Domain is a Coverage's. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Grid (a Coverage Domain shape), node domain, public lattice
+
 **Admission predicate**:
 The per-axis rule that decides whether a request lies within a producer's declared Footprint. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Serves, contains
