@@ -8,8 +8,7 @@ description: >-
 # Denoise
 
 The topic in context or entire codebase, on user request. Learn where this repo already treats each fact as
-authoritative; follow that layering — do not invent one. Out of scope: code
-structure, contradictory passages, reorganizing where facts live.
+authoritative; follow that layering — do not invent one. Out of scope: code structure, reorganizing where facts live.
 Always explore `architecture.md`, `glossary.md` and relevant ADRs too.
 
 **Unwrinkle.** Cross-explore for contradictions, under or overstatements, redundancies or other misalignments between docs, make sure different architecture docs are aligned with each-other. 
