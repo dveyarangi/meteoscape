@@ -138,6 +138,7 @@ def test_wind_calculator_memoized_as_single_producer() -> None:
         calculators=_wind_registry(),
     )
     root = Weaver(RecordingStoreFactory()).weave(profile)
+    assert isinstance(root, Reservoir)
     assert isinstance(root.source, Arbiter)
     calc_keys = [p.key for p in root.source.producers if isinstance(p.key, CalculatorKey)]
     assert calc_keys == [CalculatorKey(method="wind_uv", name="default")]
@@ -156,6 +157,7 @@ def test_scoped_arbiter_admits_only_input_producers() -> None:
         calculators=_wind_registry(),
     )
     root = Weaver(RecordingStoreFactory()).weave(profile)
+    assert isinstance(root, Reservoir)
     assert isinstance(root.source, Arbiter)
     calc = next(p for p in root.source.producers if isinstance(p.key, CalculatorKey))
     assert isinstance(calc.node, Calculator)
