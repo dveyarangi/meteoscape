@@ -93,7 +93,7 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
 **Reading reach at the surface.** [003b](./003b-capability-domain.md) puts the per-parameter `Domain`
 on the `Capability` ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so **nothing needs
 threading**: the surface reads the profile's reach off the woven root
-(`gateway.best_view.capability.domain(p)`), and `compose()` keeps its signature. It gains one step —
+(`gateway.best_view.capability.reach(p)`), and `compose()` keeps its signature. It gains one step —
 `binders → ProfileDef → validate_calculators → weave → Gateway` — so a Calculator wiring gap fails
 before any `Store` is allocated. Geometry needs no pass of its own: each node's `Capability` composes
 its `Domain` as the graph is built, so an unresolvable one fails at `weave`.

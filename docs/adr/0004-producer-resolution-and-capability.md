@@ -75,14 +75,14 @@ same shape. The abstraction these are shapes of is the
   representation problem: it collapses to one concrete `EnumerableCapability.domain` only when you
   `project`.
 
-- **Capability publishes the `Domain` it serves, per parameter.** `domain(parameter)` sits on the
+- **Capability publishes the `Domain` it serves, per parameter.** `reach(parameter)` sits on the
   interface beside `parameters` and `serves`; a Manifold's **Reach** *is* that Domain, and a leaf's is
   the footprint it declares. Composites compose it from their children — never synthesize it — so the
   value is **tight**: a profile that composes serves exactly what it publishes
   → **[ADR-0007](./0007-capability-carries-its-domain.md)**.
   - **`serves` remains the sole admission authority.** It reads the same geometry but is allowed to be
     **stricter** — the resampler-reachability and probed-availability seams tighten admission below
-    declared geometry, which is why it is not derived from `domain` →
+    declared geometry, which is why it is not derived from `reach` →
     [#29](../concerns.md#29-narrated-reach-what-a-profile-promises).
 
 - **A leaf's temporal footprint is clock-anchored** — its `valid_time` window tracks the provider's run
