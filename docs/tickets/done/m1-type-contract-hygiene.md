@@ -2,7 +2,7 @@
 
 - **Status:** Done
 - **Kind:** Maintenance — not a v1 deliverable; no product capability changes
-- **Depends on:** [003a — Profile reach](../003a-profile-reach.md) (landed; contributed 2 of the 40 errors)
+- **Depends on:** [003a — Profile reach](./003a-profile-reach.md) (landed; contributed 2 of the 40 errors)
 - **Plan:** [RFC 0004 — Separability narrowing and predicate hygiene](../../rfc/0004-20260721-separability-narrowing.md)
 - **Outcome:** `uv run pyright` clean across `src` and `tests`, with every narrowing placed where the
   type is genuinely provable and no design contract weakened to get there.
