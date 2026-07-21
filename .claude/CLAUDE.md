@@ -1,0 +1,1 @@
+- Prefer using edit or replace tools for updating files, refrain from using python, sed, etc.
