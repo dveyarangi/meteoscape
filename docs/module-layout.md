@@ -10,7 +10,7 @@ module placement and responsibilities, not milestone status.
 ```text
 src/meteoscape/
 ├── __init__.py                # re-exports SourceKey (from identity) + main
-├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → weave → Gateway
+├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → validate_calculators → weave → resolve_reach → Gateway
 ├── config.py                  # Settings + OfferingDef + CalculatorDef + ProfileConfig + store/arbiter knobs; secrets(); never handed to nodes as Settings
 ├── observability.py           # Sentry init seam (no-op without a DSN)
 ├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request (pure leaf)
@@ -29,12 +29,13 @@ src/meteoscape/
 │   # arbiter.py — Source map + SourceRegistry + ArbiterPolicy (reconciler owns priority)
 │   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef
 │   ├── weaver.py              # allocate Stores; wire Source/Calculator Producers and scoped/top Arbiters
+│   ├── reach.py               # build-time passes over ProfileDef: validate_calculators (wiring) + resolve_reach (geometry) + GridReachRule
 │   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
 │   │   └── calculators.py     # CalculatorManifest, CalculatorCatalog
 │   └── providers/
-│       ├── base.py            # Provider: project + capability + source_key
+│       ├── base.py            # Provider: project + capability + source_key + footprints (ParameterId → Domain, read at build by resolve_reach)
 │       ├── normalization.py
 │       └── <vendor>.py
 │
@@ -45,7 +46,9 @@ src/meteoscape/
 # Injection (never the Settings type):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
 #   CalculatorBinder(CalculatorCatalog).build(defs, parameters) → CalculatorRegistry  # keyed by CalculatorKey; resolves output ParameterDefs
+#   validate_calculators(ProfileDef) → None  # raises CompositionError; runs BEFORE weave (owns the cycle guard)
 #   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold
+#   resolve_reach(ProfileDef) → Mapping[ParameterId, Domain]  # partial map; precondition: a validated ProfileDef
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler)  # producers = Producer{node, key}; reconciler owns priority
 #   compose(profile, providers, calculators, secrets, clock, stores) → Gateway

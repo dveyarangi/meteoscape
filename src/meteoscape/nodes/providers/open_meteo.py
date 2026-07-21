@@ -23,6 +23,7 @@ from ...manifold.data import ParameterData
 from ...manifold.domain import (
     AxisName,
     ContinuousAxis,
+    Domain,
     FootprintDomain,
     GridDomain,
     Interval,
@@ -258,6 +259,10 @@ class OpenMeteoProvider(Provider):
     @property
     def source_key(self) -> SourceKey:
         return self._source_key
+
+    @property
+    def footprints(self) -> Mapping[ParameterId, Domain]:
+        return {pid: domain for pid, (_, domain) in self._capability.footprints.items()}
 
 
 def _build_capability(

@@ -36,20 +36,25 @@ value that is "spatially an outer bound, temporally a guarantee." It has three d
 Reach **is one producer's `Domain`**, returned whole — never a synthesized one. One principle: *the
 largest region the node can serve, expressed as a `Domain` that already exists.*
 
-**The node type supplies the quantifier**, and reach has exactly **two composition sites**, because a
-Calculator's inputs are themselves resolved by a **scoped Arbiter**
-([ADR-0004](./0004-producer-resolution-and-capability.md)) — so the same two repeat at every depth:
+Reach has two composition sites, because a Calculator's inputs are themselves resolved by a **scoped
+Arbiter** ([ADR-0004](./0004-producer-resolution-and-capability.md)) — so the same two repeat at every
+depth. **Only one of them is the rule's business:**
 
-| Site | Serves where | `grid` picks |
-|---|---|---|
-| **Arbiter** | **any** producer serves | the **dominating** (widest) footprint |
-| **Calculator** | **all** its inputs serve | the **dominated** (most restrictive) input reach |
+| Site | Serves where | What happens | Whose job |
+|---|---|---|---|
+| **Arbiter** | **any** producer serves | **choose** which alternative to promise | the **reach rule** — a product judgment |
+| **Calculator** | **all** its inputs serve | **no choice** — it serves where every input does | **structure** — forced by what a Calculator is |
 
-Same containment test, opposite directions. The quantifier is a fact about the node, not a policy —
-and the two sites need **different procedures**, because only one of them gets its inner bound for
-free:
+The Calculator side is arithmetic, not policy: needing all inputs *entails* the most restrictive
+answer, and under never-synthesize that is the input **contained in every other on all axes** (which,
+when it exists, is the exact intersection). No mode could decide otherwise, so it is resolved by the
+recursion, not delegated to the rule. Sheared inputs — where no input is contained in the others —
+have no such answer and **raise**. (An input with **no producer at all** is a different failure: a
+wiring gap, not geometry. A Calculator is an operator promise, so an unwired input fails the build with
+its own explicit error → [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade);
+reach assumes every input is producible.)
 
-**At the Arbiter** (the winner serves its own footprint by itself, so no cross-check is needed):
+**The rule is therefore one operation: given alternatives, which do we promise?** Under `grid`:
 
 1. Find the footprint that dominates all others **on X/Y**.
 2. Among X/Y ties, the one dominating on the **remaining axes**.
@@ -58,26 +63,11 @@ free:
 The winner's `Domain` is the reach, entirely — its T comes along regardless of the others'. So
 `{Europe × 16 d, Global × 10 d}` → **`Global × 10 d`**, and
 `{Europe × 16 d, Global × 10 d, Arctic × 5 d}` → **`Global × 10 d`** (Arctic never extended the
-spatial promise, so it cannot shorten the temporal one). Here dominance **must** be judged X/Y first,
-not all axes at once: `Global × 10 d` does not contain `Europe × 16 d` as a whole box, so an all-axis
-test would raise on the motivating case. That axis preference — *spatial completeness beats forecast
-length* — is a **product judgment**, and it is the only judgment in the rule.
-
-**At the Calculator** the same X/Y-first procedure would be **wrong**: the winner's footprint is only
-servable where the *other* inputs also serve, so containment must hold on **every axis against every
-other input** — whole-box, no axis ordering, no judgment. (X/Y-first would take
-`{Europe × 10 d, Global × 5 d}` to `Europe × 10 d`, promising five days the Global input cannot back —
-an inner-bound violation.) So:
-
-1. Find the input contained in **every other input on all axes**.
-2. **Raise** if none is (candidates exist but none is whole-box contained — *sheared* inputs).
-
-When such an input exists, its footprint **is the exact intersection** of the candidates — not merely
-an inner bound — so under never-synthesize it is the *only* correct answer. (A calculator input with
-**no** producer at all is a different failure — a wiring gap, not geometry: a calculator is an operator
-promise, so an unwired input fails the build with a distinct, explicit error. That is composition
-well-formedness, checked before reach → [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade);
-reach assumes every input is producible.)
+spatial promise, so it cannot shorten the temporal one). Dominance is judged X/Y first, not all axes at
+once: `Global × 10 d` does not contain `Europe × 16 d` as a whole box, so an all-axis test would raise
+here. That axis preference — *spatial completeness beats forecast length* — is the **product judgment**,
+and it is the only judgment in the rule. Where one candidate *does* contain all others on every axis,
+X/Y-first and plain containment agree, so the judgment is dormant.
 
 **A tie is resolved, not unresolved — at either site.** Mutual containment means **equal extents per
 axis**, so tied candidates state the *same promise*: **any of them may be returned, and the choice is
@@ -87,9 +77,9 @@ and none is imposed. This is not the rejected arbitrary tie-break, which hid a c
 derived wind presents it on every parameter (`wind_u` / `wind_v` are distinct footprint objects with
 equal extents), so "raise on non-unique" would fail every profile containing a Calculator.
 
-Resolution is therefore one small mutual recursion: `reach(arbiter, p)` over its producers' footprints,
-a Source's footprint being its provider's declaration, a Calculator's being the dominated one among
-`reach(scoped_arbiter, i)` for its inputs.
+Resolution is therefore one small mutual recursion: at an Arbiter, the **rule** selects among its
+producers' footprints; a Source's footprint is its provider's declaration; a Calculator's is the
+contained-in-all one among `reach(scoped_arbiter, i)` for its inputs.
 
 **Returning an existing `Domain` rather than a synthesized one** — on *both* paths — is what makes this
 cheap and correct: inner-boundedness holds **by construction** (that producer serves every point of it
@@ -97,7 +87,7 @@ cheap and correct: inner-boundedness holds **by construction** (that producer se
 stays live with no special handling and a future curvilinear footprint survives the selection intact.
 
 **The selection is clock-dependent; the guarantee is not.** Both sites compare `valid_time` extents
-(the Arbiter's tie-break, the Calculator's whole-box check), which a `RollingAxis` resolves against
+(the rule's tie-break, the Calculator's containment check), which a `RollingAxis` resolves against
 the clock — so where producers tie on X/Y and differ on T, *which* one wins depends on when the
 profile was built, and two instances of one config may narrate different reaches. That is **non-determinism, not incorrectness**: every candidate is a real producer's footprint,
 so whichever wins is a true inner bound. It does mean the build-time guarantee covers
@@ -113,8 +103,22 @@ it: `serves` does all admission, the Arbiter ranks by `reconciler`, the `Reservo
 So reach is resolved **once at build time**, over the `ProfileDef`, and handed to the surface —
 `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`, called from the composition root, **not**
 from `Weaver.weave` (which stays thin). The only contract change is one accessor: **`Provider` publishes
-the per-parameter footprint it already declares.** Nothing is added to `Capability`, no composite
-implements reach, the `Reservoir` forwards nothing, and `Coverage` has no reach at all.
+the per-parameter footprint it already declares** (`footprints: Mapping[ParameterId, Domain]`, the same
+objects its `Capability` interprets, exposed for the build-time reader). Nothing is added to
+`Capability`, no composite implements reach, the `Reservoir` forwards nothing, and `Coverage` has no
+reach at all.
+
+**The map is keyed by what the profile actually serves, not by the vocabulary.** A parameter no enabled
+producer serves is **absent**, not a null or empty `Domain` — so an optional provider degrading away
+silently narrows the map, and consumers fold over the keys present rather than over the
+`ParameterTable`. That is what keeps the strict Calculator check
+([#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade)) the *only* place
+absence is an error.
+
+**Dominance is per-axis extent containment, not `Domain.matches`.** The two predicates read the same
+geometry for different questions: `matches` is the request-side *admission* test, and `VantageAxis`
+specialises it to **intersection** — so reusing it would silently make dominance mean "overlaps".
+Reach compares `axis(name).extent` directly on both sides.
 
 Footprints **cannot** come from config instead: `OfferingSpec` carries no geometry, deliberately —
 the manifest keeps declarations and construction together while *"geometry … stays off it"*
@@ -152,12 +156,21 @@ producer" (`grid`'s choice — it therefore **ignores priority**) and "the prima
 correct inner bounds. Pairing the two slots incoherently would narrate a promise the engine cannot keep
 → [#33](../concerns.md#33-reach-rule-and-reconciler-mode-are-coupled).
 
-v1 ships **exactly one** implementation (`grid`), called directly, with **no config plumbing and no
-registry**. Freezing a `ReachRule` interface on a single implementation is the specific mistake
+v1 ships **exactly one** implementation (`grid`) as a concrete class with a **single operation**
+(`reach` — given alternatives, return the promised Reach Domain), called directly — **no `ReachRule` protocol, no config
+plumbing, no registry**. Freezing an interface on a single implementation is the specific mistake
 [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold) records about the
-`reconciler` slot — and the second rule is already known to need a wider interface, since a polar-swath
-composition constrains the **request's shape** (only "fat" T requests are answerable), not merely which
-axes dominate.
+`reconciler` slot; the contract can be *extracted* once a second rule exists, and that second rule is
+already known to need a wider one, since a polar-swath composition constrains the **request's shape**
+(only "fat" T requests are answerable), not merely which axes dominate.
+
+**v1 builds the mechanism, not the judgment.** No v1 profile can present incomparable alternatives —
+Open-Meteo and TWC are both global, so candidates either tie on X/Y or one contains the other outright,
+where X/Y-first and plain containment agree. So `grid`'s v1 body is **containment only**: the candidate
+containing all others, else raise. The **X/Y-first preference stays decided-but-unbuilt**, a declared
+seam whose trigger is the first **regional** provider — the only configuration that can make two
+candidates incomparable. Building it earlier would freeze a product judgment against no deployment and
+test a profile that cannot exist.
 
 ## Consequences
 

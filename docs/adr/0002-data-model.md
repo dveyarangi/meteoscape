@@ -129,7 +129,23 @@ classDiagram
     `matches` ([#18](../concerns.md#18-clock-anchored-footprint-fidelity)).
   - **`CurvilinearDomain`** — deferred non-separable geometry (radar geotangent slice, satellite
     swath); the base interface deliberately leaves room for it
-    ([#12](../concerns.md#12-curvilinear-domains)).
+    ([#12](../concerns.md#12-curvilinear-domains)) on **both** sides of `project` — a producer that
+    *declares* swath geometry and a request that *targets* it are independent, separately committed
+    cases, so neither `Selection.domain` nor `Coverage.domain` nor `Provider.footprints` may narrow
+    below the base `Domain`.
+
+- **Admission stays total; build-time rules raise.** `Domain.matches` is **total** — handed geometry it
+  cannot compare (a separable representation against the deferred non-separable case) it returns
+  `False`, which is precisely what lets the Arbiter skip that candidate and try the next. The degrade
+  path depends on it: raising would abort the candidate loop and fail requests a later producer could
+  serve. A **build-time** rule defined only over separable geometry — the `grid` reach rule
+  ([ADR-0007](./0007-reach-is-an-inner-bound.md)) — instead declares separability a **precondition** and
+  raises, because it has one caller and no fallback, so a `False` there is not a survivable skip but a
+  misleading diagnosis. The asymmetry is deliberate. What `False` costs on the request path is
+  *diagnosis*, not correctness — an operator cannot distinguish "no producer covers this region" from
+  "this source can never participate" — and that belongs to the resolution trace
+  ([#14](../concerns.md#14-resolution-trace-and-observability),
+  [#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)).
 
 - **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
   algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
