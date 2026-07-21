@@ -54,7 +54,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [002 — Core canonical parameters](./done/002-core-5-parameters.md) | Done | 001 (done) | Canonical provider parameters and edge exposure. |
 | [002b — Derived wind](./done/002b-derived-wind-calculator.md) | Done | 002 (done) | Requestable derived wind and multi-node response assembly. |
 | [002c — Provider nodata mask](./done/002c-provider-nodata-mask.md) | Done | 002 (done) | Vendor nulls preserved as nodata and JSON `null`. |
-| [003a — Profile reach](./003a-profile-reach.md) | Ready | 002, 002b | Build-time profile reach. |
+| [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only — 003b wires it into `compose()`. |
 | [003b — Request shaping](./003b-request-shaping.md) | Partial | 003a | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. |
 | [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003b | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |

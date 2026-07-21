@@ -710,7 +710,7 @@ diverge, the indirection costs more than it saves.
 
 ## 35. Calculator satisfiability vs optional-provider degrade
 
-**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [ticket 003a](./tickets/003a-profile-reach.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
+**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [ticket 003a](./tickets/done/003a-profile-reach.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
 
 Session 0014. 003a makes a Calculator whose input **no producer serves** a build-time
 `CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so

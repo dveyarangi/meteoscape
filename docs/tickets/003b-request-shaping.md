@@ -1,7 +1,7 @@
 # 003b — Request shaping
 
 - **Status:** Partial
-- **Depends on:** [003a — Profile reach](./003a-profile-reach.md) (which depends on 002, 002b)
+- **Depends on:** [003a — Profile reach](./done/003a-profile-reach.md) (which depends on 002, 002b)
 - **Outcome:** Free request windows, plus reach-based narration and default windows at the edge.
 
 ## Parent PRD
@@ -23,7 +23,7 @@ arbitrary extents). The `Arbiter` admits a provider per parameter only when its 
 plus the profile's **reach**, resolved at build.
 
 `reach` itself — the per-parameter `Domain` and the producer-selection rule — is
-[003a](./003a-profile-reach.md). This ticket **consumes** it: the surface folds `min` over the
+[003a](./done/003a-profile-reach.md). This ticket **consumes** it: the surface folds `min` over the
 parameters *it* exposes (a surface-specific fold, so it stays at the edge) and uses the result for
 both narration and the omitted-`end` default. Reach never feeds admission — `serves` stays the sole
 authority, and the edge never pre-rejects a request against it.
@@ -85,7 +85,7 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
     past it may still be servable, and the edge would be overruling the authority with an
     understatement.
 
-**Wiring reach into the surface (session 0014).** [003a](./003a-profile-reach.md) delivers
+**Wiring reach into the surface (session 0014).** [003a](./done/003a-profile-reach.md) delivers
 `validate_calculators(ProfileDef)` and `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`;
 this ticket **calls both**. `compose()` gains two steps —
 `binders → ProfileDef → validate_calculators → weave → resolve_reach → Gateway` — and hands the map to

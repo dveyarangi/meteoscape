@@ -1,6 +1,6 @@
 # 0014 · 2026-07-20 · 003a align — reach: inner bound, selected, and moved off `Capability`
 
-Align session on [ticket 003a](../tickets/003a-profile-reach.md). Two **reversals of session 0013**
+Align session on [ticket 003a](../tickets/done/003a-profile-reach.md). Two **reversals of session 0013**
 landed, both driven by the same question — *what is reach actually for?* — and the answers produced a
 new ADR, a renamed ticket, a new concern, and a smaller ticket than we started with.
 
@@ -217,6 +217,6 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
   request axis; membership past the edge is
   [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
-**Next:** implement [003a](../tickets/003a-profile-reach.md) — now a smaller ticket than at session
+**Next:** implement [003a](../tickets/done/003a-profile-reach.md) — now a smaller ticket than at session
 start (one build-time function, one leaf accessor, `Interval.intersect`; no node changes), then
 [003b](../tickets/003b-request-shaping.md) on top of it.
