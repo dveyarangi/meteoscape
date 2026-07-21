@@ -175,16 +175,16 @@ the per-parameter provenance `expiration`.
 - Omitting `end` runs the window to the profile's **reach end** — what the caller gets when they do
   not say how far. There is **no configured default horizon**; `start` / `end` stay a **free window**
   (no interval enum — the `Domain` already models arbitrary extents).
-- The **available envelope** the tool description narrates is the served parameters (off the woven
-  root's `Capability`) plus the profile's **reach** — an inner bound resolved **once at build** from
-  the producers' declared footprints; semantics, the `grid` rule, and the admissible-by-construction
-  default → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md),
-  [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection). v1 positions: because it
-  resolves off the composed `ProfileDef`, it reflects config resolution (enabled providers + present
+- The **available envelope** the tool description narrates is the served parameters plus the profile's
+  **reach** — both read off the woven root's `Capability`, which publishes the per-parameter `Domain` it
+  serves; semantics, composition, and the admissible-by-construction default →
+  [ADR-0007](./adr/0007-capability-carries-its-domain.md),
+  [#29](./concerns.md#29-narrated-reach-what-a-profile-promises). v1 positions: because it
+  composes off the woven graph, it reflects config resolution (enabled providers + present
   secrets) automatically, so a missing optional provider (for example, no TWC key) cannot advertise
   parameters or horizons the running server will not attempt. **Quality is not narrated** — a policy
   outcome the response reports per parameter via provenance
-  (→ [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection)); quality tiers belong in
+  (→ [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)); quality tiers belong in
   separate profiles behind separate tools. A separate capabilities-introspection tool/resource remains
   a deferred seam.
 - Current conditions fall out as the near-now sample. Observations/past data deferred.

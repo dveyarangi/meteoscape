@@ -2,7 +2,7 @@
 
 - **Status:** Partial
 - **Depends on:** [002c — Provider nodata mask](./done/002c-provider-nodata-mask.md),
-  [003b — Request shaping](./003b-request-shaping.md),
+  [003c — Request shaping](./003c-request-shaping.md),
   [004 — Second-provider fallback](./004-second-provider-fallback.md)
 - **Outcome:** Per-parameter absence reasons and capable-but-faulting partial results.
 

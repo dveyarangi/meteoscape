@@ -221,9 +221,9 @@ very different situations: *"nothing covers this region"* (the system working) a
 **never** participate, and nothing told you"* (a configuration or implementation gap). The second is
 not curvilinear-specific: a separable but **misconfigured** footprint — a region narrower than
 intended, a Z level nothing requests — is skipped just as silently and passes every build-time check.
-The [#12](#12-curvilinear-domains) case is narrower still: once 003b wires `resolve_reach` into
-`compose()`, a curvilinear producer under the `grid` reach rule fails the **build**, so it never
-reaches the request path at all.
+The [#12](#12-curvilinear-domains) case is narrower still: a curvilinear producer fails the **build**,
+because the `priority` reconciler's domain composition compares candidates per-axis and rejects one it
+cannot compare — so it never reaches the request path at all.
 
 This belongs to the resolution trace ([#14](#14-resolution-trace-and-observability)) rather than to the
 predicate: the skip needs a **reason code** alongside the existing runtime-fault / nodata /
@@ -284,7 +284,7 @@ correct.
 ## 12. Curvilinear domains
 
 **Kind:** room-left (interface promise) · **Refs:** [ADR-0002](./adr/0002-data-model.md),
-[ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#5](#5-read-time-homogenization-fidelity)
+[ADR-0007](./adr/0007-capability-carries-its-domain.md), [#5](#5-read-time-homogenization-fidelity)
 
 ADR-0002 makes the `Domain` interface **non-separable by default** so curvilinear geometries — radar
 geotangent slices, satellite swaths — can be a **representation** later without a contract change.
@@ -299,7 +299,7 @@ a constraint on the Domain interface (don't assume per-axis separability), not a
 | **separable source** | v1 today (grid → grid) | verify a grid forecast against a swath in **observation space** |
 | **curvilinear source** | nowcast blend — radar homogenized onto the node grid, answer served as a box | radar vs. satellite compared in either's native geometry |
 
-- **Source role** (the *declaring* side — `Provider.footprints`, `Coverage.domain`, the `self` side of
+- **Source role** (the *declaring* side — `Capability.domain`, `Coverage.domain`, the `self` side of
   `Domain.matches`): a producer *has* non-separable geometry. Committed by
   [product pillar 10](./product-roadmap.md) (local stations, regional radars, satellite products as
   sources). Proven by the **first non-separable producer**. Engineering: `matches` / `intersect` must
@@ -317,7 +317,7 @@ Grid-space verification (observation → model grid) is then the special case wh
 to be separable; it needs neither role.
 
 **Consequence for today's code.** Both roles being real is what keeps `Selection.domain`,
-`Coverage.domain`, and `Provider.footprints` typed as the base `Domain`: none of them can promise
+`Coverage.domain`, and `Capability.domain` typed as the base `Domain`: none of them can promise
 separability. Consumers that *require* separability narrow at the use site (`isinstance(..., Separable)`
 or to a concrete representation).
 
@@ -325,12 +325,12 @@ or to a concrete representation).
 representation that cannot determine whether it covers the request cannot serve it — `False` is the
 correct answer, not a lossy collapse, and it is what lets the Arbiter skip that candidate and try the
 next ([ADR-0002](./adr/0002-data-model.md)). What does need handling is a **rule** defined over a
-restricted geometry: `GridReachRule` compares footprints per-axis, so it validates that its candidates
-are separable **before** comparing and rejects with a message naming the producer. Without that
-precondition an all-`False` comparison set reads as *"incomparable footprints, X/Y preference
-unbuilt"* — an explanation that points at the wrong problem. Because reach resolves at build (003b
-wires it into `compose()`), a curvilinear producer in a grid profile fails the build; what stays
-invisible is the *request-path* skip, which is
+restricted geometry: the `priority` reconciler composes a composite's `Domain` by comparing candidates
+per-axis, so it validates that they are separable **before** comparing and rejects with a message
+naming the producer. Without that precondition an all-`False` comparison set reads as *"incomparable
+footprints, X/Y preference unbuilt"* — an explanation that points at the wrong problem. Because
+composition happens as the graph is built, a curvilinear producer in a grid profile fails the build;
+what stays invisible is the *request-path* skip, which is
 [#36](#36-unserved-and-uncomparable-are-indistinguishable).
 
 ## 26. Provider / calculator plugin scaffolding
@@ -413,26 +413,31 @@ extension** so it is not mistaken for a config change: it lands with the catalog
 ([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
 set to prove it.
 
-## 29. Narrated reach: inner bound by producer selection
+## 29. Narrated reach: what a profile promises
 
-**Kind:** surface/product seam · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md) (the rule), [#30](#30-response-membership-under-runtime-degraded-fallback), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
+**Kind:** surface/product seam · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md) (the mechanism), [#30](#30-response-membership-under-runtime-degraded-fallback), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 
 A surface needs to tell callers **how far this profile reaches** — the MCP tool
 description narrates it, and the edge uses it to author the default window when the caller omits
-`end`. The mechanism is **Reach**: a **profile-level** per-parameter `Domain` that is an **inner
-bound** — every point it names is servable — **selected** from the producers' footprints by a named
-**reach rule** and resolved **once at build**, not carried on any Manifold. The rule, its rejected
-alternatives, the `grid` tie-break, and why it is not a `Capability` facet are
-[ADR-0007](./adr/0007-reach-is-an-inner-bound.md); whether a *runtime* consumer would change that is
-[#32](#32-runtime-footprint-awareness-inside-the-algebra). The surface folds `min` over the parameters
-*it* exposes — surface-specific, so it stays at the edge.
+`end`. The mechanism is **Reach**: the per-parameter `Domain` a `Capability` publishes, composed up the
+graph and read off the woven root ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). What stays
+open here is the **product** question, not the mechanism: **what a profile should promise**, given that
+the declared geometry can still overstate what a running system will serve — a provider that is down
+([#30](#30-response-membership-under-runtime-degraded-fallback)), or an admission path that tightens
+below geometry (resampler-reachability, probed availability). The surface folds `min` over the
+parameters *it* exposes — surface-specific, so it stays at the edge, and exact only while the surface
+pins the axes it is not folding.
 
 Why a per-axis join is invalid →
-[ADR-0007: Why per-axis folding is invalid](./adr/0007-reach-is-an-inner-bound.md#why-per-axis-folding-is-invalid).
+[ADR-0007: Why per-axis folding is invalid](./adr/0007-capability-carries-its-domain.md#why-per-axis-folding-is-invalid).
 
-`serves` remains the **sole admission authority** and reach must never feed an admission path. That
-discipline is the whole of this concern; violating it silently over-serves. Advisory-in-what-sense and
-the understatement bound → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md#reach-is-advisory-in-exactly-one-sense).
+`serves` remains the **sole admission authority** — not because reach is a lesser value (it is the same
+`Domain`), but because admission is allowed to be **stricter** than declared geometry. What a surface
+narrates is therefore an upper bound on what a running system will serve, and the gap is the open part:
+[#30](#30-response-membership-under-runtime-degraded-fallback) (a provider that is down) and the
+resampler-reachability / probed-availability seams inside `serves`
+([ADR-0004](./adr/0004-producer-resolution-and-capability.md)). Whether a profile should narrate the
+declared bound, or something hedged against those, is a **product** decision this concern owns.
 
 **Why one reach and not a quality/completeness ladder.** A **quality reach** (how far every parameter
 comes from its best source) is rejected because **quality is a policy outcome, not a capability**.
@@ -491,7 +496,7 @@ Open parts:
 
 ## 30. Response membership under runtime-degraded fallback
 
-**Kind:** serving policy (low priority — no v1 work, no v1 exercise) · **Refs:** [#13](#13-candidate-admission-containment-vs-intersection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [ADR-0003](./adr/0003-provenance-and-origin.md)
+**Kind:** serving policy (low priority — no v1 work, no v1 exercise) · **Refs:** [#13](#13-candidate-admission-containment-vs-intersection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#29](#29-narrated-reach-what-a-profile-promises), [ADR-0003](./adr/0003-provenance-and-origin.md)
 
 **The case:** a long-footprint primary **faults at runtime** on a request that exceeds the
 fallback's reach. The partial-success fall-through reaches only **admitted** candidates, and the
@@ -519,7 +524,7 @@ production shapes:
   quality changes. Nothing is lost, so membership has nothing to decide, and the change is visible
   ex post in per-parameter provenance. (The surface does **not** narrate where this happens: quality is
   a policy outcome, not a capability →
-  [#29](#29-narrated-reach-inner-bound-by-producer-selection).) Its one residual want — the primary for the near
+  [#29](#29-narrated-reach-what-a-profile-promises).) Its one residual want — the primary for the near
   window *and* the fallback for the tail, in one response — is **amendment**, not membership:
   [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s coverage reconciler.
 - **Fallback shorter** (this concern): the fallback is admitted only on requests within its own reach,
@@ -544,7 +549,7 @@ explicit-absence response lets a strict client enforce all-or-nothing with one `
   what the market serves — if soil moisture reaches 7 days, the agriculture profile **is** a 7-day
   product. Supply constrains where the bundle's boundary sits; it does not force a heterogeneous
   bundle. That boundary is the profile's narrated
-  [reach](#29-narrated-reach-inner-bound-by-producer-selection), declared up front.
+  [reach](#29-narrated-reach-what-a-profile-promises), declared up front.
 - **Nowcast blend** (radar ~2 h + NWP beyond): a **taxonomy error** to file here. Radar is not a
   fallback for a 16-day request — the model **amends** the radar, both contributing to one
   `ParameterData` per cell. That is *who fills each cell* (the coverage reconciler,
@@ -561,7 +566,7 @@ is introspection/metadata, not response shape. Filed here only so it is not mist
 
 **Three policies stay distinct:** **fallback** (who serves — the reconciler's),
 **membership** (what a beyond-boundary request gets — this concern), **narration** (what the client is
-told up front — [#29](#29-narrated-reach-inner-bound-by-producer-selection)).
+told up front — [#29](#29-narrated-reach-what-a-profile-promises)).
 
 ## 31. Positional alignment is asserted, never checked
 
@@ -600,18 +605,21 @@ check that catches the length class should not be described as enforcing alignme
 `ProvenanceField.covers()` seam, a real design decision that belongs with the per-parameter omission
 contract → [architecture: Failure, nodata, and availability](./architecture.md#failure-nodata-and-availability).
 
-## 32. Runtime footprint-awareness inside the algebra
+## 32. Footprint-aware ranking inside the algebra
 
-**Kind:** room-left (contract placement) · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [#7](#7-quality-scoring), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
+**Kind:** room-left (extension) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [#29](#29-narrated-reach-what-a-profile-promises), [#7](#7-quality-scoring), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 
-[ADR-0007](./adr/0007-reach-is-an-inner-bound.md) resolves **Reach** at build time and
-keeps it **off** the `Capability` contract, because the surface is its only client. The open question
-is whether a **runtime** consumer ever appears inside the algebra — the concrete candidate being a
-**footprint-aware `reconciler`** that ranks candidates by how tightly each covers the request (prefer a
-regional high-resolution producer over a global one), adjacent to [#7](#7-quality-scoring).
+The **placement** question this concern opened is closed — the declared geometry is on the `Capability`,
+so it is reachable at request time ([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
 
-**This is a separate mechanism, not the reach machinery.** They share one primitive —
-*a producer can report its declared footprint* — and nothing above it:
+**What stays open is the extension that motivated it:** a **footprint-aware `reconciler`** that ranks
+candidates by how tightly each covers the request (prefer a regional high-resolution producer over a
+global one), adjacent to [#7](#7-quality-scoring). The geometry it would rank on is now published, so
+what remains is the **ranking policy** and the `Reconciler` interface widening it needs
+([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
+
+**Ranking is a separate mechanism from composition.** They share the published geometry and nothing
+above it:
 
 | | Reach | Footprint-aware reconciler |
 |---|---|---|
@@ -624,62 +632,35 @@ So a reconciler wanting this does **not** want a `ReachRule` — it wants per-ca
 which `build_reconciler` can already obtain from the registries at build, or which would justify
 exposing footprint on the `Capability` surface if it must be read per request.
 
-**Terminology:** Reach (profile-level promise) vs Footprint (producer declaration) is deliberate —
-an internal client wants the footprint, never the promise → [glossary](./glossary.md): Reach, Footprint.
+**Terminology:** Reach (what a Manifold publishes it serves) vs Footprint (a producer's own
+declaration, before composition) → [glossary](./glossary.md): Reach, Footprint.
 
-**Trigger to revisit:** a real consumer inside the algebra. Until then, adding `reach` (or footprint)
-to `Capability` buys nothing and costs the structural guarantee ADR-0007 gains — that reach is *not
-reachable* from the request path, so "no admission path may consult reach" is a fact rather than a rule.
+**Trigger to revisit:** a profile that needs per-request producer *ranking* rather than the wholesale
+`priority` fallback — the first regional high-resolution provider alongside a global one. Nothing about
+the geometry blocks it now; the reconciler interface does
+([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
 
-A **symptom** to note: 003a's `resolve_reach` re-derives reach by hand-walking each Calculator's input
-`frozenset`, which is why an equal-extent tie has no natural order (harmless — the choice is
-unobservable, [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)). An Arbiter that exposed footprints
-would hand back its **already-ordered** producer list, subsuming the manual walk — the same structural
-move this concern gates.
+## 33. Reconciler owns domain composition
 
-## 33. Reach rule and reconciler mode are coupled
+**Kind:** policy coherence (contract-level) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [#29](#29-narrated-reach-what-a-profile-promises), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#6](#6-reconciler-catalogue), [#32](#32-footprint-aware-ranking-inside-the-algebra)
 
-**Kind:** policy coherence (contract-level) · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#29](#29-narrated-reach-inner-bound-by-producer-selection), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#6](#6-reconciler-catalogue), [#32](#32-runtime-footprint-awareness-inside-the-algebra)
+The **coherence** half is settled — domain composition is a `Reconciler` member, so it moves with the
+reconciler and cannot be paired incoherently
+([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
 
-[ADR-0007](./adr/0007-reach-is-an-inner-bound.md) makes the **reach rule** a named slot
-(v1: `grid`), and [ADR-0004](./adr/0004-producer-resolution-and-capability.md) makes the **`reconciler`**
-another (v1: `priority`). They are **not independent**: the reconciler decides what the composite can
-actually serve, and reach can only report on that.
-
-**The evidence.** `{Global × [0, 16 d], Global × [−2 d, 10 d]}` — a forecast source plus one carrying
-hindcast — **raises** under `grid`, because `priority` admits by whole-request containment and nothing
-splices, so the union box is genuinely not servable. Under a **splicing** reconciler the same footprints
-yield a servable `Global × [−2 d, 16 d]`. Same declarations, different truth, and only the reconciler
-changed. `tile` / `feather` are the same story spatially: they serve requests **no single member
-covers**, so their reach is legitimately wider than any *selection* rule can claim.
-
-**The direction of the coupling:** the reconciler **bounds** what a reach rule may truthfully claim; the
-reach rule picks a **product statement** inside that bound. It is not a full determination — within
-`priority`, both "the widest producer's footprint" (v1's `grid` choice, tighter) and "the primary's
-footprint" (more conservative: *we promise what our best source does*) are correct inner bounds. That
-residual is a genuine product judgment, which is why **whether reach follows priority is a property of
-the reach mode**, not a universal law. `grid` **ignores** priority.
-
-**The hazard:** configured independently, an operator can pair `priority` with a splicing-shaped reach
-rule and **narrate a promise the engine cannot keep** — exactly the failure reach exists to prevent.
-
-**Not to be confused with the Arbiter-vs-Calculator difference**, which is *not* a mode question: an
-Arbiter serves where **any** producer serves and a Calculator where **all** its inputs do, so the
-quantifier is a fact about the node, not a policy. Only what the reconciler can actually serve, and the
-product statement chosen inside it, are mode-scoped.
-
-Open: whether the two collapse into **one mode declaration** (a "fallback" / "mosaic" / "splice"
-profile mode selecting both), or the reach rule is **derived from** the reconciler with the product
-judgment as a separate narrow knob. No v1 pressure — v1 ships exactly one of each (`priority` + `grid`)
-and they agree by construction. Decide when the second reconciler lands
-([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold) is the same trigger); until then,
-do not build a coupling mechanism, and do not let a second reach rule ship without revisiting this.
+**What stays open is the member's shape.** `priority` composes by dominance-or-raise; `tile` would
+compose a spatial union, `splice` a temporal one. Whether one signature serves all three is unknown
+until a second reconciler is built — the same uncertainty
+[#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold) records about `select`, and the
+reason a reshape is expected rather than feared.
 
 ## 34. Producer-DAG walking is duplicated
 
-**Kind:** room-left (build-time structure) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md), [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
+**Kind:** room-left (build-time structure) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
 
-Three build-time passes now walk the same producer DAG over `ProfileDef` (003a added the last two):
+Two build-time passes walk the same producer DAG over `ProfileDef`. A third — the standalone reach
+resolver — was removed by [ADR-0007](./adr/0007-capability-carries-its-domain.md): the capability tree
+already composes that geometry structurally, so recomputing it over `ProfileDef` was duplicate work.
 
 - **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, with a `visiting` set
   raising `CompositionError("calculator cycle at ...")`. A **backstop**: `compose()` validates before
@@ -688,21 +669,16 @@ Three build-time passes now walk the same producer DAG over `ProfileDef` (003a a
   so if it ever does fire, which guard caught it is observable.
 - **`validate_calculators`** — checks every Calculator input is producible; owns the operator-facing
   `visiting` cycle guard and the wiring errors, and runs first
-  ([ADR-0007](./adr/0007-reach-is-an-inner-bound.md)). Its guard must be **exactly as strict as the
+  ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). Its guard must be **exactly as strict as the
   Weaver's**: it descends into upstream calculators even when a source also serves that input, because
   the Weaver scopes each input Arbiter over *all* producers of it. A cycle a source shadows is still
   unbuildable — and slipping one past this pass hangs the next one.
-- **`resolve_reach`** — selects footprints (the `grid` rule at Arbiter sites; contained-in-all across a
-  Calculator's resolved inputs); assumes a validated graph, so it walks only for geometry and carries
-  **no cycle guard at all** — it would recurse until the stack blew. That is the load-bearing reason
-  the pass above cannot be approximate.
-
-003a's two carry their own guard so they stay standalone and unit-testable without weaving —
+`validate_calculators` carries its own guard so it stays standalone and unit-testable without weaving —
 **deliberate duplication of ~3 lines**, not an accident.
 
-**The third consumer has now appeared, but the walks diverge** — the Weaver builds `Producer`s,
-`validate_calculators` checks presence, `resolve_reach` folds geometry — so a premature extraction
-would abstract over three different bodies. Extract when they stop diverging (or a fourth appears, e.g.
+**The two walks diverge** — the Weaver builds `Producer`s and composes each node's `Capability`
+geometry as it goes; `validate_calculators` checks presence and cycles — so a premature extraction
+would abstract over two different bodies. Extract when they stop diverging (or a third appears, e.g.
 a resolution-trace builder [#14](#14-resolution-trace-and-observability)). The shape would be a pure
 `ProfileDef` traversal yielding a topologically-ordered producer graph the consumers share; the cycle
 check moves there. Pure refactor, no contract change. Do not extract preemptively — while the bodies
@@ -710,9 +686,9 @@ diverge, the indirection costs more than it saves.
 
 ## 35. Calculator satisfiability vs optional-provider degrade
 
-**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [ticket 003a](./tickets/done/003a-profile-reach.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
+**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
 
-Session 0014. 003a makes a Calculator whose input **no producer serves** a build-time
+A Calculator whose input **no producer serves** is a build-time
 `CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so
 an unwired input must fail loudly at build, not surface as an accidental runtime `capability-mismatch`.
 This is strict and correct for v1, where every Calculator input (`wind_u` / `wind_v`) comes from

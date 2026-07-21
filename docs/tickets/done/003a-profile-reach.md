@@ -13,7 +13,7 @@
 ## What to build
 
 Build-time only — **no surface change and no request-path change**.
-[003b](../003b-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
+[003b](../003c-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
 
 ```
 validate_calculators(ProfileDef) -> None                     # is it wired?  (raises)
@@ -21,11 +21,11 @@ resolve_reach(ProfileDef)        -> Mapping[ParameterId, Domain]   # how far?  (
 ```
 
 Reach is an **inner bound**: *every point it names is servable*
-([ADR-0007](../../adr/0007-reach-is-an-inner-bound.md)).
+([ADR-0007](../../adr/0007-capability-carries-its-domain.md)).
 
 **Reach is profile-level, not a `Capability` facet, and selected rather than folded** — the semantics
 (inner bound, the `grid` rule's two site procedures, tie resolution, never-synthesize, liveness) are
-**owned entire by [ADR-0007](../../adr/0007-reach-is-an-inner-bound.md)**; this ticket builds them, and
+**owned entire by [ADR-0007](../../adr/0007-capability-carries-its-domain.md)**; this ticket builds them, and
 the acceptance criteria below encode them as tests.
 
 The **one contract change**: **`Provider` publishes the per-parameter footprint it already declares**,
@@ -58,11 +58,11 @@ DAG — a third walker beside the Weaver, deliberate ~3-line duplication
 ([#34](../../concerns.md#34-producer-dag-walking-is-duplicated)); the strict-calculator vs
 graceful-provider tension is [#35](../../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade).
 
-Build notes, each grounded in [ADR-0007](../../adr/0007-reach-is-an-inner-bound.md):
+Build notes, each grounded in [ADR-0007](../../adr/0007-capability-carries-its-domain.md):
 
 - **No new geometry primitive** — see [Geometry: none added](#geometry-none-added).
 - **No `ArbiterPolicy` / `build_reconciler` dependency** — `grid` ignores priority
-  (→ [#33](../../concerns.md#33-reach-rule-and-reconciler-mode-are-coupled) for why that is mode-scoped).
+  (→ [#33](../../concerns.md#33-reconciler-owns-domain-composition) for why that is mode-scoped).
 - **`CompositionError` when nothing resolves**, naming the conflicting producers (by `SourceKey` /
   `CalculatorKey`) and the failing axis — possible because the resolver works over `ProfileDef`. For
   incomparable candidates the message must also say the X/Y preference is **unbuilt**.
@@ -73,7 +73,7 @@ Build notes, each grounded in [ADR-0007](../../adr/0007-reach-is-an-inner-bound.
 
 **Wiring is 003b's.** This ticket delivers `validate_calculators`, `resolve_reach`, and the
 `Provider.footprints` accessor; calling them from `compose()` — validate **before** `weave`, reach
-after — and handing the map to the surface is [003b](../003b-request-shaping.md), which already touches
+after — and handing the map to the surface is [003b](../003c-request-shaping.md), which already touches
 composition.
 
 ### Geometry: none added
@@ -148,4 +148,4 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
 ## User stories addressed
 
 Enables user story 10 (envelope narration), delivered by
-[003b](../003b-request-shaping.md).
+[003b](../003c-request-shaping.md).

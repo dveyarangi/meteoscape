@@ -1,9 +1,9 @@
 # RFC 0004 — Separability narrowing and predicate hygiene
 
 - **Date:** 2026-07-21
-- **Ticket:** [m1 — Type contract hygiene](../tickets/m1-type-contract-hygiene.md) — maintenance; unblocks CI (`uv run pyright` is red on `tests/`)
-- **Owning decisions:** [ADR-0002](../adr/0002-data-model.md) · [ADR-0007](../adr/0007-reach-is-an-inner-bound.md) · [ADR-0005](../adr/0005-build-time-composition.md)
-- **Concerns:** [#12](../concerns.md#12-curvilinear-domains) · [#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
+- **Ticket:** [m1 — Type contract hygiene](../../tickets/done/m1-type-contract-hygiene.md) — maintenance; unblocks CI (`uv run pyright` is red on `tests/`)
+- **Owning decisions:** [ADR-0002](../../adr/0002-data-model.md) · [ADR-0007](../../adr/0007-capability-carries-its-domain.md) · [ADR-0005](../../adr/0005-build-time-composition.md)
+- **Concerns:** [#12](../../concerns.md#12-curvilinear-domains) · [#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
 
 `pyright` reports **40 errors** in `tests/`, none in `src/`. CI runs bare `uv run pyright` over both,
 so main is red. Triage shows the errors are not one problem: a few are real defects the type checker
@@ -11,7 +11,7 @@ found, the rest are the `Separable` facet and the Manifold facets **working as d
 holding a base-typed value and reaching for a refinement's member.
 
 This RFC fixes those defects and clears the type debt, without narrowing any contract that
-[#12](../concerns.md#12-curvilinear-domains) needs left open.
+[#12](../../concerns.md#12-curvilinear-domains) needs left open.
 
 ## Scope
 
@@ -32,7 +32,7 @@ behaviour change beyond the `matches` raise; `intersect`, which stays a declared
 | **D** | 9 | test fixtures typed loosely (`lambda *a: None` as `CombineFn`; indexing `dict[str, object]`) | fixture repair, no design content |
 
 **40 is a floor.** Each error suppresses checking of whatever follows it. One follow-on is visible
-statically — [test_mcp_app.py:286](../../tests/api/test_mcp_app.py) reads `.axis(AxisName.T).count`, and
+statically — [test_mcp_app.py:286](../../../tests/api/test_mcp_app.py) reads `.axis(AxisName.T).count`, and
 `.count` exists only on `RegularAxis`, so narrowing the domain reveals a new error there. Category B
 unblocks `.ranges` / `.provenance` chains that have never been checked at all. Stage 4 iterates to a
 fixed point rather than to a number.
@@ -47,7 +47,7 @@ fixed point rather than to a number.
 | `Weaver.weave` | `nodes/weaver.py` | return type `Manifold` → `Reservoir` |
 | Open-Meteo leaf | `nodes/providers/open_meteo.py` | retain the concrete footprint map it already builds; `capability` returns its actual `FootprintCapability` |
 | MCP serializer | `api/mcp_app.py` | delete the guard made unreachable by `GridDomain.axis` |
-| `Provider`, `Selection`, `Coverage`, `Capability` | — | **none** — all must stay base-typed ([#12](../concerns.md#12-curvilinear-domains)) |
+| `Provider`, `Selection`, `Coverage`, `Capability` | — | **none** — all must stay base-typed ([#12](../../concerns.md#12-curvilinear-domains)) |
 | `Domain` hierarchy | `manifold/domain.py` | **none** — no new base class, no facet promoted to subtype |
 
 ## Why the contracts do not narrow
@@ -55,7 +55,7 @@ fixed point rather than to a number.
 Chasing category A to the bottom produced a doc gap worth stating here, because it is the whole reason
 this RFC is a test-side change rather than a contract change.
 
-Non-separable geometry has **two independent roles** ([#12](../concerns.md#12-curvilinear-domains)):
+Non-separable geometry has **two independent roles** ([#12](../../concerns.md#12-curvilinear-domains)):
 a **source role** (a producer *declares* swath geometry — committed by product pillar 10) and a
 **target role** (a caller *asks for* values on swath geometry — committed by Phase 6
 forecast-vs-observation verification in **observation space**). Neither implies the other.
@@ -63,7 +63,7 @@ forecast-vs-observation verification in **observation space**). Neither implies 
 `Provider.footprints` and `Coverage.domain` carry the source role; `Selection.domain` carries the
 target role. All three are therefore pinned to the base `Domain`, and the 12 category-A use-site
 narrowings are correct rather than a workaround: they assert a precondition **local to the grid path**,
-which is exactly what [`serialize_coverage`](../../src/meteoscape/api/mcp_app.py) already does in
+which is exactly what [`serialize_coverage`](../../../src/meteoscape/api/mcp_app.py) already does in
 production.
 
 **`GridReachRule` narrows its operands, not its result.** ADR-0007 already states that a non-grid
@@ -87,13 +87,13 @@ Semantically: `matches` asks *"will I serve this request?"* A representation tha
 whether it covers the request **cannot serve it**, so `False` is the correct answer — not a lossy
 collapse of a third "cannot decide" state.
 
-Operationally: [arbiter.py](../../src/meteoscape/nodes/arbiter.py) iterates candidates and calls
+Operationally: [arbiter.py](../../../src/meteoscape/nodes/arbiter.py) iterates candidates and calls
 `serves` on each, breaking on the first that admits. A raise there aborts the loop and **fails requests
 a later producer could serve** — a regression in the degrade path. `UnionCapability.serves` (`any(...)`)
 and `DerivedCapability.serves` (`all(...)`) have the same exposure. What `False` costs is *diagnosis*,
 not correctness, and that belongs to the resolution trace
-([#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable),
-[#14](../concerns.md#14-resolution-trace-and-observability)).
+([#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable),
+[#14](../../concerns.md#14-resolution-trace-and-observability)).
 
 #### The one site that does change
 
@@ -102,7 +102,7 @@ for a candidate it cannot compare is individually correct, but the *rule* then c
 dominates → incomparable footprints, X/Y preference unbuilt"* — an explanation pointing at an unbuilt
 feature that has nothing to do with the operator's actual mistake, which is pairing a curvilinear
 producer with a rule defined over separable geometry. Worse, `_split` is reached first and its bare
-`assert` at [reach.py](../../src/meteoscape/nodes/reach.py) throws `AssertionError` before the message
+`assert` at [reach.py](../../../src/meteoscape/nodes/reach.py) throws `AssertionError` before the message
 is ever produced.
 
 The fix is a **precondition at the rule's entry**, not a changed return type — the check moves **out of
@@ -120,7 +120,7 @@ class GridReachRule:
 ```
 
 `_contains` / `_split` / `_incomparable` / `_contained_in_all` then take the narrowed operand type, and
-the two `isinstance` calls plus the bare `assert` at [reach.py:30](../../src/meteoscape/nodes/reach.py)
+the two `isinstance` calls plus the bare `assert` at [reach.py:30](../../../src/meteoscape/nodes/reach.py)
 are deleted. That `assert` is a live defect: on the current path a curvilinear candidate reaches
 `_split` and raises `AssertionError`, not `CompositionError`.
 
@@ -138,7 +138,7 @@ so no caller that holds the base type is affected.
 | `OpenMeteoProvider.footprints` | `-> Mapping[ParameterId, Domain]` | `_build_capability` builds `FootprintDomain` values |
 | `OpenMeteoProvider.capability` | `-> Capability` | `self._capability` **is** a `FootprintCapability`; the property widens it away |
 
-`GridDomain.axis` makes [mcp_app.py](../../src/meteoscape/api/mcp_app.py)'s
+`GridDomain.axis` makes [mcp_app.py](../../../src/meteoscape/api/mcp_app.py)'s
 `if not isinstance(t_axis, EnumerableAxis): raise TypeError` structurally unreachable — delete it.
 
 Open-Meteo needs care: the concrete type is currently **lost in transit**. `_build_capability` builds
@@ -152,12 +152,12 @@ asserts `domain is cap_domains[pid]`.
 Narrowing `capability` on the same leaf removes the only two `# type: ignore[attr-defined]` in the
 suite — `test_open_meteo.py:194` / `:212` read `provider.capability.footprints`, which `Capability`
 does not declare — with **no test edit at all**. `FakeProvider` is deliberately not changed:
-[fakes.py](../../tests/fakes.py) accepts any `Capability` by construction, so its internal
+[fakes.py](../../../tests/fakes.py) accepts any `Capability` by construction, so its internal
 `assert isinstance(..., FootprintCapability)` is a genuine narrowing and stays.
 
 ### 3. Use-site narrowing
 
-House idiom, already used in both `src` ([`serialize_coverage`](../../src/meteoscape/api/mcp_app.py))
+House idiom, already used in both `src` ([`serialize_coverage`](../../../src/meteoscape/api/mcp_app.py))
 and `tests` (`assert isinstance(z, IntervalAxis)`): narrow inline to the concrete representation.
 
 ```python
@@ -171,7 +171,7 @@ and makes tests stop resembling the code under test), and narrowing to `Separabl
 concrete class (`Separable.axis` returns bare `Axis`, so most sites need a second narrowing anyway).
 
 The same idiom covers category C, and there the production precedent is exact:
-[`weaver.py:29`](../../src/meteoscape/nodes/weaver.py) already writes
+[`weaver.py:29`](../../../src/meteoscape/nodes/weaver.py) already writes
 `assert isinstance(registered.provider, Countable)` before reading `provider.domain`, because
 `Provider` declares no `domain` — countability is the `Countable` facet. The tests reach for the same
 member and narrow the same way.
@@ -203,7 +203,7 @@ observable behaviour today. `Domain.matches` raises nothing; see
 ## Invariants
 
 - No contract narrows below `Domain` on either side of `project`
-  ([#12](../concerns.md#12-curvilinear-domains) source **and** target roles).
+  ([#12](../../concerns.md#12-curvilinear-domains) source **and** target roles).
 - `project` stays closed: `Manifold -> Manifold` (ADR-0001). Category B narrows at the use site only.
 - `Separable` stays a structural facet — no new base class, no facet promoted to a subtype.
 - Object identity between `Provider.footprints` and `Capability.footprints` values is preserved.
@@ -212,8 +212,8 @@ observable behaviour today. `Domain.matches` raises nothing; see
 
 ## Stages (TDD — red → green → refactor per stage)
 
-1. **Docs** — ✅ done: [#12](../concerns.md#12-curvilinear-domains) split into source/target roles,
-   [#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable) filed as a diagnosability
+1. **Docs** — ✅ done: [#12](../../concerns.md#12-curvilinear-domains) split into source/target roles,
+   [#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable) filed as a diagnosability
    seam, ADR-0002 amended (admission total, build-time rules raise), architecture index updated.
 2. **The `grid` precondition** — test first: reuse the `_NonSeparable(Domain)` stub at
    `tests/manifold/test_domain.py:315` to assert `CompositionError` naming the producer from
@@ -234,23 +234,23 @@ Commit split: `docs:` (stage 1) → `fix:` (stage 2, the only behaviour change, 
   production, and make `Provider.footprints` / `Coverage.domain` / `Selection.domain` read honestly.
   Rejected: those four signatures are **precisely and exhaustively** where curvilinear geometry enters
   the system, so narrowing them does not preserve the facet at a boundary — it deletes
-  [#12](../concerns.md#12-curvilinear-domains), spread across four signatures instead of one base
+  [#12](../../concerns.md#12-curvilinear-domains), spread across four signatures instead of one base
   class, which is the worst version because the deletion is invisible. Also promotes a facet to a
   subtype and forces a diamond with `EnumerableDomain`.
 - **Hoisting `axis()` onto `Domain`.** Deletes the facet outright; contradicts ADR-0002 and forecloses
-  [#12](../concerns.md#12-curvilinear-domains).
+  [#12](../../concerns.md#12-curvilinear-domains).
 - **Relaxing pyright config to exclude `tests`.** Would hide the real defects this triage found.
 - **Suppressing with `# type: ignore`.** Every error here is either a real defect or a legitimate
   precondition worth stating; none is a checker limitation.
 
 ## Out-of-scope follow-ups
 
-- **Curvilinear implementation itself** ([#12](../concerns.md#12-curvilinear-domains)) — both roles;
+- **Curvilinear implementation itself** ([#12](../../concerns.md#12-curvilinear-domains)) — both roles;
   the target role additionally requires `resample` to sample onto an arbitrary point set, materially
-  wider than [#5](../concerns.md#5-read-time-homogenization-fidelity) scopes.
-- **Skip diagnosability** ([#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)) —
+  wider than [#5](../../concerns.md#5-read-time-homogenization-fidelity) scopes.
+- **Skip diagnosability** ([#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)) —
   the Arbiter skips an uncomparable candidate exactly as it skips an uncovering one, and the operator
   sees one message for both. A reason code on the resolution trace
-  ([#14](../concerns.md#14-resolution-trace-and-observability)) is the fix; nothing here addresses it.
+  ([#14](../../concerns.md#14-resolution-trace-and-observability)) is the fix; nothing here addresses it.
 - **`Interval[C]` generic invariance** — the `# type: ignore[arg-type]` on `.extent.contains(...)` is a
   separate problem (a constrained-typevar comparison across two `Interval` instances) and is untouched.

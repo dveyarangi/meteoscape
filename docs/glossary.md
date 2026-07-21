@@ -192,8 +192,12 @@ The Store transformation from a Selection to enclosing, atomically storable unit
 _Avoid_: Snap, align, round
 
 **Envelope**:
-The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-inner-bound-by-producer-selection)
+The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)
 _Avoid_: Capability (the admission authority), coverage
+
+**Horizon**:
+How far ahead a profile serves — the `valid_time` projection of a Reach, as a length ahead of the latest run rather than an instant. → [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)
+_Avoid_: Reach (the whole Domain, not one axis of it); default window (what the edge authors from a Horizon); lead time
 
 ### Composition
 
@@ -319,27 +323,23 @@ The task-oriented profile whose objective is best-obtainable source with fallbac
 _Avoid_: Best provider, router result
 
 **Capability**:
-The Parameters and request Domains a Manifold declares it can serve, admitting via a predicate. Carries no Reach — that is profile-level and resolved at build. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+What a Manifold declares it can serve: its Parameters, the Domain it serves each of them over (its Reach), and an admission predicate that may be stricter than that Domain. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
 _Avoid_: Coverage, clause
 
 **Footprint**:
-One producer's declared spatial, vertical, and valid-time span — the unit a Reach is selected from. Interpreted by `serves`; the internal notion, never the product promise. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
-_Avoid_: Coverage, grid, reach (Reach is profile-level; a producer has a Footprint)
+One producer's declared spatial, vertical, and valid-time span — a leaf's own Reach, and the unit composition works from. Interpreted by `serves`. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+_Avoid_: Coverage, grid
 
 **Reach**:
-A **profile's** per-Parameter Domain, an inner bound on what it serves — every point it names is servable. Selected from the producers' Footprints by a Reach rule, resolved once at build; not a Capability member, and never an admission input. → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
-_Avoid_: Range, limit, horizon (a projection of Reach, not Reach); envelope (the narration, not the Domain); footprint (a producer's, not the profile's)
-
-**Reach rule**:
-The named policy selecting which producer's Footprint becomes a profile's Reach; an unresolved selection fails composition. v1 ships one rule, `grid`. → [ADR-0007](./adr/0007-reach-is-an-inner-bound.md)
-_Avoid_: Reach fold, reach join (Reach is selected, not folded)
+A **Manifold's** per-Parameter Domain — the Domain its Capability publishes. The profile's Reach is the woven root's; a Calculator's input Reach is its scoped Arbiter's. Composed from the children's, never synthesized, so it is **tight**: exact in any profile that composes, since one that would be looser fails the build. → [ADR-0007](./adr/0007-capability-carries-its-domain.md)
+_Avoid_: Range, limit, horizon (a projection of Reach, not Reach); envelope (the narration, not the Domain); footprint (a producer's own, before composition)
 
 **Arbiter**:
 The composite that resolves competing producers per Parameter under a Reconciler. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Selector, dispatcher, router, resolver, Gateway
 
 **Reconciler**:
-The per-Parameter policy by which an Arbiter ranks competing producers; as built it orders candidates and the Arbiter picks the first admitted (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The per-Parameter policy for combining an Arbiter's competing producers — it both ranks them and composes the Reach the combination publishes, since how producers combine is what the combination serves. As built it orders candidates and the Arbiter picks the first admitted (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
 _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 
 **Provider**:

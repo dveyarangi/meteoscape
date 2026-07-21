@@ -54,7 +54,7 @@ same shape. The abstraction these are shapes of is the
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
   - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
     `Domain` footprint, kept private to `serves` (the *Provider* separately publishes the same
-    declaration for the build-time reach resolver → [ADR-0007](./0007-reach-is-an-inner-bound.md)).
+    declaration for the build-time reach resolver → [ADR-0007](./0007-capability-carries-its-domain.md)).
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
     enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it
     (not a second copy).
@@ -75,14 +75,15 @@ same shape. The abstraction these are shapes of is the
   representation problem: it collapses to one concrete `EnumerableCapability.domain` only when you
   `project`.
 
-- **Capability carries no `reach`; a leaf exposes its declared footprint.** A surface needs to state
-  how far a profile reaches and to author default windows, but that value is **profile-level and
-  resolved at build** from the producers' footprints — it is not a facet of every Manifold
-  → **[ADR-0007](./0007-reach-is-an-inner-bound.md)**. A **`Provider` publishes the per-parameter footprint it declares**,
-  so the build-time resolver can read it; `Capability` itself is untouched.
-  - **`serves` remains the sole admission authority**, and reach never feeds an admission path —
-    **structurally**, since nothing on the request path can reach it →
-    [#29](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection).
+- **Capability publishes the `Domain` it serves, per parameter.** `domain(parameter)` sits on the
+  interface beside `parameters` and `serves`; a Manifold's **Reach** *is* that Domain, and a leaf's is
+  the footprint it declares. Composites compose it from their children — never synthesize it — so the
+  value is **tight**: a profile that composes serves exactly what it publishes
+  → **[ADR-0007](./0007-capability-carries-its-domain.md)**.
+  - **`serves` remains the sole admission authority.** It reads the same geometry but is allowed to be
+    **stricter** — the resampler-reachability and probed-availability seams tighten admission below
+    declared geometry, which is why it is not derived from `domain` →
+    [#29](../concerns.md#29-narrated-reach-what-a-profile-promises).
 
 - **A leaf's temporal footprint is clock-anchored** — its `valid_time` window tracks the provider's run
   anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous

@@ -1,7 +1,10 @@
-# 003b — Request shaping
+# 003c — Request shaping
+
+> Formerly numbered **003b**; renumbered when 003b (capability domain) was inserted ahead of it.
 
 - **Status:** Partial
-- **Depends on:** [003a — Profile reach](./done/003a-profile-reach.md) (which depends on 002, 002b)
+- **Depends on:** [003b — Capability carries its domain](./003b-capability-domain.md) (which reshapes
+  [003a](./done/003a-profile-reach.md); 003a depends on 002, 002b)
 - **Outcome:** Free request windows, plus reach-based narration and default windows at the edge.
 
 ## Parent PRD
@@ -20,25 +23,27 @@ free window (no interval enum — the `Domain` models
 arbitrary extents). The `Arbiter` admits a provider per parameter only when its `Capability`
 **temporally contains** the requested extent (whole-request `Domain`-containment). The tool description
 **narrates the available envelope** — the served parameters, read off the woven root's `Capability`,
-plus the profile's **reach**, resolved at build.
+plus the profile's **reach**, read off the same `Capability`.
 
-`reach` itself — the per-parameter `Domain` and the producer-selection rule — is
-[003a](./done/003a-profile-reach.md). This ticket **consumes** it: the surface folds `min` over the
+`reach` itself — the per-parameter `Domain` a `Capability` publishes — is
+[003b](./003b-capability-domain.md). This ticket **consumes** it: the surface folds `min` over the
 parameters *it* exposes (a surface-specific fold, so it stays at the edge) and uses the result for
-both narration and the omitted-`end` default. Reach never feeds admission — `serves` stays the sole
-authority, and the edge never pre-rejects a request against it.
+both narration and the omitted-`end` default. `serves` stays the sole admission authority, and **the
+edge never pre-rejects** against the narrated reach — admission may be stricter than declared geometry
+([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so an out-of-envelope request is answered
+by admission as a `capability-mismatch`, not refused at the edge.
 
-**One reach, not a quality ladder** (→ [#29: quality is a policy outcome, not a capability](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection)).
+**One reach, not a quality ladder** (→ [#29: quality is a policy outcome, not a capability](../concerns.md#29-narrated-reach-what-a-profile-promises)).
 Build consequence: there is **no** `CadenceDef` hoist onto `OfferingSpec`, no composition-time envelope
 derivation, no `ArbiterPolicy` threading, and no consistency test — reach has exactly one source, the
-producers' declared footprints, read once at build.
+`Capability` each node publishes, composed as the graph is built.
 
 **Already landed at 001 (Phase C):** the `parameters` input (unknown name → `bad-request`, default =
 the woven root capability), dynamic served-parameters narration, `serves`-containment admission in the
 `Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This ticket's remaining substance:
 make the window real (free `start`/`end` → exact-window fetch mapping), default an omitted `end` to
 the reach end, extend narration with reach, **delete `Settings.default_horizon`**,
-wire `resolve_reach` into `compose()` (below),
+call `validate_calculators` from `compose()` (below),
 and exercise out-of-envelope
 admission with real free windows (Phase C's fixed 168 h window never leaves the envelope). Concern #24
 is **resolved** (session 0011 → [ADR-0002](../adr/0002-data-model.md) /
@@ -85,13 +90,13 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
     past it may still be servable, and the edge would be overruling the authority with an
     understatement.
 
-**Wiring reach into the surface (session 0014).** [003a](./done/003a-profile-reach.md) delivers
-`validate_calculators(ProfileDef)` and `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`;
-this ticket **calls both**. `compose()` gains two steps —
-`binders → ProfileDef → validate_calculators → weave → resolve_reach → Gateway` — and hands the map to
-the surface adapter alongside the woven root. **Validate precedes `weave`** so a wiring gap fails
-before any `Store` is allocated. The Weaver is untouched: it stays a pure graph constructor, and reach
-never becomes a node member.
+**Reading reach at the surface.** [003b](./003b-capability-domain.md) puts the per-parameter `Domain`
+on the `Capability` ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so **nothing needs
+threading**: the surface reads the profile's reach off the woven root
+(`gateway.best_view.capability.domain(p)`), and `compose()` keeps its signature. It gains one step —
+`binders → ProfileDef → validate_calculators → weave → Gateway` — so a Calculator wiring gap fails
+before any `Store` is allocated. Geometry needs no pass of its own: each node's `Capability` composes
+its `Domain` as the graph is built, so an unresolvable one fails at `weave`.
 
 A misconfigured profile therefore fails at **startup** with a `CompositionError` — naming the
 calculator and its unproducible input, or the conflicting producers and axis — and, because the
@@ -116,8 +121,8 @@ contract, Time axis).
       `reach(p)`'s `valid_time` upper bound, read live — and that default request is admissible by
       construction. `Settings.default_horizon` is gone. Given `start`, the reach end is absolute (it
       clips, it does not shift); `start` past it yields a single tick that admission judges.
-- [ ] The narrated reach and default window come from the resolved reach map and are **admissible by
-      construction** at the served point. (No regional-vs-global case: v1 has no regional provider, and
+- [ ] The narrated reach and default window are read off the woven root's `Capability` and are
+      **admissible by construction** at the served point. (No regional-vs-global case: v1 has no regional provider, and
       the rule branch that would decide one is deliberately unbuilt → 003a, ADR-0007.)
 - [ ] A request whose extent exceeds a provider's temporal `Capability` is not admitted for that
       provider (whole-request containment). Out-of-envelope windows (past `start`, over-horizon `end`)
@@ -125,14 +130,16 @@ contract, Time axis).
       which understates on T (a regional producer may reach further than the profile's dominating one)
       and is exact on X/Y; `bad-request` is reserved for
       windows malformed in themselves (unparsable, `start > end`).
-- [ ] The tool description narrates the served parameters (off the woven root's `Capability`) plus the
-      profile's reach (off the build-time map).
-- [ ] `compose()` calls **`validate_calculators` before `weave`**, then `resolve_reach`, and hands the
-      map to the surface. A profile with an unproducible Calculator input fails at **startup** — and
-      **before any `Store` is allocated** — with a `CompositionError` naming the calculator and input;
-      an unresolvable reach fails at startup too. Neither reaches the request path. The selection is
-      fixed at build while the winner's `RollingAxis` stays live, so the default window still tracks
-      the clock.
+- [ ] The tool description narrates the served parameters plus the profile's reach, both off the woven
+      root's `Capability`. The reach is narrated as a **relative horizon** (*"out to N ahead of the
+      latest run"*), never as absolute instants: the description is built once and frozen for the
+      process lifetime, so an absolute date would be stale within the hour. A `RollingAxis`'s length is
+      invariant even as its bounds move, which is what makes the relative form true indefinitely.
+- [ ] `compose()` calls **`validate_calculators` before `weave`** and keeps its `-> Gateway` signature.
+      A profile with an unproducible Calculator input fails at **startup**, **before any `Store` is
+      allocated**, with a `CompositionError` naming the calculator and input; an unresolvable geometry
+      fails at `weave` for the same reason. Neither reaches the request path. Composition is fixed at
+      build while the winner's `RollingAxis` stays live, so the default window still tracks the clock.
 - [ ] Unit + mocked-transport integration tests cover subset selection, the reach-end default, and
       out-of-envelope extents.
 

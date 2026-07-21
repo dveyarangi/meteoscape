@@ -4,7 +4,7 @@ Align session on [ticket 003a](../tickets/done/003a-profile-reach.md). Two **rev
 landed, both driven by the same question — *what is reach actually for?* — and the answers produced a
 new ADR, a renamed ticket, a new concern, and a smaller ticket than we started with.
 
-The full rules live in **[ADR-0007](../adr/0007-reach-is-an-inner-bound.md)**; this record carries the
+The full rules live in **[ADR-0007](../adr/0007-capability-carries-its-domain.md)**; this record carries the
 reasoning trail, the rejected positions, and what remains open.
 
 ## Starting position
@@ -139,7 +139,7 @@ one that handled it would be wrong for grids. That validated the slot as real ra
 **`dense_axes` rejected** as the config lever's shape: density is neither a per-axis boolean nor
 independent of the request — a polar swath's X/Y is *curvilinear*, not sparse, and its answerability
 depends on the caller issuing a **"fat" T request** spanning revisits. The lever's shape is left
-deliberately unspecified in [#29](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection);
+deliberately unspecified in [#29](../concerns.md#29-narrated-reach-what-a-profile-promises);
 its only permitted job is to **narrow candidates or assert an invariant**, never to declare reach
 (a second source of truth that can drift from the members and lie to callers).
 
@@ -163,10 +163,10 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 
 ## Docs updated
 
-- **New:** [ADR-0007](../adr/0007-reach-is-an-inner-bound.md) — the rule, placement, slot, actionable-
+- **New:** [ADR-0007](../adr/0007-capability-carries-its-domain.md) — the rule, placement, slot, actionable-
   error constraint, consequences, and five rejected alternatives.
-- **New:** [#32](../concerns.md#32-runtime-footprint-awareness-inside-the-algebra) — runtime
-  footprint-awareness; [#33](../concerns.md#33-reach-rule-and-reconciler-mode-are-coupled) — reach rule
+- **New:** [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) — runtime
+  footprint-awareness; [#33](../concerns.md#33-reconciler-owns-domain-composition) — reach rule
   ↔ reconciler coupling; [#34](../concerns.md#34-producer-dag-walking-is-duplicated) — duplicated
   producer-DAG walk.
 - **ADR-0004** — 0013's reach amendment replaced by a pointer; Capability carries no reach, a leaf
@@ -189,14 +189,14 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 
 - **The config lever's shape** — narrowing the candidate set (so a `Global × 10 d` fallback cannot cap a
   `Global-minus-poles × 16 d` primary). Deliberately unspecified;
-  [#29](../concerns.md#29-narrated-reach-inner-bound-by-producer-selection) holds the constraints.
+  [#29](../concerns.md#29-narrated-reach-what-a-profile-promises) holds the constraints.
   No v1 driver.
 - **A second reach rule** — obs+forecast and polar-swath compositions each need one, and the swath case
   is already known to constrain the **request's shape**, not merely axis dominance. That is why v1
   ships `grid` as a named unit with **no `ReachRule` protocol, no config, no registry** — freezing an
   interface on one implementation is [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s
   recorded mistake.
-- **Reach rule ↔ reconciler coupling** ([#33](../concerns.md#33-reach-rule-and-reconciler-mode-are-coupled))
+- **Reach rule ↔ reconciler coupling** ([#33](../concerns.md#33-reconciler-owns-domain-composition))
   — surfaced late in the session, from the question *"does reach follow priority?"*. It does not, but
   that is **`grid`'s choice, not a law**: the reconciler **bounds** what any reach rule may truthfully
   claim (a splicing reconciler serves what no single producer covers, so its reach is wider than
@@ -204,7 +204,7 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
   judgment stays with the mode. Open whether the two collapse into one profile-mode declaration or the
   reach rule is derived from the reconciler. Same trigger as #28; no v1 pressure, since `priority` +
   `grid` agree by construction.
-- **Runtime footprint-awareness** ([#32](../concerns.md#32-runtime-footprint-awareness-inside-the-algebra))
+- **Runtime footprint-awareness** ([#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra))
   — assessed this session as a **separate mechanism** from reach (one `Domain` vs an ordering; build-time
   vs per-request; raises vs ranks). Revisit putting footprint on `Capability` only when a real runtime
   consumer appears.
@@ -219,4 +219,4 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 
 **Next:** implement [003a](../tickets/done/003a-profile-reach.md) — now a smaller ticket than at session
 start (one build-time function, one leaf accessor, `Interval.intersect`; no node changes), then
-[003b](../tickets/003b-request-shaping.md) on top of it.
+[003b](../tickets/003c-request-shaping.md) on top of it.
