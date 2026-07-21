@@ -9,6 +9,7 @@ import pytest
 from fakes import SAMPLE_STORE, STOPPED, RecordingStoreFactory, core_parameters, fake_catalog
 from meteoscape.config import ArbiterPolicy, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
+from meteoscape.manifold.core import Countable
 from meteoscape.nodes.arbiter import Arbiter
 from meteoscape.nodes.calculator import Calculator
 from meteoscape.nodes.calculators.wind import wind_from_uv
@@ -114,6 +115,7 @@ def test_countable_source_passes_provider_domain() -> None:
     Weaver(stores).weave(profile)
     entry = next(iter(profile.sources.sources.values()))
     assert entry.store is None
+    assert isinstance(entry.provider, Countable)
     assert stores.calls[0] is entry.provider.domain
     assert stores.calls[1] is profile.root_store
 
@@ -154,6 +156,7 @@ def test_scoped_arbiter_admits_only_input_producers() -> None:
         calculators=_wind_registry(),
     )
     root = Weaver(RecordingStoreFactory()).weave(profile)
+    assert isinstance(root.source, Arbiter)
     calc = next(p for p in root.source.producers if isinstance(p.key, CalculatorKey))
     assert isinstance(calc.node, Calculator)
     scoped = calc.node.resolver

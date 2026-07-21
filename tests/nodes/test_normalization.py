@@ -40,6 +40,8 @@ def test_normalizer_contract_takes_raw_and_provenance() -> None:
     class _Stub:
         def normalize(self, raw: object, provenance: Provenance) -> Sequence[Coverage]:
             assert raw == {"temperature_2m": [18.5]}
+            # `Origin` is a union root — only an `AtomicOrigin` names a source (ADR-0003).
+            assert isinstance(provenance.origin, AtomicOrigin)
             assert provenance.origin.source.provider == "open-meteo"
             return [expected]
 
