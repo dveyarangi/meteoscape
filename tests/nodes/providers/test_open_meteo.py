@@ -15,11 +15,12 @@ from meteoscape.api.mcp_app import serialize_coverage
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import RollingAxis
-from meteoscape.manifold.core import Selection
-from meteoscape.manifold.coverage import CoverageRecord
+from meteoscape.manifold.core import Coverage, Selection
 from meteoscape.manifold.domain import (
+    Axis,
     AxisName,
     ContinuousAxis,
+    FootprintDomain,
     GridDomain,
     IntervalAxis,
     RegularAxis,
@@ -41,6 +42,7 @@ from meteoscape.parameters import (
     RELATIVE_HUMIDITY,
     WIND_U,
     WIND_V,
+    ParameterId,
 )
 
 
@@ -134,7 +136,7 @@ async def test_project_assembles_onto_selection_domain() -> None:
     )
     selection = _selection(hours=4)
     coverage = await provider.project(selection)
-    assert isinstance(coverage, CoverageRecord)
+    assert isinstance(coverage, Coverage)
     assert coverage.domain == selection.domain
     assert list(coverage.ranges[AIR_TEMPERATURE].values) == [18.0, 19.0, 20.0, 21.0]
     temp = coverage.ranges[AIR_TEMPERATURE]
@@ -155,21 +157,28 @@ def test_normalize_returns_native_records_by_z() -> None:
     assert len(records) == 4  # 2m, 10m, surface, column
     by_params = {frozenset(r.ranges): r for r in records}
 
+    # `Coverage.domain` is an `EnumerableDomain` — an enumerable curvilinear coverage stays open
+    # (#12, source role), so the grid path is asserted here rather than assumed.
+    def _grid_of(coverage: Coverage) -> GridDomain:
+        domain = coverage.domain
+        assert isinstance(domain, GridDomain)
+        return domain
+
     near = by_params[frozenset({AIR_TEMPERATURE, RELATIVE_HUMIDITY})]
-    assert near.domain.axis(AxisName.Z).extent.lower == pytest.approx(2.0)
+    assert _grid_of(near).axis(AxisName.Z).extent.lower == pytest.approx(2.0)
     assert list(near.ranges[AIR_TEMPERATURE].values) == [18.0, 19.0]
 
     wind = by_params[frozenset({WIND_U, WIND_V})]
-    assert wind.domain.axis(AxisName.Z).extent.lower == pytest.approx(10.0)
+    assert _grid_of(wind).axis(AxisName.Z).extent.lower == pytest.approx(10.0)
     # 36 km/h from east → 10 m/s, u=-10, v≈0
     assert list(wind.ranges[WIND_U].values) == pytest.approx([-10.0, -10.0])
     assert list(wind.ranges[WIND_V].values) == pytest.approx([0.0, 0.0], abs=1e-9)
 
     precip = by_params[frozenset({PRECIPITATION})]
-    assert precip.domain.axis(AxisName.Z).extent.lower == pytest.approx(0.0)
+    assert _grid_of(precip).axis(AxisName.Z).extent.lower == pytest.approx(0.0)
 
     cloud = by_params[frozenset({CLOUD_COVER})]
-    z = cloud.domain.axis(AxisName.Z)
+    z = _grid_of(cloud).axis(AxisName.Z)
     assert isinstance(z, IntervalAxis)
     assert z.extent.upper == pytest.approx(TOA_M)
 
@@ -191,11 +200,18 @@ def test_capability_declares_six_native_z_facts() -> None:
     }
     assert len(TAPS) == 6
 
-    footprints = provider.capability.footprints  # type: ignore[attr-defined]
-    assert footprints[AIR_TEMPERATURE][1].axis(AxisName.Z).extent.lower == pytest.approx(2.0)
-    assert footprints[WIND_U][1].axis(AxisName.Z).extent.lower == pytest.approx(10.0)
-    assert footprints[PRECIPITATION][1].axis(AxisName.Z).extent.lower == pytest.approx(0.0)
-    cloud_z = footprints[CLOUD_COVER][1].axis(AxisName.Z)
+    # The Capability advertises geometry as bare `Domain` — the leaf's own type is narrower.
+    footprints = provider.capability.footprints
+
+    def _native_z(pid: ParameterId) -> Axis:
+        domain = footprints[pid][1]
+        assert isinstance(domain, FootprintDomain)
+        return domain.axis(AxisName.Z)
+
+    assert _native_z(AIR_TEMPERATURE).extent.lower == pytest.approx(2.0)
+    assert _native_z(WIND_U).extent.lower == pytest.approx(10.0)
+    assert _native_z(PRECIPITATION).extent.lower == pytest.approx(0.0)
+    cloud_z = _native_z(CLOUD_COVER)
     assert isinstance(cloud_z, IntervalAxis)
     assert cloud_z.extent.upper == pytest.approx(TOA_M)
 
@@ -207,10 +223,7 @@ def test_provider_footprints_expose_capability_domains() -> None:
         clock=STOPPED,
         parameters=core_parameters(),
     )
-    cap_domains = {
-        pid: domain
-        for pid, (_, domain) in provider.capability.footprints.items()  # type: ignore[attr-defined]
-    }
+    cap_domains = {pid: domain for pid, (_, domain) in provider.capability.footprints.items()}
     assert set(provider.footprints) == set(cap_domains)
     for pid, domain in provider.footprints.items():
         assert domain is cap_domains[pid]
@@ -247,7 +260,9 @@ async def test_provenance_authored_from_cadence_and_clock() -> None:
         clock=STOPPED,
         parameters=core_parameters(),
     )
+    # `project` is closed — it returns a `Manifold` (ADR-0001); a sampled result is a `Coverage`.
     coverage = await provider.project(_selection(hours=2))
+    assert isinstance(coverage, Coverage)
     assert isinstance(coverage.provenance, Uniform)
     prov = coverage.provenance.summary(AIR_TEMPERATURE)
     now = STOPPED.now()
@@ -305,6 +320,7 @@ async def test_vendor_null_serializes_as_json_null() -> None:
         parameters=core_parameters(),
     )
     coverage = await provider.project(_selection(hours=3))
+    assert isinstance(coverage, Coverage)
     temp = coverage.ranges[AIR_TEMPERATURE]
     assert temp.is_present(0) is True
     assert temp.is_present(1) is False

@@ -35,8 +35,13 @@ class Weaver:
     def __init__(self, stores: StoreFactory) -> None:
         self.stores = stores
 
-    def weave(self, profile: ProfileDef) -> Manifold:
-        """Wire source + calculator Producers → top Arbiter → best-view Reservoir."""
+    def weave(self, profile: ProfileDef) -> Reservoir:
+        """Wire source + calculator Producers → top Arbiter → best-view Reservoir.
+
+        Returns the concrete root: ADR-0005 fixes it as the best-view `Reservoir`, so declaring
+        `Manifold` would discard a type the caller can rely on. Callers holding it as a `Manifold`
+        are unaffected.
+        """
         source_producers = self._weave_providers(profile)
         reconciler = build_reconciler(profile.arbiter, profile.sources, profile.calculators)
         calc_producers = self._weave_calculators(profile, source_producers, reconciler)

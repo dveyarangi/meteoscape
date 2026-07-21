@@ -17,7 +17,7 @@ from ..errors import BadRequest, CapabilityMismatch, RuntimeFailure
 from ..manifold.core import Coverage, Selection
 from ..manifold.domain import (
     AxisName,
-    EnumerableAxis,
+    Coordinate,
     GridDomain,
     Interval,
     RegularAxis,
@@ -151,8 +151,6 @@ def serialize_coverage(coverage: Coverage) -> dict[str, object]:
     if not isinstance(domain, GridDomain):
         raise TypeError("Coverage domain must be a GridDomain")
     t_axis = domain.axis(AxisName.T)
-    if not isinstance(t_axis, EnumerableAxis):
-        raise TypeError("Coverage T axis must be enumerable")
     payload: dict[str, object] = {
         "valid_time": [_iso_z(t_axis[i].coordinate) for i in range(len(t_axis))],
     }
@@ -210,7 +208,8 @@ def _horizon_hours(horizon: timedelta) -> int:
     return int(hours)
 
 
-def _iso_z(moment: object) -> str:
+def _iso_z(moment: Coordinate) -> str:
+    # `Coordinate` is `float | datetime`; only the time axis serializes here.
     if not isinstance(moment, datetime):
         raise TypeError(f"expected datetime, got {type(moment).__name__}")
     return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")

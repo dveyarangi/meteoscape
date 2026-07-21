@@ -375,7 +375,8 @@ class GridDomain(EnumerableDomain):
     def __len__(self) -> int:
         return self._size
 
-    def axis(self, name: AxisName) -> Axis:
+    def axis(self, name: AxisName) -> EnumerableAxis:
+        # Narrower than `Separable.axis` by construction — every `GridDomain` axis is enumerable.
         return self.axes[name]
 
 

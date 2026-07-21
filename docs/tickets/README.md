@@ -1,8 +1,9 @@
 # v1 delivery status
 
-**Last updated:** 2026-07-20
+**Last updated:** 2026-07-21
 
-**Current stage:** ticket 002b done; next up is 003a (profile reach) or 006 (retentive store).
+**Current stage:** 003a's resolver and m1 have landed; next up is 003b (request shaping), which wires
+`resolve_reach` into `compose()`, or 006 (retentive store) as an independent follow-on.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -63,16 +64,25 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [009 — Errors and partial success](./009-error-taxonomy-partial-success.md) | Partial | 002c, 003b, 004 | Per-parameter absence reasons and capable-but-faulting partial results. |
 | [010 — Unit conversion catalogue](./010-unit-conversion-edge.md) | Planned | 002; triggered by 004 | Shared verified native-to-canonical conversion edges. |
 
+## Maintenance
+
+Work that keeps the build honest but delivers no product capability, so it carries no number in the
+delivery sequence above and appears in no capability table.
+
+| Ticket | Status | Depends on | Outcome |
+|---|---|---|---|
+| [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
+
 ## Recommended execution order
 
 1. ~~**002c**~~ — **landed**: the live contract violation (vendor nulls reaching the wire as `NaN`) is
    closed, and 009's nodata semantics are unblocked.
-2. Run **003a** (self-contained algebra work, no surface change), or **006** as an independent
-   follow-on.
-3. Complete **003b** on top of 003a.
-4. Complete **007** after 006.
-5. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
-6. Close the v1 multi-provider surface with **005**, **008**, and **009**.
+2. ~~**003a**~~ — **landed**: build-time profile reach, no surface or request-path change.
+3. ~~**m1**~~ — **landed**: `pyright` green across `src` and `tests`, CI unblocked.
+4. Complete **003b** on top of 003a, or **006** as an independent follow-on.
+5. Complete **007** after 006.
+6. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
+7. Close the v1 multi-provider surface with **005**, **008**, and **009**.
 
 This ordering clears the known contract violation, then prioritizes real retention and request
 shaping, then provider fallback and per-parameter resolution.

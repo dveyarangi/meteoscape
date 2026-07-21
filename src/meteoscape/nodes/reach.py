@@ -10,24 +10,38 @@ from ..parameters import ParameterId
 from .composition import CompositionError, ProfileDef, RegisteredCalculator
 
 
-def _contains(outer: Domain, inner: Domain) -> bool:
+def _require_separable(key: object, domain: Domain) -> Separable:
+    """`grid` compares per-axis, so separability is its **precondition**, not a comparison result.
+
+    Folded into `_contains` as a `False` it would surface as "incomparable footprints, X/Y preference
+    unbuilt" — an explanation pointing at an unbuilt feature rather than the actual mistake, which is
+    pairing a curvilinear producer with a rule defined over separable geometry. Build-time has one
+    caller and no fallback, so rejecting loudly here costs nothing; the *request* path deliberately
+    does the opposite and keeps `Domain.matches` total (ADR-0002, [#12](../concerns.md)).
+    """
+    if not isinstance(domain, Separable):
+        raise CompositionError(
+            f"grid reach rule requires separable geometry; {key} declares "
+            f"{type(domain).__name__}, which exposes no axes"
+        )
+    return domain
+
+
+def _contains(outer: Separable, inner: Separable) -> bool:
     """Whether `outer` whole-box contains `inner` by per-axis extent containment — not `matches`."""
-    if not isinstance(outer, Separable) or not isinstance(inner, Separable):
-        return False
     return all(
         outer.axis(name).extent.contains(inner.axis(name).extent)  # type: ignore[arg-type]
         for name in AXIS_ORDER
     )
 
 
-def _split(left_key: object, left: Domain, right_key: object, right: Domain) -> str:
+def _split(left_key: object, left: Separable, right_key: object, right: Separable) -> str:
     """Why two Domains fail to nest, **both directions** — the split is the incomparability.
 
     A single "failing axis" is a misreport: nested-but-incomparable boxes (`Global x 10 d` vs
     `Europe x 16 d`) each dominate on a *different* axis, and naming only the first one sends an
     operator to the axis where the other candidate is winning.
     """
-    assert isinstance(left, Separable) and isinstance(right, Separable)
     parts: list[str] = []
     for name in AXIS_ORDER:
         a = left.axis(name).extent
@@ -40,8 +54,8 @@ def _split(left_key: object, left: Domain, right_key: object, right: Domain) -> 
 
 
 def _incomparable(
-    candidates: Sequence[tuple[object, Domain]],
-) -> tuple[tuple[object, Domain], tuple[object, Domain]] | None:
+    candidates: Sequence[tuple[object, Separable]],
+) -> tuple[tuple[object, Separable], tuple[object, Separable]] | None:
     """First pair nesting neither way — the witness both sites report when selection is unresolved."""
     for i, left in enumerate(candidates):
         for right in candidates[i + 1 :]:
@@ -50,24 +64,29 @@ def _incomparable(
     return None
 
 
-def _names(candidates: Sequence[tuple[object, Domain]]) -> list[str]:
+def _names(candidates: Sequence[tuple[object, object]]) -> list[str]:
     return [str(key) for key, _ in candidates]
 
 
 def _contained_in_all(
     candidates: Sequence[tuple[ParameterId, Domain]], *, calculator: CalculatorKey
 ) -> Domain:
-    """Most restrictive Domain — contained in every other (Calculator-site structure, not policy)."""
+    """Most restrictive Domain — contained in every other (Calculator-site structure, not policy).
+
+    Returns the *original* `Domain`, not the narrowed view: `checked` is index-parallel to
+    `candidates`, and the Reach must stay a `Domain` — the same object the producer declared.
+    """
     if not candidates:
         raise CompositionError(f"calculator {calculator} has no inputs to resolve reach from")
+    checked = [(pid, _require_separable(pid, domain)) for pid, domain in candidates]
     if len(candidates) == 1:
         return candidates[0][1]
 
-    for _key, domain in candidates:
-        if all(_contains(other, domain) for _k, other in candidates):
-            return domain
+    for index, (_key, domain) in enumerate(checked):
+        if all(_contains(other, domain) for _k, other in checked):
+            return candidates[index][1]
 
-    witness = _incomparable(candidates)
+    witness = _incomparable(checked)
     if witness is None:  # unreachable: extent containment is transitive, so a minimum exists
         raise CompositionError(
             f"calculator {calculator}: no input reach contained in all of {_names(candidates)}"
@@ -87,17 +106,23 @@ class GridReachRule:
     """
 
     def reach(self, candidates: Sequence[tuple[ProducerKey, Domain]]) -> Domain:
-        """Return one candidate's Domain as the promised Reach (never synthesized)."""
+        """Return one candidate's Domain as the promised Reach (never synthesized).
+
+        Separability is checked **before** the single-candidate shortcut — a lone curvilinear
+        footprint is still geometry this rule cannot promise over, and returning it unchecked would
+        defer the failure to whoever reads its axes.
+        """
         if not candidates:
             raise CompositionError("GridReachRule.reach requires at least one candidate")
+        checked = [(key, _require_separable(key, domain)) for key, domain in candidates]
         if len(candidates) == 1:
             return candidates[0][1]
 
-        for _key, domain in candidates:
-            if all(_contains(domain, other) for _k, other in candidates):
-                return domain
+        for index, (_key, domain) in enumerate(checked):
+            if all(_contains(domain, other) for _k, other in checked):
+                return candidates[index][1]
 
-        witness = _incomparable(candidates)
+        witness = _incomparable(checked)
         if witness is None:  # unreachable: extent containment is transitive, so a maximum exists
             raise CompositionError(
                 f"no containing footprint among {_names(candidates)}; X/Y preference is unbuilt"

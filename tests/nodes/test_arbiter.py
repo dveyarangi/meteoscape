@@ -19,7 +19,7 @@ from meteoscape.config import ArbiterPolicy, OfferingDef
 from meteoscape.errors import CapabilityMismatch
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.capability import EnumerableCapability, FootprintCapability
-from meteoscape.manifold.core import Manifold, Selection
+from meteoscape.manifold.core import Countable, Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
 from meteoscape.manifold.domain import (
@@ -54,16 +54,17 @@ def _bind(*offerings: OfferingDef, catalog=None):
 
 def _producers(registry: SourceRegistry) -> list[Producer]:
     stores = StoreFactory()
-    return [
-        Producer(
-            node=Reservoir(
-                stores.create(reg.store if reg.store is not None else reg.provider.domain),
-                reg.provider,
-            ),
-            key=key,
-        )
-        for key, reg in registry.sources.items()
-    ]
+    producers: list[Producer] = []
+    for key, reg in registry.sources.items():
+        if reg.store is not None:
+            spec = reg.store
+        else:
+            # A provider-exact lattice is the `Countable` facet, not the `Provider` base — mirrors
+            # the narrowing `weaver._source_grid` does in production.
+            assert isinstance(reg.provider, Countable)
+            spec = reg.provider.domain
+        producers.append(Producer(node=Reservoir(stores.create(spec), reg.provider), key=key))
+    return producers
 
 
 def _arbiter(
@@ -152,6 +153,8 @@ def test_priority_reconciler_orders_candidates() -> None:
     first, second = ordered
     assert isinstance(first.node, Reservoir) and isinstance(second.node, Reservoir)
     assert isinstance(first.node.source, Provider) and isinstance(second.node.source, Provider)
+    # `ProducerKey` is a union — only a `SourceKey` carries a provider.
+    assert isinstance(first.key, SourceKey) and isinstance(second.key, SourceKey)
     assert first.key.provider == "b"
     assert second.key.provider == "a"
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import timedelta
 
 import pytest
@@ -9,11 +10,27 @@ import pytest
 from fakes import SAMPLE_STORE, STOPPED, core_parameters, fake_catalog
 from meteoscape.config import CalculatorDef, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
-from meteoscape.manifold.core import Countable
+from meteoscape.manifold.core import Countable, Coverage
+from meteoscape.manifold.data import ParameterData
+from meteoscape.manifold.domain import EnumerableDomain
 from meteoscape.nodes.catalog.calculators import CalculatorManifest
 from meteoscape.nodes.catalog.providers import OfferingSpec, SecretSlot
 from meteoscape.nodes.composition import CalculatorBinder, CompositionError, SourceBinder
-from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
+from meteoscape.parameters import (
+    AIR_TEMPERATURE,
+    WIND_DIRECTION,
+    WIND_SPEED,
+    WIND_U,
+    WIND_V,
+    ParameterId,
+)
+
+
+def _never_called(
+    coverage: Coverage,
+) -> tuple[EnumerableDomain, Mapping[ParameterId, ParameterData]]:
+    """A `CombineFn` the binder only stores — binding never invokes the kernel."""
+    raise AssertionError("CalculatorBinder must not invoke the kernel")
 
 
 def test_one_offering_binds_to_registry() -> None:
@@ -160,7 +177,7 @@ def test_calculator_binder_empty() -> None:
 
 def test_calculator_binder_resolves_key_outputs_and_priority() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
     }
     parameters = core_parameters()
     bound = CalculatorBinder(catalog).build(
@@ -189,7 +206,7 @@ def test_calculator_binder_resolves_key_outputs_and_priority() -> None:
 
 def test_calculator_binder_name_override() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
     }
     bound = CalculatorBinder(catalog).build(
         [
@@ -208,7 +225,7 @@ def test_calculator_binder_name_override() -> None:
 
 def test_calculator_binder_unknown_fn_id_raises() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
     }
     with pytest.raises(CompositionError, match="fn_id"):
         CalculatorBinder(catalog).build(
@@ -226,8 +243,8 @@ def test_calculator_binder_unknown_fn_id_raises() -> None:
 
 def test_same_outputs_different_methods_are_distinct_keys() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
-        "wind_uv_alt": CalculatorManifest(fn_id="wind_uv_alt", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
+        "wind_uv_alt": CalculatorManifest(fn_id="wind_uv_alt", fn=_never_called),
     }
     outputs = frozenset({WIND_SPEED, WIND_DIRECTION})
     inputs = frozenset({WIND_U, WIND_V})
@@ -246,7 +263,7 @@ def test_same_outputs_different_methods_are_distinct_keys() -> None:
 
 def test_duplicate_calculator_key_raises() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=lambda *a: None),
+        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
     }
     with pytest.raises(CompositionError, match="duplicate"):
         CalculatorBinder(catalog).build(

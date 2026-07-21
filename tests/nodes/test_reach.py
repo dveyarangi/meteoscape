@@ -16,6 +16,7 @@ from meteoscape.manifold.domain import (
     AXIS_ORDER,
     AxisName,
     ContinuousAxis,
+    Domain,
     FootprintDomain,
     Interval,
 )
@@ -198,6 +199,37 @@ def test_reach_incomparable_names_both_failing_axes_not_just_the_first() -> None
     message = str(exc.value)
     assert "test:global extends beyond test:europe on x" in message
     assert "test:europe extends beyond test:global on t" in message
+
+
+class _NonSeparable(Domain):
+    """A curvilinear stand-in: satisfies `Domain`, exposes no axes (concern #12, source role)."""
+
+    def matches(self, other: Domain) -> bool:
+        return False
+
+    def intersect(self, other: Domain) -> Domain:
+        return self
+
+
+def test_reach_rejects_non_separable_candidate_naming_the_producer() -> None:
+    """`grid` compares per-axis, so separability is its precondition — not a comparison result.
+
+    Without the guard the all-`False` comparisons read as "incomparable footprints, X/Y preference
+    unbuilt", pointing the operator at an unbuilt feature instead of the actual mistake: pairing a
+    curvilinear producer with a rule defined over separable geometry (ADR-0007).
+    """
+    with pytest.raises(CompositionError) as exc:
+        GridReachRule().reach([(_key("swath"), _NonSeparable()), (_key("grid"), _global(days=10))])
+    message = str(exc.value)
+    assert "test:swath" in message
+    assert "separable" in message.lower()
+    assert "unbuilt" not in message
+
+
+def test_reach_rejects_lone_non_separable_candidate() -> None:
+    """The single-candidate shortcut must not smuggle unsupported geometry past the precondition."""
+    with pytest.raises(CompositionError, match=r"separable"):
+        GridReachRule().reach([(_key("swath"), _NonSeparable())])
 
 
 def test_resolve_reach_sources_picks_containing_footprint() -> None:
@@ -387,7 +419,10 @@ def test_resolve_reach_rolling_axis_stays_live() -> None:
     key, source = _source("live", domain, priority=0)
     profile = _profile({key: source})
     reach_map = resolve_reach(profile)
-    before = reach_map[AIR_TEMPERATURE].axis(AxisName.T).extent.upper
+    # A Reach *is* a producer's own `Domain`; the `grid` rule narrows its operands, not its result.
+    reach = reach_map[AIR_TEMPERATURE]
+    assert isinstance(reach, FootprintDomain)
+    before = reach.axis(AxisName.T).extent.upper
     clock.instant = _T0 + timedelta(days=1)
-    after = reach_map[AIR_TEMPERATURE].axis(AxisName.T).extent.upper
+    after = reach.axis(AxisName.T).extent.upper
     assert after == before + timedelta(days=1)

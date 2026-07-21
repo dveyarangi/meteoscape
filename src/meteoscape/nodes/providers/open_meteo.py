@@ -13,17 +13,16 @@ from datetime import UTC, datetime, timedelta
 
 from ...clock import Clock
 from ...config import StoreSpec
-from ...errors import RuntimeFailure
+from ...errors import CapabilityMismatch, RuntimeFailure
 from ...identity import SourceKey
 from ...manifold.cadence import CadenceDef, RollingAxis
-from ...manifold.capability import Capability, EnumerableCapability, FootprintCapability
+from ...manifold.capability import EnumerableCapability, FootprintCapability
 from ...manifold.core import Coverage, Manifold, Selection
 from ...manifold.coverage import CoverageRecord
 from ...manifold.data import ParameterData
 from ...manifold.domain import (
     AxisName,
     ContinuousAxis,
-    Domain,
     FootprintDomain,
     GridDomain,
     Interval,
@@ -233,7 +232,8 @@ class OpenMeteoProvider(Provider):
         self._cadence = cadence
         self._normalizer = normalizer or OpenMeteoNormalizer(parameters)
         self._source_key = SourceKey(provider=PROVIDER_ID, dataset=dataset)
-        self._capability = _build_capability(clock, cadence, parameters)
+        self._footprints = _build_footprints(clock, cadence, parameters)
+        self._capability = FootprintCapability(footprints=self._footprints)
 
     async def project(self, selection: Selection) -> Manifold:
         taps = tuple(tap for tap in TAPS if tap.produces in selection.parameters)
@@ -253,7 +253,7 @@ class OpenMeteoProvider(Provider):
         return _assemble(records, selection)
 
     @property
-    def capability(self) -> Capability:
+    def capability(self) -> FootprintCapability:
         return self._capability
 
     @property
@@ -261,15 +261,21 @@ class OpenMeteoProvider(Provider):
         return self._source_key
 
     @property
-    def footprints(self) -> Mapping[ParameterId, Domain]:
-        return {pid: domain for pid, (_, domain) in self._capability.footprints.items()}
+    def footprints(self) -> Mapping[ParameterId, FootprintDomain]:
+        return {pid: domain for pid, (_, domain) in self._footprints.items()}
 
 
-def _build_capability(
+def _build_footprints(
     clock: Clock,
     cadence: CadenceDef,
     parameters: ParameterTable,
-) -> FootprintCapability:
+) -> Mapping[ParameterId, tuple[ParameterDef, FootprintDomain]]:
+    """The leaf's own geometry, at its concrete type.
+
+    The `Capability` widens these to `Domain` — it is the abstract advertisement, and a producer
+    declaring curvilinear geometry advertises through the same field ([#12](../concerns.md), source
+    role). The provider keeps the narrow map because it *knows* what it built.
+    """
     footprints: dict[ParameterId, tuple[ParameterDef, FootprintDomain]] = {}
     xy_t = {
         AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
@@ -281,13 +287,16 @@ def _build_capability(
             axes={**xy_t, AxisName.Z: axis(tap.z)},
         )
         footprints[tap.produces] = (parameters.get(tap.produces), footprint)
-    return FootprintCapability(footprints=footprints)
+    return footprints
 
 
 def _forecast_request(selection: Selection, taps: Sequence[PointSeriesTap]) -> FetchRequest:
     domain = selection.domain
     if not isinstance(domain, Separable):
-        raise RuntimeFailure("open-meteo Selection domain must be separable")
+        # Unservable shape, not an upstream fault — `RuntimeFailure` is for 5xx / timeout /
+        # malformed vendor payloads. Unreachable through the Arbiter (`serves` already declines a
+        # non-separable request), so this guards direct callers.
+        raise CapabilityMismatch("open-meteo cannot serve a non-separable Selection domain")
 
     lon = domain.axis(AxisName.X).extent.lower
     lat = domain.axis(AxisName.Y).extent.lower
@@ -321,7 +330,8 @@ def _forecast_request(selection: Selection, taps: Sequence[PointSeriesTap]) -> F
 def _assemble(records: Sequence[Coverage], selection: Selection) -> CoverageRecord:
     """Project native records into one Coverage on `sel.domain` by value passthrough and Z relabeling."""
     if not isinstance(selection.domain, GridDomain):
-        raise RuntimeFailure("open-meteo assemble requires a GridDomain selection")
+        # Same category as the separability guard above: a request shape this leaf cannot serve.
+        raise CapabilityMismatch("open-meteo can only assemble onto a GridDomain selection")
 
     ranges: dict[ParameterId, ParameterData] = {}
     parameters: dict[ParameterId, ParameterDef] = {}

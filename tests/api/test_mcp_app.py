@@ -18,7 +18,7 @@ from meteoscape.manifold.capability import EnumerableCapability
 from meteoscape.manifold.core import Coverage, Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
-from meteoscape.manifold.domain import AxisName, RegularAxis, VantageAxis
+from meteoscape.manifold.domain import AxisName, GridDomain, RegularAxis, VantageAxis
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import (
@@ -110,13 +110,16 @@ def test_build_selection_floors_now_and_uses_vantage_z() -> None:
         table=table,
     )
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
-    assert selection.domain.axis(AxisName.X).extent.lower == pytest.approx(13.41)
-    assert selection.domain.axis(AxisName.Y).extent.lower == pytest.approx(52.52)
-    z = selection.domain.axis(AxisName.Z)
+    # `Selection.domain` is a bare `Domain` — a curvilinear request target is left open (#12).
+    domain = selection.domain
+    assert isinstance(domain, GridDomain)
+    assert domain.axis(AxisName.X).extent.lower == pytest.approx(13.41)
+    assert domain.axis(AxisName.Y).extent.lower == pytest.approx(52.52)
+    z = domain.axis(AxisName.Z)
     assert isinstance(z, VantageAxis)
     assert z.extent.lower == pytest.approx(0.0)
     assert z.extent.upper == pytest.approx(10.0)
-    t = selection.domain.axis(AxisName.T)
+    t = domain.axis(AxisName.T)
     assert isinstance(t, RegularAxis)
     assert t.anchor == floor_to(_CLOCK.now(), timedelta(hours=1))
     assert t.count == 168
@@ -233,6 +236,7 @@ def test_serialize_coverage_schema_and_nodata() -> None:
         "2026-07-11T01:00:00Z",
     ]
     block = payload["air_temperature"]
+    assert isinstance(block, dict)
     assert block["unit"] == "degC"
     assert block["values"] == [18.5, None]
     assert block["provenance"] == {
@@ -283,8 +287,12 @@ async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     assert result.data["air_temperature"]["unit"] == "degC"
     assert len(view.calls) == 1
     selection = view.calls[0]
-    assert selection.domain.axis(AxisName.T).count == 168
-    assert isinstance(selection.domain.axis(AxisName.Z), VantageAxis)
+    domain = selection.domain
+    assert isinstance(domain, GridDomain)
+    t = domain.axis(AxisName.T)
+    assert isinstance(t, RegularAxis)
+    assert t.count == 168
+    assert isinstance(domain.axis(AxisName.Z), VantageAxis)
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
 
 
