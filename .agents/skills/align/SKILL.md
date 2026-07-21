@@ -60,6 +60,20 @@ Create files lazily — only when you have something to write. If no `glossary.m
 
 When the user uses a term that conflicts with the existing language in `glossary.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
 
+This cuts both ways: before *you* propose a name, check the glossary yourself — including its _Avoid_ lists, which are reservations, not suggestions. If every synonym for a concept is avoided, that is a designed constraint telling you which word the project has chosen; work within it rather than proposing around it.
+
+### Check whether it was already decided
+
+Before treating a question as open, search the ADRs and architecture docs for it. A surprising amount of "open" questions are accepted decisions the code drifted from — the answer then is "implement the ADR", not a fresh trade-off analysis. Cite the deciding document when you find one.
+
+### Lead with the decisive fact
+
+When recommending between alternatives, find the fact that settles it — a reader count, an import direction, an existing invariant, what a test actually asserts — and lead with it. A pros/cons menu with no decisive fact means you haven't explored enough yet; go look before asking.
+
+### Name the shared assumption
+
+When posing an A-or-B fork, state the assumption both branches share. The user's best answer may dissolve the fork rather than pick a branch — treat "the premise is wrong" as a first-class outcome, not a detour. If a fork keeps resisting resolution, that is usually the sign.
+
 ### Sharpen fuzzy language
 
 When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
@@ -91,6 +105,10 @@ When high-level architecture of this project changes, update `architecture.md`. 
 ### Extract open questions and risks
 
 Open questions and risks should live in [docs/concerns.md](./docs/concerns.md) The concerns should be sorted highest priority first; Settled items move out to other architecture docs.
+
+### Record resolutions in the owning ticket inline
+
+When the plan under review is a ticket, record each resolution in the ticket the moment it lands — strike through the original question text and state the decision with its reason beside it, so the ticket carries both the question as it was asked and the answer. Sweep the ticket for internal consistency at the end: an early section may still assert what a later resolution changed.
 
 ### Offer ADRs sparingly
 
