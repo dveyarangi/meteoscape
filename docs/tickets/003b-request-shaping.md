@@ -86,15 +86,17 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
     understatement.
 
 **Wiring reach into the surface (session 0014).** [003a](./003a-profile-reach.md) delivers
-`resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`; this ticket **calls it**. `compose()`
-gains one step — `binders → ProfileDef → weave → resolve_reach → Gateway` — and hands the map to the
-surface adapter alongside the woven root. The Weaver is untouched: it stays a pure graph constructor,
-and reach never becomes a node member.
+`validate_calculators(ProfileDef)` and `resolve_reach(ProfileDef) -> Mapping[ParameterId, Domain]`;
+this ticket **calls both**. `compose()` gains two steps —
+`binders → ProfileDef → validate_calculators → weave → resolve_reach → Gateway` — and hands the map to
+the surface adapter alongside the woven root. **Validate precedes `weave`** so a wiring gap fails
+before any `Store` is allocated. The Weaver is untouched: it stays a pure graph constructor, and reach
+never becomes a node member.
 
-A misconfigured profile therefore fails at **startup** with a `CompositionError` naming the conflicting
-producers, and — because the selection is made at build while the winner's `RollingAxis` stays live —
-the narrated window and the default `end` still track the clock with no staleness and no per-request
-resolution.
+A misconfigured profile therefore fails at **startup** with a `CompositionError` — naming the
+calculator and its unproducible input, or the conflicting producers and axis — and, because the
+selection is made at build while the winner's `RollingAxis` stays live, the narrated window and the
+default `end` still track the clock with no staleness and no per-request resolution.
 
 No maximum-window guard: reach already bounds the request, an absurd `end` is an ordinary
 `capability-mismatch`, and an axis is `anchor + step + count`, so a large `count` costs O(1) to build
@@ -114,9 +116,9 @@ contract, Time axis).
       `reach(p)`'s `valid_time` upper bound, read live — and that default request is admissible by
       construction. `Settings.default_horizon` is gone. Given `start`, the reach end is absolute (it
       clips, it does not shift); `start` past it yields a single tick that admission judges.
-- [ ] A profile with `{Europe × 16 d, Global × 10 d}` narrates 10 d, and its default window is
-      admissible at both a European and an American point (003a supplies the reach rule; this verifies
-      the edge consumes it correctly).
+- [ ] The narrated reach and default window come from the resolved reach map and are **admissible by
+      construction** at the served point. (No regional-vs-global case: v1 has no regional provider, and
+      the rule branch that would decide one is deliberately unbuilt → 003a, ADR-0007.)
 - [ ] A request whose extent exceeds a provider's temporal `Capability` is not admitted for that
       provider (whole-request containment). Out-of-envelope windows (past `start`, over-horizon `end`)
       resolve through admission as `capability-mismatch` — the edge never pre-rejects against `reach`,
@@ -125,10 +127,12 @@ contract, Time axis).
       windows malformed in themselves (unparsable, `start > end`).
 - [ ] The tool description narrates the served parameters (off the woven root's `Capability`) plus the
       profile's reach (off the build-time map).
-- [ ] `compose()` calls `resolve_reach` and hands the map to the surface; a profile with unresolvable
-      X/Y dominance fails at **startup** with a `CompositionError`, never on the request path. The
-      selection is fixed at build while the winner's `RollingAxis` stays live, so the default window
-      still tracks the clock.
+- [ ] `compose()` calls **`validate_calculators` before `weave`**, then `resolve_reach`, and hands the
+      map to the surface. A profile with an unproducible Calculator input fails at **startup** — and
+      **before any `Store` is allocated** — with a `CompositionError` naming the calculator and input;
+      an unresolvable reach fails at startup too. Neither reaches the request path. The selection is
+      fixed at build while the winner's `RollingAxis` stays live, so the default window still tracks
+      the clock.
 - [ ] Unit + mocked-transport integration tests cover subset selection, the reach-end default, and
       out-of-envelope extents.
 

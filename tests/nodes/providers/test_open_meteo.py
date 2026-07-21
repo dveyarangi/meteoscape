@@ -14,9 +14,16 @@ from fakes import STOPPED, core_parameters
 from meteoscape.api.mcp_app import serialize_coverage
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
+from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.coverage import CoverageRecord
-from meteoscape.manifold.domain import AxisName, GridDomain, IntervalAxis, RegularAxis
+from meteoscape.manifold.domain import (
+    AxisName,
+    ContinuousAxis,
+    GridDomain,
+    IntervalAxis,
+    RegularAxis,
+)
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.providers.base import FetchRequest, HttpxTransport, Transport
 from meteoscape.nodes.providers.open_meteo import (
@@ -191,6 +198,28 @@ def test_capability_declares_six_native_z_facts() -> None:
     cloud_z = footprints[CLOUD_COVER][1].axis(AxisName.Z)
     assert isinstance(cloud_z, IntervalAxis)
     assert cloud_z.extent.upper == pytest.approx(TOA_M)
+
+
+def test_provider_footprints_expose_capability_domains() -> None:
+    """Provider.footprints projects Domains from the leaf declaration — same objects, live T."""
+    provider = OpenMeteoProvider(
+        transport=_CapturingTransport({}),
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    cap_domains = {
+        pid: domain
+        for pid, (_, domain) in provider.capability.footprints.items()  # type: ignore[attr-defined]
+    }
+    assert set(provider.footprints) == set(cap_domains)
+    for pid, domain in provider.footprints.items():
+        assert domain is cap_domains[pid]
+        assert domain.axis(AxisName.X).extent.lower == pytest.approx(-180.0)
+        assert domain.axis(AxisName.X).extent.upper == pytest.approx(180.0)
+        assert domain.axis(AxisName.Y).extent.lower == pytest.approx(-90.0)
+        assert domain.axis(AxisName.Y).extent.upper == pytest.approx(90.0)
+        assert isinstance(domain.axis(AxisName.X), ContinuousAxis)
+        assert isinstance(domain.axis(AxisName.T), RollingAxis)
 
 
 def test_unit_mismatch_raises_runtime_failure() -> None:

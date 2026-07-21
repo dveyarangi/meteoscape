@@ -5,7 +5,7 @@ Representations vary behind one interface: separability is a *facet* (not the ba
 regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
 curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
 an axis. v1 ships `GridDomain` (the enumerable grid — mixed `EnumerableAxis` per axis) and
-`FootprintDomain` (a continuous provider reach); `CurvilinearDomain` and `intersect` are declared seams.
+`FootprintDomain` (a continuous provider footprint); `CurvilinearDomain` and `intersect` are declared seams.
 
 See ADR-0002.
 """
@@ -201,7 +201,7 @@ class VantageAxis(IntervalAxis):
 
 @dataclass(frozen=True)
 class ContinuousAxis(Axis):
-    """The plain continuous axis: an explicit span, no cells — a `FootprintDomain`'s X/Y reach.
+    """The plain continuous axis: an explicit span, no cells — a `FootprintDomain`'s X/Y footprint.
 
     The unmarked, static continuous case; the clock-anchored `valid_time` specialization (`RollingAxis`)
     lives with the cadence it reads (`cadence.py`), keeping this module pure geometry. Z footprints use
@@ -381,7 +381,7 @@ class GridDomain(EnumerableDomain):
 
 @dataclass(frozen=True)
 class FootprintDomain(Domain):
-    """A producer's declared reach - a **non-enumerable**, `Separable` region, the footprint the
+    """A producer's declared footprint - a **non-enumerable**, `Separable` region, the geometry the
     Capability filter tests against.
 
     Per-axis bounds: typically a `ContinuousAxis` on X/Y, a `RegularAxis` point or `IntervalAxis`

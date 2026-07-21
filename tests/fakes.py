@@ -14,6 +14,7 @@ from meteoscape.manifold.core import Manifold, Selection
 from meteoscape.manifold.domain import (
     AxisName,
     ContinuousAxis,
+    Domain,
     EnumerableDomain,
     FootprintDomain,
     GridDomain,
@@ -119,6 +120,11 @@ class FakeProvider(Provider):
     @property
     def source_key(self) -> SourceKey:
         return self._source_key
+
+    @property
+    def footprints(self) -> Mapping[ParameterId, Domain]:
+        assert isinstance(self._capability, FootprintCapability)
+        return {pid: domain for pid, (_, domain) in self._capability.footprints.items()}
 
 
 class CountableFakeProvider(FakeProvider):

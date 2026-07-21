@@ -205,6 +205,32 @@ trace = *how it was chosen*); and the wider **observability** surface (structure
 counts, fallback rate, cache hit-rate, provider latency / error). Keeping the trace a sidecar channel leaves
 the read-only algebra untouched. v1 may emit a **minimal structured log**; the structured sidecar is deferred.
 
+## 36. Unserved and uncomparable are indistinguishable
+
+**Kind:** deferred seam (diagnosability) · **Refs:** [#14](#14-resolution-trace-and-observability), [ADR-0002](./adr/0002-data-model.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+
+`Capability.serves` is a bool, so the Arbiter's candidate loop skips a producer identically whether it
+**does not cover** the requested extent or **cannot be compared to it at all**. `Domain.matches`
+returning `False` for both is correct — a representation that cannot determine coverage cannot serve,
+and the total predicate is what keeps the degrade path alive (a raise would abort the loop and fail
+requests a later producer could serve, [ADR-0002](./adr/0002-data-model.md)). What is lost is not
+correctness but **diagnosis**.
+
+The operator-visible symptom is one message — *"no producer admits any requested parameter"* — for two
+very different situations: *"nothing covers this region"* (the system working) and *"this source can
+**never** participate, and nothing told you"* (a configuration or implementation gap). The second is
+not curvilinear-specific: a separable but **misconfigured** footprint — a region narrower than
+intended, a Z level nothing requests — is skipped just as silently and passes every build-time check.
+The [#12](#12-curvilinear-domains) case is narrower still: once 003b wires `resolve_reach` into
+`compose()`, a curvilinear producer under the `grid` reach rule fails the **build**, so it never
+reaches the request path at all.
+
+This belongs to the resolution trace ([#14](#14-resolution-trace-and-observability)) rather than to the
+predicate: the skip needs a **reason code** alongside the existing runtime-fault / nodata /
+capability-mismatch vocabulary, not a third return state no caller could branch on. Open: whether a
+build-time *reachability* check ("this enabled source can serve nothing any plausible request asks
+for") is worth having as well, or whether the trace alone is enough.
+
 ## 18. Clock-anchored footprint fidelity
 
 **Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
@@ -257,12 +283,55 @@ correct.
 
 ## 12. Curvilinear domains
 
-**Kind:** room-left (interface promise) · **Refs:** [ADR-0002](./adr/0002-data-model.md)
+**Kind:** room-left (interface promise) · **Refs:** [ADR-0002](./adr/0002-data-model.md),
+[ADR-0007](./adr/0007-reach-is-an-inner-bound.md), [#5](#5-read-time-homogenization-fidelity)
 
 ADR-0002 makes the `Domain` interface **non-separable by default** so curvilinear geometries — radar
 geotangent slices, satellite swaths — can be a **representation** later without a contract change.
-Curvilinear implementations are deferred: interface conformance is a **promise**, proven by the first non-separable producer. Until then
-it is only a constraint on the Domain interface (don't assume per-axis separability), not a v1 work item.
+Curvilinear implementations are deferred: interface conformance is a **promise**. Until then it is only
+a constraint on the Domain interface (don't assume per-axis separability), not a v1 work item.
+
+**Two independent roles, separately committed.** Non-separable geometry appears on *both* sides of
+`project`, and neither implies the other — all four combinations are real operations:
+
+| | separable target | curvilinear target |
+|---|---|---|
+| **separable source** | v1 today (grid → grid) | verify a grid forecast against a swath in **observation space** |
+| **curvilinear source** | nowcast blend — radar homogenized onto the node grid, answer served as a box | radar vs. satellite compared in either's native geometry |
+
+- **Source role** (the *declaring* side — `Provider.footprints`, `Coverage.domain`, the `self` side of
+  `Domain.matches`): a producer *has* non-separable geometry. Committed by
+  [product pillar 10](./product-roadmap.md) (local stations, regional radars, satellite products as
+  sources). Proven by the **first non-separable producer**. Engineering: `matches` / `intersect` must
+  compare a swath against a box.
+- **Target role** (the *requesting* side — `Selection.domain`, the `other` side of `Domain.matches`,
+  the output geometry of homogenization): a caller *asks for* values on non-separable geometry.
+  Committed by **Phase 6** forecast-vs-observation verification done in **observation space** — the
+  model is brought to the observation rather than the observation averaged onto the model grid, which
+  avoids the representativeness error that would otherwise contaminate provider skill scores. The
+  source may be a plain grid; only the target is curvilinear. Engineering: **`resample` must sample
+  onto an arbitrary point set, not just a grid** — materially wider than
+  [#5](#5-read-time-homogenization-fidelity) currently scopes.
+
+Grid-space verification (observation → model grid) is then the special case where the target happens
+to be separable; it needs neither role.
+
+**Consequence for today's code.** Both roles being real is what keeps `Selection.domain`,
+`Coverage.domain`, and `Provider.footprints` typed as the base `Domain`: none of them can promise
+separability. Consumers that *require* separability narrow at the use site (`isinstance(..., Separable)`
+or to a concrete representation).
+
+`Domain.matches` needs no special handling: it asks *"will I serve this request?"*, and a
+representation that cannot determine whether it covers the request cannot serve it — `False` is the
+correct answer, not a lossy collapse, and it is what lets the Arbiter skip that candidate and try the
+next ([ADR-0002](./adr/0002-data-model.md)). What does need handling is a **rule** defined over a
+restricted geometry: `GridReachRule` compares footprints per-axis, so it validates that its candidates
+are separable **before** comparing and rejects with a message naming the producer. Without that
+precondition an all-`False` comparison set reads as *"incomparable footprints, X/Y preference
+unbuilt"* — an explanation that points at the wrong problem. Because reach resolves at build (003b
+wires it into `compose()`), a curvilinear producer in a grid profile fails the build; what stays
+invisible is the *request-path* skip, which is
+[#36](#36-unserved-and-uncomparable-are-indistinguishable).
 
 ## 26. Provider / calculator plugin scaffolding
 
@@ -613,11 +682,20 @@ do not build a coupling mechanism, and do not let a second reach rule ship witho
 Three build-time passes now walk the same producer DAG over `ProfileDef` (003a added the last two):
 
 - **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, with a `visiting` set
-  raising `CompositionError("calculator cycle at ...")`.
-- **`validate_calculators`** — checks every Calculator input is producible; owns a `visiting` cycle
-  guard and the wiring errors ([ADR-0007](./adr/0007-reach-is-an-inner-bound.md)).
-- **`resolve_reach`** — folds footprints by the `grid` rule (whole-box dominated among a Calculator's
-  resolved inputs); assumes a validated graph, so it walks only for geometry.
+  raising `CompositionError("calculator cycle at ...")`. A **backstop**: `compose()` validates before
+  weaving, and `validate_calculators` is required to reject every cycle the Weaver cannot build, so
+  this should never fire. The two messages differ deliberately — the operator's names the whole cycle —
+  so if it ever does fire, which guard caught it is observable.
+- **`validate_calculators`** — checks every Calculator input is producible; owns the operator-facing
+  `visiting` cycle guard and the wiring errors, and runs first
+  ([ADR-0007](./adr/0007-reach-is-an-inner-bound.md)). Its guard must be **exactly as strict as the
+  Weaver's**: it descends into upstream calculators even when a source also serves that input, because
+  the Weaver scopes each input Arbiter over *all* producers of it. A cycle a source shadows is still
+  unbuildable — and slipping one past this pass hangs the next one.
+- **`resolve_reach`** — selects footprints (the `grid` rule at Arbiter sites; contained-in-all across a
+  Calculator's resolved inputs); assumes a validated graph, so it walks only for geometry and carries
+  **no cycle guard at all** — it would recurse until the stack blew. That is the load-bearing reason
+  the pass above cannot be approximate.
 
 003a's two carry their own guard so they stay standalone and unit-testable without weaving —
 **deliberate duplication of ~3 lines**, not an accident.

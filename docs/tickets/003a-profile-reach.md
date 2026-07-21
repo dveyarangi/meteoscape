@@ -36,10 +36,20 @@ inputs are resolved by a **scoped `Arbiter`** ([weaver.py](../../src/meteoscape/
 the same two sites repeat at every depth:
 
 ```
-reach(arbiter, p)    = dominating([ footprint(prod, p) for prod in producers serving p ])   # X/Y first
+reach(arbiter, p)    = RULE.reach([ footprint(prod, p) for prod in producers serving p ])
 footprint(source, p) = the provider's declared footprint for p
-footprint(calc, p)   = dominated( [ reach(calc.scoped_arbiter, i) for i in calc.inputs ] )  # whole-box
+footprint(calc, p)   = contained_in_all([ reach(calc.scoped_arbiter, i) for i in calc.inputs ])
 ```
+
+**The rule is consulted at the Arbiter site only.** There, alternatives compete and something must
+*choose* — that is policy, and it is the rule's whole job. A Calculator has no choice: it serves where
+**all** its inputs serve, so `contained_in_all` is **structure in the resolver**, not rule work.
+
+**v1 builds the mechanism, not the judgment.** `reach`'s body is **containment** — the candidate
+containing all others; equal-extent tie → any; none contains the rest → raise. ADR-0007's **X/Y-first
+preference is deferred**: it only decides *incomparable* candidates, which need a **regional** provider,
+and v1 has none (Open-Meteo and TWC are both global, so candidates either tie on X/Y or one contains
+the other, where containment and X/Y-first agree).
 
 Memoized per key. `validate_calculators` owns the `visiting` **cycle guard** and the *wiring* errors
 (an input no producer serves — a calculator is an operator promise, so this fails the build explicitly,
@@ -53,15 +63,18 @@ Build notes, each grounded in [ADR-0007](../adr/0007-reach-is-an-inner-bound.md)
 - **No new geometry primitive** — see [Geometry: none added](#geometry-none-added).
 - **No `ArbiterPolicy` / `build_reconciler` dependency** — `grid` ignores priority
   (→ [#33](../concerns.md#33-reach-rule-and-reconciler-mode-are-coupled) for why that is mode-scoped).
-- **`CompositionError` on unresolved dominance**, naming the conflicting producers (by `SourceKey` /
-  `CalculatorKey`) and the failing axis — possible because the resolver works over `ProfileDef`.
-- **`grid` is a named unit called directly** — no `ReachRule` protocol, no config plumbing, no
-  registry ([#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s
-  recorded lesson; the second rule is already known to need a wider interface).
+- **`CompositionError` when nothing resolves**, naming the conflicting producers (by `SourceKey` /
+  `CalculatorKey`) and the failing axis — possible because the resolver works over `ProfileDef`. For
+  incomparable candidates the message must also say the X/Y preference is **unbuilt**.
+- **`GridReachRule` is a concrete class called directly** — a single `reach`, no `Protocol`, no config
+  plumbing, no registry ([#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s
+  recorded lesson; the contract gets extracted once a second rule exists, and that one is already known
+  to need a wider interface).
 
-**Wiring is 003b's.** This ticket delivers `resolve_reach` and the `Provider.footprints` accessor;
-calling it from `compose()` and handing the map to the surface is [003b](./003b-request-shaping.md),
-which already touches composition.
+**Wiring is 003b's.** This ticket delivers `validate_calculators`, `resolve_reach`, and the
+`Provider.footprints` accessor; calling them from `compose()` — validate **before** `weave`, reach
+after — and handing the map to the surface is [003b](./003b-request-shaping.md), which already touches
+composition.
 
 ### Geometry: none added
 
@@ -101,13 +114,16 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
       needing no `ArbiterPolicy` / reconciler. **Precondition: a validated `ProfileDef`** — so its only
       raises are *geometry*, never wiring. A **provider** parameter no enabled source serves is
       **absent from the map** (graceful degrade; 003b's `min`-over-parameters fold skips it).
-- [ ] The `grid` reach rule exists as a **named unit** (no protocol, no config, no registry), with its
-      two site procedures: **Arbiter** — the producer dominating on **X/Y**, then among X/Y ties on the
-      remaining axes; **Calculator** — the input contained in **every other input on all axes**
-      (whole-box; `{Europe × 10 d, Global × 5 d}` as inputs **raises**, never yields `Europe × 10 d`).
-- [ ] **An equal-extent tie returns one of the inputs** — the test asserts identity ∈ inputs, not
-      *which* (unobservable). Two equal `Global × 10 d` footprints never raise (the derived-wind case);
-      no sort is imposed.
+- [ ] `GridReachRule` exists as a **concrete class with a single `reach(candidates)`** (no `Protocol`,
+      no config, no registry), consulted **only at the Arbiter site** — where alternatives compete.
+      Its v1 body is **containment only**: the candidate containing all others; **no candidate contains
+      the rest → `CompositionError`** stating the X/Y preference is unbuilt. The X/Y-first judgment is
+      **not implemented** and no test asserts it (unreachable in v1 — both providers are global).
+- [ ] The **Calculator combination lives in the resolver, not the rule** — it serves where all inputs
+      serve, so `contained_in_all` over its inputs' reaches; sheared inputs raise. No policy involved.
+- [ ] **An equal-extent tie returns one of the candidates** — the test asserts identity ∈ candidates,
+      not *which* (unobservable). Two equal footprints never raise (the derived-wind case); no sort is
+      imposed.
 - [ ] **No `Domain` is ever synthesized** — every reach returned is an existing declared footprint. No
       `Interval` union or intersection is added; `Domain.intersect` stays a declared seam.
 - [ ] `grid` **ignores producer priority**: `{Global × 10 d @1, Global × 16 d @2}` → **16 d**.
@@ -115,9 +131,8 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
       `SourceKey` / `CalculatorKey`) and the axis on which dominance failed.
 - [ ] A **Calculator competes at the top level like any producer**; a **`stored` calculator is
       transparent** to reach (the flag is never consulted).
-- [ ] `{Europe × 16 d, Global × 10 d}` → `Global × 10 d`; adding `Arctic × 5 d` still yields
-      `Global × 10 d`; `{Global × 16 d, Global × 10 d}` → `Global × 16 d`;
-      `{Europe × 16 d, Americas × 10 d}` raises.
+- [ ] `{Global × 16 d, Global × 10 d}` → `Global × 16 d` (the 004 shape); incomparable candidates
+      raise. No `{Europe × …}` case is built or tested — a regional footprint cannot occur in v1.
 - [ ] The returned reach is the winner's own `Domain` — a clock-anchored `RollingAxis` stays **live**
       (its T upper bound tracks the clock), not snapshotted at build.
 - [ ] Dominance is tested by explicit extent containment, **not** `Domain.matches` (the admission
