@@ -4,8 +4,10 @@ status: accepted
 
 # Capability carries its domain; reach is a Manifold's
 
-A **`Capability` publishes the `Domain` it serves, per parameter** — `domain(parameter) -> Domain`,
-alongside `parameters` and `serves`. A Manifold's **reach** *is* that domain. The profile's reach is
+A **`Capability` publishes the `Domain` it serves, per parameter** — `reach(parameter) -> Domain`,
+alongside `parameters` and `serves`. A Manifold's **Reach** *is* that domain — the member carries the
+glossary's name for the concept, leaving `domain` to the parameter-free enumerable field
+result-`Countable` forwards to. The profile's reach is
 the woven root's; a Calculator's input reach is its scoped Arbiter's. There is no separate reach
 artifact, no reach rule, and no build-time pass that recomputes what the capability tree already
 composes.
@@ -25,18 +27,18 @@ composes**, because the composition rule leaves no room for it to be loose:
   when it exists, is the exact intersection, and a Calculator serves exactly where all inputs do.
 
 Both folds are **exact whenever they do not raise**, and a profile where they would raise cannot start.
-So `domain` and `serves` describe the *same set* in every running system.
+So `reach` and `serves` describe the *same set* in every running system.
 
 Two divergences remain, and neither is fixable by representation:
 
 - **`serves` may tighten below geometry.** Resampler-reachability and probed availability are declared
-  seams inside `serves` ([ADR-0004](./0004-producer-resolution-and-capability.md)). `domain` is the
+  seams inside `serves` ([ADR-0004](./0004-producer-resolution-and-capability.md)). `reach` is the
   *declared* geometry; narration off it overpromises exactly to the extent those seams land.
 - **Runtime degrade.** A provider that is down shrinks the served set below its declaration
   ([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)). Declared geometry
   cannot express availability.
 
-This is why `serves` **stays** on the interface rather than being derived from `domain`: the two answer
+This is why `serves` **stays** on the interface rather than being derived from `reach`: the two answer
 different questions (*what do I declare* vs *what will I admit*), and the second is allowed to be
 stricter.
 
@@ -44,7 +46,7 @@ stricter.
 
 The member is vestigial on none of them:
 
-| Form | Whose | `domain(parameter)` |
+| Form | Whose | `reach(parameter)` |
 |---|---|---|
 | `FootprintCapability` | a Provider leaf | the declared footprint |
 | `EnumerableCapability` | a materialized Coverage | its grid |
@@ -172,7 +174,7 @@ without it a future reader will re-propose the fold.
   `Provider.footprints` as a second accessor onto geometry the `Capability` already interprets, and
   requires a hand-obeyed rule keeping reach out of admission (necessary only while reach understates,
   which it does not).
-- **Deriving `serves` from `domain`** — forecloses the resampler-reachability and probed-availability
+- **Deriving `serves` from `reach`** — forecloses the resampler-reachability and probed-availability
   seams, which legitimately tighten admission below declared geometry.
 - **Reach as a set of footprints (an antichain)**, unifying exactly with `serves` even for incomparable
   producers — unnecessary: the case requires a regional reaching *further* than a global, which NWP does

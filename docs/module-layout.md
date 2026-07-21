@@ -48,7 +48,7 @@ src/meteoscape/
 #   CalculatorBinder(CalculatorCatalog).build(defs, parameters) → CalculatorRegistry  # keyed by CalculatorKey; resolves output ParameterDefs
 #   validate_calculators(ProfileDef) → None  # raises CompositionError; runs BEFORE weave (owns the cycle guard)
 #   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold  # best-view root; concretely Reservoir(store, Arbiter), promised as the algebra (ADR-0005)
-#   Capability.domain(ParameterId) → Domain  # a Manifold's Reach; composites compose it, raising if unresolvable (ADR-0007)
+#   Capability.reach(ParameterId) → Domain  # a Manifold's Reach; composites compose it, raising if unresolvable (ADR-0007)
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler)  # producers = Producer{node, key}; reconciler owns priority AND domain composition
 #   compose(profile, providers, calculators, secrets, clock, stores) → Gateway
