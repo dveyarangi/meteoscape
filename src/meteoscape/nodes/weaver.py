@@ -35,12 +35,14 @@ class Weaver:
     def __init__(self, stores: StoreFactory) -> None:
         self.stores = stores
 
-    def weave(self, profile: ProfileDef) -> Reservoir:
+    def weave(self, profile: ProfileDef) -> Manifold:
         """Wire source + calculator Producers → top Arbiter → best-view Reservoir.
 
-        Returns the concrete root: ADR-0005 fixes it as the best-view `Reservoir`, so declaring
-        `Manifold` would discard a type the caller can rely on. Callers holding it as a `Manifold`
-        are unaffected.
+        Declared `Manifold`, not the composite it builds. ADR-0005 fixes what the Weaver
+        *constructs*; the return type is what it *promises*, and root retention is a config fact
+        (`root_store`) — the same knob `stored` is for a Calculator below, which is why that node is
+        `Manifold` too. What makes the root the best view is selection, and selection is the
+        Arbiter's; the `Reservoir` only adds retention (ADR-0001).
         """
         source_producers = self._weave_providers(profile)
         reconciler = build_reconciler(profile.arbiter, profile.sources, profile.calculators)
