@@ -3,7 +3,7 @@
 Continues [session 0012](./0012-20260714-002b-align-derived-wind.md). An `align` pass on
 ticket 003 — which the session ended by splitting into
 [003a](../tickets/done/003a-profile-reach.md) (the reach algebra) and
-[003b](../tickets/003b-request-shaping.md) (the edge). Opened by repairing **drift in the release
+[003b](../tickets/003c-request-shaping.md) (the edge). Opened by repairing **drift in the release
 contract**, then split the ticket, then spent its length on one branch — *how does a surface know how
 far a profile reaches* — which reversed itself several times before landing. The reversal trail is
 recorded below, because most of what was explored is plausible enough to be re-proposed.
@@ -34,7 +34,7 @@ it cannot author capability). The ADR is current; sessions are historical.
    no decision to rediscover. *(No new ticket, no `ideas.md` entry — the contract already carries it.)*
 
 2. **`Capability` gains a per-parameter `reach` `Domain`** (→ ADR-0004 amended,
-   [#29](../concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)). It folds by the same
+   [#29](../concerns.md#29-narrated-reach-what-a-profile-promises)). It folds by the same
    leaf/composite algebra as `serves`: leaf → its footprint; **derived → per-axis intersection** (a
    Calculator needs *all* its inputs); reservoir → forwards. Three rules keep it honest:
    - **A composite joins per axis, following the request's shape there.** Admission is whole-request
@@ -279,7 +279,7 @@ Three policies had been bleeding together; separating them dissolved most of the
 
 - **Fallback** — *who serves a parameter* (the reconciler's; wholesale, one winner).
 - **Membership** — *what a beyond-reach request gets* (→ [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)).
-- **Narration** — *what the client is told up front* (→ [#29](../concerns.md#29-narrated-reach-per-axis-join-conservative-on-extent-axes)).
+- **Narration** — *what the client is told up front* (→ [#29](../concerns.md#29-narrated-reach-what-a-profile-promises)).
 
 The **ordering asymmetry** — **under `priority` mode** — is why only one direction leaves residue:
 admission compares a candidate's reach to the **request**, not to the primary. A **longer** fallback is
@@ -386,7 +386,7 @@ it. What stays open is only whether a profile *stuck on* `priority` deserves a p
   (**worth it, low priority** — needs #13 + #28 + a per-cell reason channel); backward reach for
   historical provision (should absorb into `reach` without a contract change, since it is a `Domain`).
 - **Watch at 003b build:** free windows are the first requests to leave the fixed hourly on-lattice
-  shape, so [#21](../concerns.md#21-serves-reach-vs-project-crop-ability) (`serves` admits by extent
+  shape, so [#21](../concerns.md#21-serves-extent-vs-project-crop-ability) (`serves` admits by extent
   while the sampling engine only crops aligned identical-step lattices) stops being theoretical —
   flooring `start` to the hour keeps requests on-phase, which is what holds it at bay.
 - **003 align is complete** — both halves are ready for the build pass, 003a first.

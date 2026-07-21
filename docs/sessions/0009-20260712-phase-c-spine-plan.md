@@ -55,7 +55,7 @@ TDD cycle list.
   single target lattice, 006's quantize, the serializer's shared `valid_time`, and ADR-0001/0002.
   The need (serve `temperature_2m` exactly) is met by exact-Z Selections + the edge alias table
   (003); the mixed-height bundle fork (fat shared Z cell vs per-Z-group edge Selections) is
-  **[concern #24](../concerns.md#24-parameter-height-carriage-fat-shared-z-cell-vs-per-z-group-requests)**,
+  **[concern #24](../concerns.md)**,
   decided at 002/003 with the fetch-cost trade in view.
 - **The tool is `forecast_hourly`; optional `start`/`end` stay in the contract.** Shape-named: a
   daily/aggregated product is different statistics — a **sibling tool** with its own narratable
@@ -206,4 +206,4 @@ fork (002/003).
 - Build Phase C per the cycle list; the e2e closes
   [issue 001](../tickets/done/001-walking-skeleton.md).
 - Concern #24 decision point arrives at [issue 002](../tickets/done/002-core-5-parameters.md) /
-  [issue 003](../tickets/003b-request-shaping.md).
+  [issue 003](../tickets/003c-request-shaping.md).

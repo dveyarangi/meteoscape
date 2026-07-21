@@ -2,8 +2,9 @@
 
 **Last updated:** 2026-07-21
 
-**Current stage:** 003a's resolver and m1 have landed; next up is 003b (request shaping), which wires
-`resolve_reach` into `compose()`, or 006 (retentive store) as an independent follow-on.
+**Current stage:** 003a and m1 have landed. Next is 003b, which moves reach onto `Capability`
+([ADR-0007](../adr/0007-capability-carries-its-domain.md)) and reshapes 003a's resolver, then 003c
+(request shaping); 006 (retentive store) is an independent follow-on.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -54,14 +55,15 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [002 — Core canonical parameters](./done/002-core-5-parameters.md) | Done | 001 (done) | Canonical provider parameters and edge exposure. |
 | [002b — Derived wind](./done/002b-derived-wind-calculator.md) | Done | 002 (done) | Requestable derived wind and multi-node response assembly. |
 | [002c — Provider nodata mask](./done/002c-provider-nodata-mask.md) | Done | 002 (done) | Vendor nulls preserved as nodata and JSON `null`. |
-| [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only — 003b wires it into `compose()`. |
-| [003b — Request shaping](./003b-request-shaping.md) | Partial | 003a | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. |
-| [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003b | TWC leaf and wholesale priority fallback. |
+| [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only; 003b relocates it onto `Capability`. |
+| [003b — Capability carries its domain](./003b-capability-domain.md) | Ready | 003a (landed), m1 | `Capability.domain(parameter)`; reach becomes the root capability's domain; the standalone resolver goes. |
+| [003c — Request shaping](./003c-request-shaping.md) | Partial | 003a, 003b | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. Formerly numbered 003b. |
+| [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003c | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |
 | [006 — Retentive store](./006-retentive-store-freshness.md) | Planned | 002 | Fresh reuse, partial refill, and replacement semantics. |
 | [007 — Off-grid homogenization](./007-off-grid-homogenization.md) | Planned | 006 | Nearest-neighbor read-back onto the requested point. |
 | [008 — Config and graceful degrade](./008-config-secrets-degrade.md) | Partial | 004 | Complete key-present/key-absent provider construction behavior. |
-| [009 — Errors and partial success](./009-error-taxonomy-partial-success.md) | Partial | 002c, 003b, 004 | Per-parameter absence reasons and capable-but-faulting partial results. |
+| [009 — Errors and partial success](./009-error-taxonomy-partial-success.md) | Partial | 002c, 003c, 004 | Per-parameter absence reasons and capable-but-faulting partial results. |
 | [010 — Unit conversion catalogue](./010-unit-conversion-edge.md) | Planned | 002; triggered by 004 | Shared verified native-to-canonical conversion edges. |
 
 ## Maintenance
@@ -79,10 +81,11 @@ delivery sequence above and appears in no capability table.
    closed, and 009's nodata semantics are unblocked.
 2. ~~**003a**~~ — **landed**: build-time profile reach, no surface or request-path change.
 3. ~~**m1**~~ — **landed**: `pyright` green across `src` and `tests`, CI unblocked.
-4. Complete **003b** on top of 003a, or **006** as an independent follow-on.
-5. Complete **007** after 006.
-6. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
-7. Close the v1 multi-provider surface with **005**, **008**, and **009**.
+4. Run **003b** — moves reach onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md), before 003c writes a consumer against the old shape.
+5. Complete **003c** on top of 003b, or **006** as an independent follow-on.
+6. Complete **007** after 006.
+7. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
+8. Close the v1 multi-provider surface with **005**, **008**, and **009**.
 
 This ordering clears the known contract violation, then prioritizes real retention and request
 shaping, then provider fallback and per-parameter resolution.
@@ -91,6 +94,9 @@ shaping, then provider fallback and per-parameter resolution.
 
 - Delivery planning: either assign Phase 1 resolution logging to a v1 ticket/acceptance criterion or
   move it to the operational-substrate phase.
+- [003b](./003b-capability-domain.md): five placement questions — where `Reconciler` / `Producer` live,
+  where `build_reconciler` and `validate_calculators` land, and whether domain composition takes a
+  `parameter`. All placement, none contract-bearing.
 - [005](./005-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
 - [006](./006-retentive-store-freshness.md): settle the private store-lattice representation.

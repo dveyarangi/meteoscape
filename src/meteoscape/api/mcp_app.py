@@ -42,8 +42,8 @@ _SPATIAL_STEP = 1.0
 _VANTAGE_Z = Interval(0.0, 10.0)
 
 # Surface menu: requestable names. Presence here ⇔ requestable (not a ParameterDef flag).
-# `wind_u` / `wind_v` have no entry. Speed/direction stay in the table so 002b reveals them via
-# exposure ∩ capability once Calculators weave them in.
+# `wind_u` / `wind_v` have no entry — they are inputs, not products. Speed/direction stay listed even
+# when no Calculator is woven: the served menu is exposure ∩ capability, so they appear only once one is.
 _EXPOSURE: frozenset[ParameterId] = frozenset(
     {
         AIR_TEMPERATURE,

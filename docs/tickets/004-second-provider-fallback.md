@@ -2,7 +2,7 @@
 
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md),
-  [003b — Request shaping](./003b-request-shaping.md)
+  [003c — Request shaping](./003c-request-shaping.md)
 - **Outcome:** TWC provider leaf and wholesale priority fallback.
 
 ## Parent PRD
