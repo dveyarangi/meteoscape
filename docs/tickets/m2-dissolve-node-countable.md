@@ -1,7 +1,7 @@
 # m2 — Dissolve node-`Countable`
 
 - **Status:** Planned (maintenance)
-- **Depends on:** [003b — Capability carries its domain](./003b-capability-domain.md) — shares the
+- **Depends on:** [003b — Capability carries its domain](./done/003b-capability-domain.md) — shares the
   files (`weaver.py`, `composition.py`, `tests/fakes.py`) and reads geometry off the `Capability`,
   which 003b publishes.
 - **Blocks (soft):** [006 — Retentive store](./006-retentive-store-freshness.md) assumes the `Store`

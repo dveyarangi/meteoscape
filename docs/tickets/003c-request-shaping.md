@@ -3,7 +3,7 @@
 > Formerly numbered **003b**; renumbered when 003b (capability domain) was inserted ahead of it.
 
 - **Status:** Partial
-- **Depends on:** [003b — Capability carries its domain](./003b-capability-domain.md) (which reshapes
+- **Depends on:** [003b — Capability carries its domain](./done/003b-capability-domain.md) (which reshapes
   [003a](./done/003a-profile-reach.md); 003a depends on 002, 002b)
 - **Outcome:** Free request windows, plus reach-based narration and default windows at the edge.
 
@@ -26,7 +26,7 @@ arbitrary extents). The `Arbiter` admits a provider per parameter only when its 
 plus the profile's **reach**, read off the same `Capability`.
 
 `reach` itself — the per-parameter `Domain` a `Capability` publishes — is
-[003b](./003b-capability-domain.md). This ticket **consumes** it: the surface folds `min` over the
+[003b](./done/003b-capability-domain.md). This ticket **consumes** it: the surface folds `min` over the
 parameters *it* exposes (a surface-specific fold, so it stays at the edge) and uses the result for
 both narration and the omitted-`end` default. `serves` stays the sole admission authority, and **the
 edge never pre-rejects** against the narrated reach — admission may be stricter than declared geometry
@@ -90,7 +90,7 @@ turn two strings into a `RegularAxis(anchor, 1h, count)`:
     past it may still be servable, and the edge would be overruling the authority with an
     understatement.
 
-**Reading reach at the surface.** [003b](./003b-capability-domain.md) puts the per-parameter `Domain`
+**Reading reach at the surface.** [003b](./done/003b-capability-domain.md) puts the per-parameter `Domain`
 on the `Capability` ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so **nothing needs
 threading**: the surface reads the profile's reach off the woven root
 (`gateway.best_view.capability.reach(p)`), and `compose()` keeps its signature. It gains one step —

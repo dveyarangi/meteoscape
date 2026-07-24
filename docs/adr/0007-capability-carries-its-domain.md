@@ -56,6 +56,15 @@ The member is vestigial on none of them:
 `EnumerableCapability` already defines `serves` as
 `parameter in parameters and domain.matches(requested)` — the shape the other three share.
 
+Two contract details ride on the table. **`parameters` is the sole membership authority**:
+`p in parameters` ⟺ `reach(p)` answers, and no form may declare a parameter whose reach it cannot
+publish — which is why a scoped composite derives its parameter set from the domains it composed,
+never from its whole-producer members. For an unserved parameter `reach` raises a plain `KeyError`:
+asking is a caller error, not a composition failure. And **`EnumerableCapability.reach` narrows
+covariantly to `EnumerableDomain`** — the materialized form's reach *is* its grid, so
+"materialized ⇒ enumerable reach" is stated in the type, where the materialized-provider
+discriminator ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)) can rest on it.
+
 **Composites hold their members keyed by `ProducerKey`.** Without that identity, a composition that
 cannot resolve could report only *that* it failed, not *which* producers conflict on *which* axis — and
 that error is read by an operator editing a profile, so it must name both.
@@ -117,7 +126,13 @@ outer bound, temporally a guarantee", and it fails three ways:
 - **The motivating example is a misconfiguration, not a product.** Disjoint regionals with no global
   fallback have a hole; designing semantics around it optimizes for a broken deployment. The real
   topology is regional + global fallback, whose union collapses to the global footprint — exact,
-  admissible, no guessing.
+  admissible, no guessing. **The fallback need not be a source:** a Calculator deriving the parameter
+  from a global's basics is a global producer of it, and rescues disjoint regionals the same way
+  (regional gusts over Europe and the Americas, plus a gust Calculator over GFS →
+  [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra)). This has a structural
+  consequence: a Calculator is never in its own scoped resolver, so that resolver cannot see the
+  fallback and must be **restricted to the Calculator's inputs** — otherwise it composes parameters
+  its Calculator never consumes and rejects a profile the top-level Arbiter resolves.
 
 **And the example is inverted relative to how NWP works.** Regional models reach *shorter*, not further
 (ICON-D2 48 h < ICON-EU 120 h < ICON global 180 h; HRRR 48 h, NAM 84 h < GFS 384 h; AROME 42 h <
@@ -142,6 +157,11 @@ without it a future reader will re-propose the fold.
 - **Dominance is per-axis extent containment, not `Domain.matches`.** `matches` is the request-side
   admission test and `VantageAxis` specialises it to intersection, so reusing it would silently make
   dominance mean "overlaps".
+- **Separability is a precondition of comparing, not of publishing.** A lone candidate compares
+  against nothing, so its footprint — separable or not — is returned unchecked; refusing it would
+  break reach-equals-`serves` for a leaf `serves` already admits. Two or more candidates must all
+  expose axes, and a non-separable one among them fails the build
+  ([#12](../concerns.md#12-curvilinear-domains)).
 - **Config narrows candidates; it never declares geometry.** `OfferingSpec` carries no geometry,
   deliberately; declaring reach outright was rejected as a second source of truth that can drift.
 - **The X/Y-first preference stays decided-but-unbuilt.** v1's body is containment only; the judgment's
@@ -151,13 +171,17 @@ without it a future reader will re-propose the fold.
 
 - **A misconfigured profile fails at build** with a `CompositionError` naming the conflicting producers
   and the axis. Composition is eager at capability construction, so this is structural rather than a
-  separate validation pass.
+  separate validation pass. `CompositionError` itself lives in `errors.py` as a Tier-0 leaf (not in
+  `nodes/`): each composing layer must be the **sole author** of its own error — the reconciler naming
+  the parameter, `DerivedCapability` in `manifold/` naming its calculator — and a `nodes/`-owned error
+  would force `manifold/` to raise something generic for `Calculator` to translate, splitting one error
+  across two authors.
 - **`Provider.footprints` is removed.** It existed only so a build-time reader could see geometry the
   `Capability` interpreted privately; the capability now publishes it.
 - **The standalone reach resolver and its rule are removed**, and one of
   [#34](../concerns.md#34-producer-dag-walking-is-duplicated)'s three DAG walks with them. Calculator
-  **wiring** validation (unproducible inputs, cycles) is unaffected — it is not geometry and still runs
-  before `weave`.
+  **wiring** validation (unproducible inputs, cycles) is unaffected — it is not geometry and runs as
+  `weave`'s precondition (its first step).
 - **The composite forms gain producer identity** so composition can name conflicts.
 - **Obs + forecast still raises under `priority`**, correctly — `{Global × [0, 16 d],
   Global × [−2 d, 10 d]}` has no dominating producer. It needs a splicing reconciler, which will supply

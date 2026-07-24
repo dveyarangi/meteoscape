@@ -194,7 +194,7 @@ It adds retention, not arbitration — **selection** lives in the Arbiter it wra
 
 ### Arbiter
 
-The **producer-resolution composite** the best view turns to — a **reducing Manifold**, the one core node with **no substrate** of its own, that **decides the selection/reduction policy**. It is constructed as **`Arbiter(producers, reconciler)`**: a sequence of **`Producer{node, key}`** candidates (Sources and Calculators) plus a first-class **`Reconciler`** built by `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)`. Per **parameter** it orders candidates with its **`reconciler`**, admits by `serves`, projects the winning producer, then assembles the per-parameter `ParameterData` into one Coverage record (spanning nodes via `PerParameter` when winners differ); the default `priority` reconciler provides **best-source selection** (ranking reads the reconciler's `ProducerKey → int` lookup, flattened from both registries). Generalizing the slot to a per-cell `consensus` / `feather` **fold** is a deferred interface widening → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Capability matching, reconciler catalogue, and Calculator topology → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
+The **producer-resolution composite** the best view turns to — a **reducing Manifold**, the one core node with **no substrate** of its own, that **decides the selection/reduction policy**. It is constructed as **`Arbiter(producers, reconciler, scope=None)`**: a sequence of **`Producer{node, key}`** candidates (Sources and Calculators) plus a first-class **`Reconciler`** built by `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)`. **`scope`** is the parameter set this Arbiter resolves — omitted at the top (every parameter its producers declare), and a Calculator's **inputs** at a scoped one, since a scoped resolver receives whole producers and must not declare parameters its Calculator never consumes → [ADR-0007](./adr/0007-capability-carries-its-domain.md). Per **parameter** it orders candidates with its **`reconciler`**, admits by `serves`, projects the winning producer, then assembles the per-parameter `ParameterData` into one Coverage record (spanning nodes via `PerParameter` when winners differ); the default `priority` reconciler provides **best-source selection** (ranking reads the reconciler's `ProducerKey → int` lookup, flattened from both registries). Generalizing the slot to a per-cell `consensus` / `feather` **fold** is a deferred interface widening → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Capability matching, reconciler catalogue, and Calculator topology → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 
 ### Source
 
@@ -242,11 +242,11 @@ rejected splits); this section fixes the roles.
   `Producer` unification + memoized Calculator wiring →
   [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **Composition root** — `server.py`: `compose(profile, providers, calculators, secrets, clock, stores) → Gateway`
-  is the fixed call sequence (binders → `ProfileDef` → **`validate_calculators`** → `weave` → Gateway).
-  **No ordering or construction logic of its own.** `validate_calculators` reads only the `ProfileDef`
-  and sits **beside** `weave`, never inside it, so the Weaver stays a pure graph constructor: it rejects
-  a graph whose Calculator inputs are unproducible — *before* any `Store` is allocated, since declaring
-  a Calculator is a promise the composition must be able to keep. **Geometry needs no pass of its own** —
+  is the fixed call sequence (binders → `ProfileDef` → `weave` → Gateway). **No ordering or construction
+  logic of its own.** `weave`'s first step is **`validate_calculators`** — reading only the `ProfileDef`,
+  it rejects a graph whose Calculator inputs are unproducible (or whose calculators cycle) *before* any
+  `Store` is allocated, since declaring a Calculator is a promise the composition must be able to keep.
+  As the Weaver's precondition it runs on every weave path, so no caller can forget it. **Geometry needs no pass of its own** —
   each node's `Capability` composes its `Domain` as the graph is built, so an unresolvable one fails at
   weave ([ADR-0007](./adr/0007-capability-carries-its-domain.md)), and the surface reads the profile's
   Reach off the woven root. Catalogues are module-level data;
