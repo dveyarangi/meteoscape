@@ -12,12 +12,12 @@ answers. Its v1 target is to hide vendor heterogeneity, source selection, fallba
 behind one small contract, surfaced over **MCP** so an AI agent can ask for weather without integrating
 each vendor itself.
 
-> **Current status:** early v1 development. The walking skeleton is complete:
-> `forecast_hourly` runs end to end through Open-Meteo for canonical `air_temperature`, including
-> source provenance and expiration. The broader canonical parameter set, derived wind, request
-> shaping, second-provider fallback, retentive caching, and off-grid read-back are active v1 work.
-> See the [v1 delivery status](./docs/tickets/README.md) for the authoritative capability matrix and
-> execution order.
+> **Current status:** early v1 development. `forecast_hourly` serves the full canonical v1
+> parameter set through Open-Meteo — six provider-served parameters plus derived wind
+> speed/direction — with per-value source provenance, expiration, and nodata handling. Request
+> shaping (free `start`/`end` windows), second-provider fallback, retentive caching, and off-grid
+> read-back are still ahead. See the [v1 delivery status](./docs/tickets/README.md) for the
+> authoritative capability matrix and execution order.
 
 ## v1 target
 
