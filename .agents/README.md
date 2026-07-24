@@ -1,0 +1,1 @@
+- When reading docs, always check the doc type README.md
