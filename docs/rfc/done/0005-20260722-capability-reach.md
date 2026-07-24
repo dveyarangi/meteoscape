@@ -21,7 +21,7 @@ eagerly at construction.
 | `Domain` / `Separable` | [ADR-0002](../adr/0002-data-model.md) | **Gains** the per-axis containment predicates, moved from `nodes/reach.py`. No representation change. |
 | `compose()` pipeline | [ADR-0005](../adr/0005-build-time-composition.md) | Gains the `validate_calculators` call the docs already assert. |
 | `Arbiter(producers, reconciler, scope=None)` | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | **Widens** — optional `scope`. Already amended in [architecture.md](../architecture.md#arbiter), [module-layout.md](../module-layout.md) and ADR-0004's scoped-construction example during planning. |
-| `Countable` facet | [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | **Untouched** — belongs to [m2](../tickets/m2-dissolve-node-countable.md). |
+| `Countable` facet | [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | **Untouched** — belongs to [m2](../tickets/done/m2-dissolve-node-countable.md). |
 
 **Ownership rule preserved:** `errors, parameters, clock, identity ← manifold ← nodes`. Nothing in
 `manifold/` imports from `nodes/` — the reason the align session put composition invocation on the
@@ -97,7 +97,7 @@ class Capability(Protocol):
 `EnumerableCapability.reach` **narrows covariantly** — the m1 pattern. That form's reach *is*
 enumerable and `CoverageRecord.domain` already returns the narrow type, so the narrowing is honest
 rather than speculative; it also states "materialized ⇒ enumerable reach" in the type, which is the
-premise [m2](../tickets/m2-dissolve-node-countable.md)'s materialized-provider discriminator rests on.
+premise [m2](../tickets/done/m2-dissolve-node-countable.md)'s materialized-provider discriminator rests on.
 
 `UnionCapability` gains `members: Mapping[ProducerKey, Capability]` (was a flat `Sequence`) plus
 `domains: Mapping[ParameterId, Domain]`. `DerivedCapability` gains `key: CalculatorKey`.
@@ -445,7 +445,7 @@ forgotten, and stage 9 is where it closes.
   first regional provider.
 - **`Domain.intersect`** — declared seam, needed by area products folding X/Y and T jointly.
 - **Surface narration** and the omitted-`end` default → [003c](../tickets/003c-request-shaping.md).
-- **Node-`Countable`** → [m2](../tickets/m2-dissolve-node-countable.md), immediately after. 003b must
+- **Node-`Countable`** → [m2](../tickets/done/m2-dissolve-node-countable.md), immediately after. 003b must
   not deepen what m2 deletes: leave `_source_grid` and the `Countable` isinstance sites alone, and add
   no new reader of a node's `domain`. The order is load-bearing — `CountableFakeProvider` inherits
   `FakeProvider.footprints`, whose assert m2's `EnumerableCapability` reshaping would break; 003b

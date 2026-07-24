@@ -223,8 +223,8 @@ lifts **without a contract change** — see the seams in
 - **Retentive in-memory `Store`s** wired into both positions (Source + best view): they **retain across
   requests** — **freshness** read off each `ParameterData`'s `expiration` (serve-vs-refill), with a
   separate **configurable retention interval** bounding memory — and hold **private per-axis lattices**
-  (hourly + spatial; a Source's lattice is **provider-exact or a configured guess**,
-  [ADR-0002](./adr/0002-data-model.md)). A request is resolved by **`quantize`** — serve fresh
+  (hourly + spatial; a Source's lattice is **a configured `StoreSpec` guess**,
+  [ADR-0002](./adr/0002-data-model.md) / [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). A request is resolved by **`quantize`** — serve fresh
   **assimilable units** (v1: a per-parameter timeline at a spatial cell) ∪ a **store-shaped refill** of
   the missing/stale ones, each fetched **whole** (`provider.project(store_shape)`), then **homogenized
   onto the request (S)**. **Partial refill is spatial and per-parameter only**: a point reuses its cached
@@ -253,7 +253,7 @@ lifts **without a contract change** — see the seams in
   provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
   per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
-  coarser = more cache sharing, more interpolation; the Source's is provider-exact or a configured guess)
+  coarser = more cache sharing, more interpolation; the Source's is a configured `StoreSpec` guess)
   and **hourly** time step; cache **TTL = `expiration`**
   (serve-vs-refill freshness). Eviction is a separate **configurable retention interval** (time-based max
   age, e.g. 2 weeks) that only bounds memory — the Arbiter never serves stale entries, so retention is

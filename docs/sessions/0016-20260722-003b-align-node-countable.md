@@ -2,7 +2,7 @@
 
 An align session over [003b](../tickets/done/003b-capability-domain.md)'s five open placement questions.
 All five resolved (recorded inline in the ticket); two side-finds outgrew the ticket — a new
-maintenance ticket [m2](../tickets/m2-dissolve-node-countable.md) and the discovery that
+maintenance ticket [m2](../tickets/done/m2-dissolve-node-countable.md) and the discovery that
 `validate_calculators` was never wired into production. Rules live in the ticket, ADR-0007, and m2;
 this record carries the reasoning trail.
 
@@ -25,7 +25,7 @@ apparently deliberately, so that `Domain` is the only word for a Domain — whil
 had a glossary name, **Reach**. Doc-only rename propagated to ADR-0007, ADR-0004, architecture,
 module-layout, 003c.
 
-**Node-`Countable` dissolves → [m2](../tickets/m2-dissolve-node-countable.md).** Started as a
+**Node-`Countable` dissolves → [m2](../tickets/done/m2-dissolve-node-countable.md).** Started as a
 challenge to the `Store` docstring's "capability = held, domain = could hold" split and ended in a
 survey: every real countable-provider candidate (archive bundle, climatological normals, static
 fields) is *an already-materialized local dataset*, for which `Reservoir(store, provider)` builds a
@@ -73,7 +73,7 @@ one deliberate behaviour change.
 
 - **Implement [003b](../tickets/done/003b-capability-domain.md)** — all questions closed, doc set
   consistent, no code touched this session.
-- **Then [m2](../tickets/m2-dissolve-node-countable.md) before [006](../tickets/006-retentive-store-freshness.md)** —
+- **Then [m2](../tickets/done/m2-dissolve-node-countable.md) before [006](../tickets/006-retentive-store-freshness.md)** —
   006 assumes the storeless/private-lattice shape m2 delivers.
 - The 0015 continuation items not addressed here remain: 003c after 003b (with the relative-horizon
   decision), and the unpushed commit backlog.

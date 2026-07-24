@@ -78,8 +78,15 @@ plane. The capability/matching half is
   **capability** (footprint — a Source admits uncached-but-in-footprint requests precisely because
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
-  `Store`; a provider-exact lattice is a **build-time declaration** handed to the `StoreFactory` at
-  weave (construction face, not a request-path facet). A `Coverage` keeps `domain` — the positional
+  `Store`, provisioned from the configured **`StoreSpec`** alone (amended by
+  [m2](../tickets/done/m2-dissolve-node-countable.md), 2026-07-25 — this ADR originally handed a
+  provider-exact lattice to the `StoreFactory` as a build-time "construction face"; that channel is
+  closed: no provider hands a lattice anywhere). A provider whose every parameter sits on one
+  enumerable domain (an `EnumerableCapability`) *is* an already-materialized dataset and wires
+  **storeless** — a bare `Producer`, no `Reservoir`, no store — because wrapping it would mirror
+  data that is already local; the `SourceBinder` enforces the invariant loudly in both directions
+  (a configured store on a materialized offering, like a missing store on a non-materialized one, is
+  a `CompositionError`). A `Coverage` keeps `domain` — the positional
   contract for `ParameterData`, derived from `capability.domain`, not stored twice. "Snapped resolves
   at a storing `Reservoir`" stays behavioural: the node *has* a store and quantizes; no caller reads
   the lattice.
@@ -112,5 +119,5 @@ plane. The capability/matching half is
 - **A forced co-domained store lattice (Z always snapped).** Rejected: requires inventing a fake Z
   lattice and rewrites the cells that admission and read-back need intact.
 - **Keeping node-`Countable` but loosening `domain` to per-axis lattices.** Rejected: no consumer
-  remains (the Weaver read moves to the construction face; nothing else reads it) — loosening a
-  vestigial face is worse than deleting it.
+  remains (nothing reads a node lattice — the Weaver provisions stores from the `StoreSpec`) —
+  loosening a vestigial face is worse than deleting it.

@@ -403,7 +403,8 @@ silently inherit the profile root's retention.
 by the Weaver when `stored=True`. This is ADR-0005's own rule — *same knobs shape everywhere,
 separate instances per store position* (it rejected sharing one store **instance** while accepting one
 `StoreSpec` **shape**). A `stored=True` def with no spec then becomes a `CompositionError` rather than
-a silent root-store inheritance, mirroring `SourceBinder`'s "missing store for non-Countable source".
+a silent root-store inheritance, mirroring `SourceBinder`'s "missing store shape for non-materialized
+source".
 
 Open: whether a stored calc's lattice should instead derive from its resolved input domain (a
 Calculator has no native lattice of its own), and whether "heavy" is a catalogue-side hint on
@@ -757,9 +758,9 @@ graceful degrade deliberately won't hard-fail on a missing *provider* parameter,
 
 ## 37. Storeless materialized producers and read-back homogenization
 
-**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/m2-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/done/m2-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 
-[m2](./tickets/m2-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
+[m2](./tickets/done/m2-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
 (archive bundle, climatological normals, static fields) *is* its own store, so it wires **storeless** —
 no `Reservoir(store, provider)` mirroring data that is already local. That removes the node whose
 read-back would have homogenized an off-grid request, and
@@ -773,7 +774,10 @@ whether `isinstance(provider.capability, EnumerableCapability)` remains the righ
 materialized" discriminator once a provider is enumerable but unholdable (the cloud-ARCO case).
 
 **Trigger to revisit:** the first real materialized provider. No v1 driver — no v1 provider is
-materialized; the storeless path exists only in fakes.
+materialized; the storeless path exists only in fakes. Deferred to the same trigger: the **Source**
+language — glossary *Source* and [architecture](./architecture.md) (guiding principles, §Source)
+define a Source as `Reservoir(store, Provider)`, which a real storeless producer no longer is; those
+sites widen then, not before.
 
 ## 38. Calculator admittance is fixed pointwise-total
 

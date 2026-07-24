@@ -52,7 +52,7 @@ builds it.
   `serves` **stays** and is unchanged. `EnumerableCapability.reach` **narrows covariantly** to
   `EnumerableDomain` — that form's reach *is* enumerable, `CoverageRecord.domain` already returns the
   narrow type, and the narrowing puts "materialized ⇒ enumerable reach" in the type where
-  [m2](../m2-dissolve-node-countable.md)'s materialized-provider discriminator relies on it.
+  [m2](./m2-dissolve-node-countable.md)'s materialized-provider discriminator relies on it.
 - **`Reconciler` gains a domain-composition member.** `PriorityReconciler` implements dominance-or-raise
   — `GridReachRule.reach`'s body, moved. **The `Arbiter` invokes it** — `Arbiter.__init__` calls
   `reconciler.compose_domains(...)` and hands the composed result to the `UnionCapability` it
@@ -122,7 +122,7 @@ resolved in the 003b align session (0016):
    property on `Provider`, the Open-Meteo property (its `_build_footprints` **stays** — it builds the
    `FootprintCapability` declaration), and `FakeProvider.footprints` all go; readers switch to
    `capability.reach(pid)`; `CountableFakeProvider` merely inherits it (its reshaping is
-   [m2](../m2-dissolve-node-countable.md)'s). Two calls inside the radius:
+   [m2](./m2-dissolve-node-countable.md)'s). Two calls inside the radius:
    - `test_provider_footprints_expose_capability_domains` is **rewritten, not deleted** — its
      same-objects / live-T assertions restate ADR-0007's liveness property at the leaf, through
      `capability.reach(pid)`; dropping it would silently shed leaf-level liveness coverage.
@@ -132,7 +132,7 @@ resolved in the 003b align session (0016):
 
 ## Coordination with m2
 
-[m2 — Dissolve node-`Countable`](../m2-dissolve-node-countable.md) follows this ticket and removes the
+[m2 — Dissolve node-`Countable`](./m2-dissolve-node-countable.md) follows this ticket and removes the
 node-`Countable` facet (`Reservoir.domain`, `Store`'s `Countable`, `Weaver._source_grid`,
 `CountableFakeProvider`'s independent `domain=`). This ticket must not deepen what m2 deletes: leave
 `_source_grid` and the `Countable` isinstance sites untouched, and add no new reader of a node's

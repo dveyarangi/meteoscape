@@ -176,8 +176,9 @@ classDiagram
 - **One regular descriptor unifies snapped / declared-grid / exact.** A regular lattice is
   `{anchor, step, extent}`; its members differ only in which parts are fixed — **Snapped** fixes `step`
   (+ request bounds), a **declared grid** fixes `anchor + step` (extent open), an **exact** lattice
-  fixes all three. So a declared grid is just the **anchored-regular member** — **provider-exact where a
-  vendor declares a lattice, a configured guess for point vendors that expose none** — and the read-back
+  fixes all three. So a declared grid is just the **anchored-regular member** — **shaped from the configured
+  `StoreSpec`; no provider declares a lattice
+  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md))** — and the read-back
   resolution `snapped → exact = step(request) ⊕ anchor(grid) ⊕ bounds(request)` keeps **`bounds(request)`**.
 - **Grid alignment is per storing node and per axis, and splits into two opposite-extent steps.** A
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
