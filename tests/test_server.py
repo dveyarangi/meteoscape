@@ -5,12 +5,22 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from fakes import STOPPED, RecordingStoreFactory, fake_catalog
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
-from meteoscape.config import ArbiterPolicy, OfferingDef, ProfileConfig, Settings, StoreSpec
+from meteoscape.config import (
+    ArbiterPolicy,
+    CalculatorDef,
+    OfferingDef,
+    ProfileConfig,
+    Settings,
+    StoreSpec,
+)
+from meteoscape.nodes.composition import CompositionError
 from meteoscape.nodes.store import StoreFactory
-from meteoscape.parameters import AIR_TEMPERATURE, WIND_SPEED
+from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
 
@@ -23,6 +33,29 @@ def test_compose_advertises_enabled_offerings() -> None:
     )
     gateway = compose(profile, fake_catalog(), {}, {}, STOPPED, RecordingStoreFactory())
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
+
+
+def test_compose_rejects_unproducible_calculator_input() -> None:
+    """`validate_calculators` is `weave`'s first step, so an operator's misconfigured profile fails
+    `compose()` with a `CompositionError` naming the input and calculator — before any Store exists."""
+    profile = ProfileConfig(
+        offerings=(
+            OfferingDef(impl="fake", name="default", priority=0),
+        ),  # serves temperature only
+        calculators=(
+            CalculatorDef(
+                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+                inputs=frozenset({WIND_U, WIND_V}),
+                fn_id="wind_uv",
+                priority=0,
+            ),
+        ),
+        root_store=StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14)),
+        arbiter=ArbiterPolicy(),
+    )
+    with pytest.raises(CompositionError, match=r"wind_u") as exc:
+        compose(profile, fake_catalog(), CALCULATOR_CATALOG, {}, STOPPED, RecordingStoreFactory())
+    assert "wind_uv" in str(exc.value)
 
 
 def test_default_settings_compose_open_meteo() -> None:

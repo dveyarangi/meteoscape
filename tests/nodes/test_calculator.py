@@ -8,7 +8,7 @@ import pytest
 
 from fakes import point_timeline_domain
 from meteoscape.errors import RuntimeFailure
-from meteoscape.identity import SourceKey
+from meteoscape.identity import CalculatorKey, SourceKey
 from meteoscape.manifold.capability import EnumerableCapability, FootprintCapability
 from meteoscape.manifold.core import Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
@@ -109,6 +109,7 @@ async def test_calculator_propagates_input_origin_and_emits_both_outputs() -> No
     inp = _uv_input()
     resolver = _FixedResolver(inp)
     calc = Calculator(
+        key=CalculatorKey("wind", "default"),
         outputs={
             WIND_SPEED: table.get(WIND_SPEED),
             WIND_DIRECTION: table.get(WIND_DIRECTION),
@@ -140,6 +141,7 @@ async def test_calculator_rejects_malformed_kernel_ranges() -> None:
         return cov.domain, {WIND_SPEED: ParameterData(values=[1.0], present=None)}
 
     calc = Calculator(
+        key=CalculatorKey("wind", "default"),
         outputs={
             WIND_SPEED: table.get(WIND_SPEED),
             WIND_DIRECTION: table.get(WIND_DIRECTION),

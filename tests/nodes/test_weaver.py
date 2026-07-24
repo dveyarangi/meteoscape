@@ -167,6 +167,13 @@ def test_scoped_arbiter_admits_only_input_producers() -> None:
     served = {pid for p in scoped.producers for pid in p.node.capability.parameters}
     assert WIND_U in served and WIND_V in served
     assert WIND_SPEED not in served and WIND_DIRECTION not in served
+    # Scope (defect 1): the resolver declares exactly the Calculator's inputs — not AIR_TEMPERATURE,
+    # which its whole-producer members also serve — and reach answers in-scope, raises out.
+    assert set(scoped.capability.parameters) == {WIND_U, WIND_V}
+    scoped.capability.reach(WIND_U)
+    scoped.capability.reach(WIND_V)
+    with pytest.raises(KeyError):
+        scoped.capability.reach(AIR_TEMPERATURE)
 
 
 def test_calculator_cycle_raises() -> None:

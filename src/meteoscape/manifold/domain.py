@@ -13,7 +13,7 @@ See ADR-0002.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -298,6 +298,58 @@ class Separable(Protocol):
     continuous)."""
 
     def axis(self, name: AxisName) -> Axis: ...
+
+
+def contains_extents(outer: Separable, inner: Separable) -> bool:
+    """Whether `outer` whole-box contains `inner` by per-axis extent — **not** `Domain.matches`.
+
+    `matches` is the request-side admission test and `VantageAxis` specialises it to intersection, so
+    reusing it would silently make dominance mean "overlaps" (ADR-0007). Both reach consumers — the
+    reconciler's domain composition and a Calculator's contained-in-all — read this downward.
+    """
+    return all(
+        outer.axis(name).extent.contains(inner.axis(name).extent)  # type: ignore[arg-type]
+        for name in AXIS_ORDER
+    )
+
+
+def split_extents(left_key: object, left: Separable, right_key: object, right: Separable) -> str:
+    """Why two Domains fail to nest, **both directions** — the split is the incomparability.
+
+    A single "failing axis" is a misreport: nested-but-incomparable boxes (`Global x 10 d` vs
+    `Europe x 16 d`) each dominate on a *different* axis, and naming only the first sends an operator to
+    the axis where the other candidate is winning.
+    """
+    parts: list[str] = []
+    for name in AXIS_ORDER:
+        a = left.axis(name).extent
+        b = right.axis(name).extent
+        if not a.contains(b):  # type: ignore[arg-type]
+            parts.append(f"{right_key} extends beyond {left_key} on {name.value}")
+        if not b.contains(a):  # type: ignore[arg-type]
+            parts.append(f"{left_key} extends beyond {right_key} on {name.value}")
+    return "; ".join(parts)
+
+
+def first_incomparable(
+    candidates: Sequence[tuple[object, Separable]],
+) -> tuple[tuple[object, Separable], tuple[object, Separable]] | None:
+    """First pair nesting neither way — the witness both call sites report when selection is unresolved."""
+    for i, left in enumerate(candidates):
+        for right in candidates[i + 1 :]:
+            if not contains_extents(left[1], right[1]) and not contains_extents(right[1], left[1]):
+                return left, right
+    return None
+
+
+def as_separable(domain: Domain) -> Separable | None:
+    """The domain as `Separable`, or `None` — pure geometry, no error text, no producer key.
+
+    Returns rather than raises so each caller stays the sole author of its `CompositionError`, with
+    its own context — the reconciler names the parameter, a Calculator's capability its key — rather
+    than dressing up a generic geometry error (ADR-0007).
+    """
+    return domain if isinstance(domain, Separable) else None
 
 
 class Domain(ABC):
