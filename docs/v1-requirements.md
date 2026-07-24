@@ -16,14 +16,17 @@ inputs/outputs, acceptance criteria). The contract's seams themselves live in
 
 ## Goal
 
-A runnable MCP server that answers an hourly point-forecast request by selecting the best obtainable
-provider per parameter, falling back on failure, and returning one normalized, provenance-stamped
-**Timeline** Coverage — proving the cross-provider thesis end-to-end within the v1 invariants.
+An installable Python package that can resolve an hourly point forecast headlessly through its
+supported embedding surface and offer the same Phase 1 weather capability through a runnable MCP
+server. Both select the best obtainable provider per parameter, fall back on failure, and return one
+normalized, provenance-stamped **Timeline** Coverage — proving the cross-provider thesis end-to-end
+within the v1 invariants.
 
 ## User stories
 
-Two actors: the **agent** (an MCP client / AI tool calling `forecast_hourly`) and the **operator** (whoever
-configures and runs the server). Stories are numbered for stable reference from the
+Three actors: the **agent** (an MCP client / AI tool calling `forecast_hourly`), the **embedder** (a
+Python application author constructing and calling Meteoscape without a server), and the **operator**
+(whoever configures and runs a server). Stories are numbered for stable reference from the
 [acceptance criteria](#acceptance-criteria-definition-of-done); each maps to a criterion below.
 
 **Agent**
@@ -61,6 +64,13 @@ configures and runs the server). Stories are numbered for stable reference from 
     that I minimize latency and provider usage.
 15. As an operator, I want the store grid step and retention interval to be configurable, so that I can
     tune cache sharing and memory bounds for my deployment.
+
+**Embedder**
+
+16. As an embedder, I want a documented, supported Python package surface for resolving forecasts, so
+    that my application can use Meteoscape without running a protocol server.
+17. As an embedder, I want failures exposed through a documented public contract, so that my
+    application can handle expected failure modes without depending on internal exceptions.
 
 ## Concrete decisions
 
@@ -298,6 +308,13 @@ lifts **without a contract change** — see the seams in
    no `SyntheticOrigin`; the edge serializer stays on the `AtomicOrigin` path). Requesting only
    `wind_speed` routes through its Calculator and its scoped Arbiter, and the internal `wind_u` / `wind_v`
    are not directly requestable.
+10. **Supported embedding path**: the public package surface settled in
+    [concern #39](./concerns.md#39-python-embedding-surface-and-public-failures) resolves a v1 forecast
+    without starting a protocol server. Integration tests exercise both embedded and MCP use and
+    verify equivalent product semantics without prescribing their internal relationship.
+11. **Embedding failures**: expected configuration and invocation failures are documented and tested
+    at the public Python boundary according to the contract settled in concern #39. Callers do not
+    need to import internal exception types to handle them.
 
 ## Out of scope for v1 (deferred)
 

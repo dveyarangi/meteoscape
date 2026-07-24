@@ -293,6 +293,8 @@ Purpose: prove the normalized, provenance-stamped forecast engine end to end.
 
 Core scope:
 
+- Supported headless Python embedding surface: resolve forecasts through a documented package API
+  without running a protocol server.
 - MCP `forecast_hourly`.
 - Canonical v1 parameters and units.
 - Timeline output for a point and hourly time window.
@@ -307,6 +309,8 @@ Core scope:
 
 Proof:
 
+- Equivalent Phase 1 forecast behavior is available to an embedding Python application and through
+  MCP; concern #39 owns the API shape and implementation relationship between those surfaces.
 - Ask once and get one normalized answer.
 - Repeat fresh request avoids provider calls.
 - Primary failure falls back.

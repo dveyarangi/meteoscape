@@ -282,6 +282,10 @@ _Avoid_: Builder, compiler, orchestrator, planner
 
 ### Roles
 
+**Embedding surface**:
+The supported Python package boundary through which a host application uses Meteoscape's weather capabilities without running a protocol server. Its API shape is unresolved. → [architecture.md](./architecture.md#embedding-surface)
+_Avoid_: Internal composition API, headless mode, client SDK
+
 **Gateway**:
 The caller-policy boundary in front of a served profile. → [architecture.md](./architecture.md#gateway--caller-policy-boundary)
 _Avoid_: Orchestrator, translator

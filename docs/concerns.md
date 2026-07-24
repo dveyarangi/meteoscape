@@ -10,6 +10,36 @@ This file owns unresolved design pressure, not delivery sequencing.
 
 ---
 
+## 39. Python embedding surface and public failures
+
+**Kind:** Phase-1 product boundary · **Refs:** [architecture §Embedding surface](./architecture.md#embedding-surface),
+[v1 requirements](./v1-requirements.md), [ADR-0005](./adr/0005-build-time-composition.md)
+
+**Resolved:** Meteoscape is a supported headless Python library from Phase 1, not only a protocol
+server. An embedding application can use its weather capabilities without starting MCP or HTTP.
+This is a first-class product surface, not documentation for internal imports. No facade, public
+type, construction pattern, or relationship to protocol adapters is selected by this decision.
+
+**Open — facade shape:** the package root currently exports only `SourceKey` and `main`, while the
+usable `server.compose(...)` requires `ProfileConfig`, both plugin catalogues, a secrets map, `Clock`,
+and `StoreFactory`. Decide the smallest stable facade and lifecycle, including whether construction
+is directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
+`Selection`, `Coverage`, or higher-level alternatives become public; and what, if any, boundary is
+shared with server adapters. These are options under investigation, not implied commitments.
+
+**Open — public failures:** the current categories describe different layers but do not form a
+documented embedding contract. Pydantic settings validation escapes separately; `CompositionError`
+does not inherit from `MeteoscapeError`; request-path failures do; and invariant bugs intentionally
+escape as ordinary exceptions (for example `Gateway.resolve` raising `TypeError` when a served root
+does not return a Coverage). Define the public exception hierarchy, phase boundaries, actionable
+context, and which internal failures are deliberately *not* caught.
+
+**Open — compatibility:** define what import paths and behavior are supported during `0.x`, how
+deprecations work, and what observable consistency is required between embedded and protocol use
+without presupposing shared facade or wiring. Once these decisions land, delivery belongs in a
+Phase-1 ticket; the concern then moves into the public API guide and, if the compatibility trade-off
+proves durable and surprising, an ADR.
+
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
