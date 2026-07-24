@@ -1,11 +1,12 @@
 # v1 delivery status
 
-**Last updated:** 2026-07-24
+**Last updated:** 2026-07-25
 
 **Current stage:** 003a, m1, and 003b have landed — reach now lives on `Capability`
 ([ADR-0007](../adr/0007-capability-carries-its-domain.md)) and the standalone resolver is gone. Next
 is 003c (request shaping); 006 (retentive store) is an independent follow-on, and m2 (dissolve
-node-`Countable`) is now unblocked.
+node-`Countable`) is now unblocked. Maintenance ticket m3 (live Provider parity) is Ready and must
+land before 004 introduces the second Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -59,7 +60,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only; 003b relocates it onto `Capability`. |
 | [003b — Capability carries its domain](./done/003b-capability-domain.md) | Done | 003a (landed), m1 | `Capability.reach(parameter)`; reach is the root capability's domain; the standalone resolver is gone. |
 | [003c — Request shaping](./003c-request-shaping.md) | Partial | 003a, 003b | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. Formerly numbered 003b. |
-| [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003c | TWC leaf and wholesale priority fallback. |
+| [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003c, m3 | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |
 | [006 — Retentive store](./006-retentive-store-freshness.md) | Planned | 002 | Fresh reuse, partial refill, and replacement semantics. |
 | [007 — Off-grid homogenization](./007-off-grid-homogenization.md) | Planned | 006 | Nearest-neighbor read-back onto the requested point. |
@@ -76,6 +77,7 @@ delivery sequence above and appears in no capability table.
 |---|---|---|---|
 | [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
 | [m2 — Dissolve node-`Countable`](./m2-dissolve-node-countable.md) | Planned | 003b | `Countable` becomes a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. Soft-blocks 006. |
+| [m3 — Provider parity checks](./m3-provider-parity-checks.md) | Ready | 002, 002b (done) | Opt-in live single-Provider parity harness and Open-Meteo reference check. Blocks acceptance of 004's new Provider. |
 
 ## Recommended execution order
 
@@ -84,14 +86,17 @@ delivery sequence above and appears in no capability table.
 2. ~~**003a**~~ — **landed**: build-time profile reach, no surface or request-path change.
 3. ~~**m1**~~ — **landed**: `pyright` green across `src` and `tests`, CI unblocked.
 4. ~~**003b**~~ — **landed**: reach moved onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md); the standalone resolver is gone.
-5. Complete **003c** on top of 003b, or **006** as an independent follow-on — running **m2** first,
+5. Land **m3** as the next independent maintenance item. It does not wait for the feature stream and
+   must precede any new Provider contribution, beginning with 004.
+6. Complete **003c** on top of 003b, or **006** as an independent follow-on — running **m2** first,
    since 006 assumes the storeless/private-lattice shape m2 delivers.
-6. Complete **007** after 006.
-7. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
-8. Close the v1 multi-provider surface with **005**, **008**, and **009**.
+7. Complete **007** after 006.
+8. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
+9. Close the v1 multi-provider surface with **005**, **008**, and **009**.
 
-This ordering clears the known contract violation, then prioritizes real retention and request
-shaping, then provider fallback and per-parameter resolution.
+This ordering clears the known contract violation, establishes independent Provider conformance,
+then prioritizes real retention and request shaping before provider fallback and per-parameter
+resolution.
 
 ## Decisions still owned by tickets
 
@@ -103,6 +108,8 @@ shaping, then provider fallback and per-parameter resolution.
 - [005](./005-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
 - [006](./006-retentive-store-freshness.md): settle the private store-lattice representation.
+- [m3](./m3-provider-parity-checks.md): choose the opt-in harness/command shape; scheduled and
+  changed-provider automation remain follow-on work.
 - [010](./010-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
   the first real multi-vendor spread.
 

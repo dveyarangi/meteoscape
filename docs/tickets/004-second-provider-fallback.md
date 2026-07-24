@@ -2,7 +2,8 @@
 
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md),
-  [003c — Request shaping](./003c-request-shaping.md)
+  [003c — Request shaping](./003c-request-shaping.md), and
+  [m3 — Provider parity checks](./m3-provider-parity-checks.md)
 - **Outcome:** TWC provider leaf and wholesale priority fallback.
 
 ## Parent PRD
@@ -29,6 +30,8 @@ See `docs/v1-requirements.md` (Providers, v1 invariants → wholesale-fallback r
 - [ ] Fallback is wholesale and single-origin — no cached-primary ∪ fallback splice along `valid_time`.
 - [ ] TWC `Provider` authors full per-parameter provenance (origin + `expiration`) like Open-Meteo.
 - [ ] Unit + mocked-transport integration tests cover primary-serves and forced-failure-fallback.
+- [ ] TWC ships and passes its live Provider parity check per the
+      [Provider authoring guide](../provider-authoring.md).
 
 ## User stories addressed
 
