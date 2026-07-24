@@ -14,5 +14,7 @@ description: >-
 
 - Unless already working in branch or instructed to branch - commit to default branch.
 
+- Always run ruff, pyright and pytests before commiting.
+
 - Do not commit unless got explicit instruction or permission from user.
 - Separately, do not push unless got explicit instruction or permission from user.
