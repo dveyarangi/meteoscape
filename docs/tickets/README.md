@@ -2,11 +2,13 @@
 
 **Last updated:** 2026-07-25
 
-**Current stage:** 003a, m1, and 003b have landed — reach now lives on `Capability`
-([ADR-0007](../adr/0007-capability-carries-its-domain.md)) and the standalone resolver is gone. Next
-is 003c (request shaping); 006 (retentive store) is an independent follow-on, and m2 (dissolve
-node-`Countable`) is now unblocked. Maintenance ticket m3 (live Provider parity) is Ready and must
-land before 004 introduces the second Provider.
+**Current stage:** 003a, m1, 003b, and m2 have landed — reach lives on `Capability`
+([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, and
+a materialized provider wires storeless
+([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)). Next
+is 003c (request shaping); 006 (retentive store) is an independent follow-on with its assumed
+storeless/private-lattice shape now in place. Maintenance ticket m3 (live Provider parity) is Ready
+and must land before 004 introduces the second Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -76,7 +78,7 @@ delivery sequence above and appears in no capability table.
 | Ticket | Status | Depends on | Outcome |
 |---|---|---|---|
 | [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
-| [m2 — Dissolve node-`Countable`](./m2-dissolve-node-countable.md) | Planned | 003b | `Countable` becomes a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. Soft-blocks 006. |
+| [m2 — Dissolve node-`Countable`](./done/m2-dissolve-node-countable.md) | Done | 003b (done) | `Countable` is a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. 006's assumed shape is in place. |
 | [m3 — Provider parity checks](./m3-provider-parity-checks.md) | Ready | 002, 002b (done) | Opt-in live single-Provider parity harness and Open-Meteo reference check. Blocks acceptance of 004's new Provider. |
 
 ## Recommended execution order
@@ -88,8 +90,8 @@ delivery sequence above and appears in no capability table.
 4. ~~**003b**~~ — **landed**: reach moved onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md); the standalone resolver is gone.
 5. Land **m3** as the next independent maintenance item. It does not wait for the feature stream and
    must precede any new Provider contribution, beginning with 004.
-6. Complete **003c** on top of 003b, or **006** as an independent follow-on — running **m2** first,
-   since 006 assumes the storeless/private-lattice shape m2 delivers.
+6. Complete **003c** on top of 003b, or **006** as an independent follow-on — ~~m2~~ has **landed**,
+   so the storeless/private-lattice shape 006 assumes is in place.
 7. Complete **007** after 006.
 8. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
 9. Close the v1 multi-provider surface with **005**, **008**, and **009**.
@@ -102,7 +104,7 @@ resolution.
 
 - Delivery planning: either assign Phase 1 resolution logging to a v1 ticket/acceptance criterion or
   move it to the operational-substrate phase.
-- [m2](./m2-dissolve-node-countable.md): where a storeless materialized producer's read-back
+- [m2](./done/m2-dissolve-node-countable.md): where a storeless materialized producer's read-back
   homogenization lives, and whether `EnumerableCapability` remains the "already materialized"
   discriminator → [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - [005](./005-per-parameter-selection.md): choose the single-provider parameter used to demonstrate

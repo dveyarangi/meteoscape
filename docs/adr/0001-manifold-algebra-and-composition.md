@@ -59,10 +59,10 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   type hierarchy:
   - **`Writable`** — accepts `assimilate(coverage)`: the **materialization boundary** — sample a view
     onto the node's own grid and store it. Provenance is authored **upstream**, never computed here.
-  - A node exposes **no public lattice**: its declared grids (per axis, **provider-exact where a
-    vendor declares one, a configured guess for point vendors that expose none**) are **private to
-    its `Store`** — the `quantize` / retention / read-back target — and a provider-exact lattice
-    reaches the `Store` as a **build-time declaration** at weave, not a request-path read. The only
+  - A node exposes **no public lattice**: its declared grids (per axis, shaped from the configured
+    **`StoreSpec`**) are **private to
+    its `Store`** — the `quantize` / retention / read-back target. No provider hands a lattice at
+    all; one whose data is already materialized wires **storeless**. The only
     public `domain` is the **`Coverage`'s** — the positional grid its `ParameterData` align to,
     derived from its materialized `capability`
     ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
