@@ -9,17 +9,19 @@ from meteoscape.clock import Clock, StoppedClock
 from meteoscape.config import StoreSpec
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
-from meteoscape.manifold.capability import Capability, FootprintCapability
+from meteoscape.manifold.capability import Capability, EnumerableCapability, FootprintCapability
 from meteoscape.manifold.core import Manifold, Selection
+from meteoscape.manifold.coverage import CoverageRecord
+from meteoscape.manifold.data import ParameterData
 from meteoscape.manifold.domain import (
     AxisName,
     ContinuousAxis,
-    EnumerableDomain,
     FootprintDomain,
     GridDomain,
     Interval,
     RegularAxis,
 )
+from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import ParameterTable, StaticParameterTable
 from meteoscape.nodes.catalog.providers import (
     OfferingSpec,
@@ -121,33 +123,65 @@ class FakeProvider(Provider):
         return self._source_key
 
 
-class CountableFakeProvider(FakeProvider):
-    """Countable fake — lattice resolution prefers `provider.domain`."""
+class RecordingProvider(FakeProvider):
+    """Recording fake with a project face — records each `Selection`, answers its held coverage.
+
+    `capability` defaults to the coverage's own (the materialized shape — capability/data
+    disagreement unrepresentable); pass `capability=` to declare a footprint wider than the answer.
+    """
 
     def __init__(
         self,
         *,
         source_key: SourceKey,
-        capability: Capability,
-        domain: EnumerableDomain,
+        coverage: CoverageRecord,
+        capability: Capability | None = None,
     ) -> None:
-        super().__init__(source_key=source_key, capability=capability)
-        self._domain = domain
+        super().__init__(
+            source_key=source_key,
+            capability=coverage.capability if capability is None else capability,
+        )
+        self.calls: list[Selection] = []
+        self._coverage = coverage
 
-    @property
-    def domain(self) -> EnumerableDomain:
-        return self._domain
+    async def project(self, selection: Selection) -> Manifold:
+        self.calls.append(selection)
+        return self._coverage
+
+
+def coverage_record(
+    *pids: ParameterId,
+    domain: GridDomain,
+    value: float = 1.0,
+    origin_key: SourceKey | None = None,
+) -> CoverageRecord:
+    """Canonical single-origin `CoverageRecord` fixture — `value` at every `domain` point."""
+    table = core_parameters()
+    key = origin_key or SourceKey("fake", "default")
+    return CoverageRecord(
+        capability=EnumerableCapability(
+            domain=domain, parameters={pid: table.get(pid) for pid in pids}
+        ),
+        ranges={pid: ParameterData(values=[value] * len(domain), present=None) for pid in pids},
+        provenance=Uniform(
+            Provenance(
+                origin=AtomicOrigin(key, datetime(2026, 7, 11, tzinfo=UTC)),
+                fetched_at=datetime(2026, 7, 11, 12, tzinfo=UTC),
+                expiration=datetime(2026, 7, 11, 13, tzinfo=UTC),
+            )
+        ),
+    )
 
 
 class RecordingStoreFactory(StoreFactory):
     """Records each `create` call; delegates allocation to `StoreFactory`."""
 
     def __init__(self) -> None:
-        self.calls: list[EnumerableDomain | StoreSpec | None] = []
+        self.calls: list[StoreSpec] = []
 
-    def create(self, grid: EnumerableDomain | StoreSpec | None) -> Store:
-        self.calls.append(grid)
-        return super().create(grid)
+    def create(self, spec: StoreSpec) -> Store:
+        self.calls.append(spec)
+        return super().create(spec)
 
 
 def fake_catalog(
@@ -155,7 +189,7 @@ def fake_catalog(
     impl_id: str = "fake",
     provider_id: str = "fake",
     offerings: Mapping[str, OfferingSpec] | None = None,
-    countable: bool = False,
+    materialized: bool = False,
     secret: SecretSlot | None = None,
     built: list[tuple[OfferingSpec, Mapping[str, object], str | None]] | None = None,
 ) -> ProviderCatalog:
@@ -166,7 +200,7 @@ def fake_catalog(
         "default": OfferingSpec(
             name="default",
             parameters=frozenset({AIR_TEMPERATURE}),
-            store=None if countable else SAMPLE_STORE,
+            store=None if materialized else SAMPLE_STORE,
         )
     }
 
@@ -179,11 +213,15 @@ def fake_catalog(
     ) -> Provider:
         record.append((spec, settings, secret_value))
         key = SourceKey(provider=provider_id, dataset=spec.name)
-        capability = footprint_capability(clock, parameters, spec.parameters)
-        if countable:
-            return CountableFakeProvider(
-                source_key=key, capability=capability, domain=sample_lattice(count=2)
+        if materialized:
+            return FakeProvider(
+                source_key=key,
+                capability=EnumerableCapability(
+                    domain=sample_lattice(count=2),
+                    parameters={pid: parameters.get(pid) for pid in spec.parameters},
+                ),
             )
+        capability = footprint_capability(clock, parameters, spec.parameters)
         return FakeProvider(source_key=key, capability=capability)
 
     return {

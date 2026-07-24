@@ -6,10 +6,19 @@ from datetime import timedelta
 
 import pytest
 
-from fakes import SAMPLE_STORE, STOPPED, RecordingStoreFactory, core_parameters, fake_catalog
+from fakes import (
+    SAMPLE_STORE,
+    STOPPED,
+    RecordingProvider,
+    RecordingStoreFactory,
+    core_parameters,
+    coverage_record,
+    fake_catalog,
+    sample_lattice,
+)
 from meteoscape.config import ArbiterPolicy, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
-from meteoscape.manifold.core import Countable
+from meteoscape.manifold.core import Selection
 from meteoscape.nodes.arbiter import Arbiter
 from meteoscape.nodes.calculator import Calculator
 from meteoscape.nodes.calculators.wind import wind_from_uv
@@ -20,6 +29,7 @@ from meteoscape.nodes.composition import (
     CompositionError,
     ProfileDef,
     RegisteredCalculator,
+    RegisteredSource,
     SourceBinder,
     SourceRegistry,
 )
@@ -103,21 +113,53 @@ def test_single_source_weaves_capability_and_stores() -> None:
     assert isinstance(root.source, Arbiter)
     assert len(root.source.producers) == 1
     assert root.source.producers[0].key in profile.sources.sources
-    assert len(root.domain) == 1  # StubStore dummy: four count-1 axes
 
 
-def test_countable_source_passes_provider_domain() -> None:
+def test_materialized_source_weaves_storeless() -> None:
+    """A materialized source wires as a bare `Producer` — no `Reservoir`, no store allocated for it."""
     stores = RecordingStoreFactory()
     profile = _profile(
         offerings=[OfferingDef(impl="fake", name="default", priority=0)],
-        catalog=fake_catalog(countable=True),
+        catalog=fake_catalog(materialized=True),
     )
-    Weaver(stores).weave(profile)
+    root = Weaver(stores).weave(profile)
+    assert isinstance(root, Reservoir)
+    assert isinstance(root.source, Arbiter)
+
     entry = next(iter(profile.sources.sources.values()))
-    assert entry.store is None
-    assert isinstance(entry.provider, Countable)
-    assert stores.calls[0] is entry.provider.domain
-    assert stores.calls[1] is profile.root_store
+    producer = next(p for p in root.source.producers if p.key in profile.sources.sources)
+    assert producer.node is entry.provider  # the provider itself, unwrapped
+    assert stores.calls == [profile.root_store]  # only the best-view store; none for the source
+    assert AIR_TEMPERATURE in root.capability.parameters
+
+
+@pytest.mark.asyncio
+async def test_materialized_source_serves_through_arbiter() -> None:
+    """The Arbiter projects the bare materialized leaf and its answer is served as-is.
+
+    On-grid on purpose: a storeless leaf does not homogenize (concern #37), so the Selection rides
+    the leaf's own declared domain. `RecordingProvider` derives its capability from the coverage —
+    the materialized shape.
+    """
+    domain = sample_lattice(count=1)
+    coverage = coverage_record(AIR_TEMPERATURE, domain=domain, value=21.5)
+    leaf = RecordingProvider(source_key=SourceKey("fake", "default"), coverage=coverage)
+    profile = ProfileDef(
+        sources=SourceRegistry(
+            sources={leaf.source_key: RegisteredSource(provider=leaf, priority=0, store=None)}
+        ),
+        calculators=CalculatorRegistry(calculators={}),
+        root_store=_root_store(),
+        arbiter=ArbiterPolicy(),
+    )
+    root = Weaver(RecordingStoreFactory()).weave(profile)
+
+    selection = Selection(domain=domain, parameters=frozenset({AIR_TEMPERATURE}))
+    result = await root.project(selection)
+
+    assert result is coverage  # the leaf's own answer, straight through the Arbiter
+    assert len(leaf.calls) == 1
+    assert leaf.calls[0].domain is domain
 
 
 def test_empty_source_registry_weaves_empty_envelope() -> None:

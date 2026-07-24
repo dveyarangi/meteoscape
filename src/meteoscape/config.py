@@ -18,7 +18,7 @@ from .parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V, ParameterId
 
 @dataclass(frozen=True)
 class StoreSpec:
-    """Knobs for a Store that needs a configured guess — profile root or non-Countable Source."""
+    """Knobs for a Store that needs a configured guess — profile root or non-materialized Source."""
 
     spatial_step: float
     retention_interval: timedelta
@@ -30,7 +30,7 @@ class OfferingDef:
 
     Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
     `name=None` selects the expand path. Optional `store` whole-spec-replaces the catalogue
-    `StoreSpec` for non-Countable Sources.
+    `StoreSpec` for non-materialized Sources.
     """
 
     impl: str

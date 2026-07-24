@@ -11,8 +11,10 @@ from fakes import (
     SAMPLE_STORE,
     STOPPED,
     FakeProvider,
+    RecordingProvider,
     air_temperature_capability,
     core_parameters,
+    coverage_record,
     fake_catalog,
     footprint_domain,
     point_timeline_domain,
@@ -21,10 +23,9 @@ from meteoscape.config import ArbiterPolicy, OfferingDef
 from meteoscape.errors import CapabilityMismatch
 from meteoscape.identity import ProducerKey, SourceKey
 from meteoscape.manifold.cadence import CadenceDef
-from meteoscape.manifold.capability import EnumerableCapability, FootprintCapability
-from meteoscape.manifold.core import Countable, Manifold, Selection
+from meteoscape.manifold.capability import FootprintCapability
+from meteoscape.manifold.core import Selection
 from meteoscape.manifold.coverage import CoverageRecord
-from meteoscape.manifold.data import ParameterData
 from meteoscape.manifold.domain import (
     AxisName,
     ContinuousAxis,
@@ -34,7 +35,7 @@ from meteoscape.manifold.domain import (
     Interval,
     RegularAxis,
 )
-from meteoscape.manifold.provenance import AtomicOrigin, PerParameter, Provenance, Uniform
+from meteoscape.manifold.provenance import AtomicOrigin, PerParameter
 from meteoscape.nodes.arbiter import Arbiter, PriorityReconciler, Producer, build_reconciler
 from meteoscape.nodes.composition import (
     CalculatorRegistry,
@@ -46,6 +47,7 @@ from meteoscape.nodes.composition import (
 from meteoscape.nodes.providers.base import Provider
 from meteoscape.nodes.reservoir import Reservoir
 from meteoscape.nodes.store import StoreFactory
+from meteoscape.nodes.weaver import wire_source
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, ParameterId
 
 
@@ -58,17 +60,9 @@ def _bind(*offerings: OfferingDef, catalog=None):
 
 def _producers(registry: SourceRegistry) -> list[Producer]:
     stores = StoreFactory()
-    producers: list[Producer] = []
-    for key, reg in registry.sources.items():
-        if reg.store is not None:
-            spec = reg.store
-        else:
-            # A provider-exact lattice is the `Countable` facet, not the `Provider` base — mirrors
-            # the narrowing `weaver._source_grid` does in production.
-            assert isinstance(reg.provider, Countable)
-            spec = reg.provider.domain
-        producers.append(Producer(node=Reservoir(stores.create(spec), reg.provider), key=key))
-    return producers
+    return [
+        Producer(node=wire_source(reg, stores), key=key) for key, reg in registry.sources.items()
+    ]
 
 
 def _arbiter(
@@ -113,32 +107,9 @@ def _point_selection(
 
 
 def _coverage(*pids, origin_key: SourceKey | None = None) -> CoverageRecord:
-    table = core_parameters()
-    domain = point_timeline_domain(hours=1, lon=13.41, lat=52.52)
-    parameters = {pid: table.get(pid) for pid in pids}
-    key = origin_key or SourceKey("fake", "default")
-    return CoverageRecord(
-        capability=EnumerableCapability(domain=domain, parameters=parameters),
-        ranges={pid: ParameterData(values=[1.0], present=None) for pid in pids},
-        provenance=Uniform(
-            Provenance(
-                origin=AtomicOrigin(key, datetime(2026, 7, 11, tzinfo=UTC)),
-                fetched_at=datetime(2026, 7, 11, 12, tzinfo=UTC),
-                expiration=datetime(2026, 7, 11, 13, tzinfo=UTC),
-            )
-        ),
+    return coverage_record(
+        *pids, domain=point_timeline_domain(hours=1, lon=13.41, lat=52.52), origin_key=origin_key
     )
-
-
-class _RecordingProvider(FakeProvider):
-    def __init__(self, *, source_key: SourceKey, capability, coverage: CoverageRecord) -> None:
-        super().__init__(source_key=source_key, capability=capability)
-        self.calls: list[Selection] = []
-        self._coverage = coverage
-
-    async def project(self, selection: Selection) -> Manifold:
-        self.calls.append(selection)
-        return self._coverage
 
 
 def test_priority_reconciler_orders_candidates() -> None:
@@ -183,7 +154,7 @@ def test_empty_registry_empty_index() -> None:
 @pytest.mark.asyncio
 async def test_beyond_footprint_raises_without_projecting() -> None:
     coverage = _coverage(AIR_TEMPERATURE)
-    provider = _RecordingProvider(
+    provider = RecordingProvider(
         source_key=SourceKey("fake", "default"),
         capability=air_temperature_capability(STOPPED, core_parameters()),
         coverage=coverage,
@@ -201,7 +172,7 @@ async def test_beyond_footprint_raises_without_projecting() -> None:
 @pytest.mark.asyncio
 async def test_in_footprint_projects_once_with_admitted_params() -> None:
     coverage = _coverage(AIR_TEMPERATURE)
-    provider = _RecordingProvider(
+    provider = RecordingProvider(
         source_key=SourceKey("fake", "default"),
         capability=air_temperature_capability(STOPPED, core_parameters()),
         coverage=coverage,
@@ -235,14 +206,14 @@ async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     )
     temp_cov = _coverage(AIR_TEMPERATURE, origin_key=SourceKey("a", "default"))
     precip_cov = _coverage(PRECIPITATION, origin_key=SourceKey("b", "default"))
-    temp_provider = _RecordingProvider(
+    temp_provider = RecordingProvider(
         source_key=SourceKey("a", "default"),
         capability=FootprintCapability(
             footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
         ),
         coverage=temp_cov,
     )
-    precip_provider = _RecordingProvider(
+    precip_provider = RecordingProvider(
         source_key=SourceKey("b", "default"),
         capability=FootprintCapability(
             footprints={PRECIPITATION: (table.get(PRECIPITATION), footprint)}

@@ -11,7 +11,7 @@ from fakes import SAMPLE_STORE, STOPPED, FakeProvider, core_parameters, fake_cat
 from meteoscape.config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
 from meteoscape.manifold.capability import FootprintCapability
-from meteoscape.manifold.core import Countable, Coverage
+from meteoscape.manifold.core import Coverage
 from meteoscape.manifold.data import ParameterData
 from meteoscape.manifold.domain import (
     AxisName,
@@ -71,17 +71,37 @@ def test_one_offering_binds_to_registry() -> None:
     assert entry.store is SAMPLE_STORE
 
 
-def test_countable_provider_drops_store() -> None:
-    catalog = fake_catalog(countable=True)
-    registry = SourceBinder(catalog).build(
+def test_materialized_source_wires_storeless() -> None:
+    """A materialized provider (EnumerableCapability) carries no store — the binder reads it storeless."""
+    registry = SourceBinder(fake_catalog(materialized=True)).build(
         [OfferingDef(impl="fake", name="default", priority=0)],
         secrets={},
         clock=STOPPED,
         parameters=core_parameters(),
     )
     entry = next(iter(registry.sources.values()))
-    assert isinstance(entry.provider, Countable)
     assert entry.store is None
+
+
+def test_store_configured_on_materialized_source_raises() -> None:
+    """A materialized offering must not carry a store — the binder rejects it loudly, never discards."""
+    catalog = fake_catalog(
+        materialized=True,
+        offerings={
+            "default": OfferingSpec(
+                name="default",
+                parameters=frozenset({AIR_TEMPERATURE}),
+                store=SAMPLE_STORE,
+            )
+        },
+    )
+    with pytest.raises(CompositionError, match="storeless"):
+        SourceBinder(catalog).build(
+            [OfferingDef(impl="fake", name="default", priority=0)],
+            secrets={},
+            clock=STOPPED,
+            parameters=core_parameters(),
+        )
 
 
 def test_missing_store_raises() -> None:
@@ -93,7 +113,6 @@ def test_missing_store_raises() -> None:
                 store=None,
             )
         },
-        countable=False,
     )
     with pytest.raises(CompositionError, match="store"):
         SourceBinder(catalog).build(
