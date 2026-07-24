@@ -39,13 +39,13 @@ same shape. The abstraction these are shapes of is the
 
 ## Capability & matching
 
-- **Capability is a base `Manifold` member — `serves(parameter, requested)` + `parameters` — the dual of
-  `project`**, on *every* node
+- **Capability is a base `Manifold` member — `serves(parameter, requested)` + `parameters` +
+  `reach(parameter)` — the dual of `project`**, on *every* node
   ([ADR-0001](./0001-manifold-algebra-and-composition.md)), not an opaque per-producer `can_serve()`.
   `parameters` is the served `ParameterId → ParameterDef` map (a parameter's canonical facts: quantity,
-  statistic, `extent_scaling`, canonical unit). A concrete covered `Domain` is deliberately **off the
-  interface** — it lives only where it is singular and exact: **privately** inside a leaf's `serves`, and
-  **publicly** as `EnumerableCapability.domain` on a materialized `Coverage`. There is **no separate
+  statistic, `extent_scaling`, canonical unit). The per-parameter covered `Domain` is **published by
+  `reach`** (→ [ADR-0007](./0007-capability-carries-its-domain.md)); admission never reads it — `serves`
+  interprets the same declaration itself and stays the sole admission authority. There is **no separate
   clause or `extent` field**: a parameter's native **vertical offset / level** (`2 m above_ground`,
   `1000 hPa`) and its extensive **accumulation window** are **geometry on that covered `Domain`** — a Z
   `Cell` and a `valid_time` `Cell`'s `bounds` respectively ([data model](./0002-data-model.md)). Ordering
@@ -53,14 +53,15 @@ same shape. The abstraction these are shapes of is the
 
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
   - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
-    `Domain` footprint, kept private to `serves` (the *Provider* separately publishes the same
-    declaration for the build-time reach resolver → [ADR-0007](./0007-capability-carries-its-domain.md)).
+    `Domain` footprint — the operand of that parameter's `serves` predicate and the Domain its `reach`
+    publishes (→ [ADR-0007](./0007-capability-carries-its-domain.md)).
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
     enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it
     (not a second copy).
-  - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff *some* member does;
-    `parameters` is the members' union. Takes members **flat** (each `Capability` carries its own
-    `parameters`, so no per-parameter pre-indexing). Its **intersection / consensus** dual is a
+  - **`UnionCapability`** — an **Arbiter**: the union of its members — `serves` iff the parameter is
+    within its composed scope and *some* member does; members are keyed by `ProducerKey`, and the
+    composed per-parameter reach is the membership authority, so a scoped Arbiter declares exactly what
+    it composed (→ [ADR-0007](./0007-capability-carries-its-domain.md)). Its **intersection / consensus** dual is a
     fold (`serves` iff *all* members do) — the capability of the deferred `consensus` reconcilers
     ([#6](../concerns.md#6-reconciler-catalogue)).
   - **`DerivedCapability`** — a **Calculator**: an **input→output transform** (not a set-op). It serves
@@ -169,9 +170,10 @@ same shape. The abstraction these are shapes of is the
 - **Static / dynamic split.** The **Weaver** allocates Stores, wraps each source and calculator node as a
   **`Producer{node, key}`**, and constructs the **`Reconciler`** via
   `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)`. The **Arbiter** is
-  `Arbiter(producers, reconciler)`: it indexes producers by parameter under `node.capability.parameters`,
-  applies range-containment + extent reachability per request to filter the set, and walks it under its
-  **reconciler**. A candidate is a **configured producer** identified by a **`ProducerKey`**
+  `Arbiter(producers, reconciler, scope=None)`: it indexes producers by parameter under
+  `node.capability.parameters` (narrowed to `scope` where one is given —
+  [ADR-0007](./0007-capability-carries-its-domain.md)), applies range-containment + extent reachability
+  per request to filter the set, and walks it under its **reconciler**. A candidate is a **configured producer** identified by a **`ProducerKey`**
   (`SourceKey` = `provider` + `dataset`, or `CalculatorKey` = `method` + `name`; →
   [glossary: Producer](../glossary.md)) — **not** a bare provider — so
   priority discriminates *within* a provider (`best_match ≻ gfs_seamless`) and between same-output
@@ -325,9 +327,11 @@ same shape. The abstraction these are shapes of is the
       if key in visiting: raise CycleError(key)
       visiting.add(key)
       outputs, inputs, fn, stored = calc_registry[key]  # outputs: resolved ParameterDefs (bind-time)
-      # scoped Arbiter: the Producers serving this calc's inputs (sources and/or other calcs) + reconciler
-      input_arb = Arbiter(producers_for(inputs), reconciler)
-      calc      = Calculator(outputs, inputs, fn, input_arb)
+      # scoped Arbiter: the Producers serving this calc's inputs (sources and/or other calcs) + reconciler.
+      # `scope=inputs` because those Producers arrive whole — a scoped resolver must not declare
+      # parameters its Calculator never consumes (ADR-0007).
+      input_arb = Arbiter(producers_for(inputs), reconciler, scope=inputs)
+      calc      = Calculator(key, outputs, inputs, fn, input_arb)  # key: sheared-inputs error attribution (ADR-0007)
       node      = Reservoir(store, calc) if stored else calc
       producer  = Producer(node, key)
       visiting.remove(key); memo[key] = producer; return producer

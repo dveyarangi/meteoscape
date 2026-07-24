@@ -1,6 +1,6 @@
 # 0016 · 2026-07-22 · 003b align — five questions closed; node-`Countable` spawns m2
 
-An align session over [003b](../tickets/003b-capability-domain.md)'s five open placement questions.
+An align session over [003b](../tickets/done/003b-capability-domain.md)'s five open placement questions.
 All five resolved (recorded inline in the ticket); two side-finds outgrew the ticket — a new
 maintenance ticket [m2](../tickets/m2-dissolve-node-countable.md) and the discovery that
 `validate_calculators` was never wired into production. Rules live in the ticket, ADR-0007, and m2;
@@ -71,7 +71,7 @@ one deliberate behaviour change.
 
 ## Continuation
 
-- **Implement [003b](../tickets/003b-capability-domain.md)** — all questions closed, doc set
+- **Implement [003b](../tickets/done/003b-capability-domain.md)** — all questions closed, doc set
   consistent, no code touched this session.
 - **Then [m2](../tickets/m2-dissolve-node-countable.md) before [006](../tickets/006-retentive-store-freshness.md)** —
   006 assumes the storeless/private-lattice shape m2 delivers.

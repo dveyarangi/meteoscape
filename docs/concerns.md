@@ -635,9 +635,28 @@ exposing footprint on the `Capability` surface if it must be read per request.
 **Terminology:** Reach (what a Manifold publishes it serves) vs Footprint (a producer's own
 declaration, before composition) → [glossary](./glossary.md): Reach, Footprint.
 
+**The concrete motivating deployment** — regional models expose complex fields (gusts, CAPE, echo top)
+that a global model only reaches by derivation:
+
+| Producer | Serves | Footprint |
+|---|---|---|
+| ICON-D2 | basics **+ `wind_gust` directly** | Europe × 48 h |
+| HRRR | basics **+ `wind_gust` directly** | Americas × 36 h |
+| GFS | basics only | World × 180 h |
+| gust Calculator | `wind_gust` from basics | World × 180 h (contained-in-all over GFS inputs) |
+
+Composition is correct and uneventful: the Calculator dominates, so reach is World × 180 h — the
+profile really does serve `wind_gust` everywhere. **What it cannot express is that the answer is
+better inside Europe.** The wanted behaviour is per-request: prefer ICON-D2 within its footprint,
+HRRR within its own, the Calculator elsewhere — which is this concern's ranking policy over the
+now-published geometry, needing the wider interface of
+[#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Wholesale `priority` picks one
+producer for the whole world and wastes the regionals. Quality varying across a single published
+reach is [#7](#7-quality-scoring) / [#29](#29-narrated-reach-what-a-profile-promises).
+
 **Trigger to revisit:** a profile that needs per-request producer *ranking* rather than the wholesale
-`priority` fallback — the first regional high-resolution provider alongside a global one. Nothing about
-the geometry blocks it now; the reconciler interface does
+`priority` fallback — the deployment above is the first one that does. Nothing about the geometry
+blocks it now; the reconciler interface does
 ([#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
 
 ## 33. Reconciler owns domain composition
@@ -663,10 +682,10 @@ resolver — was removed by [ADR-0007](./adr/0007-capability-carries-its-domain.
 already composes that geometry structurally, so recomputing it over `ProfileDef` was duplicate work.
 
 - **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, with a `visiting` set
-  raising `CompositionError("calculator cycle at ...")`. A **backstop**: `compose()` validates before
-  weaving, and `validate_calculators` is required to reject every cycle the Weaver cannot build, so
-  this should never fire. The two messages differ deliberately — the operator's names the whole cycle —
-  so if it ever does fire, which guard caught it is observable.
+  raising `CompositionError("calculator cycle at ...")`. A **backstop**: `validate_calculators` is
+  `weave`'s first step and is required to reject every cycle the Weaver cannot build, so this should
+  never fire. The two messages differ deliberately — the operator's names the whole cycle — so if it
+  ever does fire, which guard caught it is observable.
 - **`validate_calculators`** — checks every Calculator input is producible; owns the operator-facing
   `visiting` cycle guard and the wiring errors, and runs first
   ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). Its guard must be **exactly as strict as the
@@ -725,3 +744,24 @@ materialized" discriminator once a provider is enumerable but unholdable (the cl
 
 **Trigger to revisit:** the first real materialized provider. No v1 driver — no v1 provider is
 materialized; the storeless path exists only in fakes.
+
+## 38. Calculator admittance is fixed pointwise-total
+
+**Kind:** deferred seam (per-calculator policy) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [#12](#12-curvilinear-domains), [#33](#33-reconciler-owns-domain-composition)
+
+`DerivedCapability` hardcodes one admittance for every Calculator: **pointwise-total** — `serves` is
+AND-over-inputs and `reach` is contained-in-all. That is correct for v1's kernels (wind from u/v needs
+both inputs at every point) but it is a *policy of the kernel*, not a law of derivation: a blend that
+degrades gracefully with partial inputs would want OR-serves and a union-shaped reach; a persistence
+extrapolator reaches *wider* than its inputs on T.
+
+**The seam is per-calculator, not per-profile.** The Weaver hands one `Reconciler` to every Arbiter, so
+reconciler policy is profile-wide — the wrong granularity for a fact that varies with the kernel. When a
+non-pointwise calculator arrives, its admittance belongs on the `CalculatorManifest` (the catalogue
+knows its kernel's semantics), flowing into the capability form — not on the `Reconciler`, whose
+`compose_domains` reconciles competitors for one parameter, while admittance combines *across*
+parameters. Note both members encode the same assumption, so they must change together — a second
+capability form or a manifest-declared mode, not a flag threaded into one member.
+
+**Trigger to revisit:** the first calculator whose kernel is not pointwise-total (partial-input blend,
+temporal extrapolator, subregion-valid downscaler). No v1 driver.

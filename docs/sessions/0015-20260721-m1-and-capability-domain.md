@@ -76,7 +76,7 @@ diverge cannot start. "Inner bound" described a looseness the build guard makes 
 
 ## Open questions
 
-**Placement, owned by [003b](../tickets/003b-capability-domain.md)** — five, all decided to be
+**Placement, owned by [003b](../tickets/done/003b-capability-domain.md)** — five, all decided to be
 non-contract-bearing: where `Reconciler` / `Producer` live (watch the `capability → reconciler → core`
 import cycle), where `build_reconciler` and `validate_calculators` land, whether domain composition
 takes a `parameter`, and `Provider.footprints` removal blast radius.
@@ -105,7 +105,7 @@ below geometry. What a profile should narrate against that gap is undecided.
   narrowing as landed, which is correct for a historical record.
 - **Commit the uncommitted doc set**; `main` is 4 commits ahead of `origin/main` and unpushed. CI is
   green as of `ee503cf`.
-- **Run [003b](../tickets/003b-capability-domain.md)** before
+- **Run [003b](../tickets/done/003b-capability-domain.md)** before
   [003c](../tickets/003c-request-shaping.md), which would otherwise write the first consumer against
   the contract 003b deletes.
 - **003c carries one decision from this session**: the narrated horizon is **relative**, never absolute
