@@ -30,26 +30,10 @@ Most repos have a single context:
 │   └── adr/
 │       ├── 0001-event-sourced-orders.md
 │       └── 0002-postgres-for-write-model.md
-├────── architure.md
+├────── architecture.md
 ├────── product.md
 ├────── glossary.md
 └── src/
-```
-
-If a `CONTEXT-MAP.md` exists at the root, the repo has multiple contexts. The map points to where each one lives:
-
-```
-/
-├── CONTEXT-MAP.md
-├── docs/
-│   └── adr/                          ← system-wide decisions
-├── src/
-│   ├── ordering/
-│   │   ├── glossary.md
-│   │   └── docs/adr/                 ← context-specific decisions
-│   └── billing/
-│       ├── glossary.md
-│       └── docs/adr/
 ```
 
 Create files lazily — only when you have something to write. If no `glossary.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
