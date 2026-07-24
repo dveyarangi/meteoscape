@@ -11,10 +11,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from ..config import StoreSpec
 from ..identity import CalculatorKey
-from ..manifold.core import Countable, Manifold
-from ..manifold.domain import EnumerableDomain
+from ..manifold.core import Manifold
 from ..parameters import ParameterId
 from .arbiter import Arbiter, Producer, Reconciler, build_reconciler
 from .calculator import Calculator
@@ -23,12 +21,16 @@ from .reservoir import Reservoir
 from .store import StoreFactory
 
 
-def _source_grid(registered: RegisteredSource) -> EnumerableDomain | StoreSpec:
-    """Provider-exact domain when Countable; otherwise the Source `StoreSpec` knobs."""
+def wire_source(registered: RegisteredSource, stores: StoreFactory) -> Manifold:
+    """Storeless bare Provider when materialized; else `Reservoir(store, Provider)`.
+
+    `registered.store is None` *is* the materialized fact (the `SourceBinder`'s invariant), read
+    directly — no capability re-check, single authority, no drift between readers. The one home of
+    the source-wiring rule: production and test wiring both call it.
+    """
     if registered.store is None:
-        assert isinstance(registered.provider, Countable)
-        return registered.provider.domain
-    return registered.store
+        return registered.provider
+    return Reservoir(stores.create(registered.store), registered.provider)
 
 
 class Weaver:
@@ -44,7 +46,8 @@ class Weaver:
         `Manifold` too. What makes the root the best view is selection, and selection is the
         Arbiter's; the `Reservoir` only adds retention (ADR-0001).
         """
-        validate_calculators(profile)  # precondition: reject an unbuildable graph before allocating a Store
+        # precondition: reject an unbuildable graph before allocating a Store
+        validate_calculators(profile)
         source_producers = self._weave_providers(profile)
         reconciler = build_reconciler(profile.arbiter, profile.sources, profile.calculators)
         calc_producers = self._weave_calculators(profile, source_producers, reconciler)
@@ -54,12 +57,9 @@ class Weaver:
         )
 
     def _weave_providers(self, profile: ProfileDef) -> list[Producer]:
-        """Wrap each registered Source as `Producer(Reservoir(store, Provider), SourceKey)`."""
+        """Wrap each registered Source as `Producer(wire_source(...), SourceKey)`."""
         return [
-            Producer(
-                node=Reservoir(self.stores.create(_source_grid(registered)), registered.provider),
-                key=key,
-            )
+            Producer(node=wire_source(registered, self.stores), key=key)
             for key, registered in profile.sources.sources.items()
         ]
 

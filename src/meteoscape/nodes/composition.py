@@ -22,7 +22,7 @@ from ..clock import Clock
 from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
 from ..errors import CompositionError  # re-exported from `errors` (also raised in `manifold/`)
 from ..identity import CalculatorKey, SourceKey
-from ..manifold.core import Countable
+from ..manifold.capability import EnumerableCapability
 from ..parameters import ParameterDef, ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
@@ -34,12 +34,20 @@ from .providers.base import Provider
 class RegisteredSource:
     """One configured producer plus extrinsic priority and optional Source-store knobs.
 
-    Invariant: Countable ⇒ `store is None`; non-Countable ⇒ `store` set.
+    Invariant: materialized (`EnumerableCapability`) ⇒ `store is None`; non-materialized ⇒ `store`
+    set. Both enforced by the `SourceBinder`, so downstream reads `store is None` as the materialized
+    fact without re-deriving it.
     """
 
     provider: Provider
     priority: int
     store: StoreSpec | None
+
+
+def _is_materialized(provider: Provider) -> bool:
+    """Every parameter on one enumerable domain ⇒ an already-materialized dataset (ADR-0006 / m2;
+    the isinstance test is the v1 discriminator — m2 open question 2)."""
+    return isinstance(provider.capability, EnumerableCapability)
 
 
 @dataclass(frozen=True)
@@ -87,12 +95,15 @@ class SourceBinder:
             if key in sources:
                 raise CompositionError(f"duplicate SourceKey {key}")
 
-            if isinstance(provider, Countable):
-                store: StoreSpec | None = None
-            else:
-                store = offering.store if offering.store is not None else spec.store
-                if store is None:
-                    raise CompositionError(f"missing store for non-Countable source {key}")
+            store: StoreSpec | None = offering.store if offering.store is not None else spec.store
+            if _is_materialized(provider):
+                if store is not None:
+                    raise CompositionError(
+                        f"store configured for materialized source {key}; "
+                        "a materialized provider wires storeless"
+                    )
+            elif store is None:
+                raise CompositionError(f"missing store shape for non-materialized source {key}")
 
             sources[key] = RegisteredSource(
                 provider=provider,

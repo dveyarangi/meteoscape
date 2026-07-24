@@ -60,9 +60,8 @@ class Countable(Protocol):
     """Facet: exposes an enumerable coordinate `domain` (discrete-vs-continuous only, nothing about
     writing).
 
-    A *node* uses its `domain` as the canonical lattice (the `quantize` / retention target); a *result*
-    `Coverage` exposes the domain it was sampled onto. Enumeration and index access live on the
-    `EnumerableDomain` itself.
+    A *result* `Coverage` exposes the domain it was sampled onto. Enumeration and index access live on
+    the `EnumerableDomain` itself.
     """
 
     @property
