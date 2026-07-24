@@ -24,8 +24,6 @@ from ...errors import RuntimeFailure
 from ...identity import SourceKey
 from ...manifold.capability import Capability
 from ...manifold.core import Manifold, Selection
-from ...manifold.domain import Domain
-from ...parameters import ParameterId
 
 
 class Provider(ABC):
@@ -40,12 +38,6 @@ class Provider(ABC):
     @abstractmethod
     def source_key(self) -> SourceKey:
         """This producer's identity — stamped onto atomic provenance; never carries priority."""
-        ...
-
-    @property
-    @abstractmethod
-    def footprints(self) -> Mapping[ParameterId, Domain]:
-        """Per-parameter declared geometry — the unit a profile's Reach is selected from (ADR-0007)."""
         ...
 
 

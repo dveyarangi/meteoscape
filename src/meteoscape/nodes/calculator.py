@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from ..errors import RuntimeFailure
+from ..identity import CalculatorKey
 from ..manifold.capability import Capability, DerivedCapability, EnumerableCapability
 from ..manifold.core import Coverage, Manifold, Selection
 from ..manifold.coverage import CoverageRecord
@@ -22,15 +23,18 @@ from .catalog.calculators import CombineFn
 class Calculator:
     def __init__(
         self,
+        key: CalculatorKey,
         outputs: Mapping[ParameterId, ParameterDef],
         inputs: frozenset[ParameterId],
         fn: CombineFn,
         resolver: Manifold,
     ) -> None:
+        self.key = key
         self.outputs = outputs
         self.inputs = inputs
         self.fn = fn
         self.resolver = resolver  # scoped Arbiter over the input parameters
+        self._capability = DerivedCapability(key, outputs, inputs, resolver.capability)
 
     async def project(self, selection: Selection) -> Manifold:
         resolved = await self.resolver.project(Selection(selection.domain, self.inputs))
@@ -51,4 +55,4 @@ class Calculator:
 
     @property
     def capability(self) -> Capability:
-        return DerivedCapability(self.outputs, self.inputs, self.resolver.capability)
+        return self._capability

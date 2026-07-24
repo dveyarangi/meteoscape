@@ -260,10 +260,6 @@ class OpenMeteoProvider(Provider):
     def source_key(self) -> SourceKey:
         return self._source_key
 
-    @property
-    def footprints(self) -> Mapping[ParameterId, FootprintDomain]:
-        return {pid: domain for pid, (_, domain) in self._footprints.items()}
-
 
 def _build_footprints(
     clock: Clock,

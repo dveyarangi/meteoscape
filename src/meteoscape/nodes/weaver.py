@@ -18,7 +18,7 @@ from ..manifold.domain import EnumerableDomain
 from ..parameters import ParameterId
 from .arbiter import Arbiter, Producer, Reconciler, build_reconciler
 from .calculator import Calculator
-from .composition import CompositionError, ProfileDef, RegisteredSource
+from .composition import CompositionError, ProfileDef, RegisteredSource, validate_calculators
 from .reservoir import Reservoir
 from .store import StoreFactory
 
@@ -44,6 +44,7 @@ class Weaver:
         `Manifold` too. What makes the root the best view is selection, and selection is the
         Arbiter's; the `Reservoir` only adds retention (ADR-0001).
         """
+        validate_calculators(profile)  # precondition: reject an unbuildable graph before allocating a Store
         source_producers = self._weave_providers(profile)
         reconciler = build_reconciler(profile.arbiter, profile.sources, profile.calculators)
         calc_producers = self._weave_calculators(profile, source_producers, reconciler)
@@ -89,8 +90,8 @@ class Weaver:
                 raise CompositionError(f"calculator cycle at {key}")
             visiting.add(key)
             reg = profile.calculators.calculators[key]
-            scoped = Arbiter(producers_for(reg.inputs), reconciler)
-            calc = Calculator(reg.outputs, reg.inputs, reg.manifest.fn, scoped)
+            scoped = Arbiter(producers_for(reg.inputs), reconciler, scope=reg.inputs)
+            calc = Calculator(key, reg.outputs, reg.inputs, reg.manifest.fn, scoped)
             node: Manifold = (
                 Reservoir(self.stores.create(profile.root_store), calc) if reg.stored else calc
             )

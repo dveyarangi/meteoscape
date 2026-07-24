@@ -18,7 +18,7 @@ class _EmptyView:
 
     @property
     def capability(self):
-        return UnionCapability([])
+        return UnionCapability(members={}, domains={})
 
 
 def test_forecast_hourly_is_registered() -> None:

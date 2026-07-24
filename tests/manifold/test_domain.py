@@ -20,6 +20,10 @@ from meteoscape.manifold.domain import (
     IntervalAxis,
     RegularAxis,
     VantageAxis,
+    as_separable,
+    contains_extents,
+    first_incomparable,
+    split_extents,
     sub_lattice_offset,
 )
 
@@ -408,3 +412,69 @@ def test_float_alignment_tolerance_property(tick: int, noise: float) -> None:
         assert offset == tick
     elif abs(noise) >= LATTICE_TOLERANCE * 2:
         assert offset is None
+
+
+# --- Extent-containment predicates (the moved reach geometry, ADR-0007) ---
+
+
+def _footprint(*, x: Interval[float], days: int = 10) -> FootprintDomain:
+    """Separable footprint: custom X extent, fixed Y/Z, T spanning `days` from a common anchor."""
+    t0 = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, x),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(t0, t0 + timedelta(days=days))),
+        }
+    )
+
+
+class _Curvilinear(Domain):
+    """A non-separable stand-in: satisfies `Domain`, exposes no axes (concern #12, source role)."""
+
+    def matches(self, other: Domain) -> bool:
+        return False
+
+    def intersect(self, other: Domain) -> Domain:
+        return self
+
+
+def test_contains_extents_is_whole_box_not_matches() -> None:
+    outer = _footprint(x=Interval(-180.0, 180.0), days=16)
+    inner = _footprint(x=Interval(-10.0, 40.0), days=10)
+    assert contains_extents(outer, inner) is True
+    assert contains_extents(inner, outer) is False
+    # Equal extents nest both ways — the tie the reconciler resolves either direction.
+    twin = _footprint(x=Interval(-180.0, 180.0), days=16)
+    assert contains_extents(outer, twin) is True
+    assert contains_extents(twin, outer) is True
+
+
+def test_first_incomparable_returns_witness_then_none_for_a_chain() -> None:
+    west = _footprint(x=Interval(-20.0, -10.0))
+    east = _footprint(x=Interval(10.0, 20.0))
+    witness = first_incomparable([("west", west), ("east", east)])
+    assert witness is not None
+    (left_key, _left), (right_key, _right) = witness
+    assert {left_key, right_key} == {"west", "east"}
+
+    # A nested chain has a maximum, so no pair fails to nest.
+    big = _footprint(x=Interval(-180.0, 180.0), days=16)
+    small = _footprint(x=Interval(-10.0, 40.0), days=10)
+    assert first_incomparable([("big", big), ("small", small)]) is None
+
+
+def test_split_extents_names_both_directions() -> None:
+    """`Global x 10 d` vs `Europe x 16 d`: global wins x, europe wins t — report both."""
+    glob = _footprint(x=Interval(-180.0, 180.0), days=10)
+    europe = _footprint(x=Interval(-10.0, 40.0), days=16)
+    message = split_extents("global", glob, "europe", europe)
+    assert "global extends beyond europe on x" in message
+    assert "europe extends beyond global on t" in message
+
+
+def test_as_separable_returns_the_domain_or_none() -> None:
+    footprint = _footprint(x=Interval(-10.0, 10.0))
+    assert as_separable(footprint) is footprint  # same object, no synthesis
+    assert as_separable(_Curvilinear()) is None

@@ -32,3 +32,14 @@ class RuntimeFailure(MeteoscapeError):
 
     An exception that makes the Arbiter fall through to the next candidate.
     """
+
+
+class CompositionError(Exception):
+    """Build-time failure - a misconfigured profile the server refuses to start with: unknown catalogue
+    entry, dangling secret, duplicate key, missing StoreSpec, or a reach that cannot compose (sheared
+    footprints, non-separable geometry).
+
+    A Tier-0 leaf so every layer that composes can raise it - the reconciler naming a parameter, a
+    derived capability naming its calculator - rather than one translating another's error. Outside the
+    request-surface taxonomy (`MeteoscapeError`): it never reaches a client, it stops the boot.
+    """

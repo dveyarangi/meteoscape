@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from ..clock import Clock
 from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
+from ..errors import CompositionError  # re-exported from `errors` (also raised in `manifold/`)
 from ..identity import CalculatorKey, SourceKey
 from ..manifold.core import Countable
 from ..parameters import ParameterDef, ParameterId
@@ -27,10 +28,6 @@ from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
 from .catalog.providers import ProviderCatalog
 from .providers.base import Provider
-
-
-class CompositionError(Exception):
-    """Build-time failure — unknown catalogue entry, dangling secret, duplicate key, or missing StoreSpec."""
 
 
 @dataclass(frozen=True)
@@ -166,3 +163,49 @@ class ProfileDef:
     calculators: CalculatorRegistry
     root_store: StoreSpec
     arbiter: ArbiterPolicy
+
+
+def validate_calculators(profile: ProfileDef) -> None:
+    """Every calculator input producible and the calculator graph acyclic; raise `CompositionError`.
+
+    `weave`'s first step — its precondition, and the guard an operator's error surfaces from, so it
+    must reject exactly what the Weaver cannot build. It therefore descends into every upstream
+    calculator **even when a source also serves that input**: the Weaver builds a scoped Arbiter over
+    *all* producers of an input, so a calculator cycle a source happens to shadow is still an
+    unbuildable graph.
+    """
+    calculators = profile.calculators.calculators
+    path: list[CalculatorKey] = []
+    visiting: set[CalculatorKey] = set()
+    done: set[CalculatorKey] = set()
+
+    def source_serves(pid: ParameterId) -> bool:
+        return any(
+            pid in registered.provider.capability.parameters
+            for registered in profile.sources.sources.values()
+        )
+
+    def ensure(key: CalculatorKey) -> None:
+        if key in done:
+            return
+        if key in visiting:
+            cycle = [*path[path.index(key) :], key]
+            raise CompositionError("calculator cycle: " + " -> ".join(str(k) for k in cycle))
+        visiting.add(key)
+        path.append(key)
+        for inp in calculators[key].inputs:
+            upstream = [
+                other for other, other_reg in calculators.items() if inp in other_reg.outputs
+            ]
+            if not upstream and not source_serves(inp):
+                raise CompositionError(
+                    f"calculator {key} input {inp} is not served by any producer"
+                )
+            for other in upstream:
+                ensure(other)
+        path.pop()
+        visiting.discard(key)
+        done.add(key)
+
+    for key in calculators:
+        ensure(key)
