@@ -350,6 +350,10 @@ _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 A leaf Manifold that adapts one external weather-data producer into Meteoscape semantics. → [architecture.md](./architecture.md#provider-leaf-manifold)
 _Avoid_: Vendor, backend, driver
 
+**Provider parity check**:
+An independent comparison between a single-Provider Meteoscape profile and that external producer's reference response for the same request. → [provider-authoring.md](./provider-authoring.md#provider-parity-check)
+_Avoid_: Truth check, accuracy test, Provider unit test
+
 **Source**:
 The role of a Reservoir that serves retained data or fetches it from one Provider. → [architecture.md](./architecture.md#source)
 

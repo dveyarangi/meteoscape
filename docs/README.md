@@ -10,6 +10,7 @@ so that each fact has one owner.
 | What are the durable system boundaries and decisions? | [Architecture](./architecture.md), [ADRs](./adr), and [glossary](./glossary.md) |
 | What is implemented, ready, or next? | [v1 delivery status](./tickets/README.md) |
 | What does an individual work item require? | [Active tickets](./tickets) |
+| How is a Provider implemented and independently verified? | [Provider authoring guide](./provider-authoring.md) |
 | How is a work item's implementation planned, and why that shape? | [Implementation RFCs](./rfc) |
 | What remains deliberately unresolved? | [Open concerns](./concerns.md) and [ideas](./ideas.md) |
 | Why was a past choice made? | [Development sessions](./sessions), [completed tickets](./tickets/done), and [resolved RFCs](./rfc/done) |

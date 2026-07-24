@@ -52,5 +52,6 @@ src/meteoscape/
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler, scope=None)  # producers = Producer{node, key}; reconciler owns priority AND domain composition; scope = the parameters this Arbiter resolves (a Calculator's inputs at a scoped one)
 #   compose(profile, providers, calculators, secrets, clock, stores) → Gateway
-# tests/ mirrors src; provider tests mock the HTTP transport.
+# tests/ mirrors src; deterministic provider tests mock the HTTP transport. Live Provider parity is
+# a separate opt-in contribution check → provider-authoring.md / ticket m3.
 ```
