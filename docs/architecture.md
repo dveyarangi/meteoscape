@@ -16,6 +16,8 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 **In scope:**
 
 - The **best view** profile — a single best-quality `Coverage` assembled over multiple providers behind one contract (one *objective*; the engine admits others).
+- The supported Python **embedding surface** — use Meteoscape's weather capabilities without running
+  a protocol server.
 - Protocol adapters that translate between surface requests and the canonical contract.
 - **Select + fallback** arbitration through the Arbiter's configurable **`reconciler` slot** ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)). The implemented `priority` reconciler is a *selection-ordering* policy, which is all v1's fully-overlapping producers need. `tile`, `consensus`, and `feather` are the slot's intended generalization, but they fold **per cell** over resolved values, so they require an **interface widening**, not merely a configuration change → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold).
 - The **canonical Coverage model** (`CoverageRecord` realization; Timeline / Grid are domain shapes) with **per-parameter provenance** and `expiration`-based freshness.
@@ -25,12 +27,16 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 
 - **Not a weather model** — it serves provider data; it does not generate forecasts/NWP. Derived calculators may synthesize new parameters, but producing primary forecasts is not the product.
 - **Not an accounts/billing business** — Meteoscape is not a multi-tenant billing/accounts product. Caller identity, usage monitoring, quotas, and rate limits belong to the **Gateway** policy boundary when configured.
-- **No end-user UI** — the deliverable is a server/protocol surface, not an application.
+- **No end-user UI** — the deliverable is an embeddable engine plus protocol adapters, not an
+  application.
 
 ## Guiding principles
 
 - **One recursive abstraction** — everything is a **Manifold** (a projectable space); Providers, `Store`s, Sources, the Arbiter and the "best" view differ only in their `project` logic and whether they add the `Writable` facet. `project` is closed: it returns a **Manifold** — a **field/view** until sampled; a **Coverage** is that field **sampled onto an enumerable `Domain`** (itself a Manifold). See [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 - **Cross-provider by construction** — a canonical **Coverage** model is the contract; vendors are translated only at their own edges.
+- **Embedding is a first-class product surface** — Python hosts and protocol clients are both
+  supported consumers. The exact Python facade and its relationship to protocol adapters and
+  internal composition remain open in [concern #39](./concerns.md#39-python-embedding-surface-and-public-failures).
 - **Deep modules, simple boundaries** — each component hides substantial complexity behind a small interface with a trivial test boundary.
 - **Composition over inheritance** — Manifolds compose: a Source is `Reservoir(store, Provider)`; the best view is `Reservoir(store, Arbiter)`. The `Store` is one contract — a `Writable` Manifold with private lattices — used in both. Providers compose shared conversion utilities.
 - **Compose for behaviour, filter for coverage** — mint a *new composed Manifold* only when children differ in **behaviour**; differences only in **which `Domain` they cover** are the **Arbiter's capability filter**, not new nodes. See [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
@@ -41,23 +47,27 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 
 ## System context
 
-The server is a **boundary** between weather-consuming callers and weather-producing vendors. It speaks each caller's protocol on one edge and each vendor's API on the other, exchanging a single canonical model internally.
+Meteoscape sits between weather-consuming applications and weather-producing vendors. A Python host
+may use it as an embedded library; a protocol client may use a server adapter. Both are product
+surfaces. This context view deliberately leaves their internal API topology open.
 
 ```mermaid
 flowchart LR
+  HOST["Embedding application<br/>(Python host)"]
   CLIENT["Protocol client<br/>(agent / application)"]
-  subgraph SYS["Meteoscape server"]
-    CORE["policy-resolved weather view<br/>over many providers"]
-  end
+  PRODUCT["Meteoscape<br/>weather resolution"]
   VA["Weather vendor A<br/>(HTTP API)"]
   VB["Weather vendor B<br/>(HTTP API)"]
 
-  CLIENT -->|"weather request"| CORE
-  CORE -->|"fetch (HTTPS)"| VA
-  CORE -->|"fetch (HTTPS)"| VB
+  HOST -->|"Python API"| PRODUCT
+  CLIENT -->|"protocol request"| PRODUCT
+  PRODUCT -->|"fetch (HTTPS)"| VA
+  PRODUCT -->|"fetch (HTTPS)"| VB
 ```
 
-- **Callers** reach the engine through protocol adapters behind the same Gateway.
+- **Embedding applications** configure and call the engine through the supported Python package
+  boundary, with no server process required.
+- **Protocol clients** reach the product through adapters.
 - **Vendors** are external HTTP weather APIs, each translated at its own Provider edge — vendor knowledge never leaks inward.
 - **Translation** between a surface's protocol and canonical semantics is *not* surface-neutral, so it lives in the surface adapters; caller **policy** (identity/limits) is surface-neutral and lives in the Gateway.
 
@@ -204,6 +214,17 @@ A `Reservoir(store, Provider)` — the serve-or-fetch view of one provider's dat
 
 A vendor-specific **leaf** Manifold that **contributes native, normalized `Coverage`s into the graph**: adapter (auth / HTTP / endpoints) + its **Normalizer** + capability/cadence/grid declarations. No storage, no children, stateless. It **authors the Coverage's provenance** at fetch — a single-fetch `Uniform` plane, stamping the run `issue_time` and deriving `expiration` from its **cadence** (`CadenceDef`, [ADR-0003](./adr/0003-provenance-and-origin.md)) — and passes that `Provenance` into the Normalizer. The Normalizer maps vendor shape → canonical **semantics** in **native** geometry (not the request Domain; homogenization is the Reservoir's), emitting **native records** grouped by shared native Domain ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). `project` dispatches to the matching vendor endpoint by requested `Domain`. A vendor-declared native lattice is a **build-time declaration** handed to the `StoreFactory` at weave, not a request-path facet.
 
+### Embedding surface
+
+The supported Python-facing product boundary. It lets a host application use Meteoscape's weather
+capabilities and handle documented outcomes without starting MCP, HTTP, or any other server. This is
+a product commitment, not yet an API or wiring decision.
+
+The exact facade, exported types, lifecycle, failure model, configuration experience, and
+relationship to protocol adapters and the internal graph remain to be settled in
+[concern #39](./concerns.md#39-python-embedding-surface-and-public-failures). No existing internal
+type becomes public merely because it might participate in an eventual implementation.
+
 ### Gateway — caller-policy boundary
 
 The surface-neutral **caller-policy boundary**: it applies caller policy (authz, rate-limit, quota, or pass-through) then calls `project` on the served profile root and returns a **Coverage** (runtime-checked; a non-Coverage result is a bug). It is the one **surface-neutral policy seam** — uniform identity/limits across all surfaces — and is **not** a Manifold (it can reject/throttle; it does not project). Projection-shaped cross-cutting (response caching, metrics) stays in the Manifold algebra, not the Gateway. Surfaces serialize the Coverage; they do not sample.
@@ -258,6 +279,9 @@ rejected splits); this section fixes the roles.
 
 Every seam in one place — the *promise* only; behaviour and rationale are in Major components above.
 
+- **Embedding surface** — supported Python invocation, result, and failure contract; usable without
+  a protocol server. Its exact facade and implementation relationship to other surfaces are
+  [#39](./concerns.md#39-python-embedding-surface-and-public-failures).
 - **Manifold** — `project(Selection) -> Manifold` (closed, read-only — a field/view). Closure is **shape-correspondence**: the answer mirrors the question's shape — a **fully enumerable** Selection samples to a `Coverage` co-domained on `sel.domain`, while an axis left **`ANY`** is answered at the producer's **native** cells, so an `ANY`-bearing multi-parameter Selection may be answered **multi-domain** ([ADR-0001](./adr/0001-manifold-algebra-and-composition.md)). `assimilate(answer)` on `Writable` (samples the producer's answer into whole quantized units, **replacing each atomically**); `domain` (an enumerable `Domain`) only on a materialized **`Coverage`** (the positional grid, derived from its `capability`).
 - **Selection** — `Domain + parameters`; the Domain's **shape** is Continuous (`region`) / Snapped / Enumerable (`exact`) ([ADR-0002](./adr/0002-data-model.md)); a lattice is an **enumerable Domain** (no separate structure layer); Snapped requires a storing target.
 - **Capability** — a **base `Manifold` member, the dual of `project`**: `serves(parameter, requested)` + the served `parameters` (`ParameterId → ParameterDef`), plus the per-parameter **`Domain` it serves** (`reach(parameter)`) — a Manifold's **Reach**, composed by every form, never synthesized → [ADR-0007](./adr/0007-capability-carries-its-domain.md). `serves` remains the sole **admission authority**; it reads the same geometry but may tighten below it (resampler-reachability, probed availability), so the two are not merged. The leaf/composite family, the closure of emitted functionals, and the `serves` matching predicate → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
