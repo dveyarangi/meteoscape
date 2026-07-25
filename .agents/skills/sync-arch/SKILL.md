@@ -3,7 +3,7 @@ name: sync-arch
 description: Synchronize architecture docs with high-level code shape.
 ---
 
-I need you to run a all-around check, and make sure that architecture documentation (./docs/architecture.md, ./docs/adrs, ./docs/glossary.md) properly represent the intent of recently modified code. 
+I need you to run a all-around check, and make sure that architecture documentation (./docs/architecture.md, ./docs/adrs, ./docs/glossary.md, and the Edge records in ./docs/edge/) properly represent the intent of recently modified code. 
 
 Two ultimate goals for this skill :
 1) to make sure architecture docs can be converted to the existing code contract shape in one crystal clear way.
@@ -20,5 +20,7 @@ Look for places where architecture misrepresents, contradicts or is blurry about
 There is no need to add low level details, instead look for architectural seams - interfaces, contracts, boundaries, intents and representations.
 
 Do not add any implementation details to architecture, unless are critical for non-trivial solution record.
+
+For Edge records specifically (format: align skill's EDGE-FORMAT.md): code must not contradict a promise in a `Status: Normative` record, and each invariant's named validator test must still exist and still assert that promise — a missing or drifted validator is a finding, as is a promise marked **⚠ unguarded** in a Normative record.
 
 If there is a tradeoff, doubt or unresolved concern about the task, or if the code is out of sync with architecture in a major way, use /align skill to align with user.

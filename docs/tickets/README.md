@@ -66,7 +66,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [002c — Provider nodata mask](./done/002c-provider-nodata-mask.md) | Done | 002 (done) | Vendor nulls preserved as nodata and JSON `null`. |
 | [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only; 003b relocates it onto `Capability`. |
 | [003b — Capability carries its domain](./done/003b-capability-domain.md) | Done | 003a (landed), m1 | `Capability.reach(parameter)`; reach is the root capability's domain; the standalone resolver is gone. |
-| [003c — Request shaping](./003c-request-shaping.md) | Planned | m4, 003a, 003b | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` opens the bound to the winner's full window. Formerly numbered 003b. |
+| [003c — Request shaping](./003c-request-shaping.md) | Planned | m4, 003a, 003b | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. Formerly numbered 003b. |
 | [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003c, m3 | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |
 | [006 — Retentive store](./006-retentive-store-freshness.md) | Planned | 002 | Fresh reuse, partial refill, and replacement semantics. |
@@ -85,7 +85,9 @@ delivery sequence above and appears in no capability table.
 | [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
 | [m2 — Dissolve node-`Countable`](./done/m2-dissolve-node-countable.md) | Done | 003b (done) | `Countable` is a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. 006's assumed shape is in place. |
 | [m3 — Provider parity checks](./done/m3-provider-parity-checks.md) | Done | 002, 002b (done) | Opt-in live single-Provider parity harness (`uv run pytest tests/parity`) and the Open-Meteo reference check; wind calm floor. 004's new Provider must ship its own check. |
-| [m4 — Snapped request mode (T instantiation)](./m4-snapped-t-request-mode.md) | Ready (design tentative) | 003b, m3 (done) | The reserved Snapped mode as one generic axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window`, answer lattice from the winner. Blocks 003c. |
+| [m4 — Snapped request mode (T instantiation)](./m4-snapped-t-request-mode.md) | Ready (design aligned 2026-07-25) | 003b, m3 (done) | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Blocks 003c. |
+| [m5 — Edge records and the `/edge` skill](./done/m5-edge-records.md) | Done | — | Per-surface Edge records (the architecture ↔ user-design seam documents) with an `/edge` skill; edge awareness wired into `/align` (challenge rule, `EDGE-FORMAT.md`) and `/sync-arch`; the MCP record populated and Normative. |
+| [m6 — Artifact conventions sweep](./m6-artifact-conventions-sweep.md) | Planned (own align precedes) | m5 | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), sequencing scheme for nested subtickets, skills slimmed to reference it. |
 
 ## Recommended execution order
 
@@ -121,9 +123,10 @@ resolution.
 - [m3](./done/m3-provider-parity-checks.md) (done): scheduled and changed-provider automation
   remain deliberate follow-on work, recorded in the ticket's follow-on section; the retry-once
   policy carries a TODO if run-boundary false alerts appear.
-- [m4](./m4-snapped-t-request-mode.md): the whole design is a **tentative sketch** — the snapped
-  axis shape, intersective `matches`, the resolution home, and the ADR-0002/ADR-0004 amendments
-  are settled at its align, before any implementation.
+- [m4](./m4-snapped-t-request-mode.md): design **settled at the 2026-07-25 align** — Snapped
+  inverted to bounds-only (`SnappedAxis` / `SelectionDomain`), intersective admission, resolution
+  on the winner's own lattice; the ADR-0002 amendment landed at the align, ADR-0004's and #13's
+  land with the implementation.
 - [010](./010-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
   the first real multi-vendor spread.
 
