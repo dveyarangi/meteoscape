@@ -2,36 +2,48 @@
 
 > Formerly numbered **003b**; renumbered when 003b (capability domain) was inserted ahead of it.
 
-- **Status:** Partial
-- **Depends on:** [003b — Capability carries its domain](./done/003b-capability-domain.md) (which reshapes
-  [003a](./done/003a-profile-reach.md); 003a depends on 002, 002b)
-- **Outcome:** Free request windows, plus reach-based narration and default windows at the edge.
+- **Status:** Planned — the window semantics ride
+  [m4 — Snapped request mode](./m4-snapped-t-request-mode.md); m4 must land first.
+- **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**on hold** — it planned the
+  superseded edge-clamp approach and is kept as that decision's record; its surviving decisions
+  stand, and it is re-staged after m4 lands).
+- **Depends on:** [m4](./m4-snapped-t-request-mode.md) (Ready, design tentative), and
+  [003b — Capability carries its domain](./done/003b-capability-domain.md) (which reshapes
+  [003a](./done/003a-profile-reach.md); 003a depends on 002, 002b).
+- **Outcome:** Free `start`/`end` request windows (ISO datetimes) served as the caller's bounds ∩
+  the live window, plus reach-based narration; `Settings.default_horizon` deleted.
 
 ## Parent PRD
 
 `docs/v1-requirements.md`
 
+## Decision trail
+
+The window semantics settled in the 2026-07-25 align through three shapes — containment-rejection
+→ edge clamping → **Snapped-T resolution** — plus one reversal of a session-0013 rule (bare-date
+day-cells → datetimes only). The reasoning lives at its owners:
+[m4](./m4-snapped-t-request-mode.md) (why fitting belongs to resolution, the mode sketch) and
+[RFC 0008](../rfc/0008-20260725-003c-request-shaping.md)'s hold banner (the clamp record). The
+rules below are the settled result.
+
 ## What to build
 
-Make the request flexible at the edge. The MCP adapter accepts optional `parameters` (a subset of the
-**6 product** params — temperature, precipitation, wind speed, wind direction, humidity, cloud cover;
-the internal `wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and builds the canonical
-`Selection` accordingly — a lat/lon
-**point** `Domain` plus an hourly `valid_time` extent. When `end` is omitted the window runs to the
-profile's **reach end** — what the caller gets when they do not say how far; `start` / `end` form a
-free window (no interval enum — the `Domain` models
-arbitrary extents). The `Arbiter` admits a provider per parameter only when its `Capability`
-**temporally contains** the requested extent (whole-request `Domain`-containment). The tool description
-**narrates the available envelope** — the served parameters, read off the woven root's `Capability`,
-plus the profile's **reach**, read off the same `Capability`.
+Make the request flexible at the edge. The MCP adapter accepts optional `parameters` (a subset of
+the **6 product** params — temperature, precipitation, wind speed, wind direction, humidity, cloud
+cover; the internal `wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and
+builds the canonical `Selection`: a lat/lon **point** `Domain` whose T axis is a **Snapped-T**
+request — hourly step plus the caller's bounds ([m4](./m4-snapped-t-request-mode.md)). Resolution
+serves `bounds ∩ the winner's live window`; admission on a snapped T axis is **intersective**
+(enumerable requests keep whole-request containment); a **no-overlap** window resolves as
+`capability-mismatch` through admission — the edge never rejects on reach's word, and
+`bad-request` stays purely **syntactic**. The tool description **narrates the available
+envelope** — the served parameters plus the profile's **reach**, both read off the woven root's
+`Capability`.
 
-`reach` itself — the per-parameter `Domain` a `Capability` publishes — is
-[003b](./done/003b-capability-domain.md). This ticket **consumes** it: the surface folds `min` over the
-parameters *it* exposes (a surface-specific fold, so it stays at the edge) and uses the result for
-both narration and the omitted-`end` default. `serves` stays the sole admission authority, and **the
-edge never pre-rejects** against the narrated reach — admission may be stricter than declared geometry
-([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so an out-of-envelope request is answered
-by admission as a `capability-mismatch`, not refused at the edge.
+`reach` — the per-parameter `Domain` a `Capability` publishes — is
+[003b](./done/003b-capability-domain.md). This ticket consumes it for **narration**: the surface
+folds `min` over the parameters *it* exposes (a surface-specific fold, so it stays at the edge).
+`serves` stays the sole admission authority ([ADR-0007](../adr/0007-capability-carries-its-domain.md)).
 
 **One reach, not a quality ladder** (→ [#29: quality is a policy outcome, not a capability](../concerns.md#29-narrated-reach-what-a-profile-promises)).
 Build consequence: there is **no** `CadenceDef` hoist onto `OfferingSpec`, no composition-time envelope
@@ -39,16 +51,16 @@ derivation, no `ArbiterPolicy` threading, and no consistency test — reach has 
 `Capability` each node publishes, composed as the graph is built.
 
 **Already landed at 001 (Phase C):** the `parameters` input (unknown name → `bad-request`, default =
-the woven root capability), dynamic served-parameters narration, `serves`-containment admission in the
+the woven root capability), dynamic served-parameters narration, containment admission in the
 `Arbiter`, and the supplied-`start`/`end` → `bad-request` stubs. This ticket's remaining substance:
-make the window real (free `start`/`end` → exact-window fetch mapping), default an omitted `end` to
-the reach end, extend narration with reach, **delete `Settings.default_horizon`**,
-call `validate_calculators` from `compose()` (below),
-and exercise out-of-envelope
-admission with real free windows (Phase C's fixed 168 h window never leaves the envelope). Concern #24
-is **resolved** (session 0011 → [ADR-0002](../adr/0002-data-model.md) /
-[ADR-0004](../adr/0004-producer-resolution-and-capability.md)); the request keeps 002's edge-authored
-**vantage** Z window unchanged.
+turn `start`/`end` into snapped bounds the resolver fits, extend narration with reach, **delete
+`Settings.default_horizon`**, and exercise out-of-range windows for real (Phase C's fixed 168 h
+window never left the envelope). Startup validation needs no work: `validate_calculators` is
+`weave`'s own first step (`weaver.py`; asserted by `test_server.py`), so a misconfigured profile
+already fails at startup before any `Store` is allocated. Concern #24 is **resolved** (session
+0011 → [ADR-0002](../adr/0002-data-model.md) /
+[ADR-0004](../adr/0004-producer-resolution-and-capability.md)); the request keeps 002's
+edge-authored **vantage** Z window unchanged.
 
 **Not in this ticket (session 0013):** **alias desugaring / exact-mode Z**. The mechanism is already a
 recorded contract seam — the edge alias table and the `VantageAxis`-vs-`RegularAxis`-cell request modes
@@ -59,89 +71,72 @@ semantic no-op against the count-1 `2 m` declaration (same winner, same values; 
 label changes). It re-arises from its product point — derived parameters as composable DAGs
 ([roadmap](../product-roadmap.md) Phase 4) — with no decision to rediscover.
 
-**Window → lattice semantics (session 0013).** The edge authors the hourly output lattice, so it must
-turn two strings into a `RegularAxis(anchor, 1h, count)`:
+**Window → bounds semantics.** The edge turns two strings into **snapped bounds** (hourly step);
+the *resolver* authors the output lattice:
 
-- **Parse** ISO 8601; offset-aware converted to UTC, **naive interpreted as UTC** (narrated in the
-  description). Unparsable → `bad-request`.
-- **A date with no time means the day it names** — `start="2026-07-20"` → 00:00, `end="2026-07-20"` →
-  through the **23:00 tick**. This is the inclusive-`end` rule applied at the granularity the caller
-  supplied: `end` is inclusive *of the cell containing it*, a date is a day-cell. Reading a bare date
-  as midnight instead would make "through the 20th" return **one hour** of the 20th — a silently short
-  answer. Consequence, accepted: `"2026-07-20"` and `"2026-07-20T00:00"` differ, because one names a
-  day and the other an instant.
-- **`start` floors to the hour** — `anchor = floor(start, 1h)`, the tick whose cell *contains* `start`.
-  Never `ceil`: that would silently drop the stretch the caller asked for.
-- **`end` is inclusive**, same flooring — `count = floor((end − anchor) / 1h) + 1`. So an 18:30 `end`
-  includes the 18:00 tick, and **`start == end` yields exactly one tick** — the "current conditions"
-  request, which falls out rather than needing its own path.
-- **Omitted `start` → `floor(now, 1h)`** (unchanged from Phase C).
-- **Omitted `end` → the reach end**: `min` over the requested parameters of `reach(p)`'s `valid_time`
-  upper bound, read **live at request time**. `Settings.default_horizon` is **deleted** — when the
-  caller does not say how far, they get what the profile serves. Because `RollingAxis.extent` resolves
-  against the clock, this is the *exact* footprint end, so the default request is admissible by
-  construction (no anchor overshoot, no conservative shrink).
-  - The reach end is **absolute, not a length from `start`**. Given `start` with `end` omitted, the
-    window is `[start, reach_end]` — `start` clips the beginning; it does not push the end outward.
-    (A length-from-`start` reading would overshoot the footprint whenever `start` is in the future.)
-  - **Degenerate case** — `start` beyond the reach end yields `count ≤ 0`. Build a **single tick at
-    `start`** and let admission answer. The edge must not pre-reject: reach may *understate* (it is
-    the spatially-dominant producer's window, and a regional producer may reach further), so a `start`
-    past it may still be servable, and the edge would be overruling the authority with an
-    understatement.
+- **Parse** ISO 8601 **datetimes only**: offset-aware converts to UTC, **naive reads as UTC**
+  (narrated). Unparsable → `bad-request`. A **bare date** (or week date — same probe) →
+  `bad-request` with guidance ("use a datetime like 2026-07-20T00:00"): loud rejection preserves
+  the session-0013 rationale — never a silently short answer — without day-cell semantics.
+- **`start` floors to the hour** — the lower bound is `floor(start, 1h)`, so the tick whose cell
+  *contains* `start` survives resolution. Never `ceil`: that would silently drop the stretch the
+  caller asked for.
+- **`end` is inclusive** of the tick containing it — the raw instant rides as the upper bound and
+  "last tick ≤ end" at resolution delivers it. An 18:30 `end` includes the 18:00 tick, and
+  **`start == end` yields exactly one tick** — the "current conditions" request, which falls out
+  rather than needing its own path.
+- **Omitted `start` → `floor(now, 1h)`** — an edge-authored bound, never an open lower side.
+- **Omitted `end` → open upper bound** — the winner serves to its own live window end;
+  `Settings.default_horizon` is **deleted**: when the caller does not say how far, they get what
+  the profile serves. The served end is **absolute** — `start` clips the beginning, never shifts
+  the end.
+- **Backwards window** (raw instants; implicit `start = floor(now)` when omitted) → `bad-request`.
+  A well-formed window with **no overlap** with the served range (e.g. history) →
+  `capability-mismatch` via admission.
 
-**Reading reach at the surface.** [003b](./done/003b-capability-domain.md) puts the per-parameter `Domain`
-on the `Capability` ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so **nothing needs
-threading**: the surface reads the profile's reach off the woven root
-(`gateway.best_view.capability.reach(p)`), and `compose()` keeps its signature. It gains one step —
-`binders → ProfileDef → validate_calculators → weave → Gateway` — so a Calculator wiring gap fails
-before any `Store` is allocated. Geometry needs no pass of its own: each node's `Capability` composes
-its `Domain` as the graph is built, so an unresolvable one fails at `weave`.
+**Reading reach at the surface.** [003b](./done/003b-capability-domain.md) puts the per-parameter
+`Domain` on the `Capability` ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), so
+**nothing needs threading**: the surface reads the profile's reach off the woven root
+(`gateway.best_view.capability.reach(p)`) and `compose()` keeps its signature. Geometry needs no
+pass of its own: each node's `Capability` composes its `Domain` as the graph is built, so an
+unresolvable one fails at `weave`, and a misconfigured profile fails at **startup** with a
+`CompositionError` naming the culprit. The narrated horizon stays true with no staleness (a
+`RollingAxis` length is clock-invariant); the served window itself is resolved per request by the
+winner.
 
-A misconfigured profile therefore fails at **startup** with a `CompositionError` — naming the
-calculator and its unproducible input, or the conflicting producers and axis — and, because the
-selection is made at build while the winner's `RollingAxis` stays live, the narrated window and the
-default `end` still track the clock with no staleness and no per-request resolution.
-
-No maximum-window guard: reach already bounds the request, an absurd `end` is an ordinary
-`capability-mismatch`, and an axis is `anchor + step + count`, so a large `count` costs O(1) to build
-before admission rejects it.
+No maximum-window guard: an absurd `end` just bounds a snapped request that resolution trims; a
+snapped axis carries `step + bounds`, so any window costs O(1) to state.
 
 Output resolution stays hourly (no `step` input). See `docs/v1-requirements.md` (Request / tool
 contract, Time axis).
 
 ## Acceptance criteria
 
-- [ ] `parameters` selects a subset of the 6 product params; omitting it returns all six.
-- [ ] `start` / `end` define a free hourly window: naive ISO reads as UTC, a bare date means the day
-      it names (`end="2026-07-20"` runs through the 23:00 tick), `start` floors to its containing
-      tick, `end` is inclusive, and `start == end` returns a single tick (current conditions).
-      Omitting `start` anchors at `floor(now, 1h)`.
-- [ ] Omitting `end` runs the window to the **reach end** — `min` over requested parameters of
-      `reach(p)`'s `valid_time` upper bound, read live — and that default request is admissible by
-      construction. `Settings.default_horizon` is gone. Given `start`, the reach end is absolute (it
-      clips, it does not shift); `start` past it yields a single tick that admission judges.
-- [ ] The narrated reach and default window are read off the woven root's `Capability` and are
-      **admissible by construction** at the served point. (No regional-vs-global case: v1 has no regional provider, and
-      the rule branch that would decide one is deliberately unbuilt → 003a, ADR-0007.)
-- [ ] A request whose extent exceeds a provider's temporal `Capability` is not admitted for that
-      provider (whole-request containment). Out-of-envelope windows (past `start`, over-horizon `end`)
-      resolve through admission as `capability-mismatch` — the edge never pre-rejects against `reach`,
-      which understates on T (a regional producer may reach further than the profile's dominating one)
-      and is exact on X/Y; `bad-request` is reserved for
-      windows malformed in themselves (unparsable, `start > end`).
+- [ ] `parameters` selects a subset of the 6 product params; omitting it returns all six. An
+      **explicitly empty list is `bad-request`** (an empty request is meaningless; `None` keeps
+      meaning "all served"); an empty *resolved* set (the no-provider profile) is
+      `capability-mismatch` at the edge.
+- [ ] `start` / `end` define a free hourly window from **ISO datetimes only**: naive reads as UTC,
+      a bare date is `bad-request` with guidance, `start` floors to its containing tick, `end` is
+      inclusive of the tick containing it, `start == end` returns a single tick, omitting `start`
+      anchors at `floor(now, 1h)`, and a backwards window is `bad-request`.
+- [ ] Omitting `end` leaves the snapped upper bound **open**: the winner serves to its own live
+      window end; `Settings.default_horizon` is gone; the served end is absolute (`start` clips,
+      never shifts it).
+- [ ] Bounds outside the served range yield the **servable part** — resolution serves
+      `bounds ∩ the winner's live window` ([m4](./m4-snapped-t-request-mode.md)); a no-overlap
+      window is `capability-mismatch` via intersective admission; enumerable-mode admission is
+      unchanged elsewhere; the response's `valid_time` shows what was served. (Mixed-reach
+      membership under a future second provider →
+      [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).)
 - [ ] The tool description narrates the served parameters plus the profile's reach, both off the woven
       root's `Capability`. The reach is narrated as a **relative horizon** (*"out to N ahead of the
       latest run"*), never as absolute instants: the description is built once and frozen for the
       process lifetime, so an absolute date would be stale within the hour. A `RollingAxis`'s length is
       invariant even as its bounds move, which is what makes the relative form true indefinitely.
-- [ ] `compose()` calls **`validate_calculators` before `weave`** and keeps its `-> Gateway` signature.
-      A profile with an unproducible Calculator input fails at **startup**, **before any `Store` is
-      allocated**, with a `CompositionError` naming the calculator and input; an unresolvable geometry
-      fails at `weave` for the same reason. Neither reaches the request path. Composition is fixed at
-      build while the winner's `RollingAxis` stays live, so the default window still tracks the clock.
-- [ ] Unit + mocked-transport integration tests cover subset selection, the reach-end default, and
-      out-of-envelope extents.
+- [ ] Unit + mocked-transport integration tests cover subset selection, the open-`end` default,
+      snapped fitting of out-of-range bounds, and the no-overlap mismatch; the live snapped
+      end-to-end validation is this ticket's landing parity run.
 
 ## User stories addressed
 

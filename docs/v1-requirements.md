@@ -174,10 +174,14 @@ the per-parameter provenance `expiration`.
 ### Time axis
 
 - **Hourly forecast, latest run.** The forward horizon is **capability-resolved, not a request cap**:
-  per parameter the Arbiter admits only providers whose Capability **temporally contains** the requested
-  extent (whole-request `Domain`-containment), picks the highest-priority such provider, and **falls back
-  wholesale** to the next; beyond the union of provider coverage a parameter is **`capability-mismatch`**
-  (omitted) — no splicing along `valid_time` in v1. The temporal footprint each Capability tests is a
+  the edge issues a **Snapped**-mode T request ([ADR-0002](./adr/0002-data-model.md) — hourly step,
+  the caller's bounds; an omitted `end` opens the upper bound, an omitted `start` defaults to
+  `floor(now)`) and **resolution serves `bounds ∩ the live served window`**; a window with **no
+  overlap** resolves as **`capability-mismatch`**. Admission on a snapped T axis is
+  **intersective**; enumerable requests keep whole-request `Domain`-containment. The Arbiter still
+  picks the highest-priority admitted provider and **falls back wholesale** — one winner serves the
+  whole (possibly shorter) window, single-origin; no splicing along `valid_time` in v1. Delivery
+  state of the mode lives in the [v1 delivery status](./tickets/README.md). The temporal footprint each Capability tests is a
   **clock-anchored window** around the run anchor (the provider's cadence,
   [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the `FootprintDomain`'s continuous
   T axis ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are

@@ -11,7 +11,9 @@ storeless/private-lattice shape now in place. Maintenance ticket m3 (live Provid
 **landed** ([RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md)): the deterministic
 suite lives under `tests/deterministic/`, the opt-in live parity harness under `tests/parity/`, and
 the Open-Meteo reference check passed its live acceptance run on 2026-07-25 — 004's second Provider
-is no longer gated on it.
+is no longer gated on it. The 003c align (2026-07-25) adopted relaxed window semantics and moved
+their mechanism to **[m4 — Snapped request mode (T instantiation)](./m4-snapped-t-request-mode.md)** (Ready, design
+tentative — its own align/RFC precedes implementation); 003c is Planned on top of it.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -64,7 +66,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | [002c — Provider nodata mask](./done/002c-provider-nodata-mask.md) | Done | 002 (done) | Vendor nulls preserved as nodata and JSON `null`. |
 | [003a — Profile reach](./done/003a-profile-reach.md) | Done | 002, 002b | Build-time profile reach. Resolver only; 003b relocates it onto `Capability`. |
 | [003b — Capability carries its domain](./done/003b-capability-domain.md) | Done | 003a (landed), m1 | `Capability.reach(parameter)`; reach is the root capability's domain; the standalone resolver is gone. |
-| [003c — Request shaping](./003c-request-shaping.md) | Partial | 003a, 003b | Free `start`/`end` windows, plus reach-based narration and default windows at the edge. Formerly numbered 003b. |
+| [003c — Request shaping](./003c-request-shaping.md) | Planned | m4, 003a, 003b | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` opens the bound to the winner's full window. Formerly numbered 003b. |
 | [004 — Second provider fallback](./004-second-provider-fallback.md) | Planned | 002, 003c, m3 | TWC leaf and wholesale priority fallback. |
 | [005 — Per-parameter selection](./005-per-parameter-selection.md) | Planned | 004 | One response assembled from different winning providers by parameter. |
 | [006 — Retentive store](./006-retentive-store-freshness.md) | Planned | 002 | Fresh reuse, partial refill, and replacement semantics. |
@@ -83,6 +85,7 @@ delivery sequence above and appears in no capability table.
 | [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
 | [m2 — Dissolve node-`Countable`](./done/m2-dissolve-node-countable.md) | Done | 003b (done) | `Countable` is a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. 006's assumed shape is in place. |
 | [m3 — Provider parity checks](./done/m3-provider-parity-checks.md) | Done | 002, 002b (done) | Opt-in live single-Provider parity harness (`uv run pytest tests/parity`) and the Open-Meteo reference check; wind calm floor. 004's new Provider must ship its own check. |
+| [m4 — Snapped request mode (T instantiation)](./m4-snapped-t-request-mode.md) | Ready (design tentative) | 003b, m3 (done) | The reserved Snapped mode as one generic axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window`, answer lattice from the winner. Blocks 003c. |
 
 ## Recommended execution order
 
@@ -93,8 +96,10 @@ delivery sequence above and appears in no capability table.
 4. ~~**003b**~~ — **landed**: reach moved onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md); the standalone resolver is gone.
 5. ~~**m3**~~ — **landed**: the parity harness is live and the Open-Meteo reference check passed its
    acceptance run; every new Provider contribution, beginning with 004, ships its own parity check.
-6. Complete **003c** on top of 003b, or **006** as an independent follow-on — ~~m2~~ has **landed**,
-   so the storeless/private-lattice shape 006 assumes is in place.
+6. Align and land **m4** (Snapped request mode, T instantiation — the 003c-adopted window
+   semantics at their proper layer), then complete **003c** on top of it; or **006** as an
+   independent follow-on —
+   ~~m2~~ has **landed**, so the storeless/private-lattice shape 006 assumes is in place.
 7. Complete **007** after 006.
 8. Build **004**, introducing **010** when the second provider creates the real unit-spread case.
 9. Close the v1 multi-provider surface with **005**, **008**, and **009**.
@@ -116,6 +121,9 @@ resolution.
 - [m3](./done/m3-provider-parity-checks.md) (done): scheduled and changed-provider automation
   remain deliberate follow-on work, recorded in the ticket's follow-on section; the retry-once
   policy carries a TODO if run-boundary false alerts appear.
+- [m4](./m4-snapped-t-request-mode.md): the whole design is a **tentative sketch** — the snapped
+  axis shape, intersective `matches`, the resolution home, and the ADR-0002/ADR-0004 amendments
+  are settled at its align, before any implementation.
 - [010](./010-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
   the first real multi-vendor spread.
 

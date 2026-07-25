@@ -107,7 +107,11 @@ pure refactor, no contract change. Not blocking; do not split preemptively.
 `sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
 tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
 axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
-Additive when the axis surface is next touched; v1 behaviour is correct as-is.
+**Trigger fired (2026-07-25): resolution is assigned to
+[m4](./tickets/m4-snapped-t-request-mode.md) stage 0** — m4 mints a new axis member and carves the
+lattice helpers, i.e. it *is* "the axis surface next touched"; the split lands as a pure refactor
+before the new member so the snapped machinery is born structural. On landing this concern moves
+out to the ADR-0002 amendment m4 carries.
 
 ## 15. Coarser-grid resampling and aggregation semantics
 
@@ -163,11 +167,14 @@ yet the per-cell **gap-filler** ("a whole-coverage producer joins the set at low
 `priority` reconciler yields the high-res source where it reaches and the whole model in the gaps") needs
 **partial** producers in the set — i.e. **intersection** admission (footprint ∩ request ≠ ∅). Under strict
 containment a partial-coverage producer is filtered out, so spatial gap-fill and any `valid_time` splicing
-**cannot occur**. **v1 is unaffected and in fact relies on containment** — wholesale fallback, "select,
-never combine", no horizon splicing. The open question: when coverage reconcilers
+**cannot occur**. **v1 relies on containment for enumerable requests** — wholesale fallback, "select,
+never combine", no horizon splicing. **A scoped, mode-local advance is proposed by
+[m4](./tickets/m4-snapped-t-request-mode.md)** (tentative): a **Snapped-T** request admits by
+non-empty T intersection and the single winner serves `bounds ∩ its window` — no per-cell fold, no
+splicing, reconciler untouched. The general question stays open: when coverage reconcilers
 ([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
-at which point the two rules must be reconciled (likely: containment is the *degenerate* case of
-intersection). Additive; no v1 work.
+at which point the rules must be reconciled (likely: containment is the *degenerate* case of
+intersection). Additive.
 
 Vertical matching is **axis-kind-owned** — neither containment nor intersection globally →
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md). The open part of this concern is only the
@@ -449,8 +456,9 @@ set to prove it.
 **Kind:** surface/product seam · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md) (the mechanism), [#30](#30-response-membership-under-runtime-degraded-fallback), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 
 A surface needs to tell callers **how far this profile reaches** — the MCP tool
-description narrates it, and the edge uses it to author the default window when the caller omits
-`end`. The mechanism is **Reach**: the per-parameter `Domain` a `Capability` publishes, composed up the
+description narrates it; window *fitting* is resolution's, via the Snapped-T request mode
+([m4](./tickets/m4-snapped-t-request-mode.md); membership notes →
+[#30](#30-response-membership-under-runtime-degraded-fallback)). The mechanism is **Reach**: the per-parameter `Domain` a `Capability` publishes, composed up the
 graph and read off the woven root ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). What stays
 open here is the **product** question, not the mechanism: **what a profile should promise**, given that
 the declared geometry can still overstate what a running system will serve — a provider that is down
@@ -595,8 +603,25 @@ explicit-absence response lets a strict client enforce all-or-nothing with one `
 succeeded; it has no value there), plus a *slice-extraction* need ("which intervals are useful?") that
 is introspection/metadata, not response shape. Filed here only so it is not mistaken for this concern.
 
+**Declared-edge trim (003c align 2026-07-25; mechanism moved to
+[m4](./tickets/m4-snapped-t-request-mode.md), tentative there).** A stated request window yields
+its servable part in one round trip: the edge issues a **Snapped-T** request (hourly step, caller
+bounds; an omitted `end` opens the upper bound, an omitted `start` defaults to `floor(now)` at the
+edge) and **resolution** serves `bounds ∩ the winner's live window`;
+only a zero-overlap window resolves `capability-mismatch` (intersective admission). An edge-side
+clamp was adopted first and superseded the same day — its reviews kept finding artifacts of
+simulating resolution at the edge (clock races, per-input ordering rules); the trail is in the
+003c ticket and RFC 0008. Membership at the **declared** edge is thus *trim by the winner*, while
+this concern's runtime-degraded case is unchanged (a fault after admission still drops the
+parameter whole with a reason). Recorded revisit, triggered by **the first parameter set with
+diverging T reach (the second provider)**: under one-domain Selections a snapped window is
+resolved per winner *per parameter set* — whether a diverging bundle should be served at its
+narrowest common window or at each winner's own (shorter parameters dropping where they end) is
+**undecided**; closed projection forbids per-parameter partial windows, so those are the shapes.
+
 **Three policies stay distinct:** **fallback** (who serves — the reconciler's),
-**membership** (what a beyond-boundary request gets — this concern), **narration** (what the client is
+**membership** (what a beyond-boundary request gets — declared edge: trim, above; runtime edge: this
+concern), **narration** (what the client is
 told up front — [#29](#29-narrated-reach-what-a-profile-promises)).
 
 ## 31. Positional alignment is asserted, never checked
