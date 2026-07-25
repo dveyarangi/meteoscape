@@ -199,7 +199,7 @@ class ParityReport:
 
 def compare(payload, reference, spec) -> ParityReport
 def write_evidence(provider_id, artifacts, secrets) -> Path   # → _artifacts/<UTC stamp>-<provider>/
-def format_summary(provider_id, request_desc, report, evidence_path | None) -> str
+def format_summary(provider_id, request_desc, report, evidence_path | None, *, secrets=None) -> str
 ```
 
 `compare` semantics, exhaustively — one behavior per branch, no discretion:
