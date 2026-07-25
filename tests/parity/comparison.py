@@ -65,12 +65,14 @@ class Mismatch:
     valid_time: datetime
     reference: float | None
     meteoscape: float | None
-    difference: float | None  # None ⇔ a nodata-position mismatch
+    difference: float | None  # None ⇔ nodata-position or calm-expectation mismatch
+    # Calm violation: reference is None (expected null), not the vendor direction.
 
 
 @dataclass(frozen=True)
 class ParityReport:
     mismatches: Sequence[Mismatch]
+    # compared: (tick x parameter) value-or-nodata judgments; excludes calm skips + missing ticks.
     compared: int
     skipped_calm: int
 
