@@ -169,17 +169,22 @@ classDiagram
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
   disagree with the Domain):
   - **Continuous** (`region`) — bounds, no discretization → projects to a **field**.
-  - **Snapped** — regular **step** fixed, anchor / extent open → resolvable against a declared grid.
+  - **Snapped** — caller **bounds** fixed, lattice open → resolved against a declared grid, which
+    supplies anchor **and** step; the answer is the grid's cells within the bounds.
   - **Enumerable** (`exact`) — concrete coordinate set (regular-anchored or irregular point set) →
     a materialized (countable) Coverage result.
 
 - **One regular descriptor unifies snapped / declared-grid / exact.** A regular lattice is
-  `{anchor, step, extent}`; its members differ only in which parts are fixed — **Snapped** fixes `step`
-  (+ request bounds), a **declared grid** fixes `anchor + step` (extent open), an **exact** lattice
-  fixes all three. So a declared grid is just the **anchored-regular member** — **shaped from the configured
-  `StoreSpec`; no provider declares a lattice
-  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md))** — and the read-back
-  resolution `snapped → exact = step(request) ⊕ anchor(grid) ⊕ bounds(request)` keeps **`bounds(request)`**.
+  `{anchor, step, extent}`; its members differ in which parts are fixed — a **Snapped** request fixes
+  **none** of them (only its bounds), a **declared grid** fixes `anchor + step` (extent open), an
+  **exact** lattice fixes all three. So a declared grid is just the **anchored-regular member** —
+  **shaped from the configured `StoreSpec`; no provider declares a lattice
+  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md))** — and the resolution
+  `snapped → exact = anchor(grid) ⊕ step(grid) ⊕ bounds(request)` keeps **`bounds(request)`**: the
+  resolver's grid decides where the ticks sit and how dense they are; the request decides only how
+  far. Cell-containment is therefore the **resolver's** duty — the tick whose cell contains a stated
+  bound survives because the resolver floors on its own lattice; no requester pre-floors (it holds
+  no step to floor with).
 - **Grid alignment is per storing node and per axis, and splits into two opposite-extent steps.** A
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
   declared lattice snaps onto it **and widens the extent outward to whole assimilable units**, so the
@@ -195,12 +200,13 @@ classDiagram
   Resolving to the caller's exact output is the
   **read-back, not the `Store`'s job**; the two steps move extent in **opposite directions** (quantize
   widens past the request, read-back crops back to it). The per-axis snap is `quantize`'s internal
-  mechanism (no standalone operation): an open-anchor regular axis borrows the grid's anchor (the
-  `valid_time` case), a **concrete coordinate snaps to its nearest grid node** (the lat/lon case);
-  `issue_time` is not requested, so it is never snapped. A request's **mode** (Snapped vs Enumerable) may
-  be resolved at the edge, but **internal nodes are handed enumerable (store-shaped) Selections**, never
-  Snapped. Store lattices are **private to the `Store`** and **emergent per node**; there is no global
-  lattice config and no public node `domain`.
+  mechanism (no standalone operation): a snapped axis adopts the grid's anchor and step within its
+  bounds (the `valid_time` case), a **concrete coordinate snaps to its nearest grid node** (the
+  lat/lon case); `issue_time` is not requested, so it is never snapped. A Snapped request is resolved
+  by **whichever node resolves** — a storing node's `quantize`, or a storeless leaf onto its private
+  vendor lattice; store **refill** Selections stay enumerable (store-shaped). Store lattices are
+  **private to the `Store`** and **emergent per node**; there is no global lattice config and no
+  public node `domain`.
 
 - **`issue_time` is a provenance stamp, not a Domain axis.** The per-Coverage / per-request `Domain`
   has **4 interpolable axes** (3 spatial + `valid_time`); `issue_time` (the forecast issuance a value

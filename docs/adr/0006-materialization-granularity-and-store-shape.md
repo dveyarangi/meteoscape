@@ -87,9 +87,9 @@ plane. The capability/matching half is
   data that is already local; the `SourceBinder` enforces the invariant loudly in both directions
   (a configured store on a materialized offering, like a missing store on a non-materialized one, is
   a `CompositionError`). A `Coverage` keeps `domain` — the positional
-  contract for `ParameterData`, derived from `capability.domain`, not stored twice. "Snapped resolves
-  at a storing `Reservoir`" stays behavioural: the node *has* a store and quantizes; no caller reads
-  the lattice.
+  contract for `ParameterData`, derived from `capability.domain`, not stored twice. Snapped resolution stays behavioural: the resolving node supplies its own lattice — a storing
+  `Reservoir` quantizes, a storeless leaf resolves onto its private vendor lattice — and no caller
+  reads either.
 
 ## Why
 

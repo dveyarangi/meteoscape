@@ -7,7 +7,7 @@
 - **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**on hold** — it planned the
   superseded edge-clamp approach and is kept as that decision's record; its surviving decisions
   stand, and it is re-staged after m4 lands).
-- **Depends on:** [m4](./m4-snapped-t-request-mode.md) (Ready, design tentative), and
+- **Depends on:** [m4](./m4-snapped-t-request-mode.md) (Ready, design aligned 2026-07-25), and
   [003b — Capability carries its domain](./done/003b-capability-domain.md) (which reshapes
   [003a](./done/003a-profile-reach.md); 003a depends on 002, 002b).
 - **Outcome:** Free `start`/`end` request windows (ISO datetimes) served as the caller's bounds ∩
@@ -32,7 +32,7 @@ Make the request flexible at the edge. The MCP adapter accepts optional `paramet
 the **6 product** params — temperature, precipitation, wind speed, wind direction, humidity, cloud
 cover; the internal `wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and
 builds the canonical `Selection`: a lat/lon **point** `Domain` whose T axis is a **Snapped-T**
-request — hourly step plus the caller's bounds ([m4](./m4-snapped-t-request-mode.md)). Resolution
+request — the caller's bounds as raw instants ([m4](./m4-snapped-t-request-mode.md)). Resolution
 serves `bounds ∩ the winner's live window`; admission on a snapped T axis is **intersective**
 (enumerable requests keep whole-request containment); a **no-overlap** window resolves as
 `capability-mismatch` through admission — the edge never rejects on reach's word, and
@@ -71,26 +71,31 @@ semantic no-op against the count-1 `2 m` declaration (same winner, same values; 
 label changes). It re-arises from its product point — derived parameters as composable DAGs
 ([roadmap](../product-roadmap.md) Phase 4) — with no decision to rediscover.
 
-**Window → bounds semantics.** The edge turns two strings into **snapped bounds** (hourly step);
-the *resolver* authors the output lattice:
+**Window → bounds semantics.** The edge turns two strings into **snapped bounds** — raw instants,
+no step; the *resolver*'s grid supplies anchor and step and authors the output lattice:
 
 - **Parse** ISO 8601 **datetimes only**: offset-aware converts to UTC, **naive reads as UTC**
   (narrated). Unparsable → `bad-request`. A **bare date** (or week date — same probe) →
   `bad-request` with guidance ("use a datetime like 2026-07-20T00:00"): loud rejection preserves
   the session-0013 rationale — never a silently short answer — without day-cell semantics.
-- **`start` floors to the hour** — the lower bound is `floor(start, 1h)`, so the tick whose cell
-  *contains* `start` survives resolution. Never `ceil`: that would silently drop the stretch the
-  caller asked for.
+- **`start` rides as the raw instant** — the *resolver* includes the tick whose cell *contains*
+  `start`, flooring on **its own** lattice (the edge holds no step to floor with —
+  [m4](./m4-snapped-t-request-mode.md)). Never a ceil semantics: the stretch the caller asked for
+  is served, not dropped.
 - **`end` is inclusive** of the tick containing it — the raw instant rides as the upper bound and
   "last tick ≤ end" at resolution delivers it. An 18:30 `end` includes the 18:00 tick, and
   **`start == end` yields exactly one tick** — the "current conditions" request, which falls out
   rather than needing its own path.
-- **Omitted `start` → `floor(now, 1h)`** — an edge-authored bound, never an open lower side.
-- **Omitted `end` → open upper bound** — the winner serves to its own live window end;
-  `Settings.default_horizon` is **deleted**: when the caller does not say how far, they get what
-  the profile serves. The served end is **absolute** — `start` clips the beginning, never shifts
-  the end.
-- **Backwards window** (raw instants; implicit `start = floor(now)` when omitted) → `bad-request`.
+- **Omitted `start` → `now`** — an edge-authored raw bound, never an open lower side; the
+  resolver's cell-containment yields the current tick.
+- **Omitted `end` → the folded reach end, read live** — a default *hint*, not a promise:
+  resolution still serves `bounds ∩ the winner's live window`, so a stale read trims harmlessly
+  (open-ended bounds are a deferred m4 form —
+  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s diverging-reach
+  trigger). `Settings.default_horizon` is **deleted**: when the caller does not say how far, they
+  get what the profile serves. The served end is **absolute** — `start` clips the beginning, never
+  shifts the end.
+- **Backwards window** (raw instants; implicit `start = now` when omitted) → `bad-request`.
   A well-formed window with **no overlap** with the served range (e.g. history) →
   `capability-mismatch` via admission.
 
@@ -105,7 +110,7 @@ unresolvable one fails at `weave`, and a misconfigured profile fails at **startu
 winner.
 
 No maximum-window guard: an absurd `end` just bounds a snapped request that resolution trims; a
-snapped axis carries `step + bounds`, so any window costs O(1) to state.
+snapped axis carries only bounds, so any window costs O(1) to state.
 
 Output resolution stays hourly (no `step` input). See `docs/v1-requirements.md` (Request / tool
 contract, Time axis).
@@ -117,12 +122,13 @@ contract, Time axis).
       meaning "all served"); an empty *resolved* set (the no-provider profile) is
       `capability-mismatch` at the edge.
 - [ ] `start` / `end` define a free hourly window from **ISO datetimes only**: naive reads as UTC,
-      a bare date is `bad-request` with guidance, `start` floors to its containing tick, `end` is
-      inclusive of the tick containing it, `start == end` returns a single tick, omitting `start`
-      anchors at `floor(now, 1h)`, and a backwards window is `bad-request`.
-- [ ] Omitting `end` leaves the snapped upper bound **open**: the winner serves to its own live
-      window end; `Settings.default_horizon` is gone; the served end is absolute (`start` clips,
-      never shifts it).
+      a bare date is `bad-request` with guidance, `start`'s containing tick is served
+      (resolver-side cell containment), `end` is inclusive of the tick containing it,
+      `start == end` returns a single tick, omitting `start` begins at the tick containing now,
+      and a backwards window is `bad-request`.
+- [ ] Omitting `end` fills the bound from the **folded reach end, read live** (a hint —
+      resolution's intersection makes staleness harmless); `Settings.default_horizon` is gone;
+      the served end is absolute (`start` clips, never shifts it).
 - [ ] Bounds outside the served range yield the **servable part** — resolution serves
       `bounds ∩ the winner's live window` ([m4](./m4-snapped-t-request-mode.md)); a no-overlap
       window is `capability-mismatch` via intersective admission; enumerable-mode admission is

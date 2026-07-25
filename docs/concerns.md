@@ -26,6 +26,12 @@ and `StoreFactory`. Decide the smallest stable facade and lifecycle, including w
 is directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
 `Selection`, `Coverage`, or higher-level alternatives become public; and what, if any, boundary is
 shared with server adapters. These are options under investigation, not implied commitments.
+Selection-composition ergonomics belong here too: request axis kinds must be navigable by
+embedders (mode builders over hand-assembled axes) — the mode registry is
+[architecture §Request modes](./architecture.md#request-modes). If the
+[#23](#23-spatial-vs-temporal-regularaxis-types) spatial/temporal axis split lands, it must stay
+invisible at this surface: one axis name per kind (coordinate-kind autodetected) or absorbed by
+builders.
 
 **Open — public failures:** the current categories describe different layers but do not form a
 documented embedding contract. Pydantic settings validation escapes separately; `CompositionError`
@@ -107,11 +113,16 @@ pure refactor, no contract change. Not blocking; do not split preemptively.
 `sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
 tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
 axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
-**Trigger fired (2026-07-25): resolution is assigned to
-[m4](./tickets/m4-snapped-t-request-mode.md) stage 0** — m4 mints a new axis member and carves the
-lattice helpers, i.e. it *is* "the axis surface next touched"; the split lands as a pure refactor
-before the new member so the snapped machinery is born structural. On landing this concern moves
-out to the ADR-0002 amendment m4 carries.
+**Trigger status (2026-07-25): deliberately not fired by
+[m4](./tickets/m4-snapped-t-request-mode.md)** — m4 reforges the request-side axis surface but adds
+no coordinate-kind dispatch (its snapped member is bounds-only: admission is interval intersection,
+the answer lattice derives from the vendor response). **New constraint, recorded at the same
+align:** a public split would double every request-facing axis kind (`SelectableAxis`: regular /
+vantage / snapped), so when the split lands it must stay **invisible to request authors** — one
+constructor name per kind with coordinate-kind autodetection, or facade builders absorbing it
+([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape). Expected
+internal toucher: [006](./tickets/006-retentive-store-freshness.md)'s `quantize`
+([#22](#22-lattice-helpers-vs-domain--sampling-module-split) stays untriggered).
 
 ## 15. Coarser-grid resampling and aggregation semantics
 
@@ -605,9 +616,10 @@ is introspection/metadata, not response shape. Filed here only so it is not mist
 
 **Declared-edge trim (003c align 2026-07-25; mechanism moved to
 [m4](./tickets/m4-snapped-t-request-mode.md), tentative there).** A stated request window yields
-its servable part in one round trip: the edge issues a **Snapped-T** request (hourly step, caller
-bounds; an omitted `end` opens the upper bound, an omitted `start` defaults to `floor(now)` at the
-edge) and **resolution** serves `bounds ∩ the winner's live window`;
+its servable part in one round trip: the edge issues a **Snapped-T** request (caller bounds as raw
+instants; the edge fills an omitted `end` from the folded reach end read live — a hint the
+intersection trims harmlessly when stale — and an omitted `start` from now) and **resolution**
+serves `bounds ∩ the winner's live window` on the winner's own lattice;
 only a zero-overlap window resolves `capability-mismatch` (intersective admission). An edge-side
 clamp was adopted first and superseded the same day — its reviews kept finding artifacts of
 simulating resolution at the edge (clock races, per-input ordering rules); the trail is in the

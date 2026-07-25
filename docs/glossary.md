@@ -18,6 +18,14 @@ _Avoid_: Geometry, lattice
 An EnumerableDomain whose axes may use different enumerable representations. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: RegularDomain, Grid
 
+**SelectionDomain**:
+The request-side Domain representation composed from SelectableAxis members; structurally separable without narrowing the Selection contract, and never enumerable. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: SelectedDomain, GridDomain (the materialized and store shape), request lattice
+
+**SelectableAxis**:
+The axis kinds a request may carry — regular (exact), vantage (aperture), or snapped (bounds-only). → [ADR-0002](./adr/0002-data-model.md), [architecture.md](./architecture.md#request-modes)
+_Avoid_: input axis, request axis
+
 **Axis**:
 The geometry of one dimension of a separable Domain; an EnumerableAxis adds an ordered sequence of Cells. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Dimension, coordinate array
@@ -186,7 +194,11 @@ The canonical request formed by a Domain and a set of Parameters. → [ADR-0002]
 _Avoid_: Need
 
 **Selection mode**:
-The continuous, snapped, or enumerable form of Domain carried by a Selection. → [ADR-0002](./adr/0002-data-model.md)
+The continuous, snapped, or enumerable form of Domain carried by a Selection — encoding what the caller fixes about the answering lattice: all of it (enumerable), only bounds with the resolver's grid supplying anchor and step (snapped), or a continuous region wanting a field (continuous). → [ADR-0002](./adr/0002-data-model.md), [architecture.md](./architecture.md#request-modes)
+
+**Snapped**:
+The request mode that fixes only an axis's bounds; the resolver's grid supplies anchor and step, and the answer is the grid's cells within the bounds. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Soft window, clamped window, bounded-ANY (defers regularity too)
 
 **Canonical lattice**:
 A Store-private per-axis grid used to determine storable coordinates. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
@@ -285,6 +297,10 @@ _Avoid_: Builder, compiler, orchestrator, planner
 **Embedding surface**:
 The supported Python package boundary through which a host application uses Meteoscape's weather capabilities without running a protocol server. Its API shape is unresolved. → [architecture.md](./architecture.md#embedding-surface)
 _Avoid_: Internal composition API, headless mode, client SDK
+
+**Edge record**:
+The living per-surface seam document between architecture and user-oriented design, aggregating one product edge's status: contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Customer-facing edge descriptions derive from it as subsets. → [m5](./tickets/done/m5-edge-records.md)
+_Avoid_: public API guide (a derivation, not the record), surface spec, contract doc; *edge* alone (the system's outer boundary, not the document about it)
 
 **Gateway**:
 The caller-policy boundary in front of a served profile. → [architecture.md](./architecture.md#gateway--caller-policy-boundary)

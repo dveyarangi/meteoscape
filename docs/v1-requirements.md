@@ -174,9 +174,10 @@ the per-parameter provenance `expiration`.
 ### Time axis
 
 - **Hourly forecast, latest run.** The forward horizon is **capability-resolved, not a request cap**:
-  the edge issues a **Snapped**-mode T request ([ADR-0002](./adr/0002-data-model.md) — hourly step,
-  the caller's bounds; an omitted `end` opens the upper bound, an omitted `start` defaults to
-  `floor(now)`) and **resolution serves `bounds ∩ the live served window`**; a window with **no
+  the edge issues a **Snapped**-mode T request ([ADR-0002](./adr/0002-data-model.md) — the caller's
+  bounds as raw instants; the edge fills an omitted `end` from the folded reach end read live, and
+  an omitted `start` from now) and **resolution serves `bounds ∩ the live served window`** on the
+  winner's own lattice; a window with **no
   overlap** resolves as **`capability-mismatch`**. Admission on a snapped T axis is
   **intersective**; enumerable requests keep whole-request `Domain`-containment. The Arbiter still
   picks the highest-priority admitted provider and **falls back wholesale** — one winner serves the

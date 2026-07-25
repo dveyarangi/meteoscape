@@ -1,17 +1,20 @@
 # m4 — Snapped request mode (T instantiation)
 
-- **Status:** Ready (maintenance) — **design tentative**: the sketch below awaits its own
-  align/RFC before implementation.
+- **Status:** Ready (maintenance) — **design settled at the 2026-07-25 align** (mode inverted to
+  bounds-only; `SnappedAxis` / `SelectionDomain` named; stage 0 deferred).
+- **Plan:** [RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md).
 - **Depends on:** [003b — Capability carries its domain](./done/003b-capability-domain.md) (reach
   on the `Capability`), [m3](./done/m3-provider-parity-checks.md) (parity harness guards the
   provider change), both done.
 - **Blocks:** [003c — Request shaping](./003c-request-shaping.md) — its window semantics ride this
   mode instead of edge-side clamping.
 - **Outcome:** the request path supports the **Snapped** mode
-  [ADR-0002](../adr/0002-data-model.md) reserves — *"step fixed, anchor/extent open, resolvable
-  against a declared grid"* — as **one generic axis member** (coordinate-generic, like
-  `RegularAxis`), **instantiated on T only**: "serve whatever you have within these bounds" is
-  resolved **at the authority** (the producer, against its live window), not simulated at the
+  [ADR-0002](../adr/0002-data-model.md) reserves — *"bounds fixed, lattice open, resolved against
+  a declared grid"* (**definition inverted at the 2026-07-25 align**: the request fixes **only
+  bounds**; the resolver's grid supplies anchor **and** step — no product case needed the former
+  step-carrying form, and the driver product needs this one) — as **one bounds-only axis member**
+  (a per-axis pattern), **instantiated on T only**: "serve whatever you have within these bounds"
+  is resolved **at the authority** (the producer, against its live window), not simulated at the
   edge. One mechanism; per-axis enablement is drivers-and-invariants, not new algebra (see Out of
   scope).
 
@@ -23,67 +26,95 @@ implementation (clamping) each found real holes — a clock-race producing spuri
 `capability-mismatch`, ordering rules that survived only per input-type, vendor-clamp failure
 modes, degenerate folds — and every one of them lived in code *simulating* at the edge what the
 algebra already reserves a mode for. The Snapped mode's resolution law
-(`snapped → exact = step(request) ⊕ anchor(grid) ⊕ bounds(request)`, ADR-0002) is designed and
-unbuilt; [006](./006-retentive-store-freshness.md)'s store `quantize` depends on sibling
+(`snapped → exact = anchor(grid) ⊕ step(grid) ⊕ bounds(request)`, ADR-0002 as amended at this
+align) is designed and unbuilt; [006](./006-retentive-store-freshness.md)'s store `quantize` depends on sibling
 machinery ("only a regular axis can be snapped-to"). Building the mode once replaces the
 simulation and retires its failure class.
 
 Maintenance, not product: the MCP surface is unchanged until 003c consumes the mode; the
 deterministic and parity suites must stay green throughout.
 
-## Open issue (what the align must settle)
+## ~~Open issue~~ Settled (align 2026-07-25)
 
-How a **Snapped-T** request is represented, admitted, and resolved on the request path — and the
-consequences for admission semantics ([#13](../concerns.md#13-candidate-admission-containment-vs-intersection):
-intersection on a snapped axis vs the containment rule the enumerable mode keeps), for the
-response's lattice authority (the winner's anchor, not the edge's), and for what the cadence model
-still owes (fetch bounds + freshness/run identity — no longer a promised response extent).
+~~How a **Snapped-T** request is represented, admitted, and resolved on the request path~~ — all
+settled below: representation is `SelectionDomain` carrying a `SnappedAxis`
+([#13](../concerns.md#13-candidate-admission-containment-vs-intersection)'s scoped position:
+intersective admission, single winner wholesale), lattice authority is the winner's (anchor *and*
+step — the mode inverted to bounds-only), and the cadence model owes fetch bounds +
+freshness/run identity, never a promised response extent.
 
-## Tentative sketch (awaiting revision — not a plan)
+## Design (settled at the 2026-07-25 align)
 
-- **Axis member:** one **generic** snapped axis carrying `step` and caller `bounds`, the **upper
-  end optionally open** (an omitted `end` → unbounded: "as far as you go"). An omitted `start` is
-  **not** open — the edge authors it at `floor(now)` (003c's "begin now" default is surface
-  policy, not mode semantics; an open lower bound would silently serve from the run anchor).
-  **Bounds carry cell-containment pre-applied on the lower side**: the edge floors the `start`
-  bound to the step (so the tick whose cell contains the stated instant survives resolution, even
-  against a foreign anchor), while the `end` bound stays the raw instant ("last tick ≤ end" makes
-  end-inclusivity fall out at resolution). Anchor and count deliberately absent; coordinate-generic
-  like `RegularAxis` (`float | datetime` — the
-  [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) split pressure applies to it
-  equally). Name and exact shape open.
+- **Axis member (inverted, decided 2026-07-25):** one **bounds-only** snapped axis carrying caller
+  `bounds` as **raw instants** — a closed `Interval[datetime]`, **no open ends** (decided
+  2026-07-25): an omitted `end` is **edge policy, filled from the folded reach end** read live — a
+  default *hint*, safe under staleness because resolution intersects (a stale hint trims, never
+  faults — unlike the retired clamp, nothing depends on the read being exact); an omitted `start`
+  is filled at `now` (003c's "begin now" default is likewise surface policy, not mode semantics).
+  Open-endedness (`upper = None`, "as far as you go") is a **deferred additive form**; its hour is
+  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s diverging-reach
+  trigger, where an open end would serve the winner's own window instead of the reach-min fold.
+  **No `step`, no anchor, no count**: the resolver's grid supplies
+  anchor and step, so **cell-containment is the resolver's duty** — the tick whose cell contains a
+  stated bound survives because the resolver floors the lower bound on *its own* lattice, and
+  "last tick ≤ end" makes end-inclusivity fall out. ~~The edge pre-floors the lower bound~~ (dead
+  with the inversion — it existed only because the request carried a step). **Hierarchy (decided
+  2026-07-25):** non-enumerable, request-side, a sibling of `ContinuousAxis` — **not** an
+  `IntervalAxis` (it must never claim enumerability: no cells until resolved) and not a vantage
+  (vantage answers on the asker's own cell; snapped on the resolver's lattice — they share only
+  intersective `matches`). Minted **temporal-only** (`Interval[datetime]` bounds); the spatial
+  sibling is a missing type for the Grid-realization driver. Named **`SnappedAxis`** (decided
+  2026-07-25).
+- **Request Domain representation (decided 2026-07-25): `SelectionDomain`.** The request-side
+  representation a surface or embedder composes from **`SelectableAxis`** members
+  (`RegularAxis | VantageAxis | SnappedAxis`) — *structurally* separable (it exposes `axis()`,
+  which is all admission's per-axis gate reads) but **never nominally narrowed**:
+  `Selection.domain` stays the base `Domain` (ADR-0002 / #12 — a future non-separable request
+  composition, e.g. a station list, arrives as a sibling representation or a widened
+  `SelectionDomain` family, and total `matches` keeps uncomparable pairs a survivable `False`).
+  Never enumerable as a type. The answer is **realized from** the request, not the request object
+  reused: enumerable request axes pass through into the answer's `GridDomain` (the vantage Z cell
+  exactly as today), a snapped T is replaced by the vendor-derived axis. `GridDomain` remains a
+  legal *internal* Selection domain — 006's store refill hands the leaf enumerable store shapes —
+  while `SelectionDomain` is the edge-authored form; the MCP edge migrates to it at 003c (m4 stays
+  product-invisible).
 - **Admission:** mode-dependent `matches` — a snapped axis admits by **non-empty intersection**
   with the declared window (`VantageAxis` precedent for intersective `matches`); enumerable
   requests keep containment. A scoped, mode-local v1 position on #13 — single winner, wholesale,
   no per-cell fold, no `valid_time` splicing.
 - **Resolution:** the winning producer resolves `bounds ∩ its live window` onto **its own** hourly
-  anchor and derives the answer lattice **from the vendor response** (no promised count — shorter
+  lattice (its anchor *and* step) and derives the answer lattice **from the vendor response** (no promised count — shorter
   vendor data is an honest shorter answer; the vendor is the authority on what exists).
   **Mode-scoped, per shape-correspondence (clarified 2026-07-25):** the leaf's assembly branches
   on the request mode, both branches strict. *Enumerable* requests keep the existing length
   assertion against `sel.domain` unchanged — that path stays load-bearing (006's store refill
   hands the leaf enumerable store shapes; tests and future surfaces likewise), and closed
   projection for enumerable selections is untouched. *Snapped* requests replace it with coherence
-  validation of the response's own claim: regular hourly ticks on one anchor, within the requested
-  bounds, arrays consistent (the [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)
+  validation of the response's own claim: ticks on one regular lattice — the winner's own (hourly
+  for Open-Meteo, validated against its own claimed cadence, never a request step) — within the
+  requested bounds, arrays consistent (the
+  [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)
   check class re-aimed at the answer) — the vendor decides what exists, never whether the answer
   is well-formed; garbage or gapped series stay a loud `RuntimeFailure`.
 - **Empty intersection:** no producer intersects → `capability-mismatch` (admission's answer, as
-  today).
+  today). A **raced-empty** intersection at fetch — admission passed, then the window rolled past
+  `bounds.upper` before the leaf computed fetch bounds — resolves as `capability-mismatch` too
+  (the request *is* unservable now; same category, one guard).
 - **Shape-correspondence** (ADR-0001) already states the contract: the answer mirrors the
   question's mode — an enumerable answer to a snapped question, on the resolver's lattice.
 - **Non-duplication constraints (clarified 2026-07-25)** — what keeps the X/Y instantiation a
   wiring change:
-  1. *Snap arithmetic has one home*: the thin `lattice.py`
-     [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) reserved for its
-     "third consumer" — snapped resolution is that consumer. Align-to-step, offset, and count
-     live there once. **[#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) resolves as
-     this ticket's stage 0** (decided 2026-07-25): its recorded trigger — "additive when the axis
-     surface is next touched" — is firing, so the spatial/temporal axis-type split lands as a
-     pure suite-green refactor *before* the snapped member is minted. Consequences: dispatch is
-     structural (no `isinstance` crawl), the carved helpers land on their final foundation once,
-     and m4 builds **only exact temporal math** — the float-tolerance spatial-snap half is
-     deferred to the X/Y driver as a *missing type*, not dead branches.
+  1. *No new snap arithmetic, no stage 0* (final, 2026-07-25): the bounds-only member means
+     admission is interval intersection on `.extent` and the answer lattice derives from the
+     vendor response (the normalizer's existing regularity validation) — m4 adds **no
+     align-to-step math** and never dispatches on coordinate kind. The
+     [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) spatial/temporal split was
+     weighed as a stage 0 and **deferred**: as public sibling types it would double every
+     request-facing axis kind — an embedding-vocabulary cost that must be settled first (split
+     kept internal via construction autodetection, or absorbed by facade builders — recorded at
+     #23 / [#39](../concerns.md#39-python-embedding-surface-and-public-failures)).
+     [006](./006-retentive-store-freshness.md)'s `quantize` remains the expected toucher;
+     [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) stays untriggered.
   2. *Admission and resolution are per-axis folds, mode-dispatched by axis kind* — the existing
      `matches` per-axis-gate pattern (`VantageAxis` precedent) mirrored on the resolution side:
      enumerable axes pass through, snapped axes resolve, vantage as today. Mode combinations are
@@ -93,7 +124,8 @@ still owes (fetch bounds + freshness/run identity — no longer a promised respo
      step-lattice within the requested bounds" is the same predicate for vendor times and,
      later, vendor grid coordinates; the leaf's parser feeds it per-axis.
 - **Cadence retreat:** `CadenceDef` keeps run identity, freshness, and fetch bounds; it stops
-  implying an exact servable extent the edge must pre-compute.
+  implying an exact servable extent the edge must pre-compute (the edge may still fill a default
+  `end` from the live reach — a hint resolution trims, never a promised extent).
 - **No store dependency, no temporary bend (clarified 2026-07-25).** Snapped resolution targets
   *the resolver's own grid*, whichever node resolves — ADR-0002's snap law names "a declared
   grid", and store lattices are "private to the Store and **emergent per node**" (one instance,
@@ -108,22 +140,32 @@ still owes (fetch bounds + freshness/run identity — no longer a promised respo
 
 ## Docs to sync (at landing, per the align's resolutions)
 
-- [ADR-0002](../adr/0002-data-model.md) — clarify snapped resolution keeps
-  `bounds(request) ∩ declared extent` (the intersective reading) and the open-ended-bounds form.
+- [ADR-0002](../adr/0002-data-model.md) — ~~clarify snapped resolution keeps
+  `bounds(request) ∩ declared extent` (the intersective reading) and the open-ended-bounds form.~~
+  **Done at the align (2026-07-25):** the mode definition inverted to bounds-only (grid supplies
+  anchor + step; law `snapped → exact = anchor(grid) ⊕ step(grid) ⊕ bounds(request)`;
+  resolver-side cell containment), the "internal nodes are never handed Snapped" rule narrowed to
+  store-refill Selections, and the stale step-carrying wording swept from v1-requirements, 003c,
+  concerns #23/#30, ADR-0006, and the glossary (new *Snapped* entry). Remaining at landing: the
+  `SelectionDomain` / `SelectableAxis` representation (answers realized from requests, never the
+  request object reused); open-ended bounds are **deferred** (#30's diverging-reach trigger), not
+  part of this landing.
 - [ADR-0004](../adr/0004-producer-resolution-and-capability.md) — admission language becomes
-  mode-dependent (containment for enumerable, intersection for snapped).
+  mode-dependent (containment for enumerable, intersection for snapped). **At landing.**
 - [#13](../concerns.md#13-candidate-admission-containment-vs-intersection) — record the scoped v1
-  position; the general per-cell-fold widening stays open.
+  position; the general per-cell-fold widening stays open. **At landing.**
 - [v1-requirements §Time axis](../v1-requirements.md) and
-  [003c](./003c-request-shaping.md) — already carry the direction; firm the wording.
-- [architecture.md](../architecture.md) — the Selection/mode sentence gains the snapped request
-  example if needed.
+  [003c](./003c-request-shaping.md) — **done at the align (2026-07-25):** bounds-only wording,
+  raw-instant bounds, resolver-side cell containment, reach-filled default `end`.
+- [architecture.md](../architecture.md) — ~~the Selection/mode sentence gains the snapped request
+  example if needed.~~ **Done at the align (2026-07-25):** a §Request modes section (mode = the
+  caller's knowledge of the answering lattice; per-axis use-case registry — snapped X/Y reserved
+  for Grid realization, snapped Z structurally inapplicable), and the two stale
+  "snapped requires a storing target" lines corrected to "the resolver's own private lattice".
+  Glossary *Selection mode* carries the knowledge-state framing.
 
-## Acceptance criteria (draft — to be firmed at the align)
+## Acceptance criteria (firmed at the 2026-07-25 align)
 
-- [ ] Stage 0: the [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) spatial/temporal
-      axis-type split lands as a pure refactor — suite green, no design contract weakened (the m1
-      bar) — before the snapped member exists.
 - [ ] A Snapped-T Selection is representable, admitted by intersection, and resolved by the
       Open-Meteo leaf onto its own lattice from the live response.
 - [ ] Enumerable requests behave exactly as before (mode coexistence; deterministic suite green
@@ -135,19 +177,19 @@ still owes (fetch bounds + freshness/run identity — no longer a promised respo
 - [ ] No `valid_time` splicing: one winner serves the whole (possibly shorter) window,
       single-origin.
 - [ ] **Non-duplication guard:** the design document can truthfully state — *"enabling snapped
-      X/Y is: the edge constructs a snapped X/Y axis, and the Timeline-only invariant is lifted;
-      zero new methods in providers, Arbiter, or resolution."* If that sentence is false, the
-      shape is wrong and the align is not done.
+      X/Y is: mint the spatial sibling type, the edge constructs it, and the Timeline-only
+      invariant is lifted; zero new methods in providers, Arbiter, or resolution."* If that
+      sentence is false, the shape is wrong and the align is not done.
 
 ## Out of scope
 
 - 003c's surface work (parsing, narration, defaults) — rides this ticket, stays there.
-- **Snapped X/Y — same member, deliberately not enabled**: its answer is a spatial **Grid**, and
-  the v1 invariant is *"Timeline realization, no Grid output"*
+- **Snapped X/Y — same pattern (a spatial sibling type), deliberately not minted**: its answer is
+  a spatial **Grid**, and the v1 invariant is *"Timeline realization, no Grid output"*
   ([v1-requirements](../v1-requirements.md)) — off-grid points are answered at the requested point
   by read-time homogenization ([007](./007-off-grid-homogenization.md)), never by emitting the
   provider's grid. When the Grid-realization driver arrives (roadmap), enabling X/Y should be
-  wiring over this ticket's generic member, not new algebra.
+  the sibling type plus edge wiring over this ticket's pattern, not new algebra.
 - Snapped Z — Z already has its own request modes (vantage / cell-addressing, ADR-0002).
 - Store-lattice snapping (`quantize`) — [006](./006-retentive-store-freshness.md)'s.
 - Coverage reconcilers / per-cell folds (#28) — untouched by the scoped #13 position.
