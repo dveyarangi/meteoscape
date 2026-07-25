@@ -30,7 +30,8 @@ class CapabilityMismatch(MeteoscapeError):
 class RuntimeFailure(MeteoscapeError):
     """A producer could not produce: 5xx, timeout, malformed upstream response.
 
-    An exception that makes the Arbiter fall through to the next candidate.
+    Propagates and fails the whole request; fall-through to the next candidate arrives with
+    wholesale priority fallback (ticket 004).
     """
 
 
