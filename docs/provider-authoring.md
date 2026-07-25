@@ -30,18 +30,34 @@ Each Provider author should:
 1. Build the real Meteoscape root with only the Provider under test enabled, plus the Calculators
    needed to expose products derived solely from that Provider.
 2. Send the same location, time window, and parameter request through that root and through an
-   independent reference reader.
+   independent reference reader, and compare at the root's **public protocol payload** (today: the
+   MCP response) — never at engine internals. Parity judges the whole composed path, including the
+   serialization edge where unit labels, nodata-as-`null`, and time formatting live.
 3. Prefer a provider-maintained official client when it exposes the required semantics. If none is
-   available or suitable, use a minimal direct fetch and parse of the provider's public response.
-4. Keep the reference reader independent: it must not call the Provider, its `Normalizer`, its taps,
-   or Meteoscape conversion helpers.
+   available or suitable, use a minimal direct fetch and parse of the provider's public response —
+   and record the suitability justification in the check, so the deviation is conscious rather than
+   habitual.
+4. Keep the reference reader independent **structurally**: the reader module imports no Meteoscape
+   code at all — not the Provider, its `Normalizer`, its taps, or conversion helpers, and nothing
+   that transitively reaches them. The deterministic suite enforces this with a guard test; only
+   the parity test file (which composes the root) may import Meteoscape.
 5. Align values by their declared coordinates and valid times, convert the reference into canonical
    units independently, and compare every parameter the single-Provider profile exposes for the case.
 6. Declare comparison semantics explicitly: exact equality for lossless pass-through values,
    justified numeric tolerances for conversions, circular distance for direction, and matching nodata
-   positions.
-7. On failure, retain enough evidence to reproduce the comparison: both requests, both responses,
-   coordinates, valid-time axis, units, and per-parameter differences.
+   positions. Where the engine deliberately withholds a value as nodata under a defined condition
+   (for example `wind_direction` below the wind Calculator's calm floor), the check adopts the
+   engine's own named constant for that condition — never a reinvented threshold that can drift.
+7. Absorb the vendor's model-run boundary: the two fetches happen moments apart, so a run
+   publishing between them produces a legitimate mismatch. Retry the whole comparison once,
+   composing a **fresh root** for the attempt — a reused root may serve retained values from the
+   first attempt and can never clear the boundary.
+8. On failure, retain enough evidence to reproduce the comparison: both requests, both raw
+   responses, coordinates, valid-time axis, units, and per-parameter differences. Parity evidence
+   is perishable — the vendor forecast that produced a mismatch rolls over within hours — so
+   retention happens at failure time, not on request. Raw vendor responses are failure evidence
+   only, never the comparison target: comparing raws would validate the fetch while skipping the
+   parse → normalize → convert → derive chain where drift actually bites.
 
 The check must use bounded requests and respect the provider's credentials, quotas, attribution, and
 terms of use. Secret-bearing live checks must never expose credentials in fixtures, logs, or failure

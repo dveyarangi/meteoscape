@@ -110,7 +110,8 @@ resolution.
 - [005](./005-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
 - [006](./006-retentive-store-freshness.md): settle the private store-lattice representation.
-- [m3](./m3-provider-parity-checks.md): choose the opt-in harness/command shape; scheduled and
+- [m3](./m3-provider-parity-checks.md): ~~choose the opt-in harness/command shape~~ — resolved
+  (align 2026-07-25, [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)); scheduled and
   changed-provider automation remain follow-on work.
 - [010](./010-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
   the first real multi-vendor spread.
