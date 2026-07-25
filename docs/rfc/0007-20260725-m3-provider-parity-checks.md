@@ -28,12 +28,13 @@ deterministic gate.
      `tests/deterministic` keeps the 13 `from fakes import ...` files working with zero import
      edits; `tests` makes `parity` an importable package (`parity.comparison`,
      `parity.readers.open_meteo`), which the engine's own deterministic unit tests and the guard
-     test require (`tests/parity/` and `tests/parity/readers/` each carry an `__init__.py`). CI's
-     bare `uv run pytest` is steered by `testpaths` with no workflow change, and `pyright` / `ruff`
-     configs already cover `tests` recursively — which means **parity code sits inside the default
-     static gates**: it is type-checked and linted on every PR without ever executing (that is what
-     makes the "pyright green without network" criterion apply to it; do not exclude `tests/parity`
-     from `pyright`).
+     test require (`tests/parity/` and `tests/parity/readers/` each carry an `__init__.py`).
+     Ruff's `src` gains `tests/deterministic` so `fakes` stays a first-party isort root (otherwise
+     I001 wants a third-party blank line before `meteoscape`). CI's bare `uv run pytest` is steered
+     by `testpaths` with no workflow change, and `pyright` / `ruff` configs already cover `tests`
+     recursively — which means **parity code sits inside the default static gates**: it is
+     type-checked and linted on every PR without ever executing (that is what makes the "pyright
+     green without network" criterion apply to it; do not exclude `tests/parity` from `pyright`).
 
 2. **The harness is a library coupled through data; the comparison boundary is the MCP payload.**
    Parity hunts drift between our canned assumptions and the live producer, so its value is
@@ -139,6 +140,11 @@ deterministic gate.
      composed with and scrubs those values from everything it writes (URLs, headers, bodies). A
      no-op for keyless Open-Meteo; the rule exists before the first secret-bearing Provider (TWC,
      004) rather than being retrofitted.
+   - **Mechanism (aligned 2026-07-25):** serialize each artifact to text, then substring-replace
+     every non-empty secret **value** before writing the file (same scrub on any summary text that
+     could echo request material). Nested URLs/headers/bodies are covered without a key catalogue
+     or a recursive object walker. Empty secret strings are skipped (would otherwise erase the
+     whole artifact). Replacement token: `"***"`.
 
 ## Code shapes
 
@@ -203,6 +209,9 @@ def format_summary(provider_id, request_desc, report, evidence_path | None) -> s
    tick position (never a silent skip). The reference may be a superset.
 2. Per parameter in `spec.rules`, per tick, reading the payload block's `values[i]` (`null` ⇒
    `None`) against the reference series:
+   - **Missing payload block (aligned 2026-07-25):** if `name` is absent from `payload`, raise
+     `ValueError` naming the parameter — a structural incomplete comparison, not a value
+     mismatch (do not emit per-tick `Mismatch` rows or silently skip).
    - **Calm carve-out first** (only for `calm.direction_parameter`): if the reference value of
      `calm.speed_parameter` at this tick is not `None` and `<= floor` (complement of the
      calculator's `s > CALM_SPEED_FLOOR` keeps-present predicate, so the boundary tick cannot
@@ -214,11 +223,13 @@ def format_summary(provider_id, request_desc, report, evidence_path | None) -> s
    (`Path(__file__).parent` of `comparison.py`, i.e. always `tests/parity/_artifacts/` regardless
    of the invoking CWD) holding
    `meteoscape_request.json`, `meteoscape_payload.json`, `reference_request.json`,
-   `reference_response.json` (verbatim body), and `diff.json` (all mismatches). Every written
-   string is scrubbed of each secret **value** in the mapping (Open-Meteo: empty mapping, no-op).
+   `reference_response.json` (verbatim body), and `diff.json` (all mismatches). Each file's text
+   is scrubbed by substring-replacing every non-empty secret value in the mapping (Open-Meteo:
+   empty mapping, no-op). Replacement token: `"***"`.
 4. `format_summary` reports provider, request, per-parameter mismatch counts, the first **10**
    mismatches per parameter (parameter, valid time, reference, Meteoscape, difference), and the
-   evidence path when one was written.
+   evidence path when one was written. Summary inputs that may carry request material are scrubbed
+   the same way before formatting.
 
 ### `tests/parity/readers/open_meteo.py` — the reference reader (decision 3)
 
@@ -251,6 +262,21 @@ nothing but ceremony.
 
 ### `tests/parity/test_open_meteo.py` — the live check (decisions 2–5)
 
+**Profile pin (aligned 2026-07-25):** do **not** call bare `Settings().profile()`.
+`Settings.offerings()` already appends a `twc` offering whenever `METEOSCAPE_TWC_API_KEY` is
+set, and today's catalogue has no TWC leaf — so a developer `.env` with that key makes
+`compose` raise `CompositionError` before any forecast runs. Pin via constructor override
+(init wins over env/dotenv in pydantic-settings; same idiom as `tests/test_config.py`):
+
+```python
+settings = Settings(open_meteo_enabled=True, twc_api_key=None)
+# settings.profile() → OM-only offerings + wind calc + store knobs
+# settings.secrets() → {}  (correct for keyless OM; redaction is a no-op)
+```
+
+004 generalizes this pattern for TWC / multi-Provider envs; m3 does not add a
+`Settings.profile_for(...)` API.
+
 ```python
 SPEC = ParitySpec(
     rules={"air_temperature": Exact(), "relative_humidity": Exact(),
@@ -262,29 +288,68 @@ ATTEMPTS = 2   # decision 4: retry-once, fresh root per attempt
 
 @pytest.mark.asyncio
 async def test_open_meteo_parity() -> None:
+    settings = Settings(open_meteo_enabled=True, twc_api_key=None)
     for attempt in range(ATTEMPTS):
-        payload = await _forecast_payload()          # compose() fresh + build_mcp_app + Client,
-                                                     # real Metronome clock, Berlin 52.52, 13.41
-        start, end = _window(payload["valid_time"])  # first/last tick, parsed
+        payload = await _forecast_payload(settings)
+        start, end = _window(payload["valid_time"])
         reference, raw = fetch_reference(52.52, 13.41, start, end)
         report = compare(payload, reference, SPEC)
         if report.ok:
             return
-    evidence = write_evidence("open-meteo", {...}, Settings().secrets())
+    evidence = write_evidence(
+        "open-meteo",
+        {
+            "meteoscape_request": {...},
+            "meteoscape_payload": payload,
+            "reference_request": {...},
+            "reference_response": raw.body,   # verbatim vendor body string
+            "diff": report,
+        },
+        settings.secrets(),
+    )
     pytest.fail(format_summary("open-meteo", ..., report, evidence))
 ```
 
+**`_forecast_payload(settings)`** (aligned inventable notes): mirror
+`tests/deterministic/test_e2e_forecast.py` minus `respx` — each call must `compose` a **fresh**
+root (`settings.profile()`, `PROVIDER_CATALOG`, `CALCULATOR_CATALOG`, `settings.secrets()`,
+`Metronome()`, `StoreFactory()`), `build_mcp_app(gateway, clock, settings.default_horizon)`,
+then `async with Client(app)` → `call_tool("forecast_hourly", {"latitude": 52.52,
+"longitude": 13.41})` → return `.data`. Do not cache gateway/app across retry attempts.
+
+**`_window`:** parse first/last `payload["valid_time"]` ISO-Z strings to UTC-aware datetimes for
+the reference reader's `start`/`end`.
+
 No sleep between attempts (a run boundary has already passed by the time the first comparison
-finishes). Evidence is written only for the final failure. The test file — and only the test
-file — imports `meteoscape` (`compose`, `build_mcp_app`, `Settings`, `Metronome`,
-`CALM_SPEED_FLOOR`).
+finishes). Evidence is written only for the final failure (last attempt's payload/raw). The test
+file — and only the test file — imports `meteoscape` (`compose`, `build_mcp_app`, `Settings`,
+`Metronome`, `CALM_SPEED_FLOOR`).
+
+### `write_evidence` artifacts dict
+
+Caller supplies a mapping whose keys match the five filenames (sans `.json`):
+`meteoscape_request`, `meteoscape_payload`, `reference_request`, `reference_response`, `diff`.
+JSON-serializable objects are dumped; `reference_response` is the verbatim vendor body string
+(written as a `.json` file name but content may be raw JSON text from the wire). After dump,
+substring-scrub per decision 5.
+
+### Reader time bridge
+
+Open-Meteo `start_hour` / `end_hour` use `%Y-%m-%dT%H:%M` (no `Z`, no seconds) — same wire form
+as the Provider leaf. The reader duplicates that format locally; it must not import the
+Provider's helper.
+
+### `ParityReport.ok`
+
+`@property` → `not self.mismatches`.
 
 ### The guard test — `tests/deterministic/test_parity_reader_guard.py`
 
 Subprocess as decided above: `sys.executable -c` with `PYTHONPATH` set to `src` + `tests` joined
 by `os.pathsep`, cwd the repo root, importing every `parity.readers.*` via
 `pkgutil.iter_modules`, then asserting no `sys.modules` top-level name is `meteoscape`; the
-parent test asserts returncode 0 and surfaces the subprocess output on failure.
+parent test asserts returncode 0 and surfaces the subprocess output on failure. Green on an
+empty readers package (stage 1); stays green as readers arrive.
 
 ## Implementation stages
 
@@ -298,15 +363,18 @@ the live test itself cannot be red-first (network), noted at stage 5.
    `tests/parity/_artifacts/`. Suite green, count unchanged.
 2. **Calm floor** — RED: a case in `tests/deterministic/nodes/test_wind_calculator.py`
    (existing `point_timeline_domain` fixture; `u = v = 0` input → `wind_direction` not present,
-   `wind_speed` present with `0.0`; a small-but-above-floor case stays present). GREEN:
-   `CALM_SPEED_FLOOR` + mask in `wind.py`. Same commit: the `parameters.md` wind_direction note
-   (docs land with code).
+   `wind_speed` present with `0.0`; a small-but-above-floor case stays present). Update the
+   existing `test_wind_round_trips_open_meteo_encoding` case that includes `speeds=[0.0, …]` —
+   after the floor, calm ticks expect `wind_direction` not present (speed still round-trips).
+   GREEN: `CALM_SPEED_FLOOR` + mask in `wind.py`. Same commit: the `parameters.md` wind_direction
+   note (docs land with code).
 3. **Comparison engine** — RED: `tests/deterministic/test_parity_comparison.py` — exact
    mismatch; `Absolute` at/over tol; `Circular` wraparound (359.9999995 vs 0.0000005 passes at
    1e-6); nodata mismatch in each direction; both-nodata pass; calm carve-out (expected `None`
-   passes, present value fails, `skipped_calm` counts); missing payload tick fails; evidence
-   bundle contents + secret scrubbing (`tmp_path`, fake secrets); `format_summary` field
-   coverage. GREEN: `comparison.py`.
+   passes, present value fails, `skipped_calm` counts); missing payload tick fails; **missing
+   payload parameter block raises**; evidence bundle contents + secret scrubbing (`tmp_path`,
+   fake secrets embedded in a URL string); `format_summary` field coverage. GREEN:
+   `comparison.py`.
 4. **Reader** — RED: `tests/deterministic/test_parity_reader_open_meteo.py` over
    `parse_reference` with a canned vendor JSON string (values mapped and converted, km/h → m/s,
    `null` → `None`, naive → aware; unit drift raises naming the field) — canned input is
@@ -324,9 +392,10 @@ the live test itself cannot be red-first (network), noted at stage 5.
 
 - **Single location, single window** — Berlin, default window. A southern-hemisphere /
   negative-longitude case is the first follow-on when wanted.
-- **TWC parity (004)**: today the default profile *is* single-Provider, so the live test composes
-  `Settings().profile()` directly. When 004 adds TWC, each parity test must pin its profile to
-  one Provider — that profile-narrowing knob is 004's parity work, not m3's.
+- **TWC parity (004)**: m3's Open-Meteo live check already pins via
+  `Settings(open_meteo_enabled=True, twc_api_key=None)` (env-stable OM-only). When 004 adds TWC,
+  each parity test pins its under-test Provider the same way (constructor override or a later
+  shared helper if duplication bites) — that generalization is 004's parity work, not m3's.
 - **Retry policy TODO** and **scheduled/changed-provider automation**: the ticket's follow-on
   section; deliberately absent here.
 - **`fakes.py` reachable from parity code** via `pythonpath` — tolerated, guarded (decision 2's
