@@ -157,10 +157,11 @@ a numerically arbitrary angle (today: 180.0). An epsilon guard on the degenerate
 deliberately not a meteorological calm convention (that would be product policy)."""
 
 # in wind_from_uv, after `speed` and `present` are built:
-present_direction = [p and s > CALM_SPEED_FLOOR for p, s in zip(present, speed, strict=True)]
-# WIND_SPEED keeps `present`; WIND_DIRECTION gets `present_direction`.
-# `direction` values are computed unconditionally; the mask is what withholds them
-# (ADR-0002: a non-present value slot is an ignored placeholder).
+base = present if present is not None else (True,) * n
+present_direction = [p and s > CALM_SPEED_FLOOR for p, s in zip(base, speed, strict=True)]
+# WIND_SPEED keeps `present`; WIND_DIRECTION uses ParameterData.of(..., present_direction)
+# so an all-present mask elides to None. `direction` values are computed unconditionally;
+# the mask is what withholds them (ADR-0002: a non-present value slot is an ignored placeholder).
 ```
 
 ### `tests/parity/comparison.py` — the shared engine (decision 2, 4, 5)

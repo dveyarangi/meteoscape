@@ -69,6 +69,9 @@ X/Y footprint, not Z.
 - **`percent` for relative humidity** — 0–100, not a 0–1 fraction.
 - **`degree` for wind_direction** — meteorological convention; `circular` scale means any future kernel is
   angular (via u/v), never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
+  Below the wind Calculator's `CALM_SPEED_FLOOR` (~1e-9 m/s), direction is **nodata**: `atan2(0,0)` is
+  numerically arbitrary, so the engine withholds the value rather than inventing an angle. This is an
+  epsilon guard on degenerate math, not a meteorological calm policy.
 
 ## Deferred (still open at the contract level)
 
