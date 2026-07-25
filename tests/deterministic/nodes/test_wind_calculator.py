@@ -13,7 +13,7 @@ from meteoscape.manifold.capability import EnumerableCapability
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData, and_present
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
-from meteoscape.nodes.calculators.wind import wind_from_uv
+from meteoscape.nodes.calculators.wind import CALM_SPEED_FLOOR, wind_from_uv
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.nodes.providers.open_meteo import _u_component, _v_component
 from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
@@ -54,7 +54,27 @@ def test_wind_round_trips_open_meteo_encoding() -> None:
     assert set(ranges) == {WIND_SPEED, WIND_DIRECTION}
     assert ranges[WIND_SPEED].present is None
     assert ranges[WIND_SPEED].values == pytest.approx(speeds)
-    assert ranges[WIND_DIRECTION].values == pytest.approx(directions)
+    # Calm tick (speed 0): direction withheld; non-calm ticks round-trip.
+    assert not ranges[WIND_DIRECTION].is_present(0)
+    assert ranges[WIND_DIRECTION].is_present(1)
+    assert ranges[WIND_DIRECTION].is_present(2)
+    assert ranges[WIND_DIRECTION].values[1:] == pytest.approx(directions[1:])
+
+
+def test_calm_uv_yields_nodata_direction() -> None:
+    """Below the calm floor, direction is unrecoverable — withhold it as nodata."""
+    _, ranges = wind_from_uv(_uv_coverage([0.0], [0.0]))
+    assert ranges[WIND_SPEED].is_present(0)
+    assert ranges[WIND_SPEED].values[0] == pytest.approx(0.0)
+    assert not ranges[WIND_DIRECTION].is_present(0)
+
+
+def test_speed_above_calm_floor_keeps_direction_present() -> None:
+    # Small but strictly above the floor — direction remains a real value.
+    u = CALM_SPEED_FLOOR * 2.0
+    _, ranges = wind_from_uv(_uv_coverage([u], [0.0]))
+    assert ranges[WIND_SPEED].values[0] == pytest.approx(u)
+    assert ranges[WIND_DIRECTION].is_present(0)
 
 
 def test_present_mask_none_aware_and() -> None:
