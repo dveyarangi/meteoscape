@@ -63,6 +63,33 @@ The check must use bounded requests and respect the provider's credentials, quot
 terms of use. Secret-bearing live checks must never expose credentials in fixtures, logs, or failure
 artifacts.
 
+## Running and writing a parity check
+
+The executable home is `tests/parity/` ([m3](./tickets/done/m3-provider-parity-checks.md),
+[RFC 0007](./rfc/done/0007-20260725-m3-provider-parity-checks.md)). Live parity is structurally
+outside the default deterministic suite — `testpaths` scopes `uv run pytest` to
+`tests/deterministic/`, so live checks run only by explicit opt-in:
+
+```sh
+uv run pytest tests/parity                  # all live parity checks
+uv run pytest tests/parity -k open_meteo    # one provider
+```
+
+A new Provider's check is three pieces, with Open-Meteo as the reference example:
+
+- **Reference reader** — `tests/parity/readers/<provider>.py` (see `readers/open_meteo.py`):
+  fetches and parses the vendor's public response, converts to canonical units independently, and
+  returns a `parity.comparison.ReferenceTimeline` plus raw evidence. Imports no Meteoscape code —
+  the deterministic guard test (`test_parity_reader_guard.py`) enforces this for every module in
+  `readers/`, so a new reader is guarded with no registration.
+- **Live test** — `tests/parity/test_<provider>.py` (see `test_open_meteo.py`): composes the real
+  single-Provider root, drives it through the in-process MCP client, declares the per-parameter
+  `ParitySpec`, retries once with a fresh root, and on final failure writes the evidence bundle
+  and fails with the summary.
+- **Deterministic coverage** — a `parse_reference` test over a canned vendor response in
+  `tests/deterministic/` (see `test_parity_reader_open_meteo.py`); the shared engine itself is
+  already covered by `test_parity_comparison.py`.
+
 ## When to run it
 
 Run the affected Provider's parity check when changing:
@@ -72,6 +99,6 @@ Run the affected Provider's parity check when changing:
 - a Calculator whose exposed output is included in the single-Provider comparison; or
 - composition or surface code that changes the compared request or result.
 
-Live parity is intentionally separate from the default deterministic `pytest` suite until
-[m3 — Provider parity checks](./tickets/m3-provider-parity-checks.md) supplies the executable harness
-and its automation policy. A new Provider is not complete without its parity check.
+Scheduled and change-routed automation is deliberate follow-on work
+([m3](./tickets/done/m3-provider-parity-checks.md)). A new Provider is not complete without its
+parity check.

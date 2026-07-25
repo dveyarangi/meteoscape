@@ -1,8 +1,8 @@
 # RFC 0007 · 2026-07-25 · Provider parity checks — implementation plan
 
-Implementation plan for [m3](../tickets/m3-provider-parity-checks.md). The *meaning* of a Provider
+Implementation plan for [m3](../../tickets/done/m3-provider-parity-checks.md). The *meaning* of a Provider
 parity check — independence rules, comparison semantics, evidence expectations — is owned by the
-[Provider authoring guide](../provider-authoring.md) and is not restated here. **Living document** —
+[Provider authoring guide](../../provider-authoring.md) and is not restated here. **Living document** —
 being built up during the 2026-07-25 align session; decisions land here as they crystallise.
 
 **Scope in one line:** give the live parity suite an executable home and a documented opt-in
@@ -13,7 +13,7 @@ deterministic gate.
 
 1. **Home and opt-in are structural, not conventional.** The existing suite moves whole
    (`git mv`) to `tests/deterministic/` — the folder name makes physical the term the docs already
-   own ("the deterministic suite", [provider-authoring.md](../provider-authoring.md)) — and live
+   own ("the deterministic suite", [provider-authoring.md](../../provider-authoring.md)) — and live
    parity checks live beside it in `tests/parity/`. `pyproject.toml` gains
    `testpaths = ["tests/deterministic"]`, so the default `uv run pytest` **cannot collect** a live
    test: no marker discipline, no `addopts` deselection. The opt-in command is
@@ -65,12 +65,12 @@ deterministic gate.
      (upstream of parse → normalize → convert → derive, so it validates only the fetch, and the
      canonicalizing converter it would still need gravitates toward reusing Meteoscape conversion
      helpers — the tautology). Raws are retained as **failure evidence** only.
-   - When the Python embedding facade ([#39](../concerns.md#39-python-embedding-surface-and-public-failures))
+   - When the Python embedding facade ([#39](../../concerns.md#39-python-embedding-surface-and-public-failures))
      lands as a second public surface, it becomes the natural second parity boundary; the engine
      never does.
 
 3. **The Open-Meteo reference reader is a minimal direct JSON fetch, with the suitability
-   justification recorded.** The [authoring guide](../provider-authoring.md) prefers an official
+   justification recorded.** The [authoring guide](../../provider-authoring.md) prefers an official
    client *when suitable*; the official `openmeteo-requests` client is judged unsuitable for the
    reference role: it speaks FlatBuffers (failure evidence becomes opaque binary where the guide
    wants reproducible artifacts), adds three dev dependencies, and for Open-Meteo the public JSON
@@ -83,7 +83,7 @@ deterministic gate.
      no-`meteoscape`-imports rule (decision 2).
    - Bounded request: Berlin `52.52, 13.41` (the manual-check and e2e precedent), all six product
      parameters, **the surface's default window** (currently the fixed 168 h horizon; after
-     [003c](../tickets/003c-request-shaping.md), the reach-end default — the comparison aligns by
+     [003c](../../tickets/003c-request-shaping.md), the reach-end default — the comparison aligns by
      declared valid-times, so it is insensitive to which), UTC. A second location (southern
      hemisphere / negative longitude, exercising sign conventions) is a cheap follow-on, not part
      of m3.
@@ -108,9 +108,9 @@ deterministic gate.
      so the two thresholds cannot drift.
    - Architecture check (done at align): no ADR or architecture.md change is needed — calm-direction
      nodata is an instance of the existing concept ([architecture §Failure, nodata, and
-     availability](../architecture.md#failure-nodata-and-availability): "a producer succeeded but
+     availability](../../architecture.md#failure-nodata-and-availability): "a producer succeeded but
      has no value at a cell"), joining vendor nulls (002c) as v1's second nodata source; and
-     [#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)'s "element-wise,
+     [#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked)'s "element-wise,
      input domain unchanged" claim about `wind_from_uv` survives (the floor masks `present`, it
      never changes lengths). `parameters.md` carries the parameter-level note (ticket Docs to
      sync).
@@ -120,7 +120,7 @@ deterministic gate.
    - **Run-boundary race: retry the whole comparison once, composing a fresh root per attempt** —
      a vendor model run publishing between the two fetches produces a legitimate mismatch; twice in
      a row is improbable enough that the second failure is real. The fresh root is load-bearing,
-     not hygiene: once [006](../tickets/006-retentive-store-freshness.md) lands retention, a retry
+     not hygiene: once [006](../../tickets/006-retentive-store-freshness.md) lands retention, a retry
      through the *same* gateway would serve the cached first-run values against a re-fetched new
      run and could never clear the boundary — a guaranteed false alert in exactly the case retry
      exists for. `compose()` is cheap; each attempt builds its own. Run pinning /
@@ -192,10 +192,15 @@ class Mismatch:
     parameter: str; valid_time: datetime
     reference: float | None; meteoscape: float | None
     difference: float | None                       # None ⇔ a nodata-position mismatch
+    # For a calm-violation row (payload direction present below the floor): `reference` is None
+    # (the *expectation* — payload must be null), not the vendor's supplied direction; that
+    # vendor datum remains in the evidence bundle's reference response.
 
 class ParityReport:
     mismatches: Sequence[Mismatch]; compared: int; skipped_calm: int
     # ok ⇔ not mismatches
+    # compared = count of (tick × parameter) pairs that reached a value-or-nodata judgment;
+    # excludes calm skips and missing-tick rows (those are structural, not cell judgments).
 
 def compare(payload, reference, spec) -> ParityReport
 def write_evidence(provider_id, artifacts, secrets) -> Path   # → _artifacts/<UTC stamp>-<provider>/
@@ -207,7 +212,8 @@ def format_summary(provider_id, request_desc, report, evidence_path | None, *, s
 1. Parse `payload["valid_time"]` with `datetime.fromisoformat` (handles the `Z` form). Index the
    reference by its (already UTC-aware) ticks. Every payload tick must exist in the reference —
    a missing tick is a `Mismatch` with both values `None` for every compared parameter at that
-   tick position (never a silent skip). The reference may be a superset.
+   tick position (never a silent skip). The reference may be a superset. Missing-tick rows do
+   **not** increment `compared`.
 2. Per parameter in `spec.rules`, per tick, reading the payload block's `values[i]` (`null` ⇒
    `None`) against the reference series:
    - **Missing payload block (aligned 2026-07-25):** if `name` is absent from `payload`, raise
@@ -217,9 +223,14 @@ def format_summary(provider_id, request_desc, report, evidence_path | None, *, s
      `calm.speed_parameter` at this tick is not `None` and `<= floor` (complement of the
      calculator's `s > CALM_SPEED_FLOOR` keeps-present predicate, so the boundary tick cannot
      disagree), expect the payload direction to be `None` — a present payload value is a
-     `Mismatch`; either way the value comparison is skipped and `skipped_calm` incremented.
+     `Mismatch` with `reference=None` (expectation, not the vendor direction), `meteoscape` =
+     the present payload value, `difference=None`; either way the value comparison is skipped
+     and `skipped_calm` incremented (`compared` is not). The vendor direction remains available
+     in the evidence bundle.
    - **Nodata:** exactly one side `None` → `Mismatch(difference=None)`. Both `None` → pass.
-   - **Both present:** apply the rule (`Exact` / `Absolute` / `Circular` as defined above).
+     Both paths increment `compared`.
+   - **Both present:** apply the rule (`Exact` / `Absolute` / `Circular` as defined above);
+     increments `compared`.
 3. `write_evidence` creates `_artifacts/<YYYYMMDDTHHMMSSZ>-<provider>/` **module-relative**
    (`Path(__file__).parent` of `comparison.py`, i.e. always `tests/parity/_artifacts/` regardless
    of the invoking CWD) holding

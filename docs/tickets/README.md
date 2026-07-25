@@ -7,8 +7,11 @@
 a materialized provider wires storeless
 ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)). Next
 is 003c (request shaping); 006 (retentive store) is an independent follow-on with its assumed
-storeless/private-lattice shape now in place. Maintenance ticket m3 (live Provider parity) is Ready
-and must land before 004 introduces the second Provider.
+storeless/private-lattice shape now in place. Maintenance ticket m3 (live Provider parity) has
+**landed** ([RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md)): the deterministic
+suite lives under `tests/deterministic/`, the opt-in live parity harness under `tests/parity/`, and
+the Open-Meteo reference check passed its live acceptance run on 2026-07-25 — 004's second Provider
+is no longer gated on it.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -42,7 +45,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Error surface | Partial | Stable error categories exist; per-parameter partial-failure reasons remain. |
 | Resolution logging/trace | Unassigned | Required by the product roadmap but not owned by active work. |
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. |
-| Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`. |
+| Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
 | Free request windows | Planned | Parameter subsets work; `start`/`end` shaping and reach-based defaults remain. |
 | Second provider and fallback | Planned | Only Open-Meteo is configured. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
@@ -79,7 +82,7 @@ delivery sequence above and appears in no capability table.
 |---|---|---|---|
 | [m1 — Type contract hygiene](./done/m1-type-contract-hygiene.md) | Done | 003a (landed) | `pyright` clean across `src` and `tests`; no design contract weakened to get there. |
 | [m2 — Dissolve node-`Countable`](./done/m2-dissolve-node-countable.md) | Done | 003b (done) | `Countable` is a result-only facet per ADR-0006; the `Store` lattice stays private; materialized providers wire storeless. 006's assumed shape is in place. |
-| [m3 — Provider parity checks](./m3-provider-parity-checks.md) | Ready | 002, 002b (done) | Opt-in live single-Provider parity harness and Open-Meteo reference check. Blocks acceptance of 004's new Provider. |
+| [m3 — Provider parity checks](./done/m3-provider-parity-checks.md) | Done | 002, 002b (done) | Opt-in live single-Provider parity harness (`uv run pytest tests/parity`) and the Open-Meteo reference check; wind calm floor. 004's new Provider must ship its own check. |
 
 ## Recommended execution order
 
@@ -88,8 +91,8 @@ delivery sequence above and appears in no capability table.
 2. ~~**003a**~~ — **landed**: build-time profile reach, no surface or request-path change.
 3. ~~**m1**~~ — **landed**: `pyright` green across `src` and `tests`, CI unblocked.
 4. ~~**003b**~~ — **landed**: reach moved onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md); the standalone resolver is gone.
-5. Land **m3** as the next independent maintenance item. It does not wait for the feature stream and
-   must precede any new Provider contribution, beginning with 004.
+5. ~~**m3**~~ — **landed**: the parity harness is live and the Open-Meteo reference check passed its
+   acceptance run; every new Provider contribution, beginning with 004, ships its own parity check.
 6. Complete **003c** on top of 003b, or **006** as an independent follow-on — ~~m2~~ has **landed**,
    so the storeless/private-lattice shape 006 assumes is in place.
 7. Complete **007** after 006.
@@ -110,9 +113,9 @@ resolution.
 - [005](./005-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
 - [006](./006-retentive-store-freshness.md): settle the private store-lattice representation.
-- [m3](./m3-provider-parity-checks.md): ~~choose the opt-in harness/command shape~~ — resolved
-  (align 2026-07-25, [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)); scheduled and
-  changed-provider automation remain follow-on work.
+- [m3](./done/m3-provider-parity-checks.md) (done): scheduled and changed-provider automation
+  remain deliberate follow-on work, recorded in the ticket's follow-on section; the retry-once
+  policy carries a TODO if run-boundary false alerts appear.
 - [010](./010-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
   the first real multi-vendor spread.
 

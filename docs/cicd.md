@@ -42,6 +42,10 @@ Remote: `github.com/dveyarangi/meteoscape`.
 > mocked-provider integration coverage. Last-observed health and outstanding gate failures live in
 > the [v1 delivery status](./tickets/README.md); CI remains authoritative.
 
+Live Provider parity checks (`uv run pytest tests/parity`) are deliberately **outside CI**:
+`testpaths` scopes the default run to `tests/deterministic/`, keeping the gate network-free —
+see the [provider authoring guide](./provider-authoring.md).
+
 ## Deployment form
 
 **No container in v1.** v1 is a **local stdio MCP server** (FastMCP; HTTP/remote transport

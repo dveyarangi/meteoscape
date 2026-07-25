@@ -50,7 +50,7 @@ of the habitual gate set.
 
 ## Continuation
 
-- **[m3 — Provider parity checks](../tickets/m3-provider-parity-checks.md)** is Ready and next in
+- **[m3 — Provider parity checks](../tickets/done/m3-provider-parity-checks.md)** is Ready and next in
   the maintenance stream; must land before 004's second Provider.
 - **003c** (request shaping) and **006** (retentive store) both unblocked; 006's assumed
   storeless/private-lattice shape is now in place.

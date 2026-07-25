@@ -1,11 +1,11 @@
 # m3 — Provider parity checks
 
-- **Status:** Ready (maintenance)
-- **Plan:** [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md) (aligned 2026-07-25)
-- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md) and
-  [002b — Derived wind](./done/002b-derived-wind-calculator.md), both done.
+- **Status:** Done (maintenance)
+- **Plan:** [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md) (aligned 2026-07-25)
+- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md) and
+  [002b — Derived wind](./002b-derived-wind-calculator.md), both done.
 - **Blocks:** Acceptance of any new Provider, beginning with
-  [004 — Second-provider fallback](./004-second-provider-fallback.md).
+  [004 — Second-provider fallback](../004-second-provider-fallback.md).
 - **Outcome:** Every shipped Provider has an opt-in live parity check that compares a
   single-Provider Meteoscape root with an independent response from the same external producer.
 
@@ -29,7 +29,7 @@ shaping, storage, or homogenization work.
 
 ## Owning guidance
 
-[Provider authoring guide](../provider-authoring.md) defines the durable contribution expectation and
+[Provider authoring guide](../../provider-authoring.md) defines the durable contribution expectation and
 the meaning of **Provider parity check**. This ticket supplies the executable home and first working
 case; it must not duplicate that guidance.
 
@@ -37,7 +37,7 @@ case; it must not duplicate that guidance.
 
 - ~~Establish one discoverable home and one documented opt-in command for live Provider parity
   checks. Keep them outside the default deterministic test run.~~ **Resolved (align 2026-07-25,
-  [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)):** the existing suite moves whole
+  [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md)):** the existing suite moves whole
   to `tests/deterministic/` and parity checks live in `tests/parity/`;
   `testpaths = ["tests/deterministic"]` makes the default `uv run pytest` structurally unable to
   collect a live test. The opt-in command is `uv run pytest tests/parity`
@@ -45,7 +45,7 @@ case; it must not duplicate that guidance.
 - Add the Open-Meteo parity check as the reference implementation:
   - compose the real root with Open-Meteo as its only Provider and the built-in wind Calculator;
   - ~~obtain the same bounded forecast independently from Open-Meteo;~~ **Resolved (align
-    2026-07-25, [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)):** a minimal direct
+    2026-07-25, [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md)):** a minimal direct
     JSON fetch, not the official FlatBuffers client — for Open-Meteo the public JSON API is itself
     the canonical documented interface, the reader stays auditable, and failure evidence is
     human-readable; the suitability justification is recorded so the guide's official-client
@@ -56,7 +56,7 @@ case; it must not duplicate that guidance.
   - treat the direct response as a provider reference, not meteorological truth;
   - ~~use independent canonical conversion, circular wind-direction comparison, nodata alignment,
     and explicit per-parameter tolerances.~~ **Resolved (align 2026-07-25,
-    [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)):** exact equality for the four
+    [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md)):** exact equality for the four
     pass-through parameters; `absolute(1e-6 m/s)` for `wind_speed`; `circular(1e-6°)` for
     `wind_direction`; nodata positions match exactly in both directions, with one carve-out — at
     ticks where the reference speed is below the calm floor, the payload's `wind_direction` is
@@ -69,10 +69,10 @@ case; it must not duplicate that guidance.
   `calculators/wind.py`, guarding the degenerate `atan2(0,0)` — not a meteorological calm policy),
   `wind_direction` is nodata (`present=False`) instead of an arbitrary reconstructed angle. The
   parity spec imports the same constant. Deterministic coverage exercises the floor; the
-  `wind_direction` note in [parameters.md](../parameters.md) records the undefined-below-floor rule.
+  `wind_direction` note in [parameters.md](../../parameters.md) records the undefined-below-floor rule.
 - ~~Make the harness reusable without imposing one provider's response model, official client, or
   authentication scheme on another Provider.~~ **Resolved (align 2026-07-25,
-  [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)):** the harness couples through a
+  [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md)):** the harness couples through a
   neutral data shape, not a lifecycle — a shared comparison engine (`tests/parity/comparison.py`)
   takes the **MCP payload** (in-process `fastmcp` client over the composed single-Provider root —
   the only neutral, stable data shape Meteoscape emits) and a **`ReferenceTimeline`** produced by a
@@ -80,7 +80,7 @@ case; it must not duplicate that guidance.
   under a per-parameter spec (`exact` / `absolute(tol)` / `circular(tol)`). Raw vendor responses are
   retained as failure evidence, never the comparison target.
 - ~~Emit reproducible failure evidence without leaking credentials.~~ **Resolved (align 2026-07-25,
-  [RFC 0007](../rfc/0007-20260725-m3-provider-parity-checks.md)):** two channels split by audience —
+  [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md)):** two channels split by audience —
   the assertion message carries the judging summary (provider, request, first-N mismatch table,
   counts); a failure-time evidence bundle on disk (gitignored `tests/parity/_artifacts/`) carries
   reproduction (both requests, both raw responses, full diff), because parity evidence is
@@ -91,40 +91,40 @@ case; it must not duplicate that guidance.
 
 ## Acceptance criteria
 
-- [ ] A documented opt-in command runs the live parity suite without changing the default
+- [x] A documented opt-in command runs the live parity suite without changing the default
       `uv run pytest` behavior.
-- [ ] Open-Meteo parity composes the real single-Provider root and compares all exposed product
+- [x] Open-Meteo parity composes the real single-Provider root and compares all exposed product
       parameters with an independent live reference over the same bounded request.
-- [ ] The reference path does not import or call the Open-Meteo Provider, `Normalizer`, taps, or
+- [x] The reference path does not import or call the Open-Meteo Provider, `Normalizer`, taps, or
       Meteoscape conversion helpers — structurally: the reader module imports no `meteoscape` code
       at all (only the test file, which composes the root and builds the spec, may), enforced by a
       deterministic guard test that imports each reader and asserts no `meteoscape*` module loads.
-- [ ] Equality, tolerance, circular-value, coordinate/time alignment, and nodata rules are explicit
+- [x] Equality, tolerance, circular-value, coordinate/time alignment, and nodata rules are explicit
       in the check and its diagnostics.
-- [ ] A parity failure reports provider, request, parameter, valid time, expected/reference value,
+- [x] A parity failure reports provider, request, parameter, valid time, expected/reference value,
       Meteoscape value, and difference; secret values are redacted.
-- [ ] The wind Calculator yields nodata for `wind_direction` below `CALM_SPEED_FLOOR`; the parity
+- [x] The wind Calculator yields nodata for `wind_direction` below `CALM_SPEED_FLOOR`; the parity
       spec adopts the same constant; deterministic tests exercise the floor.
-- [ ] The Provider authoring guide links to the executable command and Open-Meteo example.
-- [ ] Ticket 004 requires the TWC Provider to ship its own parity check before acceptance.
-- [ ] Ruff, pyright, and the deterministic pytest suite remain green without network access.
+- [x] The Provider authoring guide links to the executable command and Open-Meteo example.
+- [x] Ticket 004 requires the TWC Provider to ship its own parity check before acceptance.
+- [x] Ruff, pyright, and the deterministic pytest suite remain green without network access.
 
 ## Docs to sync
 
 Lands with the code, not after it:
 
-- [module-layout.md](../module-layout.md) — the `tests/` comment: deterministic suite moves to
+- [module-layout.md](../../module-layout.md) — the `tests/` comment: deterministic suite moves to
   `tests/deterministic/`; live parity lives in `tests/parity/`.
-- [provider-authoring.md](../provider-authoring.md) — the durable parity-authoring rules (payload
+- [provider-authoring.md](../../provider-authoring.md) — the durable parity-authoring rules (payload
   boundary, import-level independence, engine-constant adoption, fresh-root retry, evidence
   perishability) landed with the 2026-07-25 align; at landing, the "until m3 supplies the
   executable harness" sentence flips to a link to the opt-in command and the Open-Meteo example,
   plus harness usage examples (also an acceptance criterion).
-- [parameters.md](../parameters.md) — `wind_direction` gains the undefined-below-calm-floor nodata
+- [parameters.md](../../parameters.md) — `wind_direction` gains the undefined-below-calm-floor nodata
   note.
-- [cicd.md](../cicd.md) — one line under the CI pipeline: live parity (`uv run pytest tests/parity`)
+- [cicd.md](../../cicd.md) — one line under the CI pipeline: live parity (`uv run pytest tests/parity`)
   is deliberately outside CI; `testpaths` keeps the default run deterministic.
-- [Delivery status](./README.md) — the m3 entry under "Decisions still owned by tickets" and this
+- [Delivery status](../README.md) — the m3 entry under "Decisions still owned by tickets" and this
   ticket's row, at landing.
 
 ## Follow-on automation
