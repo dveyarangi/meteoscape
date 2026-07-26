@@ -46,6 +46,67 @@ without presupposing shared facade or wiring. Once these decisions land, deliver
 Phase-1 ticket; the concern then moves into the public API guide and, if the compatibility trade-off
 proves durable and surprising, an ADR.
 
+## 40. Composing servable requests at the embedding edge
+
+**Kind:** edge product seam (no v1 driver — the facade it would live on is unselected) ·
+**Refs:** [#39](#39-python-embedding-surface-and-public-failures),
+[Edge — Embedding surface](./edge/embedding.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md),
+[ADR-0007](./adr/0007-capability-carries-its-domain.md)
+
+An embedder composes a `Selection` by hand, and the only feedback that it was unservable is a
+**`CapabilityMismatch`** raised after the request runs. That is acceptable as a *failure* category
+and wrong as the *primary* channel: much of what it reports is knowable before the request is
+issued. This concern owns the embedder-facing consequence — **which mismatch cases the edge can
+dissolve, and what a request-composition helper may honestly promise given that `Capability` is not
+a perfectly faithful self-description.** It does not own the facade shape (#39) or any of the
+fidelity gaps individually (each is linked below); the wider per-surface sweep is deliberately
+deferred to a later embedding-edge concern.
+
+**Arm 1 — the dissolution inventory.** Every raise site, classified by whether the edge can make
+it unrepresentable (sites verified 2026-07-25; m4's arrive with
+[RFC 0009](./rfc/0009-20260725-m4-snapped-t-request-mode.md)):
+
+| Class | Cases | Dissolvable at the edge? |
+|---|---|---|
+| **Shape** — a representation the leaf cannot serve | non-`Separable` Selection domain and non-`GridDomain` assembly target (`open_meteo`); m4's malformed snapped shape (snapped non-T, non-snapped T) | **Yes, totally** — a builder that can only construct supported shapes; needs no `Capability` read. This is the concrete case for a `SelectionDomain` builder. |
+| **Coverage** — geometry outside what any producer admits | `Arbiter.project`'s *"no producer admits any requested parameter"*; 003c's empty resolved parameter set | **Partially** — pre-emptable against published reach, but only as far as Arm 2 allows, so advisory at best. Note m4's Snapped-T already dissolves the *T-window* instance by construction: an overlapping window is trimmed rather than refused. |
+| **Runtime / race** — true when asked, false when served | m4's raced-empty window (admission passed, the rolling window moved before fetch); a producer that is down ([#30](#30-response-membership-under-runtime-degraded-fallback)) | **No** — these belong to the answer, not the request. A helper that claimed to prevent them would be lying. |
+
+**Arm 2 — what a helper may trust about `Capability`.** A builder validating against capability
+inherits capability's own inaccuracies, in both directions — each already owned elsewhere; what is
+new here is that they bound what the edge can promise:
+
+- `serves` is allowed to be **stricter** than the published reach (resampler-reachability, probed
+  availability) → [ADR-0007](./adr/0007-capability-carries-its-domain.md),
+  [#29](#29-narrated-reach-what-a-profile-promises): a reach-satisfying request can still miss.
+- `serves` is currently **looser** than the engine: extent containment admits off-phase /
+  non-identical-step selections the sampler cannot crop → [#21](#21-serves-extent-vs-project-crop-ability),
+  where the symptom is an internal `NotImplementedError`, not even a clean mismatch.
+- Declared windows are **clock-relative estimates**: a `RollingAxis` extent moves with the clock and
+  the cadence `{Δ, L, max_lead}` is a conservative guess → [#18](#18-clock-anchored-footprint-fidelity).
+  A reach read is instantaneous truth, never durable — an embedder that reads reach and composes a
+  request later is already out of date.
+- **Miss reasons are indistinguishable** — "does not cover" and "cannot be compared" are the same
+  `False` → [#36](#36-unserved-and-uncomparable-are-indistinguishable); the reason channel is
+  [#14](#14-resolution-trace-and-observability)'s trace.
+
+**Open:**
+
+- **Shape-safe constructors vs a capability-aware builder.** The first is cheap, total, and needs no
+  capability read (it dissolves the whole Shape class); the second consults a live `Capability` and
+  can only ever be advisory (Arm 2). Whether the edge ships one, both, or neither is a facade
+  decision at #39.
+- **Whether pre-flight validation is public API at all**, versus letting the request run and reading
+  a reason — which presumes #14's trace exists and is actionable.
+- **Whether declaration fidelity deserves its own check**: a conformance harness comparing a
+  provider's declared footprint against what it actually serves (the [m3](./tickets/done/m3-provider-parity-checks.md)
+  parity shape, aimed at declarations rather than values) would convert several Arm 2 unknowns into
+  tested facts.
+
+**Trigger:** #39's facade selection — a request-composition helper is part of choosing the public
+surface. Until then this is an inventory to keep current: **every new `CapabilityMismatch` raise
+site should be classified into the Arm 1 table as it lands.**
+
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)

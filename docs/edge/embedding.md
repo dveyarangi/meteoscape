@@ -49,6 +49,13 @@ work is unstarted. Candidate promises waiting on #39's decisions:
 
 - [#39 — Python embedding surface and public failures](../concerns.md#39-python-embedding-surface-and-public-failures)
   — the owner of this edge's open Contract: facade shape, public failures, `0.x` compatibility.
+- [#40 — Composing servable requests at the embedding edge](../concerns.md#40-composing-servable-requests-at-the-embedding-edge)
+  — the embedder composes a `Selection` by hand and learns it was unservable only from a
+  `CapabilityMismatch` after the fact. Owns the inventory of which mismatch cases this edge can
+  dissolve (shape errors, totally — the `SelectionDomain` builder case; coverage misses, only
+  advisorily; races, never) and what a composition helper may honestly promise given that
+  `Capability` is not a perfectly faithful self-description. Its Arm-1 table is kept current as
+  raise sites land.
 - [#23 — Spatial vs temporal `RegularAxis` types](../concerns.md#23-spatial-vs-temporal-regularaxis-types)
   — if the axis split lands, it must stay **invisible at this surface**: one axis name per kind,
   or absorbed by facade builders (the m4 align priced sibling public types as an
@@ -74,7 +81,9 @@ shape of the work, not commitments.
 3. Request-composition ergonomics — `SelectionDomain` / mode builders ride
    [m4](../tickets/m4-snapped-t-request-mode.md) and
    [003c](../tickets/003c-request-shaping.md); they become embedder vocabulary when the facade
-   lands.
+   lands. Whether those builders are merely **shape-safe** (unservable shapes unrepresentable, no
+   capability read) or **capability-aware** (validated against a live `Capability`, therefore
+   advisory) is [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge).
 4. `0.x` compatibility policy — supported import paths, deprecation mechanics, embedded ↔
    protocol consistency — #39.
 5. Third-party plugin authoring at this edge — [#26](../concerns.md#26-provider--calculator-plugin-scaffolding),

@@ -277,6 +277,11 @@ uv run pytest` green.
   [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s
   diverging-reach trigger; **plain `IntervalAxis` in `SelectableAxis`** waits for alias
   desugaring (Phase 4).
+- **New `CapabilityMismatch` raise sites must be classified** into
+  [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 inventory as
+  they land: the malformed-snapped-shape guard (decision 4) is a **Shape** case (dissolvable by a
+  future `SelectionDomain` builder), the raced-empty window (decision 5) is a **Race** case
+  (never dissolvable at the edge). Recording only — no work in this RFC.
 - **Mixed-reach multi-winner snapped windows** (two winners resolving different T extents →
   the Arbiter's domain-equality check fails loudly): the recorded #30 revisit, triggered by the
   second provider with diverging reach — deliberately not handled here.
