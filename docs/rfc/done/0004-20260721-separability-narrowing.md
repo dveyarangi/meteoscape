@@ -32,7 +32,7 @@ behaviour change beyond the `matches` raise; `intersect`, which stays a declared
 | **D** | 9 | test fixtures typed loosely (`lambda *a: None` as `CombineFn`; indexing `dict[str, object]`) | fixture repair, no design content |
 
 **40 is a floor.** Each error suppresses checking of whatever follows it. One follow-on is visible
-statically — [test_mcp_app.py:286](../../../tests/api/test_mcp_app.py) reads `.axis(AxisName.T).count`, and
+statically — [test_mcp_app.py:286](../../../tests/deterministic/api/test_mcp_app.py) reads `.axis(AxisName.T).count`, and
 `.count` exists only on `RegularAxis`, so narrowing the domain reveals a new error there. Category B
 unblocks `.ranges` / `.provenance` chains that have never been checked at all. Stage 4 iterates to a
 fixed point rather than to a number.
@@ -102,7 +102,7 @@ for a candidate it cannot compare is individually correct, but the *rule* then c
 dominates → incomparable footprints, X/Y preference unbuilt"* — an explanation pointing at an unbuilt
 feature that has nothing to do with the operator's actual mistake, which is pairing a curvilinear
 producer with a rule defined over separable geometry. Worse, `_split` is reached first and its bare
-`assert` at [reach.py](../../../src/meteoscape/nodes/reach.py) throws `AssertionError` before the message
+`assert` at `nodes/reach.py` throws `AssertionError` before the message
 is ever produced.
 
 The fix is a **precondition at the rule's entry**, not a changed return type — the check moves **out of
@@ -120,7 +120,7 @@ class GridReachRule:
 ```
 
 `_contains` / `_split` / `_incomparable` / `_contained_in_all` then take the narrowed operand type, and
-the two `isinstance` calls plus the bare `assert` at [reach.py:30](../../../src/meteoscape/nodes/reach.py)
+the two `isinstance` calls plus the bare `assert` at `nodes/reach.py:30`
 are deleted. That `assert` is a live defect: on the current path a curvilinear candidate reaches
 `_split` and raises `AssertionError`, not `CompositionError`.
 
@@ -152,7 +152,7 @@ asserts `domain is cap_domains[pid]`.
 Narrowing `capability` on the same leaf removes the only two `# type: ignore[attr-defined]` in the
 suite — `test_open_meteo.py:194` / `:212` read `provider.capability.footprints`, which `Capability`
 does not declare — with **no test edit at all**. `FakeProvider` is deliberately not changed:
-[fakes.py](../../../tests/fakes.py) accepts any `Capability` by construction, so its internal
+[fakes.py](../../../tests/deterministic/fakes.py) accepts any `Capability` by construction, so its internal
 `assert isinstance(..., FootprintCapability)` is a genuine narrowing and stays.
 
 ### 3. Use-site narrowing

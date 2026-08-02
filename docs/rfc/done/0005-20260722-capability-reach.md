@@ -1,7 +1,7 @@
 # RFC 0005 · 2026-07-22 · Capability carries its domain — implementation plan
 
-Implementation plan for [003b](../tickets/done/01-0060-capability-domain.md), owned by
-[ADR-0007](../adr/0007-capability-carries-its-domain.md). Planned in the 0016 align session, which
+Implementation plan for [003b](../../tickets/done/01-0060-capability-domain.md), owned by
+[ADR-0007](../../adr/0007-capability-carries-its-domain.md). Planned in the 0016 align session, which
 resolved the ticket's five placement questions and found three further design defects; all are
 recorded inline in the ticket and restated here where they shape the build.
 
@@ -13,15 +13,15 @@ eagerly at construction.
 
 | Boundary | Owner | What 003b does to it |
 |---|---|---|
-| `Capability` protocol | [ADR-0004](../adr/0004-producer-resolution-and-capability.md), [ADR-0007](../adr/0007-capability-carries-its-domain.md) | **Widens** — third member `reach(parameter)`. `serves` and `parameters` unchanged. |
-| `Reconciler` protocol | [ADR-0004](../adr/0004-producer-resolution-and-capability.md), [#33](../concerns.md#33-reconciler-owns-domain-composition) | **Widens** — second member `compose_domains(parameter, candidates)`. |
-| `Provider` ABC | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | **Narrows** — `footprints` deleted; geometry published by the capability. |
-| `Arbiter` construction | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | Composes eagerly; a **scoped** Arbiter now declares its scope. |
-| `Calculator` construction | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | Accepts its `CalculatorKey` (for error attribution). |
-| `Domain` / `Separable` | [ADR-0002](../adr/0002-data-model.md) | **Gains** the per-axis containment predicates, moved from `nodes/reach.py`. No representation change. |
-| `compose()` pipeline | [ADR-0005](../adr/0005-build-time-composition.md) | Gains the `validate_calculators` call the docs already assert. |
-| `Arbiter(producers, reconciler, scope=None)` | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | **Widens** — optional `scope`. Already amended in [architecture.md](../architecture.md#arbiter), [module-layout.md](../module-layout.md) and ADR-0004's scoped-construction example during planning. |
-| `Countable` facet | [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | **Untouched** — belongs to [m2](../tickets/done/01-0070-dissolve-node-countable.md). |
+| `Capability` protocol | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md), [ADR-0007](../../adr/0007-capability-carries-its-domain.md) | **Widens** — third member `reach(parameter)`. `serves` and `parameters` unchanged. |
+| `Reconciler` protocol | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md), [#33](../../concerns.md#33-reconciler-owns-domain-composition) | **Widens** — second member `compose_domains(parameter, candidates)`. |
+| `Provider` ABC | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | **Narrows** — `footprints` deleted; geometry published by the capability. |
+| `Arbiter` construction | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | Composes eagerly; a **scoped** Arbiter now declares its scope. |
+| `Calculator` construction | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | Accepts its `CalculatorKey` (for error attribution). |
+| `Domain` / `Separable` | [ADR-0002](../../adr/0002-data-model.md) | **Gains** the per-axis containment predicates, moved from `nodes/reach.py`. No representation change. |
+| `compose()` pipeline | [ADR-0005](../../adr/0005-build-time-composition.md) | Gains the `validate_calculators` call the docs already assert. |
+| `Arbiter(producers, reconciler, scope=None)` | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | **Widens** — optional `scope`. Already amended in [architecture.md](../../architecture.md#arbiter), [module-layout.md](../../module-layout.md) and ADR-0004's scoped-construction example during planning. |
+| `Countable` facet | [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) | **Untouched** — belongs to [m2](../../tickets/done/01-0070-dissolve-node-countable.md). |
 
 **Ownership rule preserved:** `errors, parameters, clock, identity ← manifold ← nodes`. Nothing in
 `manifold/` imports from `nodes/` — the reason the align session put composition invocation on the
@@ -97,7 +97,7 @@ class Capability(Protocol):
 `EnumerableCapability.reach` **narrows covariantly** — the m1 pattern. That form's reach *is*
 enumerable and `CoverageRecord.domain` already returns the narrow type, so the narrowing is honest
 rather than speculative; it also states "materialized ⇒ enumerable reach" in the type, which is the
-premise [m2](../tickets/done/01-0070-dissolve-node-countable.md)'s materialized-provider discriminator rests on.
+premise [m2](../../tickets/done/01-0070-dissolve-node-countable.md)'s materialized-provider discriminator rests on.
 
 `UnionCapability` gains `members: Mapping[ProducerKey, Capability]` (was a flat `Sequence`) plus
 `domains: Mapping[ParameterId, Domain]`. `DerivedCapability` gains `key: CalculatorKey`.
@@ -137,7 +137,7 @@ hand-built in tests, so the precondition is documented rather than assumed.
 
 **Layering note for the reviewer.** `capability.py` will import `ProducerKey` / `CalculatorKey` from
 `identity`, which can read as an upward dependency. It is not: the rule is
-`errors, parameters, clock, identity ← manifold ← nodes` ([module-layout.md](../module-layout.md)), and
+`errors, parameters, clock, identity ← manifold ← nodes` ([module-layout.md](../../module-layout.md)), and
 `manifold/provenance.py` **already** imports `SourceKey` — identity's own docstring names provenance as
 an inward importer. `identity` is a Tier-0 leaf below `manifold`; keys are identities, not node types.
 
@@ -244,7 +244,7 @@ Every raise is a build-time `CompositionError` naming **parameter + producers + 
 Calculator's shear, its `CalculatorKey`). Nothing reaches the request path.
 
 **Request (unchanged).** `serves` remains the sole admission authority; `reach` is never consulted by
-`Arbiter.project`. This is [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra)'s
+`Arbiter.project`. This is [#32](../../concerns.md#32-footprint-aware-ranking-inside-the-algebra)'s
 guard and must stay true.
 
 **Read (003c's consumer, not built here).** `gateway.best_view.capability.reach(p)`.
@@ -277,7 +277,7 @@ which the scoped resolver structurally cannot see.
 only use (`Calculator.project` asks it for `self.inputs`; `DerivedCapability` asks upstream only about
 inputs), and it restores the `parameters` ⟺ `reach` invariant. The over-declaration is a latent defect
 today; eagerness merely exposes it. → ADR-0007 amended; the deployment filed as
-[#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra)'s motivating scenario, since the
+[#32](../../concerns.md#32-footprint-aware-ranking-inside-the-algebra)'s motivating scenario, since the
 *wanted* behaviour (prefer the regional inside its footprint) is footprint-aware ranking, not
 composition.
 
@@ -306,7 +306,7 @@ candidate compares against nothing; 003a checked anyway only because the profile
 better home for the guard. It also restores consistency — `serves` already admits such a leaf, so a
 leaf that can serve but cannot publish its reach would break ADR-0007's reach-equals-`serves` claim
 immediately, and curvilinear geometry in the **source role** is a live seam
-([#12](../concerns.md#12-curvilinear-domains)). Strictly more permissive: nothing 003a accepted is now
+([#12](../../concerns.md#12-curvilinear-domains)). Strictly more permissive: nothing 003a accepted is now
 rejected. Two non-separable candidates still fail.
 
 ## Stages
@@ -352,8 +352,8 @@ provider's own domain. That forwarding carries the *root's* reach (the root is
 
 | Site | Change |
 |---|---|
-| [test_capability.py](../../tests/manifold/test_capability.py) `UnionCapability(members=[leaf, enumerable])` | key the members: `members={KeyA: leaf, KeyB: enumerable}` |
-| [test_server_smoke.py](../../tests/test_server_smoke.py) `UnionCapability([])` | `UnionCapability(members={}, domains={})` — an empty best view still constructs |
+| [test_capability.py](../../../tests/deterministic/manifold/test_capability.py) `UnionCapability(members=[leaf, enumerable])` | key the members: `members={KeyA: leaf, KeyB: enumerable}` |
+| [test_server_smoke.py](../../../tests/deterministic/test_server_smoke.py) `UnionCapability([])` | `UnionCapability(members={}, domains={})` — an empty best view still constructs |
 
 `test_arbiter.py` needs no change: its two providers serve **disjoint** parameters, so every
 `by_parameter` entry has one candidate and eager composition is trivial.
@@ -373,8 +373,8 @@ RED: contained-in-all over inputs; the derived-wind equal-extent tie returns one
 
 | Site | Change |
 |---|---|
-| [calculator.py](../../src/meteoscape/nodes/calculator.py) `DerivedCapability(self.outputs, self.inputs, self.resolver.capability)` | **production** — pass `self.key`; `Calculator.__init__` gains it, Weaver supplies `reg.key` |
-| [test_capability.py](../../tests/manifold/test_capability.py) `DerivedCapability(parameters=…, inputs=…, upstream=…)` | add `key=CalculatorKey(...)` |
+| [calculator.py](../../../src/meteoscape/nodes/calculator.py) `DerivedCapability(self.outputs, self.inputs, self.resolver.capability)` | **production** — pass `self.key`; `Calculator.__init__` gains it, Weaver supplies `reg.key` |
+| [test_capability.py](../../../tests/deterministic/manifold/test_capability.py) `DerivedCapability(parameters=…, inputs=…, upstream=…)` | add `key=CalculatorKey(...)` |
 
 **Stage 6a — delete the dead rule and resolver.**
 Remove `GridReachRule` and `resolve_reach`. Nothing calls either by now (they were never called in
@@ -433,7 +433,7 @@ forgotten, and stage 9 is where it closes.
   request-path failure mode: `Arbiter.project` is untouched, and `reach` is never on it.
 - **Observability:** none added. The `CompositionError` message *is* the observable, which is why
   its content is an acceptance criterion. Resolution tracing stays
-  [#14](../concerns.md#14-resolution-trace-and-observability).
+  [#14](../../concerns.md#14-resolution-trace-and-observability).
 - **Rollback:** stages 0–5 are additive and independently revertible; **6a** and **6b** are the
   irreversible cuts, split so the revert boundary is small; stage 7 is one line.
 
@@ -444,8 +444,8 @@ forgotten, and stage 9 is where it closes.
 - The **X/Y-first preference** — decided-but-unbuilt; incomparable candidates raise. Trigger: the
   first regional provider.
 - **`Domain.intersect`** — declared seam, needed by area products folding X/Y and T jointly.
-- **Surface narration** and the omitted-`end` default → [003c](../tickets/01-0110-request-shaping.md).
-- **Node-`Countable`** → [m2](../tickets/done/01-0070-dissolve-node-countable.md), immediately after. 003b must
+- **Surface narration** and the omitted-`end` default → [003c](../../tickets/01-0110-request-shaping.md).
+- **Node-`Countable`** → [m2](../../tickets/done/01-0070-dissolve-node-countable.md), immediately after. 003b must
   not deepen what m2 deletes: leave `_source_grid` and the `Countable` isinstance sites alone, and add
   no new reader of a node's `domain`. The order is load-bearing — `CountableFakeProvider` inherits
   `FakeProvider.footprints`, whose assert m2's `EnumerableCapability` reshaping would break; 003b
@@ -454,17 +454,17 @@ forgotten, and stage 9 is where it closes.
 
 **Concerns this touches without closing**
 
-- [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) — now live: geometry is inside
+- [#32](../../concerns.md#32-footprint-aware-ranking-inside-the-algebra) — now live: geometry is inside
   the algebra. 003b must keep `serves` the sole admission authority; the gust deployment is filed
   there as the motivating case for per-request ranking.
-- [#33](../concerns.md#33-reconciler-owns-domain-composition) — narrowed, not closed: whether one
+- [#33](../../concerns.md#33-reconciler-owns-domain-composition) — narrowed, not closed: whether one
   `compose_domains` signature serves `priority` / `tile` / `splice` is unknown until a second
   reconciler exists.
-- [#34](../concerns.md#34-producer-dag-walking-is-duplicated) — one of three DAG walks disappears.
+- [#34](../../concerns.md#34-producer-dag-walking-is-duplicated) — one of three DAG walks disappears.
   The remaining two still diverge; do not extract preemptively.
-- [#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable) — unchanged;
+- [#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable) — unchanged;
   `Domain.matches` stays total.
-- [#12](../concerns.md#12-curvilinear-domains) — the source role stays alive, and defect 3 makes it
+- [#12](../../concerns.md#12-curvilinear-domains) — the source role stays alive, and defect 3 makes it
   slightly more alive than 003a left it.
 
 **Known residue**

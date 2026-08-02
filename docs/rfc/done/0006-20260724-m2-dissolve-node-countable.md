@@ -1,7 +1,7 @@
 # RFC 0006 · 2026-07-24 · Dissolve node-`Countable` — implementation plan
 
-Implementation plan for [m2](../tickets/done/01-0070-dissolve-node-countable.md), owned by
-[ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) (the decision the code
+Implementation plan for [m2](../../tickets/done/01-0070-dissolve-node-countable.md), owned by
+[ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) (the decision the code
 predates) with one delta beyond it (storeless materialized providers). **Living document** — being
 built up during the 2026-07-24 align session; decisions land here as they crystallise.
 
@@ -14,14 +14,14 @@ bare `Producer`; the provider-exact lattice channel closes and `StoreFactory.cre
 
 | Boundary | Owner | What m2 does to it |
 |---|---|---|
-| `Countable` facet | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md), [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | **Narrows to result-only** — docstring drops the node-lattice sentence; `Coverage(Manifold, Countable)` unchanged (`resample` reads `coverage.domain`). |
-| `Store` protocol | [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | **Narrows** — `(Manifold, Countable, Writable)` → `(Manifold, Writable)`; `StubStore.domain` and `_STUB_DOMAIN` deleted. |
-| `Reservoir` | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | **Narrows** — `domain` deleted (zero readers in `src`); "Countable by delegation" docstring goes. |
-| `StoreFactory.create` | [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md), [ADR-0005](../adr/0005-build-time-composition.md) | **Narrows** — `EnumerableDomain \| StoreSpec \| None` → `StoreSpec`. The `EnumerableDomain` arm's only caller was `_source_grid` (deleted); no caller passes `None` (`ProfileDef.root_store` is always a `StoreSpec`). |
-| `SourceBinder` invariant | [ADR-0005](../adr/0005-build-time-composition.md) | **Rereads** — discriminator moves from `isinstance(provider, Countable)` to `isinstance(provider.capability, EnumerableCapability)`; loud `CompositionError` in **both** directions (see decisions). |
-| `Weaver._weave_providers` | [ADR-0005](../adr/0005-build-time-composition.md) | `_source_grid` deleted; a materialized source wires `Producer(node=provider, key=...)` — no `Reservoir`, no store allocation. |
-| `Provider` ABC | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | No implementation is node-`Countable`; materialized-ness is a capability fact. |
-| Doc set | ADR-0006, [architecture.md](../architecture.md) | Amended with the code — the ticket's "Docs to sync" section enumerates the sites. |
+| `Countable` facet | [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md), [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) | **Narrows to result-only** — docstring drops the node-lattice sentence; `Coverage(Manifold, Countable)` unchanged (`resample` reads `coverage.domain`). |
+| `Store` protocol | [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) | **Narrows** — `(Manifold, Countable, Writable)` → `(Manifold, Writable)`; `StubStore.domain` and `_STUB_DOMAIN` deleted. |
+| `Reservoir` | [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md) | **Narrows** — `domain` deleted (zero readers in `src`); "Countable by delegation" docstring goes. |
+| `StoreFactory.create` | [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md), [ADR-0005](../../adr/0005-build-time-composition.md) | **Narrows** — `EnumerableDomain \| StoreSpec \| None` → `StoreSpec`. The `EnumerableDomain` arm's only caller was `_source_grid` (deleted); no caller passes `None` (`ProfileDef.root_store` is always a `StoreSpec`). |
+| `SourceBinder` invariant | [ADR-0005](../../adr/0005-build-time-composition.md) | **Rereads** — discriminator moves from `isinstance(provider, Countable)` to `isinstance(provider.capability, EnumerableCapability)`; loud `CompositionError` in **both** directions (see decisions). |
+| `Weaver._weave_providers` | [ADR-0005](../../adr/0005-build-time-composition.md) | `_source_grid` deleted; a materialized source wires `Producer(node=provider, key=...)` — no `Reservoir`, no store allocation. |
+| `Provider` ABC | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | No implementation is node-`Countable`; materialized-ness is a capability fact. |
+| Doc set | ADR-0006, [architecture.md](../../architecture.md) | Amended with the code — the ticket's "Docs to sync" section enumerates the sites. |
 
 **Ownership rule preserved:** `errors, parameters, clock, identity ← manifold ← nodes`; nothing in
 `manifold/` learns about stores or binding.
@@ -34,19 +34,19 @@ bare `Producer`; the provider-exact lattice channel closes and `StoreFactory.cre
    declaration channel is the catalogue's **`OfferingSpec.store`** (a `StoreSpec` authored beside the
    manifest by whoever knows the vendor grid), overridable per profile by `OfferingDef.store` —
    **already built** (`composition.py`: `offering.store if ... else spec.store`). No new config
-   surface. The lattice *representation* is [006](../tickets/01-0130-retentive-store-freshness.md)'s
+   surface. The lattice *representation* is [006](../../tickets/01-0130-retentive-store-freshness.md)'s
    decision; the enumerable-but-unholdable residual (cloud ARCO) stays with the ticket's open
-   question 2 / [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
+   question 2 / [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 2. **The `SourceBinder` invariant is loud in both directions.** A configured store on a materialized
    offering raises `CompositionError` (an operator believing something false about the deployment),
    mirroring the missing-store error for a non-materialized source — which rewords from
    "non-Countable" to **"non-materialized"**. Never a silent discard; matches every other operator
    contradiction in `composition.py` (dangling `secret_ref`, duplicate keys) and
-   [#27](../concerns.md#27-stored-calculator-store-binding)'s proposed rule.
+   [#27](../../concerns.md#27-stored-calculator-store-binding)'s proposed rule.
 3. **Doc sync lands with the code** — ADR-0006's construction-face clause amended; three
    architecture.md sentences stop handing a provider lattice to the factory; §Source / glossary
    **Source** deliberately *unchanged* (true for every v1 source; widening deferred to
-   [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)'s trigger).
+   [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)'s trigger).
    Site list: the ticket's "Docs to sync" section.
 4. **`CountableFakeProvider` is deleted, not reshaped.** With `domain=` gone the subclass has no
    remaining member; a materialized fake is `FakeProvider(capability=EnumerableCapability(...))`.
@@ -97,7 +97,7 @@ return [
 No capability re-check in the Weaver — `registered.store is None` *is* the materialized fact, owned
 by the binder invariant (single authority; no drift between two readers). `wire_source` is
 module-level (simplify pass, 2026-07-25) so test wiring (`test_arbiter._producers`) calls the same
-rule instead of mirroring it — when [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)'s
+rule instead of mirroring it — when [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)'s
 homogenization wrapper lands here, the Arbiter tests follow automatically.
 
 ### `nodes/store.py` — narrowed protocol and factory
@@ -114,7 +114,7 @@ class StoreFactory:
 
 - **Storeless fakes must be exercised on-grid only** — a storeless producer asked an off-its-grid
   enumerable Selection would need self-homogenization, whose placement is
-  [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization) (open, no
+  [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization) (open, no
   v1 driver). Tests for the storeless path pin their Selections to the fake's declared domain.
 
 ## Implementation stages (per /tdd — vertical slices; deletions ride the existing suite)
