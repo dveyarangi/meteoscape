@@ -264,6 +264,10 @@ _Avoid_: Provider instance map, Parameter table
 **ProviderManifest**:
 A Provider plugin's identity, offerings, secret requirement, and construction contract. → [ADR-0005](./adr/0005-build-time-composition.md)
 
+**Tap table**:
+A Provider shape's declaration of what it serves and how — per Parameter: the vendor variables it reads, their expected units, the transform that yields canonical values, and the vertical cell it lands on. Narrows to the taps one request engages. → [edge/provider.md](./edge/provider.md)
+_Avoid_: Parameter map (ParameterTable is the canonical descriptor table), variable list, schema
+
 **SecretSlot**:
 A ProviderManifest's named secret requirement. → [architecture.md](./architecture.md#config-binders-weaver)
 _Avoid_: Secret value, API key field
@@ -299,7 +303,7 @@ The supported Python package boundary through which a host application uses Mete
 _Avoid_: Internal composition API, headless mode, client SDK
 
 **Edge record**:
-The living per-surface seam document between architecture and user-oriented design, aggregating one product edge's status: contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Customer-facing edge descriptions derive from it as subsets. → [m5](./tickets/done/m5-edge-records.md)
+The living per-surface seam document between architecture and user-oriented design, aggregating one product edge's status: contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Customer-facing edge descriptions derive from it as subsets. → [m5](./tickets/done/01-0090-edge-records.md)
 _Avoid_: public API guide (a derivation, not the record), surface spec, contract doc; *edge* alone (the system's outer boundary, not the document about it)
 
 **Gateway**:
@@ -370,8 +374,12 @@ _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 A leaf Manifold that adapts one external weather-data producer into Meteoscape semantics. → [architecture.md](./architecture.md#provider-leaf-manifold)
 _Avoid_: Vendor, backend, driver
 
+**Probe**:
+The vendor-facing intake a Provider drives: it obtains one producer's raw readings and interprets none of them. Paired with the Provider shape that resolves geometry, converts, and assembles around it. → [edge/provider.md](./edge/provider.md)
+_Avoid_: Core, intake, sonde, client, adapter; Transport (the HTTP seam a Probe uses, one layer below)
+
 **Provider parity check**:
-An independent comparison between a single-Provider Meteoscape profile and that external producer's reference response for the same request. → [provider-authoring.md](./provider-authoring.md#provider-parity-check)
+An independent comparison between a single-Provider Meteoscape profile and that external producer's reference response for the same request. → [edge/provider.md](./edge/provider.md)
 _Avoid_: Truth check, accuracy test, Provider unit test
 
 **Source**:

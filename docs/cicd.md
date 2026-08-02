@@ -44,7 +44,8 @@ Remote: `github.com/dveyarangi/meteoscape`.
 
 Live Provider parity checks (`uv run pytest tests/parity`) are deliberately **outside CI**:
 `testpaths` scopes the default run to `tests/deterministic/`, keeping the gate network-free —
-see the [provider authoring guide](./provider-authoring.md).
+see the [Provider edge record](./edge/provider.md). Enforcement and routing of those checks are
+[#41](./concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 
 ## Deployment form
 

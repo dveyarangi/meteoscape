@@ -56,9 +56,9 @@ Python application author constructing and calling Meteoscape without a server),
 
 11. As an operator, I want to enable/disable providers and set their priority order via typed config, so
     that I control the quality policy without code changes.
-12. As an operator, I want the TWC API key injected via config at construction, so that secrets never
+12. As an operator, I want the Visual Crossing API key injected via config at construction, so that secrets never
     live in code or globals.
-13. As an operator, I want the server to start and serve on Open-Meteo alone when the TWC key is absent,
+13. As an operator, I want the server to start and serve on Open-Meteo alone when the Visual Crossing key is absent,
     so that a missing optional secret degrades gracefully instead of failing startup.
 14. As an operator, I want a fully-fresh repeat request served from cache without any provider call, so
     that I minimize latency and provider usage.
@@ -79,11 +79,11 @@ Python application author constructing and calling Meteoscape without a server),
 | Provider | Key | Priority | Notes |
 |---|---|---|---|
 | **Open-Meteo** | keyless | **primary** | global, free; exercises the keyless path |
-| **TWC** (The Weather Company) | API key | fallback | exercises secrets-injection seam |
+| **Visual Crossing** (Timeline API) | API key | fallback | exercises secrets-injection seam; same point-plus-series shape as the primary |
 
 - Priority order **is** the quality policy (the `priority` reconciler selects, never combines).
   Reconfigurable via Arbiter config.
-- **Missing TWC key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
+- **Missing Visual Crossing key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
   emitted), so the server starts and serves with Open-Meteo alone. Degrade is **enablement policy,
   owned by `Settings`**; the binder itself is **strict** — every def that reaches it is explicit
   operator intent, and it either binds or startup fails (`CompositionError`, build-time only — never a
@@ -196,7 +196,7 @@ the per-parameter provenance `expiration`.
   [ADR-0007](./adr/0007-capability-carries-its-domain.md),
   [#29](./concerns.md#29-narrated-reach-what-a-profile-promises). v1 positions: because it
   composes off the woven graph, it reflects config resolution (enabled providers + present
-  secrets) automatically, so a missing optional provider (for example, no TWC key) cannot advertise
+  secrets) automatically, so a missing optional provider (for example, no Visual Crossing key) cannot advertise
   parameters or horizons the running server will not attempt. **Quality is not narrated** — a policy
   outcome the response reports per parameter via provenance
   (→ [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)); quality tiers belong in
@@ -255,7 +255,7 @@ lifts **without a contract change** — see the seams in
 ### Config & secrets
 
 - One typed config (Pydantic Settings): the enabled **`OfferingDef`s** (v1 degenerate case — one per
-  provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
+  provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (Visual Crossing key), and
   per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
   coarser = more cache sharing, more interpolation; the Source's is a configured `StoreSpec` guess)
@@ -302,7 +302,7 @@ lifts **without a contract change** — see the seams in
    TTL = `expiration`). A parameter's **time window is single-origin** — a
    temporal miss or extension refetches the **whole window** from one provider, and a primary failure
    serves the **entire window** from the fallback (or errors), **never** an A-then-B `valid_time` splice.
-6. **Secrets**: TWC's key is injected via typed config at construction; absent key → graceful
+6. **Secrets**: Visual Crossing's key is injected via typed config at construction; absent key → graceful
    degrade to Open-Meteo only.
 7. **Errors** map correctly to MCP `bad-request` / `capability-mismatch` / `runtime-failure`.
 8. **Tests**: unit + integration with mocked HTTP transport (per the TDD skill); provider tests mock

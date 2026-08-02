@@ -1,19 +1,26 @@
 # v1 delivery status
 
-**Last updated:** 2026-07-25
+**Last updated:** 2026-08-02
 
-**Current stage:** 003a, m1, 003b, and m2 have landed — reach lives on `Capability`
-([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, and
-a materialized provider wires storeless
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)). Next
-is 003c (request shaping); 006 (retentive store) is an independent follow-on with its assumed
-storeless/private-lattice shape now in place. Maintenance ticket m3 (live Provider parity) has
-**landed** ([RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md)): the deterministic
-suite lives under `tests/deterministic/`, the opt-in live parity harness under `tests/parity/`, and
-the Open-Meteo reference check passed its live acceptance run on 2026-07-25 — 004's second Provider
-is no longer gated on it. The 003c align (2026-07-25) adopted relaxed window semantics and moved
-their mechanism to **[m4 — Snapped request mode (T instantiation)](./01-0100-snapped-t-request-mode.md)** (Ready, design
-tentative — its own align/RFC precedes implementation); 003c is Planned on top of it.
+**Current stage:** 003a, m1, 003b, m2, m3, and m5 have landed — reach lives on `Capability`
+([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, a
+materialized provider wires storeless
+([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)), the live parity harness
+runs under `tests/parity/` beside the deterministic suite under `tests/deterministic/`
+([RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md) — the Open-Meteo reference check
+passed its acceptance run on 2026-07-25, so 011's second Provider is no longer gated on it), and
+per-surface [Edge records](../edge) carry each product edge's contract, invariants, and staged
+roadmap.
+
+**[m4 — Snapped request mode](./01-0100-snapped-t-request-mode.md) is the work in flight**, its
+design settled across three passes: the 2026-07-25 align inverted Snapped to bounds-only
+(`SnappedAxis` / `SelectionDomain`), the 2026-07-26 review settled the resolution algebra as one verb
+on the base `Domain` (`ground`), and the 2026-08-02 align widened stages 4–5 into an *extraction* —
+the leaf splits into a `TimelineProvider` shape owning all algebra and an injected `TimelineProbe`
+owning the vendor face ([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md) decision 12,
+[edge/provider.md](../edge/provider.md)). 003c (request shaping) is Planned on top of it; 006
+(retentive store) is an independent follow-on with its assumed storeless/private-lattice shape
+already in place.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -53,7 +60,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Planned | Stores are non-retentive placeholders. |
 | Off-grid homogenization | Planned | Nearest-neighbor read-back remains. |
-| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **Visual Crossing** (chosen 2026-07-27, replacing TWC). |
+| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **Visual Crossing** (chosen 2026-08-02, replacing TWC). |
 
 ## Delivery map
 
@@ -77,7 +84,7 @@ queue position, because it still has to be done in order.
 | 0090 | [Edge records and the `/edge` skill](./done/01-0090-edge-records.md) | Maint | Done | — | Per-surface Edge records (the architecture ↔ user-design seam documents) with an `/edge` skill; edge awareness wired into `/align` (challenge rule, `EDGE-FORMAT.md`) and `/sync-arch`; the MCP record populated and Normative. |
 | 0100 | [Snapped request mode (T instantiation)](./01-0100-snapped-t-request-mode.md) | Maint | In progress | capability domain, provider parity checks | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Blocks request shaping. |
 | 0110 | [Request shaping](./01-0110-request-shaping.md) | — | Planned | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
-| 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Planned | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-07-27. |
+| 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Planned | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
 | 0130 | [Retentive store](./01-0130-retentive-store-freshness.md) | — | Planned | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. |
 | 0140 | [Off-grid homogenization](./01-0140-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back onto the requested point. |
 | 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
@@ -143,7 +150,6 @@ that date cite them, and are left as written.
 | m4 | [snapped request mode](./01-0100-snapped-t-request-mode.md) |
 | m5 | [edge records](./done/01-0090-edge-records.md) |
 | m6 | [artifact conventions sweep](./01-0200-artifact-conventions-sweep.md) |
-| [m6 — Artifact conventions sweep](./01-0200-artifact-conventions-sweep.md) | Planned (own align precedes) | m5 | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), sequencing scheme for nested subtickets, skills slimmed to reference it. |
 
 ## Recommended execution order
 
@@ -157,10 +163,10 @@ uses legacy ids because it predates the 2026-08-02 renumbering.
 3. ~~**m1**~~ — **landed**: `pyright` green across `src` and `tests`, CI unblocked.
 4. ~~**003b**~~ — **landed**: reach moved onto `Capability` per [ADR-0007](../adr/0007-capability-carries-its-domain.md); the standalone resolver is gone.
 5. ~~**m3**~~ — **landed**: the parity harness is live and the Open-Meteo reference check passed its
-   acceptance run; every new Provider contribution, beginning with 004, ships its own parity check.
-6. Align and land **m4** (Snapped request mode, T instantiation — the 003c-adopted window
-   semantics at their proper layer), then complete **003c** on top of it; or **006** as an
-   independent follow-on —
+   acceptance run; every new Provider contribution, beginning with 011, ships its own parity check.
+6. Land **m4** (Snapped request mode, T instantiation — the 003c-adopted window
+   semantics at their proper layer; aligned, in progress), then complete **003c** on top of it; or
+   **006** as an independent follow-on —
    ~~m2~~ has **landed**, so the storeless/private-lattice shape 006 assumes is in place.
 7. Complete **007** after 006.
 8. Ship **011** (the Visual Crossing Probe — the first test of m4's shape/vendor split), introducing
@@ -190,8 +196,12 @@ resolution.
 - [m4](./01-0100-snapped-t-request-mode.md): design **settled at the 2026-07-25 align** — Snapped
   inverted to bounds-only (`SnappedAxis` / `SelectionDomain`), intersective admission, resolution
   on the winner's own lattice; the ADR-0002 amendment landed at the align, ADR-0004's and #13's
-  land with the implementation.
-- [010](./01-0160-unit-conversion-edge.md): build the shared conversion catalogue when ticket 004 exposes
+  land with the implementation. **Algebra settled at the 2026-07-26 review** — one verb, `ground`, on
+  the base `Domain`, with `Snappable` and `agreed_geometry` beside it. **Scope widened at the
+  2026-08-02 align** — stages 4–5 become the `TimelineProvider` / `TimelineProbe` extraction
+  ([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md) decision 12,
+  [edge/provider.md](../edge/provider.md)).
+- [010](./01-0160-unit-conversion-edge.md): build the shared conversion catalogue when ticket 011 exposes
   the first real multi-vendor spread.
 
 ## Maintenance rule

@@ -325,6 +325,31 @@ Explicit non-goals:
 - REST, NetCDF, CSV.
 - Provider skill scoring.
 
+### Priority candidate after v1: local-station validation and bias correction
+
+The first thing to weigh against Phase 2, not a late-roadmap item. It draws the
+station source from Phase 2 and verification from Phase 6, scoped to a **single**
+station rather than a network:
+
+- Ingest one local station as an observation source.
+- Compare served forecasts against that station's observations over time.
+- Report per-source, per-parameter bias at that location.
+- Later, and only if the measured bias proves stable: correct the forecast for
+  that station.
+
+Why it ranks this high:
+
+- It is the cheapest demonstration of the trust thesis — "which provider is right
+  *here*" is the claim a single-provider API cannot make.
+- It reaches the self-hosting PWS / home-automation audience already named under
+  pillars 9 and 10.
+- Validation ships value on its own; bias correction is a strictly later step,
+  since correcting an unmeasured bias is unfalsifiable.
+
+Open before it can be scheduled: whether past forecasts can be retrieved from
+providers' historical-forecast archives, or whether Meteoscape must first
+accumulate its own forecast history. That answer sets the lead time on the step.
+
 ### Phase 2: Operational Substrate
 
 Purpose: make the engine useful as a **self-hosted** operational substrate —

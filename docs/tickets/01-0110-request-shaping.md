@@ -9,7 +9,8 @@
 - **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**on hold** — it planned the
   superseded edge-clamp approach and is kept as that decision's record; its surviving decisions
   stand, and it is re-staged after m4 lands).
-- **Depends on:** [m4](./01-0100-snapped-t-request-mode.md) (Ready, design aligned 2026-07-25), and
+- **Depends on:** [m4](./01-0100-snapped-t-request-mode.md) (In progress; design aligned 2026-07-25,
+  algebra settled 2026-07-26, scope widened 2026-08-02), and
   [003b — Capability carries its domain](./done/01-0060-capability-domain.md) (which reshapes
   [003a](./done/01-0040-profile-reach.md); 003a depends on 002, 002b).
 - **Outcome:** Free `start`/`end` request windows (ISO datetimes) served as the caller's bounds ∩

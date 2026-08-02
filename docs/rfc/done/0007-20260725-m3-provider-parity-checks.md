@@ -2,7 +2,7 @@
 
 Implementation plan for [m3](../../tickets/done/01-0080-provider-parity-checks.md). The *meaning* of a Provider
 parity check — independence rules, comparison semantics, evidence expectations — is owned by the
-[Provider authoring guide](../../provider-authoring.md) and is not restated here. **Living document** —
+[Provider authoring guide](../../edge/provider.md) and is not restated here. **Living document** —
 being built up during the 2026-07-25 align session; decisions land here as they crystallise.
 
 **Scope in one line:** give the live parity suite an executable home and a documented opt-in
@@ -13,7 +13,7 @@ deterministic gate.
 
 1. **Home and opt-in are structural, not conventional.** The existing suite moves whole
    (`git mv`) to `tests/deterministic/` — the folder name makes physical the term the docs already
-   own ("the deterministic suite", [provider-authoring.md](../../provider-authoring.md)) — and live
+   own ("the deterministic suite", [edge/provider.md](../../edge/provider.md)) — and live
    parity checks live beside it in `tests/parity/`. `pyproject.toml` gains
    `testpaths = ["tests/deterministic"]`, so the default `uv run pytest` **cannot collect** a live
    test: no marker discipline, no `addopts` deselection. The opt-in command is
@@ -70,7 +70,7 @@ deterministic gate.
      never does.
 
 3. **The Open-Meteo reference reader is a minimal direct JSON fetch, with the suitability
-   justification recorded.** The [authoring guide](../../provider-authoring.md) prefers an official
+   justification recorded.** The [authoring guide](../../edge/provider.md) prefers an official
    client *when suitable*; the official `openmeteo-requests` client is judged unsuitable for the
    reference role: it speaks FlatBuffers (failure evidence becomes opaque binary where the guide
    wants reproducible artifacts), adds three dev dependencies, and for Open-Meteo the public JSON

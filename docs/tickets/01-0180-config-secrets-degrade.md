@@ -4,7 +4,7 @@
 
 - **Status:** Partial
 - **Depends on:** [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed
-  2026-07-27: what this ticket needs is a shipped manifest that *declares* a secret, which 011 lands —
+  2026-08-02: what this ticket needs is a shipped manifest that *declares* a secret, which 011 lands —
   not 004's fallback behaviour)
 - **Outcome:** Complete key-present/key-absent provider construction behavior.
 

@@ -5,8 +5,8 @@
 - **Status:** In progress (maintenance) — **mode settled at the 2026-07-25 align** (inverted to
   bounds-only; `SnappedAxis` / `SelectionDomain` named; stage 0 deferred); **resolution algebra
   settled at the 2026-07-26 review**: one verb, `ground`, on the base `Domain`, so a leaf declares
-  its geometry instead of carrying mode code — the property that keeps 004's second provider and
-  006's `quantize` from re-deriving the mode; **scope widened at the 2026-07-27 align**: stages 4–5
+  its geometry instead of carrying mode code — the property that keeps 011's second provider and
+  006's `quantize` from re-deriving the mode; **scope widened at the 2026-08-02 align**: stages 4–5
   become an *extraction* — the leaf splits into `TimelineProvider` (the shape, owning all algebra) and
   an injected `TimelineProbe` (the vendor, owning one request and one envelope parse) —
   [RFC 0009 decision 12](../rfc/0009-20260725-m4-snapped-t-request-mode.md),

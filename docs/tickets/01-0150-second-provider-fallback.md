@@ -8,7 +8,7 @@
   [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (the second producer this ticket
   falls back *to*; 011 in turn rides [m4](./01-0100-snapped-t-request-mode.md))
 - **Outcome:** Wholesale priority fallback across two producers.
-- **Scope narrowed 2026-07-27 (align):** the **provider implementation moved to
+- **Scope narrowed 2026-08-02 (align):** the **provider implementation moved to
   [011](./01-0120-visual-crossing-provider.md)** — Probe, manifest, secret slot, parity check, and the
   TWC → Visual Crossing sweep. This ticket keeps the **Arbiter behaviour** only. The two are tested
   differently and fail differently: 011 is a live parity question about one vendor's data; 004 is a

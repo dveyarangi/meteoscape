@@ -68,9 +68,9 @@ it unrepresentable (sites verified 2026-07-25; m4's arrive with
 
 | Class | Cases | Dissolvable at the edge? |
 |---|---|---|
-| **Shape** — a representation the leaf cannot serve | non-`Separable` Selection domain and non-`GridDomain` assembly target (`open_meteo`); m4's malformed snapped shape (snapped non-T, non-snapped T) | **Yes, totally** — a builder that can only construct supported shapes; needs no `Capability` read. This is the concrete case for a `SelectionDomain` builder. |
+| **Shape** — a representation the leaf cannot serve | non-`Separable` Selection domain (`open_meteo`); m4's *snapped against an axis no producer declares as snappable* (snapped X/Y today) | **Split, after m4's 2026-07-26 algebra.** The pure-representation half is dissolvable with no `Capability` read (the concrete case for a `SelectionDomain` builder) — and m4 shrank it: an all-enumerable `SelectionDomain` and a non-`GridDomain` assembly target are now simply *served*, not refused. But snapped-against-non-snappable is decided by the **producer's declared geometry**, so pre-empting it needs an Arm-2 read and can only be advisory. |
 | **Coverage** — geometry outside what any producer admits | `Arbiter.project`'s *"no producer admits any requested parameter"*; 003c's empty resolved parameter set | **Partially** — pre-emptable against published reach, but only as far as Arm 2 allows, so advisory at best. Note m4's Snapped-T already dissolves the *T-window* instance by construction: an overlapping window is trimmed rather than refused. |
-| **Runtime / race** — true when asked, false when served | m4's raced-empty window (admission passed, the rolling window moved before fetch); a producer that is down ([#30](#30-response-membership-under-runtime-degraded-fallback)) | **No** — these belong to the answer, not the request. A helper that claimed to prevent them would be lying. |
+| **Runtime / race** — true when asked, false when served | m4's raced-empty window (admission passed, the rolling window moved before the fetch, so nothing survives the clip); m4's *requested taps or delivered records grounding differently* (one fetch answers one geometry); m4's **divergent winner domains** (one request, two winners, two independent vendor fetches whose derived T axes disagree → the Arbiter's closed-projection `RuntimeFailure`); a producer that is down ([#30](#30-response-membership-under-runtime-degraded-fallback)) | **No** — these belong to the answer, not the request. A helper that claimed to prevent them would be lying. |
 
 **Arm 2 — what a helper may trust about `Capability`.** A builder validating against capability
 inherits capability's own inaccuracies, in both directions — each already owned elsewhere; what is
@@ -99,7 +99,7 @@ new here is that they bound what the edge can promise:
 - **Whether pre-flight validation is public API at all**, versus letting the request run and reading
   a reason — which presumes #14's trace exists and is actionable.
 - **Whether declaration fidelity deserves its own check**: a conformance harness comparing a
-  provider's declared footprint against what it actually serves (the [m3](./tickets/done/m3-provider-parity-checks.md)
+  provider's declared footprint against what it actually serves (the [m3](./tickets/done/01-0080-provider-parity-checks.md)
   parity shape, aimed at declarations rather than values) would convert several Arm 2 unknowns into
   tested facts.
 
@@ -156,6 +156,14 @@ The fixed hourly on-lattice v1 request does not exercise this mismatch. **Close 
 correctness unchanged — blast radius stays behind the Capability facet. Until then, engine
 `NotImplementedError` is an internal assert that `serves` over-promised, not the normal edge path.
 
+**Narrowed at [m4](./tickets/01-0100-snapped-t-request-mode.md) (2026-07-26).** The sampler used to report
+one `None` for two unrelated situations; m4 split them, because leaf assembly now crops through
+`resample` on every request. Only *off-phase or a different step* remains this concern's — genuinely
+unimplementable by index arithmetic, still an internal assert. *A target running past the source's
+end* is a **shortfall**: the crop is well-defined over the overlap and short by a known count, which
+callers can diagnose (a vendor delivered less than it declared) and
+[#30](#30-response-membership-under-runtime-degraded-fallback) can eventually pad.
+
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
 **Kind:** room-left (module layout)
@@ -165,6 +173,9 @@ Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) i
 geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry *and* lattice math, or
 a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
 pure refactor, no contract change. Not blocking; do not split preemptively.
+**Count as of [m4](./tickets/01-0100-snapped-t-request-mode.md) (2026-07-26):** `SnappedAxis.clip` adds a
+second site of index arithmetic in `domain.py` beside the sampler's offsets, so 006's `quantize` is the
+third and should re-read this entry before writing its own.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
@@ -174,16 +185,19 @@ pure refactor, no contract change. Not blocking; do not split preemptively.
 `sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
 tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
 axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
-**Trigger status (2026-07-25): deliberately not fired by
-[m4](./tickets/m4-snapped-t-request-mode.md)** — m4 reforges the request-side axis surface but adds
-no coordinate-kind dispatch (its snapped member is bounds-only: admission is interval intersection,
-the answer lattice derives from the vendor response). **New constraint, recorded at the same
-align:** a public split would double every request-facing axis kind (`SelectableAxis`: regular /
-vantage / snapped), so when the split lands it must stay **invisible to request authors** — one
+**Trigger status (revised 2026-07-26): [m4](./tickets/01-0100-snapped-t-request-mode.md) fires it once,
+and stops there.** The align expected m4 to add *no* coordinate-kind dispatch; the resolution algebra
+it landed does add one, in `SnappedAxis.clip` (bounds minus anchor, divided by step — `datetime` and
+`timedelta` narrowing). One function, chosen over splitting the types mid-ticket. The standing
+consequence is a price tag: **snapped X/Y needs either its own spatial `clip` or this split**, so
+whichever arrives second pays for the first.
+**Constraint on the split itself:** it would double every request-facing axis kind (`SelectableAxis`:
+regular / vantage / snapped), so when it lands it must stay **invisible to request authors** — one
 constructor name per kind with coordinate-kind autodetection, or facade builders absorbing it
 ([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape). Expected
-internal toucher: [006](./tickets/006-retentive-store-freshness.md)'s `quantize`
-([#22](#22-lattice-helpers-vs-domain--sampling-module-split) stays untriggered).
+internal toucher: [006](./tickets/01-0130-retentive-store-freshness.md)'s `quantize` — which is also the
+third lattice-arithmetic site that would fire
+[#22](#22-lattice-helpers-vs-domain--sampling-module-split), now that `clip` is the second.
 
 ## 15. Coarser-grid resampling and aggregation semantics
 
@@ -241,7 +255,7 @@ yet the per-cell **gap-filler** ("a whole-coverage producer joins the set at low
 containment a partial-coverage producer is filtered out, so spatial gap-fill and any `valid_time` splicing
 **cannot occur**. **v1 relies on containment for enumerable requests** — wholesale fallback, "select,
 never combine", no horizon splicing. **A scoped, mode-local advance is proposed by
-[m4](./tickets/m4-snapped-t-request-mode.md)** (tentative): a **Snapped-T** request admits by
+[m4](./tickets/01-0100-snapped-t-request-mode.md)** (tentative): a **Snapped-T** request admits by
 non-empty T intersection and the single winner serves `bounds ∩ its window` — no per-cell fold, no
 splicing, reconciler untouched. The general question stays open: when coverage reconcilers
 ([#6](#6-reconciler-catalogue)) land, admission must generalize to **intersection** with per-cell folding,
@@ -369,6 +383,14 @@ identity and the priority-first band walk), [ADR-0002](./adr/0002-data-model.md)
 field). Provider `exact` and native-coarse-as-distinct-origin remain with
 [#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
+**Related limitation, recorded 2026-08-02:** a leaf cannot serve, in one call, two parameters whose
+declared reaches **differ on a snapped axis** — `agreed_geometry` refuses it, because one `project`
+answers with one geometry (ADR-0001) and the licence for a multi-domain answer is 006's `ANY`, which
+does not exist yet. A vendor offering 16 days of temperature but 5 of precipitation therefore declines
+a mixed snapped request with `capability-mismatch`. Correct under closure, and it dissolves at
+[006](./tickets/01-0130-retentive-store-freshness.md); it is the per-parameter cousin of this concern's
+per-offering question → [edge/provider.md](./edge/provider.md).
+
 **Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
 continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.score`**, and the Arbiter
   equal-priority band walk. **Multi-level samples inside one vantage window**
@@ -441,6 +463,36 @@ footprints, X/Y preference unbuilt"* — an explanation that points at the wrong
 composition happens as the graph is built, a curvilinear producer in a grid profile fails the build;
 what stays invisible is the *request-path* skip, which is
 [#36](#36-unserved-and-uncomparable-are-indistinguishable).
+
+## 41. Parity evidence is unenforced and unrouted
+
+**Kind:** room-left (evidence routing) · **Refs:** [m3](./tickets/done/01-0080-provider-parity-checks.md),
+[edge/provider.md](./edge/provider.md), [cicd.md](./cicd.md)
+
+Every live Provider parity check is opt-in and hand-invoked. Three links between a Provider and its
+evidence have no mechanism, only prose:
+
+- **Coverage is unchecked.** Nothing verifies that an `impl_id` in `PROVIDER_CATALOG` has a
+  `tests/parity/test_<impl>.py`. A Provider can ship complete by every automated measure — deterministic
+  suite green, `pyright` green, CI green — with no live check at all. Contrast
+  `test_parity_reader_guard.py`, which *does* mechanically guard every module in `readers/`: the
+  pattern already exists one level down.
+- **Selection is manual.** *When* to run a check is a prose list (that Provider, its reader, its
+  manifest, shared normalization it uses, a Calculator in the comparison, composition or surface code),
+  applied by whoever remembers. m3 states the constraint without a mechanism — *"branch naming must not
+  become the only way an affected Provider is selected"* — so routing is open, not merely unbuilt.
+- **The retry-once boundary policy has no failure signal.** m3 defers improving it (run pinning,
+  reference metadata) *"until the simple policy demonstrably fails"*, but nothing accumulates the
+  evidence that would demonstrate it. Parity evidence is retained only at failure time and the vendor
+  forecast rolls over within hours, so a false-alert rate is unobservable by design.
+
+Open: whether coverage becomes a deterministic guard (cheap, and the reader guard is the pattern) or
+rides the automation; what selects an affected Provider without depending on branch names; and whether
+the boundary policy needs a *signal* before it needs an improvement.
+
+**Not this concern:** *building* scheduled execution and changed-file routing. That is delivery
+sequencing, recorded in [m3](./tickets/done/01-0080-provider-parity-checks.md)'s follow-on section. This
+file owns the unresolved part — what enforces coverage and what routes selection.
 
 ## 26. Provider / calculator plugin scaffolding
 
@@ -529,7 +581,7 @@ set to prove it.
 
 A surface needs to tell callers **how far this profile reaches** — the MCP tool
 description narrates it; window *fitting* is resolution's, via the Snapped-T request mode
-([m4](./tickets/m4-snapped-t-request-mode.md); membership notes →
+([m4](./tickets/01-0100-snapped-t-request-mode.md); membership notes →
 [#30](#30-response-membership-under-runtime-degraded-fallback)). The mechanism is **Reach**: the per-parameter `Domain` a `Capability` publishes, composed up the
 graph and read off the woven root ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). What stays
 open here is the **product** question, not the mechanism: **what a profile should promise**, given that
@@ -654,6 +706,14 @@ the terminus: it carries the same information a padded tail would, minus the amb
 The interim cost is payload, not correctness. A server-side **strict mode** is declined — an
 explicit-absence response lets a strict client enforce all-or-nothing with one `if`.
 
+**Where padding will be written** (named at [m4](./tickets/01-0100-snapped-t-request-mode.md), 2026-07-26).
+Leaf assembly crops values through `resample`, and the sampler now distinguishes a **shortfall** — the
+requested geometry running past what was delivered — from a crop it cannot do at all
+([#21](#21-serves-extent-vs-project-crop-ability)). That shortfall branch is the one site where a
+padded tail would be filled: `present=False` with `nan` values, over a known count. It is the
+mechanical half only; the ambiguity above (a padded tail indistinguishable from measured absence) is
+still what gates turning it on, and the reason channel is still the prerequisite.
+
 **Cases considered and dissolved** (so they are not re-litigated):
 
 - **Single-vendor short parameter**: *not* heterogeneity. The operator bundles knowing
@@ -676,7 +736,7 @@ succeeded; it has no value there), plus a *slice-extraction* need ("which interv
 is introspection/metadata, not response shape. Filed here only so it is not mistaken for this concern.
 
 **Declared-edge trim (003c align 2026-07-25; mechanism moved to
-[m4](./tickets/m4-snapped-t-request-mode.md), tentative there).** A stated request window yields
+[m4](./tickets/01-0100-snapped-t-request-mode.md), tentative there).** A stated request window yields
 its servable part in one round trip: the edge issues a **Snapped-T** request (caller bounds as raw
 instants; the edge fills an omitted `end` from the folded reach end read live — a hint the
 intersection trims harmlessly when stale — and an omitted `start` from now) and **resolution**
@@ -856,9 +916,9 @@ graceful degrade deliberately won't hard-fail on a missing *provider* parameter,
 
 ## 37. Storeless materialized producers and read-back homogenization
 
-**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/done/m2-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/done/01-0070-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 
-[m2](./tickets/done/m2-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
+[m2](./tickets/done/01-0070-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
 (archive bundle, climatological normals, static fields) *is* its own store, so it wires **storeless** —
 no `Reservoir(store, provider)` mirroring data that is already local. That removes the node whose
 read-back would have homogenized an off-grid request, and

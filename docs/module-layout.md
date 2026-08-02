@@ -55,5 +55,5 @@ src/meteoscape/
 # tests/deterministic/ mirrors src; provider tests mock the HTTP transport; `testpaths` makes it
 # the default `uv run pytest` scope. tests/parity/ holds the live opt-in Provider parity checks
 # (`uv run pytest tests/parity`): comparison.py engine + readers/ (import-clean reference readers)
-# → provider-authoring.md.
+# → edge/provider.md.
 ```

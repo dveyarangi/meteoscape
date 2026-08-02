@@ -29,7 +29,7 @@ shaping, storage, or homogenization work.
 
 ## Owning guidance
 
-[Provider authoring guide](../../provider-authoring.md) defines the durable contribution expectation and
+[Provider authoring guide](../../edge/provider.md) defines the durable contribution expectation and
 the meaning of **Provider parity check**. This ticket supplies the executable home and first working
 case; it must not duplicate that guidance.
 
@@ -115,7 +115,7 @@ Lands with the code, not after it:
 
 - [module-layout.md](../../module-layout.md) — the `tests/` comment: deterministic suite moves to
   `tests/deterministic/`; live parity lives in `tests/parity/`.
-- [provider-authoring.md](../../provider-authoring.md) — the durable parity-authoring rules (payload
+- [edge/provider.md](../../edge/provider.md) — the durable parity-authoring rules (payload
   boundary, import-level independence, engine-constant adoption, fresh-root retry, evidence
   perishability) landed with the 2026-07-25 align; at landing, the "until m3 supplies the
   executable harness" sentence flips to a link to the opt-in command and the Open-Meteo example,

@@ -79,12 +79,13 @@ shape of the work, not commitments.
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context — #39.
 3. Request-composition ergonomics — `SelectionDomain` / mode builders ride
-   [m4](../tickets/m4-snapped-t-request-mode.md) and
-   [003c](../tickets/003c-request-shaping.md); they become embedder vocabulary when the facade
+   [m4](../tickets/01-0100-snapped-t-request-mode.md) and
+   [003c](../tickets/01-0110-request-shaping.md); they become embedder vocabulary when the facade
    lands. Whether those builders are merely **shape-safe** (unservable shapes unrepresentable, no
    capability read) or **capability-aware** (validated against a live `Capability`, therefore
    advisory) is [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge).
 4. `0.x` compatibility policy — supported import paths, deprecation mechanics, embedded ↔
    protocol consistency — #39.
-5. Third-party plugin authoring at this edge — [#26](../concerns.md#26-provider--calculator-plugin-scaffolding),
-   building on the [provider authoring guide](../provider-authoring.md).
+5. Third-party plugin authoring — how an embedding host *supplies* manifests
+   ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)); how a Provider is *authored* is
+   its own edge, [edge/provider.md](./provider.md).

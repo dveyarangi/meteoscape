@@ -5,7 +5,7 @@
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Trigger:** First real multi-vendor unit spread, expected in
-  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed 2026-07-27: the unit
+  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed 2026-08-02: the unit
   spread arrives with the *vendor*, not with 004's fallback behaviour)
 - **Outcome:** Shared verified native-to-canonical conversion edges.
 

@@ -16,7 +16,7 @@ must stay a subset of it — never the other way around.
 ```md
 # Edge — {Surface}
 
-- **Status:** Stub | Normative
+- **Status:** Stub | Normative | Normative (tentative)
 
 ## Contract
 
@@ -47,7 +47,12 @@ ticket. Plans, not promises.
 
 - **Normative core, descriptive periphery.** `Contract` and `Invariants` are promises — in a
   `Status: Normative` record everything there is true of the live edge (`Stub` is the only
-  license for aspiration). `Concerns` and `Roadmap` are aggregation — pointers and plans, never
+  license for aspiration). **`Normative (tentative)`** is the state between: the record is
+  load-bearing for what it states, but a landing ticket is actively reshaping the surface, so
+  individual promises may carry **⚠ pending — \<ticket\>** and must name the ticket and stage that
+  clears them. It is not a softer `Normative` — an unmarked claim in a tentative record is held to
+  the same standard — and the owning ticket's docs-at-landing list must carry the record, so the
+  qualifier is retired by the same commit that lands the change. `Concerns` and `Roadmap` are aggregation — pointers and plans, never
   validated, no delivery-status vocabulary (status lives in `docs/tickets/README.md`).
 - **Per-invariant validators, not a separate section.** Each promise points at the test that
   enforces it, so `/edge` and `/sync-arch` can check mechanically that the validator still

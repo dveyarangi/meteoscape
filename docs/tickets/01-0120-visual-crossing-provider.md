@@ -19,7 +19,7 @@
 
 ## Why this is its own ticket
 
-Split out of [004](./01-0150-second-provider-fallback.md) at the 2026-07-27 align. The two halves are
+Split out of [004](./01-0150-second-provider-fallback.md) at the 2026-08-02 align. The two halves are
 tested differently and fail differently: **this** ticket is *"does one vendor's data arrive correctly"*
 — answered by a live parity check against the real API, with its own key, quota, and evidence; **004**
 is *"does the Arbiter select and fall back correctly"* — answered deterministically against mocked
@@ -49,7 +49,7 @@ first shipped manifest to declare one — registered in `PROVIDER_CATALOG`.
   the module docstring ("Open-Meteo primary, TWC fallback").
 - `tests/deterministic/test_config.py` — `test_twc_key_adds_fallback_offering` and
   `test_open_meteo_and_twc_together` pin those exact names.
-- Prose was swept 2026-07-27 (v1-requirements, 008, 010, delivery status, 004). **Verify, don't
+- Prose was swept 2026-08-02 (v1-requirements, 008, 010, delivery status, 004). **Verify, don't
   assume:** re-grep `docs/` and `src/`; architecture, module-layout, glossary, concerns, and the edge
   records carried no TWC reference at the sweep and should still carry none. `docs/sessions/` and
   `docs/tickets/done/` stay as written — they are history. TWC remains a legitimate *future* plugin in
