@@ -1,9 +1,12 @@
-# 010 — Unit-conversion catalogue
+# Unit-conversion catalogue
+
+**Legacy id:** 010
 
 - **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Trigger:** First real multi-vendor unit spread, expected in
-  [004 — Second-provider fallback](./004-second-provider-fallback.md)
+  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed 2026-07-27: the unit
+  spread arrives with the *vendor*, not with 004's fallback behaviour)
 - **Outcome:** Shared verified native-to-canonical conversion edges.
 
 ## Parent PRD
@@ -19,11 +22,11 @@ degrading** quality ([concern #10](../concerns.md#10-parameter-conventions); deg
 quality signal, not silent).
 
 **Not this ticket — the v1 per-`Tap` convert-on-ingest position** (verify-always, no request knob,
-wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./done/002-core-5-parameters.md). This ticket
+wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./done/01-0030-core-5-parameters.md). This ticket
 is only the shared catalogue those inline factors graduate into.
 
-**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely TWC at
-[ticket 004](./004-second-provider-fallback.md) (metric tier serves km/h wind). Build then, against
+**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely Visual Crossing at
+[ticket 011](./01-0120-visual-crossing-provider.md) (metric tier serves km/h wind). Build then, against
 the real case.
 
 ## Acceptance criteria

@@ -2,7 +2,7 @@
 
 - **Status:** Done
 - **Kind:** Maintenance — not a v1 deliverable; no product capability changes
-- **Depends on:** [003a — Profile reach](./003a-profile-reach.md) (landed; contributed 2 of the 40 errors)
+- **Depends on:** [003a — Profile reach](./01-0040-profile-reach.md) (landed; contributed 2 of the 40 errors)
 - **Plan:** [RFC 0004 — Separability narrowing and predicate hygiene](../../rfc/done/0004-20260721-separability-narrowing.md)
 - **Outcome:** `uv run pyright` clean across `src` and `tests`, with every narrowing placed where the
   type is genuinely provable and no design contract weakened to get there.
@@ -20,7 +20,7 @@ reports none), so `main` is red. Triage found the errors are not one problem: a 
 the checker caught, the rest are the `Separable` facet and the Manifold facets **working as designed**
 — a test holding a base-typed value and reaching for a refinement's member.
 
-It runs **before [003b](../003c-request-shaping.md)** because 003b is the first consumer of
+It runs **before [003b](../01-0110-request-shaping.md)** because 003b is the first consumer of
 `resolve_reach`, and settling how reach's geometry is typed while the resolver has no caller is
 cheaper than renegotiating it once the surface depends on it.
 

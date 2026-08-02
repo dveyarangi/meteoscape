@@ -64,7 +64,7 @@ uv run meteoscape
 Configuration is via environment / typed settings (Pydantic Settings). The current keyless
 Open-Meteo path requires no provider secret, and a missing `SENTRY_DSN` disables error reporting
 without failing startup. Complete key-present/key-absent multi-provider construction is tracked by
-[ticket 008](./docs/tickets/008-config-secrets-degrade.md).
+[ticket 008](./docs/tickets/01-0180-config-secrets-degrade.md).
 
 ## Requirements
 

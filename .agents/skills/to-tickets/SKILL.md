@@ -9,8 +9,10 @@ Break a PRD into independently-grabbable tickets using vertical slices (tracer b
 
 ## Layout
 
-- **Active tickets** live flat in `docs/tickets/NNN-short-title.md`.
-- **Completed tickets** move to `docs/tickets/done/NNN-short-title.md` (all acceptance boxes checked). Keep the filename; only the folder changes.
+- **Active tickets** live flat in `docs/tickets/RR-NNNN-short-title.md`. The naming and numbering
+  rules are owned by [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering) — read it
+  before allocating a number; do not restate it here.
+- **Completed tickets** move to `docs/tickets/done/` (all acceptance boxes checked). Keep the filename; only the folder changes.
 - The **PRD** is referenced by its own path (e.g. `docs/v1-requirements.md`); tickets do not duplicate it.
 
 ## Process
@@ -58,9 +60,11 @@ Iterate until the user approves the breakdown.
 
 ### 5. Create the ticket files
 
-For each approved slice, write a markdown file at `docs/tickets/NNN-short-title.md` (e.g. `docs/tickets/003-add-user-auth.md`).
+For each approved slice, write a markdown file at `docs/tickets/RR-NNNN-short-title.md` (e.g. `docs/tickets/01-0210-add-user-auth.md`).
 
-Number tickets starting from the next available number (check what files already exist in `docs/tickets/` **and** `docs/tickets/done/`).
+Allocate positions per [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering) — place each
+slice where it will actually be worked, not merely at the end, and check both `docs/tickets/` and
+`docs/tickets/done/` for the surrounding positions. Add a row to the delivery map in the same pass.
 
 Create files in dependency order (blockers first) so you can reference real filenames in the "Blocked by" field. A blocker that is already complete lives in `docs/tickets/done/` — reference it there.
 
@@ -83,7 +87,7 @@ A concise description of this vertical slice. Describe the end-to-end behavior, 
 
 ## Blocked by
 
-- Blocked by `docs/tickets/NNN-title.md` (active) or `docs/tickets/done/NNN-title.md` (already complete)
+- Blocked by `docs/tickets/RR-NNNN-title.md` (active) or `docs/tickets/done/RR-NNNN-title.md` (already complete). Refer to blockers **by slug**, not by number.
 
 Or "None - can start immediately" if no blockers.
 

@@ -1,8 +1,10 @@
-# m6 — Artifact conventions sweep
+# Artifact conventions sweep
+
+**Legacy id:** m6 · **Kind:** Maintenance
 
 - **Status:** Planned (maintenance) — its own align precedes implementation; this ticket carries
   the design sketch, not settled design.
-- **Depends on:** [m5 — Edge records](./done/m5-edge-records.md) (done) — the Edge record must
+- **Depends on:** [m5 — Edge records](./done/01-0090-edge-records.md) (done) — the Edge record must
   exist as an artifact type before the roster that classifies it is remapped.
 - **Outcome:** one canonical **artifact conventions registry**; every document type in the
   [documentation map](../README.md) analyzed against the artifact definitions and classified;
@@ -27,23 +29,30 @@ transient-with-`done/` / append-only) are the other axes.
    [documentation map](../README.md) gets granularity, lifecycle, normative-vs-descriptive,
    validated-by, and owning-skill classifications; mismatches between a document's actual behavior
    and its class are findings to resolve, not footnotes.
-2. **Remap conventions** where the analysis demands it, including **sequencing types**: the flat
+2. ~~**Remap conventions** where the analysis demands it, including **sequencing types**: the flat
    NNN ticket numbering cannot express subticket hierarchies without breaking order. Design
-   sketch — fixed-width positional numbering with reserved nesting levels, e.g.:
-   - `00100000 — improve docs`
-   - `00101000 — create /edge skill`
-   - `00101010 — append /edge records to /align`
-   - `00102000 — extract artifact conventions`
+   sketch — fixed-width positional numbering with reserved nesting levels (`00100000` /
+   `00101000` / `00101010`), or a letter-slot variant (`001---` / `001A--` / `001A1-`), or
+   somethin' + maintenance flag? Whether existing tickets renumber, or the scheme applies only
+   forward, is an align question.~~
 
-   or
+   **Settled at the 2026-08-02 align — ticket sequencing only; the rest of this ticket stands.**
+   Scheme adopted and documented in
+   [Ticket numbering](./README.md#ticket-numbering): `RR-NNNN-slug.md`, positions stepping by 10,
+   insertion by splitting the difference, `.NNNN` for subtickets, depth reserved for genuine
+   children, maintenance demoted from prefix to `Kind`, citation by slug. **All existing tickets
+   were renumbered** (not forward-only): the alternative left the next-to-do ticket sorting last,
+   which was the symptom that motivated the change. Legacy ids are mapped in
+   [Legacy ids](./README.md#legacy-ids).
 
-   - `001---`
-   - `001A--`
-   - `001A1-`
-   - `001B--`
-   or somethin'
-   + maintenance flag?
-   Whether existing tickets renumber, or the scheme applies only forward, is an align question.
+   Two findings from the align that this ticket's remaining scope should carry:
+   - **The letter suffix meant two different things.** `002b`/`002c` were descendants of a *live*
+     parent; `003a`/`003b` were fragments of a *dissolved* one. Same syntax, different relation.
+   - **A split does not imply a child.** Both real splits in this project (Visual Crossing out of
+     second-provider fallback, snapped request mode out of request shaping) produced a
+     *prerequisite* of the parent — which must sort *before* it, so it cannot nest. Nesting
+     expresses "extends or fixes an already-positioned parent", not "carved out of work that
+     hasn't started."
 3. **Registry home:** extend the [documentation map](../README.md) table or mint a sibling
    conventions document — decided at the align.
 4. **Skill slimming:** each artifact-supporting skill references the registry for conventions it
@@ -53,14 +62,14 @@ transient-with-`done/` / append-only) are the other axes.
 
 - [ ] The conventions registry exists; every artifact type in the documentation map is classified
       on all axes (granularity, lifecycle, normative/descriptive, validated-by, owning skill).
-- [ ] A sequencing scheme supporting nested subtickets is decided and documented (adopted or
-      explicitly rejected with reasons).
+- [x] A sequencing scheme supporting nested subtickets is decided and documented (adopted or
+      explicitly rejected with reasons). — **done 2026-08-02**, see scope item 2.
 - [ ] No artifact-supporting skill restates a convention the registry owns.
 - [ ] Contradictions found during the roster analysis are resolved or filed as concerns.
 
 ## Out of scope
 
-- The `/edge` skill and Edge records themselves — [m5](./m5-edge-records.md).
+- The `/edge` skill and Edge records themselves — [edge records](./done/01-0090-edge-records.md).
 - A metaskill that *generates* artifact-supporting skills — deferred until the registry proves
   insufficient.
 - Any code change.

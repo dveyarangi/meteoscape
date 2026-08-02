@@ -93,7 +93,7 @@ the response.
 
 ## Blocked by
 
-- Blocked by `docs/tickets/done/000-project-bootstrap.md`
+- Blocked by `docs/tickets/done/01-0010-project-bootstrap.md`
 
 ## User stories addressed
 

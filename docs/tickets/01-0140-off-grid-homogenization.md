@@ -1,7 +1,9 @@
-# 007 — Off-grid homogenization
+# Off-grid homogenization
+
+**Legacy id:** 007
 
 - **Status:** Planned
-- **Depends on:** [006 — Retentive store](./006-retentive-store-freshness.md)
+- **Depends on:** [006 — Retentive store](./01-0130-retentive-store-freshness.md)
 - **Outcome:** Nearest-neighbor read-back onto the requested point.
 
 ## Parent PRD

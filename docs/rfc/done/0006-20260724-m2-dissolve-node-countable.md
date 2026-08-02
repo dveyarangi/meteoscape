@@ -1,6 +1,6 @@
 # RFC 0006 · 2026-07-24 · Dissolve node-`Countable` — implementation plan
 
-Implementation plan for [m2](../tickets/done/m2-dissolve-node-countable.md), owned by
+Implementation plan for [m2](../tickets/done/01-0070-dissolve-node-countable.md), owned by
 [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) (the decision the code
 predates) with one delta beyond it (storeless materialized providers). **Living document** — being
 built up during the 2026-07-24 align session; decisions land here as they crystallise.
@@ -34,7 +34,7 @@ bare `Producer`; the provider-exact lattice channel closes and `StoreFactory.cre
    declaration channel is the catalogue's **`OfferingSpec.store`** (a `StoreSpec` authored beside the
    manifest by whoever knows the vendor grid), overridable per profile by `OfferingDef.store` —
    **already built** (`composition.py`: `offering.store if ... else spec.store`). No new config
-   surface. The lattice *representation* is [006](../tickets/006-retentive-store-freshness.md)'s
+   surface. The lattice *representation* is [006](../tickets/01-0130-retentive-store-freshness.md)'s
    decision; the enumerable-but-unholdable residual (cloud ARCO) stays with the ticket's open
    question 2 / [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 2. **The `SourceBinder` invariant is loud in both directions.** A configured store on a materialized

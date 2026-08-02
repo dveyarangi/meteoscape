@@ -18,7 +18,7 @@ genuinely isn't built) rather than the fixture.
 contract: the `grid` rule's separability precondition (which removed a live `AssertionError` path),
 four covariant return narrowings, two error-taxonomy corrections found by auditing every `isinstance`
 site, and use-site narrowing everywhere else. Details in
-[m1](../tickets/done/m1-type-contract-hygiene.md) / [RFC 0004](../rfc/done/0004-20260721-separability-narrowing.md).
+[m1](../tickets/done/01-0050-type-contract-hygiene.md) / [RFC 0004](../rfc/done/0004-20260721-separability-narrowing.md).
 
 **Uncommitted at session end:** ADR-0007 replaced, dependent docs amended, ticket 003b written,
 003b/003c renumbered.
@@ -76,7 +76,7 @@ diverge cannot start. "Inner bound" described a looseness the build guard makes 
 
 ## Open questions
 
-**Placement, owned by [003b](../tickets/done/003b-capability-domain.md)** — five, all decided to be
+**Placement, owned by [003b](../tickets/done/01-0060-capability-domain.md)** — five, all decided to be
 non-contract-bearing: where `Reconciler` / `Producer` live (watch the `capability → reconciler → core`
 import cycle), where `build_reconciler` and `validate_calculators` land, whether domain composition
 takes a `parameter`, and `Provider.footprints` removal blast radius.
@@ -105,8 +105,8 @@ below geometry. What a profile should narrate against that gap is undecided.
   narrowing as landed, which is correct for a historical record.
 - **Commit the uncommitted doc set**; `main` is 4 commits ahead of `origin/main` and unpushed. CI is
   green as of `ee503cf`.
-- **Run [003b](../tickets/done/003b-capability-domain.md)** before
-  [003c](../tickets/003c-request-shaping.md), which would otherwise write the first consumer against
+- **Run [003b](../tickets/done/01-0060-capability-domain.md)** before
+  [003c](../tickets/01-0110-request-shaping.md), which would otherwise write the first consumer against
   the contract 003b deletes.
 - **003c carries one decision from this session**: the narrated horizon is **relative**, never absolute
   instants. The tool description is built once and frozen for the process lifetime, so an absolute date

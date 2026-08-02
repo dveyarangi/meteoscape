@@ -1,7 +1,9 @@
-# 005 — Per-parameter selection
+# Per-parameter selection
+
+**Legacy id:** 005
 
 - **Status:** Planned
-- **Depends on:** [004 — Second-provider fallback](./004-second-provider-fallback.md)
+- **Depends on:** [004 — Second-provider fallback](./01-0150-second-provider-fallback.md)
 - **Outcome:** One response assembled from different winning providers by parameter.
 
 ## Parent PRD
@@ -11,7 +13,7 @@
 ## What to build
 
 Prove the **per-parameter capability filter**. The multi-node Coverage **assembly** itself already landed
-in [002b](./done/002b-derived-wind-calculator.md) (the top Arbiter stitching disjoint single-parameter winners,
+in [002b](./done/01-0030.0010-derived-wind-calculator.md) (the top Arbiter stitching disjoint single-parameter winners,
 first forced by the derived-wind Calculator beside the canonical params); this ticket adds no new assembly
 machinery — it exercises that same path with **competing providers**. Configure at least one core
 parameter so it is declared by **only one** provider's `Capability`. For a request spanning the 6 product

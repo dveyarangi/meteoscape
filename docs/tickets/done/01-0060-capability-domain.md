@@ -1,8 +1,8 @@
 # 003b — Capability carries its domain
 
 - **Status:** Done
-- **Depends on:** [003a — Profile reach](./003a-profile-reach.md) (landed — this reshapes it), [m1](./m1-type-contract-hygiene.md)
-- **Blocks:** [003c — Request shaping](../003c-request-shaping.md), which consumes the reach it publishes
+- **Depends on:** [003a — Profile reach](./01-0040-profile-reach.md) (landed — this reshapes it), [m1](./01-0050-type-contract-hygiene.md)
+- **Blocks:** [003c — Request shaping](../01-0110-request-shaping.md), which consumes the reach it publishes
 - **Owning decision:** [ADR-0007 — Capability carries its domain](../../adr/0007-capability-carries-its-domain.md)
 - **Implementation plan:** [RFC 0005](../../rfc/done/0005-20260722-capability-reach.md)
 - **Outcome:** `Capability.reach(parameter)` on the interface; a Manifold's Reach is its capability's
@@ -11,7 +11,7 @@
 ## Parent PRD
 
 `docs/v1-requirements.md` — this is the structural precondition for user story 10 (envelope narration),
-delivered by [003c](../003c-request-shaping.md).
+delivered by [003c](../01-0110-request-shaping.md).
 
 ## Why now
 
@@ -52,7 +52,7 @@ builds it.
   `serves` **stays** and is unchanged. `EnumerableCapability.reach` **narrows covariantly** to
   `EnumerableDomain` — that form's reach *is* enumerable, `CoverageRecord.domain` already returns the
   narrow type, and the narrowing puts "materialized ⇒ enumerable reach" in the type where
-  [m2](./m2-dissolve-node-countable.md)'s materialized-provider discriminator relies on it.
+  [m2](./01-0070-dissolve-node-countable.md)'s materialized-provider discriminator relies on it.
 - **`Reconciler` gains a domain-composition member.** `PriorityReconciler` implements dominance-or-raise
   — `GridReachRule.reach`'s body, moved. **The `Arbiter` invokes it** — `Arbiter.__init__` calls
   `reconciler.compose_domains(...)` and hands the composed result to the `UnionCapability` it
@@ -122,7 +122,7 @@ resolved in the 003b align session (0016):
    property on `Provider`, the Open-Meteo property (its `_build_footprints` **stays** — it builds the
    `FootprintCapability` declaration), and `FakeProvider.footprints` all go; readers switch to
    `capability.reach(pid)`; `CountableFakeProvider` merely inherits it (its reshaping is
-   [m2](./m2-dissolve-node-countable.md)'s). Two calls inside the radius:
+   [m2](./01-0070-dissolve-node-countable.md)'s). Two calls inside the radius:
    - `test_provider_footprints_expose_capability_domains` is **rewritten, not deleted** — its
      same-objects / live-T assertions restate ADR-0007's liveness property at the leaf, through
      `capability.reach(pid)`; dropping it would silently shed leaf-level liveness coverage.
@@ -132,7 +132,7 @@ resolved in the 003b align session (0016):
 
 ## Coordination with m2
 
-[m2 — Dissolve node-`Countable`](./m2-dissolve-node-countable.md) follows this ticket and removes the
+[m2 — Dissolve node-`Countable`](./01-0070-dissolve-node-countable.md) follows this ticket and removes the
 node-`Countable` facet (`Reservoir.domain`, `Store`'s `Countable`, `Weaver._source_grid`,
 `CountableFakeProvider`'s independent `domain=`). This ticket must not deepen what m2 deletes: leave
 `_source_grid` and the `Countable` isinstance sites untouched, and add no new reader of a node's
@@ -190,4 +190,4 @@ is unaffected by m2's rewiring.
 - The X/Y-first preference — still decided-but-unbuilt, triggered by the first regional provider.
 - `Domain.intersect` — still a declared seam; it is what a future area product needs for cross-parameter
   folding, not this ticket.
-- Surface narration and the omitted-`end` default — [003c](../003c-request-shaping.md).
+- Surface narration and the omitted-`end` default — [003c](../01-0110-request-shaping.md).

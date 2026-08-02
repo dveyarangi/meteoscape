@@ -79,7 +79,7 @@ plane. The capability/matching half is
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
   `Store`, provisioned from the configured **`StoreSpec`** alone (amended by
-  [m2](../tickets/done/m2-dissolve-node-countable.md), 2026-07-25 — this ADR originally handed a
+  [m2](../tickets/done/01-0070-dissolve-node-countable.md), 2026-07-25 — this ADR originally handed a
   provider-exact lattice to the `StoreFactory` as a build-time "construction face"; that channel is
   closed: no provider hands a lattice anywhere). A provider whose every parameter sits on one
   enumerable domain (an `EnumerableCapability`) *is* an already-materialized dataset and wires

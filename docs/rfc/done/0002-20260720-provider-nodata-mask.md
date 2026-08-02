@@ -1,7 +1,7 @@
 # RFC 0002 — Provider nodata mask (ticket 002c)
 
 - **Date:** 2026-07-20
-- **Ticket:** [002c — Provider nodata mask](../../tickets/done/002c-provider-nodata-mask.md)
+- **Ticket:** [002c — Provider nodata mask](../../tickets/done/01-0030.0020-provider-nodata-mask.md)
 - **Depends on:** 002 (done) — the tap table, `Decode`, and the `present=None` shape it shipped
 - **Status:** Accepted (implemented — 113 tests green, ruff + pyright clean; stages S1–S5 shipped as planned)
 - **Owning docs:** [ADR-0002](../../adr/0002-data-model.md) (nodata encoding, `ParameterData`),
@@ -9,7 +9,7 @@
   [architecture.md §Failure, nodata, and availability](../../architecture.md#failure-nodata-and-availability)
 - **Planning source:** session 0014 — the 002c align pass that cut the ticket to its live defect and
   moved presence behind `ParameterData` behaviour (committed as `c5dd2b9`; not yet written up)
-- **Blocks:** [009](../../tickets/009-error-taxonomy-partial-success.md)
+- **Blocks:** [009](../../tickets/01-0190-error-taxonomy-partial-success.md)
 
 ---
 

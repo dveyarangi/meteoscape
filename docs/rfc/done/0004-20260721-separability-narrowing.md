@@ -1,7 +1,7 @@
 # RFC 0004 — Separability narrowing and predicate hygiene
 
 - **Date:** 2026-07-21
-- **Ticket:** [m1 — Type contract hygiene](../../tickets/done/m1-type-contract-hygiene.md) — maintenance; unblocks CI (`uv run pyright` is red on `tests/`)
+- **Ticket:** [m1 — Type contract hygiene](../../tickets/done/01-0050-type-contract-hygiene.md) — maintenance; unblocks CI (`uv run pyright` is red on `tests/`)
 - **Owning decisions:** [ADR-0002](../../adr/0002-data-model.md) · [ADR-0007](../../adr/0007-capability-carries-its-domain.md) · [ADR-0005](../../adr/0005-build-time-composition.md)
 - **Concerns:** [#12](../../concerns.md#12-curvilinear-domains) · [#36](../../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
 

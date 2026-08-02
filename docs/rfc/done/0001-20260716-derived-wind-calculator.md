@@ -1,7 +1,7 @@
 # RFC 0001 — Derived wind calculator (ticket 002b)
 
 - **Date:** 2026-07-16
-- **Ticket:** [002b — Derived wind calculator](../../tickets/done/002b-derived-wind-calculator.md)
+- **Ticket:** [002b — Derived wind calculator](../../tickets/done/01-0030.0010-derived-wind-calculator.md)
 - **Depends on:** 002 (done) — canonical `wind_u` / `wind_v` served by Open-Meteo
 - **Status:** Accepted (implemented)
 - **Owning docs:** [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) (producer resolution),
@@ -403,7 +403,7 @@ since landed in the build pass):**
   *(docs done; code landed S2)*
 - **F7 — ✅ Failure / partial-success ownership:** architecture §Failure and ADR-0004 Outcomes name
   per-parameter runtime-fault omission as the contract owned by
-  [ticket 009](../../tickets/009-error-taxonomy-partial-success.md). Until 009, a `RuntimeFailure` fails the
+  [ticket 009](../../tickets/01-0190-error-taxonomy-partial-success.md). Until 009, a `RuntimeFailure` fails the
   whole request (align A2; see §8). *(docs done)*
 
 **Align decisions (2026-07-16 planning pass):** A1 = F6; A2 = F7; A3 = ticket 002 marked Done.

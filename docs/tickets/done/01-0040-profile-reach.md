@@ -1,8 +1,8 @@
 # 003a — Profile reach
 
 - **Status:** Done
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md),
-  [002b — Derived wind](./002b-derived-wind-calculator.md)
+- **Depends on:** [002 — Core canonical parameters](./01-0030-core-5-parameters.md),
+  [002b — Derived wind](./01-0030.0010-derived-wind-calculator.md)
 - **Outcome:** A **build-time resolver** that reports the per-parameter `Domain` a profile reaches —
   the fact every surface needs to narrate an envelope or author a default window.
 
@@ -13,7 +13,7 @@
 ## What to build
 
 Build-time only — **no surface change and no request-path change**.
-[003b](../003c-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
+[003b](../01-0110-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
 
 ```
 validate_calculators(ProfileDef) -> None                     # is it wired?  (raises)
@@ -73,7 +73,7 @@ Build notes, each grounded in [ADR-0007](../../adr/0007-capability-carries-its-d
 
 **Wiring is 003b's.** This ticket delivers `validate_calculators`, `resolve_reach`, and the
 `Provider.footprints` accessor; calling them from `compose()` — validate **before** `weave`, reach
-after — and handing the map to the surface is [003b](../003c-request-shaping.md), which already touches
+after — and handing the map to the surface is [003b](../01-0110-request-shaping.md), which already touches
 composition.
 
 ### Geometry: none added
@@ -148,4 +148,4 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
 ## User stories addressed
 
 Enables user story 10 (envelope narration), delivered by
-[003b](../003c-request-shaping.md).
+[003b](../01-0110-request-shaping.md).

@@ -1,7 +1,9 @@
-# 006 — Retentive store and freshness
+# Retentive store and freshness
+
+**Legacy id:** 006
 
 - **Status:** Planned
-- **Depends on:** [002 — Core canonical parameters](./done/002-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
 
 ## Parent PRD
@@ -41,7 +43,12 @@ the store. *(Tentative — revisit the concrete shapes when building them here.)
 
 **Retire the eager flatten.** `open_meteo.project` currently ends in `_assemble(records, selection)`,
 labelled an "interim fold". Under a fully-enumerable ask that is *correct* behaviour, not a shortcut —
-which is why it must be the **ask** that changes. `_assemble` remains as the multi-domain answer's own
+which is why it must be the **ask** that changes. m4 sharpened the same point from the other side: it
+states the law `_assemble` rests on — *native records must ground identically on every axis the
+request pins or snaps* — and declines when they do not. `ANY` is precisely the licence to break that
+law on one axis, so this ticket lifts it there and mints the multi-domain carrier that `ANY` justifies
+(m4 deliberately did not: a carrier for a request that asked for one geometry only defers the fold to
+callers that all want it folded). `_assemble` remains as the multi-domain answer's own
 `project` (used when someone does hand it a fully enumerable Selection); it stops being applied
 eagerly at fetch. ADR-0006 lists per-fetch flattening among its **rejected** options ("lossy on the
 data plane; the store cannot answer availability honestly") — that rejection becomes live here,
@@ -55,14 +62,22 @@ memory (housekeeping only; the `Arbiter` never serves stale entries — LRU decl
 `docs/v1-requirements.md` (v1 invariants, Config & secrets) and `docs/architecture.md` (Reservoir,
 Store).
 
-**Decision to resolve in this ticket:** the store-lattice representation. A declared lattice is the
-anchored-regular member with **open extent** (`anchor + step`; ADR-0002), but `RegularAxis` fixes all
-three of `(anchor, step, count)` — the exact-extent member. Mint the declared-lattice representation
-(e.g. an extent derived from the retention window, clock-anchored — the `RollingAxis` precedent), or
-narrow what `quantize` actually requires (anchor + step, not enumeration). Being private
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)), the representation is the
-`Store`'s own business. The e2e's second-call **re-fetch assertion** (documenting no-retention,
-session 0010) flips here.
+**Store-lattice representation — resolved at m4 (2026-07-26).** The question was whether to mint a
+declared-lattice axis (open extent: `anchor + step`, where `RegularAxis` fixes all three of
+`(anchor, step, count)`) or to narrow what `quantize` actually requires. It is the second, and m4
+built the narrowing: **`Snappable`**, the facet form of ADR-0002's *"only a regular axis can be
+snapped-to"* — an axis that can produce a `RegularAxis` on demand. A store's retention grid satisfies
+it the way `RollingAxis` does, deriving its extent from the retention window at the clock, so no new
+axis kind is minted and the representation stays the `Store`'s own business
+([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)).
+
+**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md)):
+the same per-axis fold of a request against a lattice, enclosing where `ground` clips, and it is where
+the fold's **`ANY`** case lands — the axis the unit spans wholly takes the answering axis whole.
+Reading the request-side verb before writing this one is the cheapest way to keep the two from
+diverging.
+
+The e2e's second-call **re-fetch assertion** (documenting no-retention, session 0010) flips here.
 
 ## Acceptance criteria
 

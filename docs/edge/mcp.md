@@ -4,7 +4,7 @@
 
 The seam record for the MCP protocol surface: one tool, `forecast_hourly`, served by the FastMCP
 app over the woven best-view profile. Populated 2026-07-25 from the live surface
-([m5](../tickets/done/m5-edge-records.md)); the tool's self-description in
+([m5](../tickets/done/01-0090-edge-records.md)); the tool's self-description in
 [mcp_app.py](../../src/meteoscape/api/mcp_app.py) is a derivation of this record and must stay a
 subset of it.
 
@@ -63,7 +63,7 @@ request).
   [test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py)
   (`test_in_footprint_projects_once_with_admitted_params`,
   `test_beyond_footprint_raises_without_projecting`) — Arbiter-level; the wire-level assertion
-  gap is noted in [009](../tickets/009-error-taxonomy-partial-success.md).
+  gap is noted in [009](../tickets/01-0190-error-taxonomy-partial-success.md).
 - `runtime-failure` is whole-request: no partial response survives an upstream fault (fallback
   is Roadmap 4) — *validated by:* `test_tool_error_prefixes` in
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
@@ -96,15 +96,15 @@ request).
 ## Roadmap
 
 1. Free `start`/`end` request windows — out-of-range asks yield the servable part, with reach
-   narration — [003c](../tickets/003c-request-shaping.md)
-   (on [m4](../tickets/m4-snapped-t-request-mode.md)).
+   narration — [003c](../tickets/01-0110-request-shaping.md)
+   (on [m4](../tickets/01-0100-snapped-t-request-mode.md)).
 2. Fresh reuse — repeat asks answered from retained data —
-   [006](../tickets/006-retentive-store-freshness.md).
+   [006](../tickets/01-0130-retentive-store-freshness.md).
 3. Off-grid fidelity — homogenized values at the requested point, not nearest-neighbor —
-   [007](../tickets/007-off-grid-homogenization.md).
+   [007](../tickets/01-0140-off-grid-homogenization.md).
 4. Provider fallback — upstream faults stop failing the whole request —
-   [004](../tickets/004-second-provider-fallback.md).
+   [004](../tickets/01-0150-second-provider-fallback.md).
 5. Per-parameter assembly — one response, different winning sources per parameter —
-   [005](../tickets/005-per-parameter-selection.md).
+   [005](../tickets/01-0170-per-parameter-selection.md).
 6. Absence reasons and partial success under fault —
-   [009](../tickets/009-error-taxonomy-partial-success.md).
+   [009](../tickets/01-0190-error-taxonomy-partial-success.md).

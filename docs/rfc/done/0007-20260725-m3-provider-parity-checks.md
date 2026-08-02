@@ -1,6 +1,6 @@
 # RFC 0007 · 2026-07-25 · Provider parity checks — implementation plan
 
-Implementation plan for [m3](../../tickets/done/m3-provider-parity-checks.md). The *meaning* of a Provider
+Implementation plan for [m3](../../tickets/done/01-0080-provider-parity-checks.md). The *meaning* of a Provider
 parity check — independence rules, comparison semantics, evidence expectations — is owned by the
 [Provider authoring guide](../../provider-authoring.md) and is not restated here. **Living document** —
 being built up during the 2026-07-25 align session; decisions land here as they crystallise.
@@ -83,7 +83,7 @@ deterministic gate.
      no-`meteoscape`-imports rule (decision 2).
    - Bounded request: Berlin `52.52, 13.41` (the manual-check and e2e precedent), all six product
      parameters, **the surface's default window** (currently the fixed 168 h horizon; after
-     [003c](../../tickets/003c-request-shaping.md), the reach-end default — the comparison aligns by
+     [003c](../../tickets/01-0110-request-shaping.md), the reach-end default — the comparison aligns by
      declared valid-times, so it is insensitive to which), UTC. A second location (southern
      hemisphere / negative longitude, exercising sign conventions) is a cheap follow-on, not part
      of m3.
@@ -120,7 +120,7 @@ deterministic gate.
    - **Run-boundary race: retry the whole comparison once, composing a fresh root per attempt** —
      a vendor model run publishing between the two fetches produces a legitimate mismatch; twice in
      a row is improbable enough that the second failure is real. The fresh root is load-bearing,
-     not hygiene: once [006](../../tickets/006-retentive-store-freshness.md) lands retention, a retry
+     not hygiene: once [006](../../tickets/01-0130-retentive-store-freshness.md) lands retention, a retry
      through the *same* gateway would serve the cached first-run values against a re-fetched new
      run and could never clear the boundary — a guaranteed false alert in exactly the case retry
      exists for. `compose()` is cheap; each attempt builds its own. Run pinning /

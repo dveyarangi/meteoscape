@@ -2,10 +2,10 @@
 
 - **Status:** Done (maintenance)
 - **Plan:** [RFC 0007](../../rfc/done/0007-20260725-m3-provider-parity-checks.md) (aligned 2026-07-25)
-- **Depends on:** [002 — Core canonical parameters](./002-core-5-parameters.md) and
-  [002b — Derived wind](./002b-derived-wind-calculator.md), both done.
+- **Depends on:** [002 — Core canonical parameters](./01-0030-core-5-parameters.md) and
+  [002b — Derived wind](./01-0030.0010-derived-wind-calculator.md), both done.
 - **Blocks:** Acceptance of any new Provider, beginning with
-  [004 — Second-provider fallback](../004-second-provider-fallback.md).
+  [004 — Second-provider fallback](../01-0150-second-provider-fallback.md).
 - **Outcome:** Every shipped Provider has an opt-in live parity check that compares a
   single-Provider Meteoscape root with an independent response from the same external producer.
 

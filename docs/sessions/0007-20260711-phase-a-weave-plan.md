@@ -1,7 +1,7 @@
 # 0007 · 2026-07-11 · Phase A — weave-the-graph plan (align session)
 
 Continues [session 0006](./0006-20260711-namespace-polish.md). Grilled the Phase A scope of
-[issue 001](../tickets/done/001-walking-skeleton.md) — the build seam
+[issue 001](../tickets/done/01-0020-walking-skeleton.md) — the build seam
 (`OfferingDef` → `SourceBinder` → `SourceRegistry` → `ProfileDef` → `Weaver`), reshaped across
 sessions 0003–0006 and never executed. This doc records the decisions and the TDD implementation
 plan. Weaving is **pure construction, not projection**: Phase A exercises every node's *built face*
@@ -16,7 +16,7 @@ plan. Weaving is **pure construction, not projection**: Phase A exercises every 
 - **`StubStore`** lives in `nodes/store.py` beside the `Store` protocol — weave-time placeholder (no
   retention; `domain` / `project` / `capability` raise; `assimilate` no-op). `Store` moved out of
   `reservoir.py` (which keeps only `Reservoir`). The declared-grid representation question is filed on
-  [issue 006](../tickets/006-retentive-store-freshness.md).
+  [issue 006](../tickets/01-0130-retentive-store-freshness.md).
 - **Fake provider is a test fixture only** (`tests/fakes.py`): declared `FootprintCapability` +
   `CadenceDef` + `source_key`; `project` raises. The production `ProviderCatalog` holds only real
   vendors — empty until Phase C registers Open-Meteo.
@@ -123,7 +123,7 @@ leaf, the MCP tool body, catalogue registration + `open_meteo_enabled=True` flip
 ## Continuation
 
 - Phase B (value-type behaviour) and Phase C (the spine) per
-  [issue 001](../tickets/done/001-walking-skeleton.md).
-- Store-grid representation decision → [issue 006](../tickets/006-retentive-store-freshness.md).
+  [issue 001](../tickets/done/01-0020-walking-skeleton.md).
+- Store-grid representation decision → [issue 006](../tickets/01-0130-retentive-store-freshness.md).
 - Wind `CalculatorSpec`s return to `Settings` at
-  [002b](../tickets/done/002b-derived-wind-calculator.md).
+  [002b](../tickets/done/01-0030.0010-derived-wind-calculator.md).

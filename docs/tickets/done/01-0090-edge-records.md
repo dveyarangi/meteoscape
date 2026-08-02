@@ -5,7 +5,7 @@
   reframe: the Edge record is the architecture ↔ user-oriented-design seam document, not a
   customer-facing contract; customer text derives from it.
 - **Depends on:** none — documentation and skill tooling only; no code path changes.
-- **Related:** [m6 — Artifact conventions sweep](./m6-artifact-conventions-sweep.md) later
+- **Related:** [m6 — Artifact conventions sweep](../01-0200-artifact-conventions-sweep.md) later
   classifies Edge records in the artifact registry; it does not gate this ticket.
 - **Outcome:** per-surface **Edge records** — the consumer-visible contract of each product
   surface, validated by edge tests — with an `/edge` skill to establish and maintain them, and
@@ -16,14 +16,14 @@
 The consumer-visible contract of each product surface has no owning document: architecture.md owns
 the internal shape, but the *promise* (what an embedder or MCP client may rely on, and the strict
 upstream invariants edge tests must validate) is scattered across tickets, requirements, and code.
-[Concern #39](../concerns.md#39-python-embedding-surface-and-public-failures) already forecasts one
+[Concern #39](../../concerns.md#39-python-embedding-surface-and-public-failures) already forecasts one
 such document ("the public API guide") for the embedding surface.
 
 An Edge record is a **normative** artifact — something breaks if it is wrong, and edge tests are
 the mechanism that catches it. "Edge" is *not* generalized to mean any artifact: in this project
 *edge* stays the system's outer boundary (glossary discipline), and Edge records document exactly
 that boundary's contract. The wider artifact taxonomy this distinction seeds belongs to
-[m6](./m6-artifact-conventions-sweep.md).
+[m6](../01-0200-artifact-conventions-sweep.md).
 
 ## Decisions (recorded as the align resolves them)
 
@@ -37,7 +37,7 @@ that boundary's contract. The wider artifact taxonomy this distinction seeds bel
 - **Home and naming** (2026-07-25): `docs/edge/<surface>.md` (`mcp.md`, `embedding.md`) — the
   singular collection directory matches `docs/adr/` / `docs/rfc/` house style. No numbers, no
   `done/`: Edge records are living documents named by surface; history is git's. At landing,
-  [#39](../concerns.md#39-python-embedding-surface-and-public-failures)'s "public API guide"
+  [#39](../../concerns.md#39-python-embedding-surface-and-public-failures)'s "public API guide"
   wording is repointed at `docs/edge/embedding.md`. Glossary entry **Edge record** added at the
   align (2026-07-25).
 - ~~**Record format** (2026-07-25): sections `Contract` / `Invariants` / `Not promised` /
@@ -84,7 +84,7 @@ that boundary's contract. The wider artifact taxonomy this distinction seeds bel
 ## Out of scope
 
 - The artifact conventions registry, normative/descriptive classification of the whole doc roster,
-  and skill slimming — [m6](./m6-artifact-conventions-sweep.md).
+  and skill slimming — [m6](../01-0200-artifact-conventions-sweep.md).
 - Settling concern #39's open embedding-facade decisions — the embedding Edge record starts as the
   home those decisions will land in, not a forcing function for them.
 - Any code change; deterministic and parity suites are untouched.
