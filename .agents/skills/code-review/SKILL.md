@@ -9,7 +9,9 @@ The goal of this skill is to compare current works input documentation (ticket, 
 - How good the code shape matches and represents the documentation?
 - Where the code shape went wrong or weird because of underspecification or contradiction in the docs?
 
-If discrepancies found, describe them in short and suggest ways to amend documentation or/and code. Do not make changes until requested. 
+Look for architectural or responsibility leakage.
+
+If discrepancies or leakages found, describe them in short and suggest ways to amend documentation or/and code. Do not make changes until requested. In case the cause is has big blast radius or significantly ambiguous, /align with user. 
 
 - In case RFC (original or amended) describes undocumented architecture, make sure to point this out as a discrepancy.
 

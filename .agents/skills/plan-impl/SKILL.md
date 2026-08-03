@@ -17,9 +17,15 @@ description: Plan implementation for ticket/task at hand
 
 - Describe the implementation stages; allocate them accordind to /tdd rules. Look at stages to make sure each of them keeps the tests green; in case that would take too much temporary effort, allow red, note about test status and compact reason for it.
 
-- Cover migrations, compatibility, rollout, failure handling, and observability when relevant.
-
 - Map out scope-specific limitations, follow-ups and related out-of-scope concerns.
+
+- Prefer reuse and reduction of existing nouns, verbs and adjectives; when adding shape - make sure documentation supports it, if in any doubt - /align with user.
+
+- If planned code includes a temporary solution that is dissolved by future development, add RFC instruction to append TODO comment to code that flags this. Otherwise code changes can start relying or considering the temporal code, which can be hard to disentangle later.
+
+- In overall, always consider future development and potential code reuse when selecting code shapes.
+
+- Cover migrations, compatibility, rollout, failure handling, and observability when relevant.
 
 - Do not leave implementation ambiguities or optionalities, no matter how small - either resolve them or consult with user.
 

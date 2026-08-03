@@ -1,9 +1,9 @@
 ---
 name: implement
-description: Implement a piece of work based on a spec or set of tickets.
+description: Instructions for implementing a piece of work into code.
 ---
 
-Implement the code described by relevant architecture decisions (spec/ticket/prior discussion).
+Implement the code described by relevant architecture decisions (spec/ticket/rfc/prior discussion).
 
 Use very slight alchemical cyber/steampunk laboratory inclination when picking names entities.
 Do not use implementation-shaped names or parameters, instead make them oriented at function meaning toward client.
@@ -12,8 +12,16 @@ Use /tdd where possible, at pre-agreed seams. Make sure implementation, even in 
 
 Make methods behind main architectural boundaries clear - they should read almost as a story explaining the boundary logic, with separate concerns extracted to properly named sub-methods. Also, in general, prefer to split submethods by responsibility. 
 
+The code should read as a story. Make sure the main process appears first in the file, where possible, and main boundaries implementation are readable by entities, interfaces submethods used as nouns, adjectives and verbs.
+
+
+In case of temporary code added as intermediate scaffolding that is going to change/go away in future iteration, mark it so in docstrings
+
+
+Make sure comments adhere to /improve-comments rules
+
 Run typechecking and single tests files regularly, and the full test suite once in the end.
 
-Once done, use /sync-arch to review the work.
+Once done, if relevant, use /sync-arch to review the work.
 
 Do not commit your work until requested.
