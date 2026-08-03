@@ -12,7 +12,7 @@ the contract level.
 
 ## The v1 canonical set
 
-Eight `ParameterDef`s: **6 canonical** (provider-served, post-Normalizer) + **2 derived** (Calculators over
+Eight `ParameterDef`s: **6 canonical** (provider-served, post-normalization) + **2 derived** (Calculators over
 `wind_u` / `wind_v`). Every one shares `statistic = point` on the T axis (v1 is hourly, no windowed
 `max` / `min` / `mean`); `cloud_cover` is additionally a **cell statistic on Z**.
 
@@ -29,7 +29,7 @@ Eight `ParameterDef`s: **6 canonical** (provider-served, post-Normalizer) + **2 
 
 The agent-facing **product is 6**: air temperature, precipitation, wind **speed**, wind **direction**,
 relative humidity, cloud cover (total). Wind is **canonical as u/v components** (both `linear`, so linear interpolation of u/v
-*is* correct wind interpolation); providers deliver native speed/direction and the Normalizer converts to
+*is* correct wind interpolation); providers deliver native speed/direction and a tap's `decode` converts to
 u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
 
 ## Vertical carriage

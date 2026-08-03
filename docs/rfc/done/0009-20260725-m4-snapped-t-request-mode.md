@@ -1,21 +1,21 @@
 # RFC 0009 · 2026-07-25 · m4 — Snapped-T request mode: implementation plan
 
-Implementation plan for [m4](../tickets/01-0100-snapped-t-request-mode.md). The **mode** was settled at the
+Implementation plan for [m4](../../tickets/done/01-0100-snapped-t-request-mode.md). The **mode** was settled at the
 2026-07-25 align (recorded in the ticket; ADR-0002 already amended — Snapped is **bounds-only**: the
 request fixes bounds, the resolver's grid supplies anchor *and* step,
 `snapped → exact = anchor(grid) ⊕ step(grid) ⊕ bounds(request)`); the **algebra** that serves it was
 settled at the 2026-07-26 review, and is what this plan is shaped around.
 
 **Scope in one line:** the request-side vocabulary in `domain.py` (`SnappedAxis`, `SelectionDomain`
-over a `SelectableAxis` union), **one resolution verb** — `Domain.ground(against)`, the
-shape-correspondence computation ADR-0001 states — plus the `Snappable` facet and the native step
-`RollingAxis` needs to satisfy it; the Open-Meteo leaf then *declares geometry and calls `ground`
+over a `SelectableAxis` union), **one resolution verb** — `ground(request, against)`, the
+shape-correspondence computation ADR-0001 states — over **one axis operation**, `Axis.clip(bounds)`,
+plus the native step `RollingAxis` needs to answer it; the Open-Meteo leaf then *declares geometry and calls `ground`
 twice* instead of carrying snapped-mode code. Zero changes to `Selection`, `Capability`, `Arbiter`,
 `Reservoir`, Gateway, or the MCP edge; one change in sampling (`_aligned_offsets` reports *why* a
 crop is impossible).
 
 **The leaf owns no snap arithmetic.** Every operation the mode needs — clamp to bounds, floor to the
-resolver's own ticks, decline an axis with no lattice, crop the values that came with a wider answer
+resolver's own ticks, decline an axis with no cells, crop the values that came with a wider answer
 — is one call against declared geometry. That is the property that makes 011's second provider a
 declaration and 006's `quantize` a sibling of the same verb rather than a copy.
 
@@ -23,16 +23,16 @@ declaration and 006's `quantize` a sibling of the same verb rather than a copy.
 
 | Boundary | Owner | What m4 does to it |
 |---|---|---|
-| `Domain` / axis surface (`manifold/domain.py`) | [ADR-0002](../adr/0002-data-model.md) | Adds `SnappedAxis` (a `ContinuousAxis` subclass — decision 1), `SelectableAxis`, `SelectionDomain`, the `Snappable` facet, and **`ground` on the `Domain` base** (decision 6) — which widens the ADR's *universal domain surface* from set-algebra alone, the one recorded-decision amendment m4 carries. `GridDomain` gains the identity `ground`; `ContinuousAxis` gains the docstring line naming its new subclass, mirroring `IntervalAxis`'s existing `VantageAxis` line. |
-| Admission (`Capability.serves` → per-axis `matches`) | [ADR-0004](../adr/0004-producer-resolution-and-capability.md) | **No code change** — `SnappedAxis.matches` (intersection) rides the existing request-side per-axis gate, exactly the `VantageAxis` precedent. Pinned by tests. |
+| `Domain` / axis surface (`manifold/domain.py`) | [ADR-0002](../../adr/0002-data-model.md) | Adds `SnappedAxis` (a `ContinuousAxis` subclass — decision 1), `SelectableAxis`, `SelectionDomain`, the module-level `ground` (decision 6), and **`clip` on the `Axis` base** (decision 7) — the one recorded-decision amendment m4 carries, widening the ADR's *universal axis* surface beyond set-algebra. The **domain** surface is untouched: resolution is a function, because being a request is a property of some representations only ([#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)). Every axis kind implements `clip`; `ContinuousAxis` gains the docstring line naming its new subclass, mirroring `IntervalAxis`'s existing `VantageAxis` line. |
+| Admission (`Capability.serves` → per-axis `matches`) | [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) | **No code change** — `SnappedAxis.matches` (intersection) rides the existing request-side per-axis gate, exactly the `VantageAxis` precedent. Pinned by tests. |
 | Arbiter | ADR-0004 | **Untouched in code.** Admission is single-winner-per-parameter, wholesale (#13 scoped position). Its multi-winner `_assemble` domain-equality check is *behaviourally* touched — see fact 9. |
 | Calculator (`nodes/calculator.py`) | ADR-0004 | **Untouched.** It forwards `selection.domain` verbatim to its scoped Arbiter and takes the answer domain from the kernel's `cov.domain` (`wind_from_uv` returns it unchanged), so a snapped Selection rides through with no dispatch. It is, however, the v1 source of a *second fetch* per request (fact 9). |
-| Open-Meteo leaf (`nodes/providers/open_meteo.py`) | [edge/provider.md](../edge/provider.md) | Gains **no mode branch**, and *loses* code: `project` grounds the request against the geometry the leaf declares, then grounds it again against the delivered records and crops to that. Both modes take the same path (decision 9). **Revised 2026-08-02:** that code is *extracted*, not deleted — it becomes `TimelineProvider` in `providers/timeline.py`, and the file reduces to an `OpenMeteoProbe` plus its declarations (decision 12). |
-| Provider shape (`nodes/providers/timeline.py`) | [edge/provider.md](../edge/provider.md) | **Added 2026-08-02:** gains the verbs to match its existing nouns — `TimelineProvider` (the `Provider` implementation), the `TimelineProbe` `Protocol`, `TimelineDelivery`, and `TapTable`. Owns both `ground` calls, `agreed_geometry`, unit verification, `decode`, Z grouping, capability construction, provenance stamping, and the crop (decision 12). |
-| Declared T geometry (`manifold/cadence.py`, `nodes/providers/timeline.py`) | [ADR-0003](../adr/0003-provenance-and-origin.md), [edge/provider.md](../edge/provider.md) | `RollingAxis` gains the **native series step** and the `Snappable` `regular()` that turns its live window into a lattice; the provider shape (`PointSeriesTap`) is where that step is declared (decision 8). `CadenceDef` is untouched — it times runs, it does not shape series. |
-| Reservoir | [architecture §Reservoir](../architecture.md#reservoir) | **Untouched** (pass-through pre-006). |
-| MCP edge (`api/mcp_app.py`), Gateway | [architecture §Contract surfaces](../architecture.md#contract-surfaces) | **Untouched** — m4 is product-invisible; the edge migrates to `SelectionDomain` at 003c. |
-| Sampling engine (`manifold/sampling.py`) | ADR-0002 | **Newly load-bearing**: `resample`'s aligned crop is how the leaf trims values to the grounded answer, in both modes — no index math in any leaf. One code change: `_aligned_offsets` splits its single `None` outcome into *off-phase or different step* (still `NotImplementedError`, [#21](../concerns.md#21-serves-extent-vs-project-crop-ability)) and *the target runs past the source* (a diagnosable shortfall — decision 9). |
+| Open-Meteo leaf (`nodes/providers/open_meteo.py`) | [edge/provider.md](../../edge/provider.md) | Gains **no mode branch**, and *loses* code: `project` grounds the request against the geometry the leaf declares, then grounds it again against the delivered records and crops to that. Both modes take the same path (decision 9). **Revised 2026-08-02:** that code is *extracted*, not deleted — it becomes `TimelineProvider` in `providers/timeline.py`, and the file reduces to an `OpenMeteoProbe` plus its declarations (decision 12). |
+| Provider shape (`nodes/providers/timeline.py`) | [edge/provider.md](../../edge/provider.md) | **Added 2026-08-02:** gains the verbs to match its existing nouns — `TimelineProvider` (the `Provider` implementation), the `TimelineProbe` `Protocol`, `TimelineDelivery`, and `TapTable`. Owns both `ground` calls, `agreed_geometry`, unit verification, `decode`, Z grouping, capability construction, provenance stamping, and the crop (decision 12). |
+| Declared T geometry (`manifold/cadence.py`, `nodes/providers/timeline.py`) | [ADR-0003](../../adr/0003-provenance-and-origin.md), [edge/provider.md](../../edge/provider.md) | `RollingAxis` gains the **native series step** and the `clip` that materialises its live window into the lattice its series arrives on; the provider shape (`PointSeriesTap`) is where that step is declared (decision 8). `CadenceDef` is untouched — it times runs, it does not shape series. |
+| Reservoir | [architecture §Reservoir](../../architecture.md#reservoir) | **Untouched** (pass-through pre-006). |
+| MCP edge (`api/mcp_app.py`), Gateway | [architecture §Contract surfaces](../../architecture.md#contract-surfaces) | **Untouched** — m4 is product-invisible; the edge migrates to `SelectionDomain` at 003c. |
+| Sampling engine (`manifold/sampling.py`) | ADR-0002 | **Newly load-bearing**: `resample`'s aligned crop is how the leaf trims values to the grounded answer, in both modes — no index math in any leaf. One code change: `_aligned_offsets` splits its single `None` outcome into *off-phase or different step* (still `NotImplementedError`, [#21](../../concerns.md#21-serves-extent-vs-project-crop-ability)) and *the target runs past the source* (a diagnosable shortfall — decision 9). |
 
 ## Facts that shape the implementation (verified 2026-07-25, re-read against code 2026-07-26)
 
@@ -51,9 +51,10 @@ declaration and 006's `quantize` a sibling of the same verb rather than a copy.
    are applied by clipping, not by checking (decision 7).
 4. **The leaf's declared window and its vendor series share one lattice, by construction**:
    `CadenceDef.anchor` floors to Δ = 1 h (`max_lead` = 16 d), so the rolling window's edges are
-   whole hours — the phase the vendor's hourly series lands on. `RollingAxis.regular()`
-   (decision 8) therefore produces the lattice the answer actually arrives on, which is what makes
-   grounding *before* the fetch and *after* it agree on ticks. A provider whose declared window and
+   whole hours — the phase the vendor's hourly series lands on. `RollingAxis.clip`
+   (decision 8) therefore materialises the lattice the answer actually arrives on — same phase, same
+   step, and **`cellular=True`, as the normalizer already builds the delivered T axis** — which is what
+   makes grounding *before* the fetch and *after* it agree on ticks. A provider whose declared window and
    delivered series disagreed on phase would ground to two different lattices and the crop would
    decline loudly rather than silently mis-index (decision 9) — the honest failure for a
    mis-declared provider, and the parity harness's job to catch.
@@ -101,8 +102,7 @@ declaration and 006's `quantize` a sibling of the same verb rather than a copy.
 
 The align (2026-07-25) settled the **mode**: what a snapped request says and who resolves it
 (decisions 1–5). The 2026-07-26 review settled the **algebra** that serves it (decisions 6–10): one
-verb on the base `Domain`, so that a leaf declares its geometry and calls it, instead of every leaf
-growing mode code. Decisions of record live in the ticket; these are their implementation-binding
+verb a leaf calls against the geometry it declares, instead of every leaf growing mode code. Decisions of record live in the ticket; these are their implementation-binding
 forms.
 
 1. **`SnappedAxis` is `ContinuousAxis` with intersective `matches` — temporal-only, validated.**
@@ -162,11 +162,12 @@ forms.
    `Capability`'s domain); it exists to satisfy the `Domain` ABC and is pinned only for totality.
 4. **The leaf serves one snapped placement — and it *declares* that, rather than guarding it.**
    Snapped T resolves here; snapped X/Y does not. But the leaf states this the way it states
-   everything else about itself: its footprint declares a `Snappable` T (`RollingAxis` — decision 8)
-   and continuous X/Y. `ground` resolves a snapped member against a `Snappable` answering axis and
-   declines one whose answering axis is not (decisions 6–7), so *"this leaf resolves a snapped T and
+   everything else about itself: its footprint declares a T that clips to a lattice (`RollingAxis` —
+   decision 8) and X/Y that clip to spans, which temporal bounds do not meet in the first place.
+   `ground` keeps what the answering axis clips to when that
+   has cells and declines when it does not (decisions 6–7), so *"this leaf resolves a snapped T and
    nothing else"* is a **consequence of the declaration**, not a hand-written gate. No shape-inspecting
-   helper exists, and [011](../tickets/01-0120-visual-crossing-provider.md)'s second provider inherits
+   helper exists, and [011](../../tickets/01-0120-visual-crossing-provider.md)'s second provider inherits
    the behaviour by declaring its own geometry.
    Two things this drops on purpose: the *non-snapped-T-inside-a-`SelectionDomain`* rejection (it was
    never unservable — an all-enumerable `SelectionDomain` is an exact request wearing the
@@ -181,42 +182,48 @@ forms.
    own declared geometry and hands the *grounded* domain to the request mapper:
 
    ```python
-   wanted = agreed_geometry(selection.domain.ground(fp) for fp in footprints_of(taps))
+   wanted = agreed_geometry(ground(selection.domain, fp) for fp in footprints_of(taps))
    request = _forecast_request(wanted, taps)     # reads the resolved T extent and the X/Y point
    ```
 
-   Four things the mode needs are all `clip` against the rolling lattice, so none of them is written
-   here: the clamp to the live window (the lattice **is** the window), the floor of both bounds onto
-   the resolver's own ticks, end-inclusivity (*last tick ≤ end*), and the raced-empty decline. The
+   Four things the mode needs are all one `clip` of the rolling axis, so none of them is written
+   here: the clamp to the live window (the materialised lattice **is** the window), the floor of both
+   bounds onto the resolver's own ticks, end-inclusivity (*last tick ≤ end*), and the raced-empty decline. The
    mapper therefore holds no `floor_to`, no `HOURLY_STEP`, no T-mode branch and no clock — it maps an
    already-resolved geometry onto vendor query params, which is all it was ever for. The two clock
    reads stay as fact 5 describes; the pre-fetch one happens inside `RollingAxis.extent`, where
    ADR-0003 already put the build-time `Clock`.
-6. **`ground` is the shape-correspondence computation, and it lives on the `Domain` base.**
+6. **`ground` is the shape-correspondence computation, and it is a function in `manifold/domain.py`.**
    ADR-0001 says an answer mirrors its question's shape; `ground` is that sentence as one operation:
 
    ```python
-   class Domain(ABC):
-       @abstractmethod
-       def ground(self, against: Domain) -> EnumerableDomain:
-           """The answer geometry this domain asks for, resolved against `against`'s geometry."""
+   def ground(request: Domain, against: Domain) -> EnumerableDomain:
+       """The answer geometry `request` asks for, resolved against `against`'s geometry."""
    ```
 
    - **Returns `EnumerableDomain`, not `GridDomain`.** What every caller needs is *indexability* — a
      `Coverage` domain, a crop target, a storable unit. Which enumerable representation satisfies it
      is the resolver's business, so an irregular-point geometry later needs no signature change.
-   - **On the base, not on `SelectionDomain`.** Callers hold `Selection.domain`, typed base `Domain`
-     (fact 2), and must not dispatch to discover whether resolution is needed. `GridDomain.ground`
-     returns `self` — an exact request is already its own answer — and *that identity is what
-     collapses the leaf's mode branch* (decision 9).
+   - **A function, not a method** (decided 2026-08-03). Callers hold `Selection.domain`, typed base
+     `Domain` (fact 2), and must not branch on representation to learn whether resolution is needed —
+     so exactly one dispatch exists, and it lives in the module that owns representations. It has
+     three arms: a `SelectionDomain` resolves; an `EnumerableDomain` **is returned unchanged**, since
+     an exact request is already its own answer, and *that identity is what collapses the leaf's mode
+     branch* (decision 9); a declared geometry is a `ValueError`, because a footprint is what requests
+     ground *against*. A base-`Domain` method would instead make every representation that is not a
+     request carry a stub — including test doubles — and each new one carry another.
+     **The end-state is a method again, once the request side narrows to one representation**
+     ([#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method) owns that
+     path and its triggers: 006's refill, 003c, or an embedder-facing builder). m4 deliberately does
+     not force it, because narrowing needs `SelectableAxis` widened and `resample`'s target restated.
    - **Takes a `Domain`, not a per-axis mapping.** What a request resolves against is always some
      node's geometry: a footprint before the fetch, a delivered `Coverage`'s domain after it, a store
      lattice at 006. One argument shape serves all three, and no caller disassembles a geometry to
      feed it.
    - **A per-axis fold, mode-dispatched by axis kind** — the ticket's non-duplication constraint,
      now on the resolution side as it already is on the admission side: enumerable members pass
-     through by identity (the vantage Z cell rides exactly as today), snapped members `clip`, and
-     006's `ANY` will take the answering axis whole. Mode *combinations* are never code paths.
+     through by identity (the vantage Z cell rides exactly as today), snapped members take what the
+     answering axis clips to, and 006's `ANY` will take the answering axis whole. Mode *combinations* are never code paths.
    - **`ValueError` when a member cannot resolve.** The reason a resolution fails is the caller's
      knowledge, not the algebra's: a vendor answering a foreign window and a mis-quantized store are
      different failures, reported differently, by different callers.
@@ -227,32 +234,58 @@ forms.
      footprints and across native records with **different Z cells**, because a request that pins Z
      passes it through by identity — so `agreed_geometry` (decision 10) fires only when the T lattices
      genuinely disagree, which is the case it exists for.
-7. **The bounds clamp, they do not police** — `SnappedAxis.clip`, `ground`'s per-axis mechanism. The
-   answering axis keeps its anchor and step; the bounds decide only where the lattice starts and
-   stops: back to the tick whose *cell* contains the lower bound, forward to the last tick within
-   the upper. A vendor loose with `start_hour`/`end_hour` (or a stale proxy) is therefore **trimmed,
-   not rejected**, and a lattice falling short of the bounds is an **honest shorter answer** — the
-   two failure modes the mode exists to stop treating as errors. Disjoint returns `None`, which
-   `ground` raises as `ValueError` and the leaf reports as `CapabilityMismatch`: there is nothing to
-   trim into.
-   **The facet is `Snappable`.** ADR-0002's rule is *"only a regular axis can be snapped-to"*; as a
-   `runtime_checkable` `Protocol` with `regular() -> RegularAxis` (the `Separable` precedent), that
-   rule becomes what `ground` reads instead of an `isinstance(RegularAxis)` crawl. `RegularAxis`
-   returns `self`, `RollingAxis` computes one (decision 8), and a store lattice satisfies it at
-   [006](../tickets/01-0130-retentive-store-freshness.md) — which is precisely the option 006 registered
-   as *narrow what `quantize` requires*: anchor and step, never enumeration. **Not** named `Lattice`:
-   that word is spoken for, and load-bearingly so — a Store's retention grid is never public
-   (ADR-0006, glossary).
-   **m4's one coordinate-kind narrowing lives here.** `clip` reads `datetime` / `timedelta` because
-   `SnappedAxis` is temporal-only, so the align's expectation of *no* coordinate-kind dispatch does
-   not hold — m4 has one, in one function.
-   [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) is therefore *touched* — the
-   spatial sibling either brings its own `clip` or #23's split makes this one generic — and that
-   choice is recorded at #23, not pre-empted here.
-8. **`RollingAxis` becomes `Snappable`, which requires it to know its native step.** A footprint's T
-   axis is deliberately clock-relative (`extent` = `valid_time(now())`); `regular()` turns that live
-   window into the lattice the series actually arrives on — anchor at `extent.lower`, the declared
-   step, and the count that fits. Two things this pins:
+7. **The bounds clamp, they do not police** — `Axis.clip`, `ground`'s per-axis mechanism. A snapped
+   member carries bounds and nothing else, so the **answering axis says what part of itself those
+   bounds ask for**: `clip(bounds: Interval) -> Axis | None`, **abstract on the `Axis` base**. A
+   clipped lattice keeps its anchor and step; the bounds decide only where it starts and stops: back
+   to the tick whose *cell* contains the lower bound, forward to the last tick within the upper. A
+   vendor loose with `start_hour`/`end_hour` (or a stale proxy) is therefore **trimmed, not
+   rejected**, and a lattice falling short of the bounds is an **honest shorter answer** — the two
+   failure modes the mode exists to stop treating as errors.
+   **Abstract on the base, not a facet on some axes** (decided 2026-08-02, superseding the
+   `Snappable` / `regular()` shape). Restricting an axis to bounds is plain axis algebra: it is what
+   006's `quantize` needs, what any later crop needs, and it is meaningful for *every* axis kind. A
+   facet would have named the caller instead of the operation, and would have made two questions
+   (*can you be snapped-to?* then *hand me your lattice*) out of one. Abstract means each kind answers
+   for its own geometry, `ground` holds no `isinstance` crawl, and a new axis kind must state its
+   answer rather than inherit a wrong one:
+
+   | answering axis | `clip(bounds)` |
+   |---|---|
+   | `RegularAxis` | the sub-lattice inside the bounds — same phase, same step, `cellular` carried through; `None` when no tick survives |
+   | `IntervalAxis` / `VantageAxis` | itself when the bounds reach into its single cell, `None` otherwise — one cell is not subdivided |
+   | `ContinuousAxis` (and `SnappedAxis`, inherited) | the overlapping span: a span restricted is still a span, and no cells appear from nowhere |
+   | `RollingAxis` | its live window materialised as the lattice its series arrives on, then clipped (decision 8) |
+
+   **`ground` owns enumerability; `clip` does not.** `clip` returns *whatever kind of geometry the
+   restriction leaves*, because that is the honest answer to a question about axes; needing **cells**
+   is a property of grounding (its return is an `EnumerableDomain`), so the one verb that needs them
+   checks for them. That gives two declines with genuinely different sentences, both `ValueError` out
+   of `ground` and `CapabilityMismatch` at the leaf: **`None`** — bounds and axis are disjoint, there
+   is nothing to trim into (raced-empty pre-fetch, a foreign window post-fetch, and a snapped X/Y,
+   whose bounds are `datetime` by type and so meet no spatial axis); **a non-enumerable part** — the
+   axis has no cells to snap to (a leaf declaring T as a plain span rather than a lattice).
+   This is where ADR-0002's *"only a regular axis can be snapped-to"* now lives — as a property of
+   what `clip` hands back, read once, rather than as a facet the request side must interrogate first.
+   Worth stating plainly, because it changes what the rule *is*: nothing in the machinery forbids a
+   snapped X/Y — it stays unserved because **`SnappedAxis` is temporal by type**, so its bounds do not
+   address a spatial axis at all (and, behind that, no leaf declares an enumerable X/Y either). The ADR
+   sentence is amended to say that at stage 6.
+   **m4 adds no coordinate-kind narrowing after all** (this revises the earlier claim that it adds
+   one). The index math lands on `RegularAxis`, which is coordinate-generic: `(bound − anchor) / step`
+   is a plain `float` for `timedelta`s and floats alike, and `anchor + i·step` types alike, so `clip`
+   is one expression under the module's existing `# type: ignore[operator]` — no `datetime` branch,
+   nothing like `sub_lattice_offset`'s `isinstance` crawl.
+   [#23](../../concerns.md#23-spatial-vs-temporal-regularaxis-types) is therefore touched only as a
+   *deferred* question: what a spatial user must settle is **float phase tolerance** (the reason
+   `sub_lattice_offset` carries `LATTICE_TOLERANCE`), and m4's T path never meets it because
+   `timedelta` arithmetic is exact. Snapped X/Y costs a tolerance policy in one expression, not a
+   second `clip`.
+8. **`RollingAxis` answers `clip` by materialising, which requires it to know its native step.** A
+   footprint's T axis is deliberately clock-relative (`extent` = `valid_time(now())`); `clip` turns
+   that live window into the lattice the series actually arrives on — anchor at `extent.lower`, the
+   declared step, `cellular=True` as the delivered axis is (fact 4), and the count that fits — then
+   clips *that*. Two things this pins:
    - **The series step is not the cadence.** `CadenceDef` times *runs* (Δ, latency, `max_lead`); the
      step is how densely one run samples time. They coincide at 1 h for Open-Meteo and would not for
      a 6-hourly run publishing an hourly series, so conflating them would make that provider
@@ -262,13 +295,14 @@ forms.
      footprint builder hands it to `RollingAxis` as a required field — not per-`PointSeriesTap`,
      because T is *structural* to that shape (the tap's own docstring says so) and per-parameter
      steps would let two parameters of one shape disagree about time. Required rather than optional
-     so that `Snappable` never lies: a provider whose series is genuinely irregular declares a
-     different T axis and is declined by the same path that declines a snapped X.
+     so that a `RollingAxis` never invents a lattice it does not have: a provider whose series is
+     genuinely irregular declares a different T axis, whose `clip` yields no cells, and is declined by
+     the algebra reading that declaration.
 9. **One assembly path, cropped by `resample`.** `_assemble` grounds the request against what the
    fetch actually delivered, then crops the values to the result:
 
    ```python
-   answer = agreed_geometry(selection.domain.ground(r.domain) for r in records)   # decision 10
+   answer = agreed_geometry(ground(selection.domain, r.domain) for r in records)  # decision 10
    served = CoverageRecord(...)                                                 # as parsed, vendor lattice
    return served if served.domain == answer else resample(served, Selection(answer, parameters))
    ```
@@ -277,17 +311,17 @@ forms.
    the branch that used to exist is now an equality that happens to hold. That also replaces the old
    `len(values) == len(sel.domain)` assertion with something strictly better: the same fact, checked
    by the component that owns index math and *reported* rather than asserted
-   ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)'s check class re-aimed at
+   ([#31](../../concerns.md#31-positional-alignment-is-asserted-never-checked)'s check class re-aimed at
    the answer). Provenance, parameters, and Z-relabeling are untouched.
    **`_aligned_offsets` splits its `None`,** because one value currently covers two unrelated
    situations and only one of them is unimplemented:
    - *Off-phase, or a different step* — not croppable by index arithmetic at all. Stays
-     `NotImplementedError`; stays [#21](../concerns.md#21-serves-extent-vs-project-crop-ability)'s.
+     `NotImplementedError`; stays [#21](../../concerns.md#21-serves-extent-vs-project-crop-ability)'s.
    - *The target runs past the source's end* — a **shortfall**, and fully diagnosable: the crop is
      well-defined over the overlap and short by a known count. The leaf reads it as *a vendor
      delivered less than it declared*. Filling that tail as `present=False` with `nan` values — the
      padding the presence mask already exists to describe — is the named site at
-     [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback), not m4's work.
+     [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback), not m4's work.
 10. **Native records must agree on every axis the request pinned or snapped.** (Headline corrected
     2026-08-02 — it previously read *"the axes the request left open"*, which inverts the body: an axis
     left open is precisely the licence to differ.) `_assemble` folds many native
@@ -309,14 +343,14 @@ forms.
    adds **no** fold. What it adds is honesty: a deterministic test feeding two divergent canned
    responses to the two producers and asserting the loud failure (stage 6), the corrected
    attribution in Scope limits, and a **Race** entry in
-   [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 table.
+   [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 table.
    Rejected alternatives and why: *freezing one window per request* needs a per-request context the
    architecture does not have (the `Clock` is a build-time dependency, ADR-0003) and still would not
    cover vendor-length divergence; *folding winner domains to a common lattice* is a per-cell
-   reconciler ([#28](../concerns.md), out of scope by the ticket). The exposure is real but starts
-   at **003c** (m4 is product-invisible), and [006](../tickets/01-0130-retentive-store-freshness.md)'s
+   reconciler ([#28](../../concerns.md), out of scope by the ticket). The exposure is real but starts
+   at **003c** (m4 is product-invisible), and [006](../../tickets/01-0130-retentive-store-freshness.md)'s
    retention collapses the second fetch — so the owner is 003c's landing, recorded there and at
-   [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
+   [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 12. **The leaf splits into a shape wrapper and a vendor `Probe` (decided at the 2026-08-02 align;
    folded into m4).** Decision 4 already made the leaf *declare* rather than gate; this finishes the
    thought by observing that two independent things vary — the **geometry family** (a point plus an
@@ -342,25 +376,69 @@ forms.
    so no `ParameterId` key is truthful before `decode`. It is a deliberate structural twin of parity's
    `ReferenceTimeline` and **must never be unified with it**: `parity.comparison` imports no
    Meteoscape code precisely so readers stay guard-clean.
+   **What the split enables but does not deliver.** The wrapper's constructor arguments — `taps`,
+   `step`, `cadence` — are **per-offering** facts, and m4 passes them as the leaf's module constants,
+   which is the honest v1 state at one offering per provider. It makes an offering-parameterized leaf
+   a private table keyed by `spec.name` rather than a rewrite, but the query's missing vendor model
+   token stays missing, so a second Open-Meteo offering is still unbuildable after this lands →
+   [#20](../../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
    **Costs accepted:** m4's blast radius widens to `MANIFEST.build` and every leaf test's construction
    site, `Clock` leaves the vendor object entirely, and the shape abstraction is extracted from **one**
    instance with 011 as the only confirming case and not yet written. Full contract:
-   [edge/provider.md](../edge/provider.md).
+   [edge/provider.md](../../edge/provider.md).
 
 ## Code shapes
 
 ### `manifold/domain.py`
 
 ```python
-@runtime_checkable
-class Snappable(Protocol):
-    """An axis that can be snapped-to: it has an anchor and a step, so it *is* a lattice.
+class Axis(ABC):
+    # name / extent / matches unchanged
 
-    ADR-0002's "only a regular axis can be snapped-to" as a facet — what `ground` reads, and all
-    006's `quantize` needs from a store's retention grid.
-    """
+    @abstractmethod
+    def clip(self, bounds: Interval) -> Axis | None:
+        """The part of me within `bounds` — `None` when none of me is.
 
-    def regular(self) -> RegularAxis: ...
+        Pure axis algebra: what comes back is whatever the restriction leaves (a span stays a span,
+        a lattice stays a lattice at its own phase, a clock-relative window materialises). Callers
+        that need cells check for them.
+        """
+
+
+@dataclass(frozen=True)
+class RegularAxis(EnumerableAxis):
+    def clip(self, bounds: Interval) -> RegularAxis | None:
+        # A cellular tick owns the span that follows it, so a bound inside a cell keeps that cell;
+        # an instant tick is kept only when the bounds contain the tick itself.
+        low = (bounds.lower - self.anchor) / self.step
+        first = max(0, floor(low) if self.cellular else ceil(low))
+        last = min(self.count - 1, floor((bounds.upper - self.anchor) / self.step))
+        if first > last:
+            return None
+        return RegularAxis(self.name, self.anchor + first * self.step, self.step,
+                           last - first + 1, self.cellular)
+
+
+@dataclass(frozen=True)
+class IntervalAxis(EnumerableAxis):
+    def clip(self, bounds: Interval) -> IntervalAxis | None:
+        """One cell is not subdivided: it survives whole, or not at all."""
+        return self if self.interval.intersects(bounds) else None
+
+
+@dataclass(frozen=True)
+class Interval[C: (float, datetime)]:
+    # contains / intersects unchanged
+    def intersection(self, other: Interval[C]) -> Interval[C] | None:
+        """The span both cover — `None` when they do not meet."""
+
+
+@dataclass(frozen=True)
+class ContinuousAxis(Axis):
+    def clip(self, bounds: Interval) -> ContinuousAxis | None:
+        """A span restricted is still a span — no cells appear from nowhere."""
+        overlap = self.extent.intersection(bounds)
+        return None if overlap is None else ContinuousAxis(self.name, overlap)
 
 
 class Domain(ABC):
@@ -384,7 +462,6 @@ class GridDomain(EnumerableDomain):
 
 
 @dataclass(frozen=True)
-@dataclass(frozen=True)
 class SnappedAxis(ContinuousAxis):
     """Bounds-only request axis: the resolver's grid supplies anchor and step (ADR-0002).
 
@@ -404,13 +481,8 @@ class SnappedAxis(ContinuousAxis):
     def matches(self, declared: Axis) -> bool:
         return self.interval.intersects(declared.extent)   # type: ignore[arg-type]
 
-    def clip(self, lattice: RegularAxis) -> RegularAxis | None:
-        """The part of `lattice` these bounds ask for — `None` when none of it is.
-
-        The lattice keeps its anchor and step; the bounds move only its edges.
-        """
-
-    # `name` and `extent` inherited unchanged.
+    # `name`, `extent` and `clip` inherited unchanged — a snapped axis is asked *for* nothing;
+    # it is the bounds another axis is clipped to.
 
 
 type SelectableAxis = RegularAxis | VantageAxis | SnappedAxis
@@ -428,7 +500,23 @@ class SelectionDomain(Domain):
     def axis(self, name: AxisName) -> SelectableAxis: return self.axes[name]
 
     def ground(self, against: Domain) -> EnumerableDomain:
-        """Pinned members pass through; snapped members `clip` the answering `Snappable` axis."""
+        """Pinned members pass through; a snapped member takes what the answering axis clips to."""
+        answering = as_separable(against)
+        if answering is None:
+            raise ValueError("a request grounds only against separable geometry")
+        axes: dict[AxisName, EnumerableAxis] = {}
+        for name in AXIS_ORDER:
+            member = self.axes[name]
+            if not isinstance(member, SnappedAxis):
+                axes[name] = member                       # pinned: the ask is the answer
+                continue
+            part = answering.axis(name).clip(member.interval)
+            if part is None:
+                raise ValueError(f"no {name.value} within the requested bounds")
+            if not isinstance(part, EnumerableAxis):      # grounding is what needs cells
+                raise ValueError(f"a snapped {name.value} needs cells; the answering axis has none")
+            axes[name] = part
+        return GridDomain(axes=axes)
 
 
 def agreed_geometry(grounded: Iterable[EnumerableDomain]) -> EnumerableDomain:
@@ -440,24 +528,25 @@ def agreed_geometry(grounded: Iterable[EnumerableDomain]) -> EnumerableDomain:
     """
 ```
 
-Placement: `Snappable` beside the `Separable` facet it mirrors; `SnappedAxis` immediately after
+Placement: `clip` on each axis beside that axis's `matches`, the abstract one on `Axis`;
+`Interval.intersection` beside `intersects`; `SnappedAxis` immediately after
 `ContinuousAxis` — required, not cosmetic, since it subclasses it, and it puts the pair on the page
 exactly as `IntervalAxis` / `VantageAxis` already sit; `SelectionDomain` after `FootprintDomain`,
 the alias between them.
 
 ### `manifold/cadence.py`
 
-`RollingAxis` gains a required `step: timedelta` and the facet, so a footprint's clock-relative T
-window can answer a snapped request (decision 8). **Four construction sites** take the new field —
-`_build_footprints` (the leaf, from `timeline.HOURLY_STEP`), `fakes.footprint_capability`, and two in
-`test_domain.py` — all of them one argument wider, none of them structural:
+`RollingAxis` gains a required `step: timedelta`, so a footprint's clock-relative T window can answer
+a snapped request (decision 8). **Four construction sites** take the new field — `_build_footprints`
+(the leaf, from `timeline.HOURLY_STEP`), `fakes.footprint_capability`, and two in `test_domain.py` —
+all of them one argument wider, none of them structural:
 
 ```python
-def regular(self) -> RegularAxis:
-    """This axis as the lattice its series arrives on, at the current clock reading."""
-    window = self.extent
+def clip(self, bounds: Interval) -> RegularAxis | None:
+    """A clock-relative window resolves to the lattice its series arrives on, then to the bounds."""
+    window = self.extent          # the one clock read
     return RegularAxis(self.name, window.lower, self.step,
-                       (window.upper - window.lower) // self.step + 1, cellular=False)
+                       (window.upper - window.lower) // self.step + 1, cellular=True).clip(bounds)
 ```
 
 ### `nodes/providers/open_meteo.py` → `providers/timeline.py`
@@ -467,11 +556,11 @@ land on `TimelineProvider`, not on the vendor leaf:
 
 ```python
 # project(): resolve what the request asks of this provider, against what this provider declares
-wanted = agreed_geometry(selection.domain.ground(fp) for fp in footprints_of(taps))
+wanted = agreed_geometry(ground(selection.domain, fp) for fp in footprints_of(taps))
 request = _forecast_request(wanted, taps)      # T extent + the X/Y point → query params
 ...
 # _assemble(): resolve it again, now against what the fetch delivered
-answer = agreed_geometry(selection.domain.ground(r.domain) for r in records)
+answer = agreed_geometry(ground(selection.domain, r.domain) for r in records)
 ```
 
 **The same fold at both ends** (decision 10). The leaf's footprints are per-parameter
@@ -495,13 +584,13 @@ file's.
 **This supersedes fact 7's "no test call sites move."** That was true of a signature change; it is
 false of an extraction. `MANIFEST.build` and every leaf test's construction site move, the leaf tests
 address `TimelineProvider` with an injected Probe (still mocking the **`Transport`**, never the Probe
-— [edge/provider.md](../edge/provider.md)), and the deterministic assertions themselves are unchanged,
+— [edge/provider.md](../../edge/provider.md)), and the deterministic assertions themselves are unchanged,
 which is the stage's real proof.
 
 `agreed_geometry` is **not** in this file: it lives in `manifold/domain.py` beside `ground`
 (decision 10). The law it enforces is not provider-specific — it binds any producer folding several
-native records into one answer, [011](../tickets/01-0120-visual-crossing-provider.md)'s second provider
-included — and [006](../tickets/01-0130-retentive-store-freshness.md) *lifts* it on `ANY` axes, so the law
+native records into one answer, [011](../../tickets/01-0120-visual-crossing-provider.md)'s second provider
+included — and [006](../../tickets/01-0130-retentive-store-freshness.md) *lifts* it on `ANY` axes, so the law
 and its exception belong to one module. The leaf imports it and translates its `ValueError`.
 
 ### `tests/deterministic/fakes.py`
@@ -515,8 +604,8 @@ One new helper, mirroring `point_timeline_domain`:
 `RegularAxis(Y, lat, 1.0, 1, False)`, `VantageAxis(Z, Interval(0.0, 10.0))`, differing only in T.
 So the fake is the snapped counterpart of the production request, and 003c's edge migration is a
 T-axis swap on a shape already pinned. Also verified: `serialize_coverage` requires a `GridDomain`
-Coverage domain — `SelectionDomain.ground` builds exactly that (the *declared* return is the wider
-`EnumerableDomain`, decision 6), so the snapped answer serializes with no edge change.
+Coverage domain — `ground` builds exactly that from a `SelectionDomain` (the *declared* return is the
+wider `EnumerableDomain`, decision 6), so the snapped answer serializes with no edge change.
 
 ## Flows
 
@@ -545,11 +634,14 @@ the vendor answers identically (always, under a canned transport); divergent oth
 translated at the call site — which is why the list is short:
 
 - No producer intersects the bounds → `CapabilityMismatch` at the Arbiter (today's message).
-- **Snapped against an axis that is not `Snappable`** (snapped X/Y here) → `ground` declines →
+- **Snapped against an axis that clips to no cells** (a leaf declaring T as a plain span) →
+  `ground` declines →
   `CapabilityMismatch`, pre-fetch. This is the whole of the old "malformed shape" class; an
   all-enumerable `SelectionDomain` is now simply served (decision 4).
 - **Nothing left after the clip** — the window rolled past the bounds before the fetch (raced-empty),
-  or the delivered series is disjoint from them → `CapabilityMismatch`, pre- and post-fetch
+  the delivered series is disjoint from them, or the bounds address a different coordinate kind than
+  the axis they ask of (a **snapped X/Y**: temporal bounds never meet a spatial axis, so admission
+  already declines it and `ground` says the same thing) → `CapabilityMismatch`, pre- and post-fetch
   respectively.
 - **Requested taps, or delivered records, that ground differently** → `CapabilityMismatch`
   (decision 10): one fetch answers one geometry.
@@ -560,7 +652,7 @@ translated at the call site — which is why the list is short:
   Arbiter's existing closed-projection check (fact 9 / decision 11 — pinned, not introduced here).
 
 `BadRequest` is unreachable (no edge change). No new error categories, no logging changes
-([#14](../concerns.md#14-resolution-trace-and-observability) unowned here).
+([#14](../../concerns.md#14-resolution-trace-and-observability) unowned here).
 
 ## Implementation stages
 
@@ -585,14 +677,20 @@ uv run pytest` green.
    Selection / raises `CapabilityMismatch` on no overlap. These pins *are* the
    non-duplication proof: if any needs engine code, the shape is wrong. GREEN: the class +
    `snapped_point_domain` fake.
-3. **The algebra: `ground`, `Snappable`, the rolling lattice** — RED in `test_domain.py` and
-   `test_cadence.py`, all of it domain-level, none of it provider-shaped: `clip` on both edges, on
-   and off the tick, instant bounds, disjoint → `None`; `ground` passing enumerable members through
-   *by identity*, resolving a snapped member against a `Snappable` answering axis, and declining one
-   whose answering axis is not (`ValueError`); `GridDomain.ground(anything)` returning `self`;
-   `RollingAxis.regular()` yielding the lattice its window spans under `StoppedClock`, and moving
-   when the clock does; `agreed_geometry` returning the agreed geometry and raising on a disagreement.
-   GREEN: the facet, `SnappedAxis.clip`, both `ground` implementations, `agreed_geometry`, and
+3. **The algebra: `clip`, `ground`, the rolling lattice** — RED in `test_domain.py` and
+   `test_cadence.py`, all of it domain-level, none of it provider-shaped. `clip`, per axis kind:
+   `RegularAxis` on both edges, on and off the tick, cellular flooring vs instant ceiling on the lower
+   edge, `cellular` carried through, instant bounds, disjoint → `None`; `IntervalAxis` whole-or-`None`;
+   `ContinuousAxis` returning a narrowed span (**the pin that a declared span has no cells to take**);
+   and cross-kind intervals never meeting, so temporal bounds against a spatial axis are *disjoint*
+   rather than a `TypeError` — which also removes that crash from admission's `matches`.
+   Then `ground`: enumerable members through *by identity*, a snapped member taking the clipped
+   lattice, `ValueError` on each of the two declines (disjoint; a part with no cells), `ValueError`
+   against non-separable geometry, an enumerable request returned unchanged, and a declared geometry
+   as the request declined. `RollingAxis.clip` yielding the lattice its window spans under
+   `StoppedClock`, and moving when the clock does; `agreed_geometry` returning the agreed geometry and
+   raising on a disagreement.
+   GREEN: `Interval.intersection`, `clip` on every axis kind, `ground`, `agreed_geometry`, and
    `RollingAxis`'s required step (with the four construction sites that pass it).
 4. **Leaf fetch bounds, via `ground`** — RED (`tests/deterministic/nodes/providers/test_open_meteo.py`,
    mocked transport, `StoppedClock`): bounds inside the window → `start_hour`/`end_hour` at the
@@ -609,7 +707,7 @@ uv run pytest` green.
    composes `TimelineProvider(probe=OpenMeteoProbe(...), taps=…, step=HOURLY_STEP, cadence=…)`.
    Same code deleted from the leaf, different destination — doing it after m4 would mean writing the
    mode into `open_meteo.py` and immediately moving it. Rationale and the full seam contract:
-   [edge/provider.md](../edge/provider.md).
+   [edge/provider.md](../../edge/provider.md).
 5. **Assembly and crop** — RED: in `test_sampling.py` for the split (`_aligned_offsets` distinguishing
    off-phase from shortfall; `resample` cropping a longer source and reporting a target that runs
    past it), then in the leaf tests for the wiring: canned response matching the fetch window →
@@ -638,56 +736,69 @@ uv run pytest` green.
    failure is loud and whole-request (decision 11; no Arbiter code changes for it); plus one
    live-suite run `uv run pytest tests/parity` **unchanged** (m4 acceptance: parity is untouched).
    GREEN — docs at landing:
-   [ADR-0002](../adr/0002-data-model.md) gains **`ground` in the universal domain surface** (the one
-   recorded-decision amendment m4 carries — the base was set-algebra only), the `Snappable` facet as
-   the type form of *"only a regular axis can be snapped-to"*, the `SelectionDomain` /
+   [ADR-0002](../../adr/0002-data-model.md) gains **`clip` in the universal axis surface** (the
+   recorded-decision amendment m4 carries — that base was set-algebra only) and `ground` as the
+   resolution verb over it, a function rather than part of the universal *domain* surface, with
+   [#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method) named as the
+   condition under which it becomes a method; its *"only a regular axis can be snapped-to"* sentence is **restated as a
+   consequence**: an axis can be snapped-to when clipping it leaves cells, and the surface forbids
+   nothing — v1 serves no snapped X/Y because `SnappedAxis` is temporal by type (and no leaf declares
+   an enumerable X/Y behind that) (decision 7). Also
+   the `SelectionDomain` /
    `SelectableAxis` representation, and one clause in its axis paragraph: the sentence that already
    reads *"`IntervalAxis` … the base of the request `VantageAxis` (which only overrides `matches`)"*
    gains its span-shaped dual, `ContinuousAxis` as the base of `SnappedAxis` (decision 1), stated
    where the pattern is defined.
-   [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)'s shape-correspondence paragraph names
+   [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md)'s shape-correspondence paragraph names
    the operation that computes it.
-   [ADR-0004](../adr/0004-producer-resolution-and-capability.md) admission language becomes
+   [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) admission language becomes
    mode-dependent (containment for enumerable, intersection for snapped);
-   [#13](../concerns.md#13-candidate-admission-containment-vs-intersection) records the scoped v1
-   position. [006](../tickets/01-0130-retentive-store-freshness.md)'s open store-lattice question closes
-   on the facet, and its `quantize` is restated as `ground`'s store-side sibling.
-   [#21](../concerns.md#21-serves-extent-vs-project-crop-ability) narrows to the off-phase case alone;
-   [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) gains the named
-   padding site; [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) records that m4 *did*
-   add one coordinate-kind narrowing (in `clip`) and what the spatial sibling therefore costs;
-   [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 table is
+   [#13](../../concerns.md#13-candidate-admission-containment-vs-intersection) records the scoped v1
+   position. [006](../../tickets/01-0130-retentive-store-freshness.md)'s open store-lattice question closes
+   on `Axis.clip`, and its `quantize` is restated as `ground`'s store-side sibling.
+   [architecture §Request modes](../../architecture.md#request-modes)'s Z bullet carries the same
+   *"only a regular axis can be snapped-to"* clause and takes the same restatement: snapped Z stays
+   inapplicable because v1 has **no axis kind that declares irregular native levels**, so nothing
+   there clips to cells.
+   [#21](../../concerns.md#21-serves-extent-vs-project-crop-ability) narrows to the off-phase case alone;
+   [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback) gains the named
+   padding site; [#23](../../concerns.md#23-spatial-vs-temporal-regularaxis-types) records that m4 adds
+   **no** coordinate-kind narrowing (`RegularAxis.clip` is one generic expression) and that what the
+   spatial case costs is a float phase-tolerance decision;
+   [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 table is
    re-classified for the raise sites this RFC actually leaves behind.
-   **[edge/provider.md](../edge/provider.md) drops its `Status: Normative (tentative)` qualifier and
+   **[edge/provider.md](../../edge/provider.md) drops its `Status: Normative (tentative)` qualifier and
    every **⚠ pending — m4** marker**: the record already states the declaration law unconditionally and
    specifies the mechanism in full under *Resolution*, so the landing edit is to drop that block's
    pending banner and its transitional-violation paragraph (the leaf's `_snapped_bounds` / `floor_to`
-   code and the superseded `SelectionDomain.realize`, gone by then), and to attach the stage-5
+   code, gone by then), and to attach the stage-5
    validators to the *declared geometry matches
    delivery* and *records must agree* invariants — the latter still lacking any pin for records that
    each resolve but resolve **differently**. The same edit clears the **⚠ pending — m4 stages 4–5**
    markers on the Probe/wrapper split (Implemented face, the value-type seam, the units-declaration
-   invariant) and folds Roadmap stage 1. The [glossary](../glossary.md)'s new *Probe* and *Tap table*
-   entries land with it; [architecture §Provider](../architecture.md#provider-leaf-manifold) already
+   invariant) and folds Roadmap stage 1. The [glossary](../../glossary.md)'s new *Probe* and *Tap table*
+   entries land with it; [architecture §Provider](../../architecture.md#provider-leaf-manifold) already
    carries the split.
    Roadmap stage 1 is removed by the same edit. The
-   [glossary](../glossary.md) gains *Ground* (disambiguated from the vertical datum) and *Snappable
-   axis*; the [003c ticket](../tickets/01-0110-request-shaping.md) records divergence as a landing risk
-   it owns; [delivery status](../tickets/README.md) m4 row → Done and execution-order note; ticket +
+   [glossary](../../glossary.md) gains *Ground* (disambiguated from the vertical datum) and *Clip*; the
+   [003c ticket](../../tickets/01-0110-request-shaping.md) records divergence as a landing risk
+   it owns, and carries
+   [#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method) as a decision
+   its migration forces; [delivery status](../../tickets/README.md) m4 row → Done and execution-order note; ticket +
    this RFC → `done/`.
 
 ## Edges touched
 
-Added 2026-07-26: [m5](../tickets/done/01-0090-edge-records.md) landed the Edge-record convention and
+Added 2026-07-26: [m5](../../tickets/done/01-0090-edge-records.md) landed the Edge-record convention and
 `/align`'s Edge challenge rule *after* this RFC was written, so the challenge is discharged here.
 
-- **[MCP surface](../edge/mcp.md) — untouched, no Contract or Invariant edit at landing.** m4 is
+- **[MCP surface](../../edge/mcp.md) — untouched, no Contract or Invariant edit at landing.** m4 is
   product-invisible: `build_selection` keeps issuing enumerable `GridDomain` requests, the schema
   and payload are unchanged, and the record's Roadmap stage 1 (free `start`/`end` windows) is
   **003c's** to move into Contract, not m4's. The one relevant new fact is a non-change: the
   snapped request grounds to a `GridDomain` (decision 6), so the record's serialization
   invariants continue to hold verbatim when 003c flips the edge.
-- **[Provider surface](../edge/provider.md) — the edge this RFC actually reshapes** (record
+- **[Provider surface](../../edge/provider.md) — the edge this RFC actually reshapes** (record
   established 2026-08-02, after this RFC's revision). Decisions 4, 6, and 8 are a **compatible**
   contract change at that edge: a leaf stops inspecting request shape and instead *declares* geometry,
   which widens what it serves without narrowing anything it served before (the enumerable path is
@@ -695,11 +806,11 @@ Added 2026-07-26: [m5](../tickets/done/01-0090-edge-records.md) landed the Edge-
   the shipped leaf's declarations — and marks the mechanism **⚠ pending — m4 stages 3–5**, with the
   leaf's surviving `_snapped_bounds` / `floor_to` code named as the transitional violation stage 4
   extracts. Stage 6's docs list carries the marker-clearing edit.
-- **[Embedding surface](../edge/embedding.md) — Roadmap only, still `Stub`.** m4 mints the
+- **[Embedding surface](../../edge/embedding.md) — Roadmap only, still `Stub`.** m4 mints the
   `SelectionDomain` / `SnappedAxis` vocabulary that stage 3 (request-composition ergonomics) is
-  about, and [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge) already
+  about, and [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge) already
   records what a builder over it could promise. No Invariant becomes promisable — the facade is
-  still unselected at [#39](../concerns.md#39-python-embedding-surface-and-public-failures) — so
+  still unselected at [#39](../../concerns.md#39-python-embedding-surface-and-public-failures) — so
   the landing edit is the #40 Arm-1 rows listed in stage 6, nothing more.
 
 ## Compatibility and rollout
@@ -716,20 +827,25 @@ Added 2026-07-26: [m5](../tickets/done/01-0090-edge-records.md) landed the Edge-
 - **003c** consumes the mode (edge parsing, reach-filled default `end`, narration) — its ticket;
   the live snapped end-to-end run is 003c's landing probe.
 - **006** inserts the store-side half: its `quantize` is `ground`'s sibling in the other direction
-  (enclose rather than clip) against a lattice that satisfies the same facet, which is how its open
-  store-lattice question closes. The
-  [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) carve moves *closer* here
-  without firing — `clip` puts lattice index arithmetic in `domain.py` beside sampling's own, so
-  `quantize` is the third site and the trigger 006 should re-read.
-- **Snapped X/Y** = mint the spatial sibling type + edge wiring (Grid-realization driver), which now
-  also means a spatial `clip` or [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s
-  split (decision 7); **open-ended bounds** (`upper = None`) deferred to
-  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s
+  (enclose rather than clip) over the same `Axis.clip`, which is how its open store-lattice question
+  closes. The [#22](../../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) carve moves
+  *closer* here without firing — `clip` is a second lattice-arithmetic site in `domain.py` beside
+  `sub_lattice_offset`, so `quantize` is the trigger 006 should re-read.
+- **One request representation** — m4 leaves two (exact and selection), which is why `ground` takes the
+  request as an argument instead of being a method on it.
+  [#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method) owns the
+  end-state and its triggers; **006** is the most likely one, since it authors the second in-tree
+  exact-request path.
+- **Snapped X/Y** = mint the spatial sibling type + edge wiring (Grid-realization driver) and settle
+  float phase tolerance in `RegularAxis.clip` (decision 7,
+  [#23](../../concerns.md#23-spatial-vs-temporal-regularaxis-types)); **open-ended bounds**
+  (`upper = None`) deferred to
+  [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s
   diverging-reach trigger; **plain `IntervalAxis` in `SelectableAxis`** waits for alias
   desugaring (Phase 4).
 - **New `CapabilityMismatch` raise sites must be classified** into
-  [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 inventory as
-  they land. m4's are: *snapped against a non-`Snappable` axis* — still a **Shape** case, but no
+  [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge)'s Arm-1 inventory as
+  they land. m4's are: *snapped against an axis that clips to no cells* — still a **Shape** case, but no
   longer dissolvable by a shape-safe constructor alone, because whether it is servable depends on the
   provider's declared geometry (an Arm-2 `Capability` read); *nothing survives the clip* and
   *taps or records grounding differently* — **Race** cases, never dissolvable at the edge.
@@ -738,7 +854,7 @@ Added 2026-07-26: [m5](../tickets/done/01-0090-edge-records.md) landed the Edge-
   "second provider with diverging reach" case, which remains separate. Deliberately unhandled
   (decision 11): no Arbiter change, no per-cell fold. Pinned by a stage-6 test, classified **Race** at
   #40, owned at **003c**'s landing (where the mode first becomes reachable from the edge) and
-  revisited at [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
+  revisited at [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 - **`/denoise` follow-up:** the per-axis `matches` fold now exists verbatim in three types
   (`GridDomain`, `FootprintDomain`, `SelectionDomain`). Extracting one module-level helper is
   mechanical and covered by existing tests, but it is orthogonal to the mode (decision 3).

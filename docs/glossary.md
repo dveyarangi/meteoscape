@@ -38,6 +38,14 @@ _Avoid_: ContinuousAxis, fat cell
 A request-only vertical aperture whose admission is based on overlap rather than containment. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Vantage cell, footprint axis
 
+**SnappedAxis**:
+A request-only bounds-only axis: it states where an answer starts and stops and leaves anchor and step to the resolver. Span-shaped dual of the VantageAxis, and temporal by type. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Window axis, open axis, soft axis
+
+**Clip**:
+The restriction of an Axis to stated bounds — the part of itself the axis says those bounds ask for, or nothing when they do not meet. Returns whatever the restriction leaves (a span stays a span, a lattice a lattice at its own phase, a clock-relative window materialises first); whether that has Cells is Ground's question, not this one. → [ADR-0002](./adr/0002-data-model.md)
+_Avoid_: Snap (the request mode), clamp, trim, crop (the value-side operation on a Coverage)
+
 **Lattice**:
 A Store's private per-axis retention grid — the quantize, report, and read-back target. Never public: a node exposes no lattice, and the only public Domain is a Coverage's. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Grid (a Coverage Domain shape), node domain, public lattice
@@ -203,6 +211,10 @@ _Avoid_: Soft window, clamped window, bounded-ANY (defers regularity too)
 **Canonical lattice**:
 A Store-private per-axis grid used to determine storable coordinates. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 
+**Ground**:
+Resolving a request against a node's declared or delivered geometry into the answer geometry it asks for: pinned axes pass through, snapped axes take what the answering axis Clips to. The resolver's half of shape-correspondence, and Quantize's request-side sibling (Ground restricts to the request, Quantize encloses it). → [ADR-0002](./adr/0002-data-model.md), [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+_Avoid_: Resolve (the Gateway's verb), realize, instantiate; **above_ground** / ground level (the Vertical reference sense — unrelated)
+
 **Quantize**:
 The Store transformation from a Selection to enclosing, atomically storable units on its Canonical lattice. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Snap, align, round
@@ -303,7 +315,7 @@ The supported Python package boundary through which a host application uses Mete
 _Avoid_: Internal composition API, headless mode, client SDK
 
 **Edge record**:
-The living per-surface seam document between architecture and user-oriented design, aggregating one product edge's status: contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Customer-facing edge descriptions derive from it as subsets. → [m5](./tickets/done/01-0090-edge-records.md)
+The living per-surface seam document between architecture and user-oriented design, aggregating one product edge's status: contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Customer-facing edge descriptions derive from it as subsets. → [docs/edge](./edge/provider.md)
 _Avoid_: public API guide (a derivation, not the record), surface spec, contract doc; *edge* alone (the system's outer boundary, not the document about it)
 
 **Gateway**:
@@ -389,8 +401,9 @@ The role of a Reservoir that serves retained data or fetches it from one Provide
 A ranked candidate an Arbiter selects over for a Parameter — a live node (a Source or a Calculator) paired with a `ProducerKey` identity (`SourceKey | CalculatorKey`). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: candidate, node
 
-**Normalizer**:
-The Provider-owned translation from vendor semantics to Meteoscape semantics without changing native geometry. → [architecture.md](./architecture.md#normalization-vs-homogenization)
+**Normalization**:
+The Provider-owned translation from vendor semantics to Meteoscape semantics without changing native geometry. A **role, not a type**: the vendor leaf *declares* it as a Tap table and the Provider shape wrapper *executes* it. → [architecture.md](./architecture.md#normalization-vs-homogenization), [edge/provider.md](./edge/provider.md)
+_Avoid_: Normalizer (there is no such object — declaration and machinery are separately owned)
 
 **Native record**:
 A co-domained Coverage materialized by one fetch for Parameters that share native geometry. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)

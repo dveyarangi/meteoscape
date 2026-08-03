@@ -12,7 +12,7 @@ plane. The capability/matching half is
 
 ## Decision
 
-- **Materialization is grouped by native Domain.** `Normalizer.normalize` emits **native records** —
+- **Materialization is grouped by native Domain.** A Provider emits **native records** —
   one co-domained `Coverage` per **set of parameters sharing a native Domain**. The grouping is
   **emergent from the Tap declarations and axis-agnostic**: Open-Meteo's scalar column partitions
   along Z (`{air_temperature, relative_humidity}` @ 2 m · `{wind_u, wind_v}` @ 10 m ·
@@ -78,10 +78,8 @@ plane. The capability/matching half is
   **capability** (footprint — a Source admits uncached-but-in-footprint requests precisely because
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
-  `Store`, provisioned from the configured **`StoreSpec`** alone (amended by
-  [m2](../tickets/done/01-0070-dissolve-node-countable.md), 2026-07-25 — this ADR originally handed a
-  provider-exact lattice to the `StoreFactory` as a build-time "construction face"; that channel is
-  closed: no provider hands a lattice anywhere). A provider whose every parameter sits on one
+  `Store`, provisioned from the configured **`StoreSpec`** alone — no provider hands a lattice
+  anywhere, and no build-time "construction face" exists for one. A provider whose every parameter sits on one
   enumerable domain (an `EnumerableCapability`) *is* an already-materialized dataset and wires
   **storeless** — a bare `Producer`, no `Reservoir`, no store — because wrapping it would mirror
   data that is already local; the `SourceBinder` enforces the invariant loudly in both directions

@@ -24,9 +24,14 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   analytic continuity; providers are discrete and homogenization interpolates between samples.)
 
 - **Closure is shape-correspondence: the answer mirrors the question's shape.** The
-  rule is not "answers are co-domained" — it is that a Selection's shape *dictates* its answer's:
+  rule is not "answers are co-domained" — it is that a Selection's shape *dictates* its answer's.
+  **`ground(request, against)` is that sentence as one operation** — the computation a resolver runs to
+  learn what geometry it owes ([ADR-0002](./0002-data-model.md)); the cases below are its per-axis arms,
+  not a dispatch any resolver writes:
   - a **fully enumerable** Selection samples, so the answer is a **`Coverage` co-domained on
-    `sel.domain`** (the case [ADR-0002](./0002-data-model.md) states);
+    `sel.domain`** (the case [ADR-0002](./0002-data-model.md) states) — `ground` is the **identity**
+    here, which is what lets one code path serve every mode;
+  - a **snapped** axis — bounds only — is answered on the resolver's own lattice within those bounds;
   - an axis left **`ANY`** — "whatever you natively have here" — is answered at the producer's own
     cells on that axis. `ANY` is not a new mechanism: it is the **limit case of `quantize`'s
     widening** ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)), the point where

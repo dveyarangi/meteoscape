@@ -1,10 +1,10 @@
 # Edge — Provider surface
 
-- **Status:** Normative (tentative)
+- **Status:** Normative
 
 The seam record for the **Provider** surface: the boundary where Meteoscape meets an external weather
 producer, and where the code that crosses it is authored. Established 2026-08-02 from the live leaf,
-its tests, the parity harness, and [RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md);
+its tests, the parity harness, and [RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md);
 it supersedes the former provider-authoring guide, whose durable content moved here.
 
 **This edge points inward.** At [mcp](./mcp.md) and [embedding](./embedding.md) an outside caller
@@ -13,21 +13,16 @@ consumes Meteoscape; here Meteoscape consumes an outside producer, and the contr
 `Invariants` groups as the two directions of the promise. A leaf has a second, outward face — the
 vendor's HTTP API — with no contract of its own; what is stable there is Meteoscape's demand that the
 leaf absorb the vendor's variability, which is why the **parity check** is one of this record's
-validators rather than a separate surface — and for two promises below, the *only* one.
+validators rather than a separate surface — and for one promise below, the *only* one.
 
-**Tentative, and why.** [m4](../tickets/01-0100-snapped-t-request-mode.md) is in flight. The *law* below is
-already true of shipped code; the *mechanism* it takes (`ground` / `Snappable` / `agreed_geometry`, and
-the shape/vendor split) lands across m4 stages 3–5 and is marked **⚠ pending** where it has not.
-RFC 0009's stage-6 docs list carries this record, so the same commit that lands the algebra clears the
-markers.
+**Normative as of [m4](../tickets/done/01-0100-snapped-t-request-mode.md)**, which routed the leaf through the
+algebra (`Axis.clip` / `ground` / `agreed_geometry`) and split it into a shape wrapper and a vendor
+`Probe`. One promise below remains **⚠ unguarded** — that a new Provider ships with its parity check —
+and it is [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)'s.
 
 ## Contract
 
 ### Implemented face
-
-**⚠ pending — m4 stages 4–5** for the split below; the `Provider` / `Normalizer` / `ProviderManifest`
-faces are live today, but the shape/vendor decomposition is m4's landing shape (decided at the
-2026-08-02 align, folded into m4).
 
 An author ships a **vendor `Probe`** plus a **catalogue face** — and, only when the producer's geometry
 is one no existing shape covers, a wrapper too.
@@ -44,10 +39,19 @@ is one no existing shape covers, a wrapper too.
   provenance stamping, the aligned crop, and the `ValueError → CapabilityMismatch` translation. A new
   producer of an existing shape adds **no** wrapper; a genuinely new geometry (gridded NWP, soundings —
   a [deferred seam](../../src/meteoscape/nodes/providers/timeline.py)) adds one.
+  **Its constructor arguments are the per-offering facts** — the tap table, the native `step`, the
+  `CadenceDef`, and the spatial reach (`longitudes` / `latitudes`, defaulting to whole-globe, which a
+  regional producer overrides). v1 passes one offering's worth as leaf module constants, which is the
+  honest state at one offering per provider; an offering-parameterized producer supplies a different row
+  per `spec.name` rather than a different wrapper
+  ([#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection), which also
+  records what is still missing for that — a vendor model token in the query).
 - **The vendor `Probe`** is what an author actually writes: a `Protocol`, injected, inheriting nothing
   (the [`Transport`](../../src/meteoscape/nodes/providers/base.py) precedent one layer down). Its face
-  is shape-specific — `TimelineProbe.retrieve(at=point, over=window, variables=…) -> TimelineDelivery`
-  — so the family prefix is load-bearing, not decorative. It builds one vendor request and parses one
+  is shape-specific — `TimelineProbe.retrieve(longitude, latitude, over=window, variables=…) ->
+  TimelineDelivery` — so the family prefix is load-bearing, not decorative. Note the point arrives as two
+  **floats**, not a geometry: a Probe is handed coordinates it can put in a query string, never
+  something it would have to narrow. It builds one vendor request and parses one
   response envelope. **It is not a Manifold and cannot be used as one**, which is the point of
   composition over an abstract base.
 - **`TimelineDelivery`** — `valid_time: Sequence[datetime]`, `series` keyed by **vendor variable
@@ -56,12 +60,15 @@ is one no existing shape covers, a wrapper too.
   `wind_speed_10m` + `wind_direction_10m` jointly produce *both* `wind_u` and `wind_v`, so no
   parameter key is truthful before `decode` runs. The tap table owns that translation.
 - **`TapTable`** — the declarations, and their execution: `engaged_by(parameters)` narrows to the taps
-  a request touches, and the narrowed table answers `variables` (deduplicated — pinned by
-  `test_wind_fetch_requests_shared_vendor_vars_once`), `footprints`, and `interpret`. It holds
-  declarations and runs them; anything needing a `Domain` belongs to the wrapper, not here.
-- **`Normalizer`** — the role survives as *declaration plus generic machinery*: a Probe **declares**
-  the tap table (vendor variables, expected unit tokens, `decode` functions) and the shape wrapper
-  **executes** it. Native geometry, never the request Domain
+  a request touches, and the narrowed table answers `parameters`, `variables` (deduplicated — pinned by
+  `test_wind_fetch_requests_shared_vendor_vars_once`), `by_level()` (the Z groups one native record
+  each lands on), and `interpret`. It holds declarations and runs them; **anything needing a `Domain`
+  belongs to the wrapper** — footprints included, since they are built from the tap table *together
+  with* the wrapper's cadence, clock, reach, and `ParameterTable`.
+- **Normalization has no object.** The role survives as *declaration plus generic machinery*: a leaf
+  **declares** the tap table (vendor variables, expected unit tokens, `decode` functions) and the shape
+  wrapper **executes** it. There is no `Normalizer` type to implement, and an author looking for one is
+  looking for the tap table. Native geometry, never the request Domain
   ([architecture §Normalization](../architecture.md#normalization-vs-homogenization)).
 - **`ProviderManifest`** ([catalog/providers.py](../../src/meteoscape/nodes/catalog/providers.py)) —
   `impl_id`, `provider_id`, `offerings` (`OfferingSpec`: exact parameter IDs + optional `StoreSpec`),
@@ -180,46 +187,49 @@ mode.
 
 ### Resolution — how a request becomes an answer geometry
 
-**⚠ pending — m4 stages 3–5.** Neither verb exists in code
-([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md) decisions 4, 6–10): there is no
-`ground`, no `Snappable`, and no `agreed_geometry`. What does exist is the request-side half in a
-**superseded form** — `SnappedAxis.clip` in `domain.py`, already in its landing shape, reached
-through `SelectionDomain.realize`, the pre-`ground` stand-in that stage 3 folds into the base
-`Domain`. And today's leaf still carries the transitional shape-inspection code stage 4 extracts
-(`_snapped_bounds`, `floor_to` arithmetic in `_forecast_request`, `_assemble`'s dispatch on request
-representation, and `_assemble_enumerable`'s values-length assertion). That code is a **violation**
-of the law above, not an instance of it — an author reading the shipped leaf today will find the
-pattern this record forbids.
-
-**One verb.** `Domain.ground(against: Domain) -> EnumerableDomain` is ADR-0001's shape-correspondence
-sentence as a single operation: *the answer geometry this domain asks for, resolved against `against`'s
-geometry.* A per-axis fold, dispatched by axis **kind**, never by mode:
+**One verb.** `ground(request: Domain, against: Domain) -> EnumerableDomain` is ADR-0001's
+shape-correspondence sentence as a single operation: *the answer geometry `request` asks for, resolved
+against `against`'s geometry.* A per-axis fold, dispatched by axis **kind**, never by mode:
 
 - an **enumerable** member (a pinned `RegularAxis`, a vantage Z cell) passes through **by identity**;
-- a **snapped** member `clip`s the answering axis: the answering lattice keeps its own anchor and step,
-  and the bounds decide only where it starts and stops — back to the tick whose *cell* contains the
-  lower bound, forward to the last tick within the upper.
+- a **snapped** member takes what the answering axis clips itself to: the answering lattice keeps its
+  own anchor and step, and the bounds decide only where it starts and stops — back to the tick whose
+  *cell* contains the lower bound, forward to the last tick within the upper.
+
+**The one axis operation underneath: `Axis.clip(bounds) -> Axis | None`, abstract on the base.** Each
+axis kind answers for its own geometry — a lattice clips to a sub-lattice at its own phase, a single
+cell survives whole or not at all, a span clips to a span, a clock-relative window materialises first
+(the rolling case). `clip` returns whatever the restriction leaves; **needing cells is `ground`'s
+requirement, not `clip`'s**, which is what makes *which modes a leaf serves* a reading of its own
+declarations → [ADR-0002: snappable-to is a consequence, not a rule](../adr/0002-data-model.md).
 
 Three properties an author depends on:
 
-- **It lives on the base `Domain`, so a leaf never dispatches on request type.** `GridDomain.ground`
-  returns `self` — an exact request is already its own answer — and *that identity is what collapses
-  the mode branch*. Both modes take one code path.
-- **It returns `EnumerableDomain`, not a concrete grid.** What callers need is indexability; which
-  enumerable representation satisfies it is the resolver's business.
-- **It raises `ValueError`, and the leaf translates.** The algebra does not know *why* a resolution
-  failed; the leaf does, and reports `CapabilityMismatch` at each call site.
+- **A leaf never dispatches on request type**, because `ground` did it: an exact request comes back
+  unchanged — it is already its own answer — and *that identity is what collapses the mode branch*.
+  Both modes take one code path.
+- **It returns `EnumerableDomain`, and the wrapper narrows past it** — an author will see that and
+  should not read it as a mistake. `EnumerableDomain` carries no `axis()`, so reading the resolved point
+  and window, and handing the answer to `resample` (which crops `GridDomain` lattices only), both take
+  the concrete type. Total in v1, since `GridDomain` is the only enumerable representation minted; this
+  is where a second one would first have to be handled, and that is deliberately the *wrapper's* problem
+  rather than a narrower `ground` signature → [ADR-0002: what ground
+  returns](../adr/0002-data-model.md).
+- **It raises `ValueError`, and the wrapper translates.** The algebra does not know *why* a resolution
+  failed; the leaf does, and reports `CapabilityMismatch` at each call site. Two declines, and they say
+  different things: *nothing survives the clip* (disjoint bounds — the raced-empty window pre-fetch, a
+  foreign window post-fetch, and a snapped **X/Y**, which is temporal-by-type meeting a spatial axis)
+  and *the answering axis has no cells* (a leaf declaring T as a plain span rather than a lattice).
 
 **A second verb: `agreed_geometry`.** One `project` answers with **one** geometry (ADR-0001), so a fold
-over several grounded resolutions either returns the geometry they agree on or raises. It lives in
-`domain.py` beside `ground`, not in any leaf — the law binds every producer that folds records, 011's
-included.
+over several grounded resolutions either returns the geometry they agree on or raises. It lives beside
+`ground`, not in any leaf — the law binds every producer that folds records.
 
 **It narrows at 006; it does not go away.** The rule that axes the request **pins or snaps** must
 ground identically is permanent. What 006 adds is the exception: an axis left **`ANY`** is the one
 licence for records to differ, so the fold stops returning a single geometry and starts returning the
 **multi-domain carrier** — deliberately not minted now, because *"when `ANY` lands, the carrier arrives
-with the axis that justifies it"* ([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md)
+with the axis that justifies it"* ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)
 decision 10). Rule and exception stay in one module by design.
 
 *Naming checkpoint at 006:* `agreed_` names the operation and survives; the singular `_geometry` is
@@ -231,22 +241,32 @@ call and once after — never in between, and never anywhere else. Both ends are
 
 ```python
 async def project(self, selection: Selection) -> Manifold:
-    taps  = self._taps.engaged_by(selection.parameters)                            # what this asks of me
-    asked = agreed_geometry(selection.domain.ground(f) for f in taps.footprints)   # …against what I declare
-    here, window = point_of(asked), window_of(asked)
+    taps   = self._taps.engaged_by(selection.parameters)                            # what this asks of me
+    wanted = agreed_geometry(ground(selection.domain, fp) for fp in footprints(taps))  # …against what I declare
+    lon, lat, window = point_of(wanted), window_of(wanted)
 
-    delivery = await self._probe.retrieve(at=here, over=window, variables=taps.variables)
+    delivery = await self._probe.retrieve(longitude=lon, latitude=lat, over=window,
+                                          variables=taps.variables)
 
-    records = taps.interpret(delivery, at=here, stamped=self._provenance())        # units, decode, Z groups
-    answer  = agreed_geometry(selection.domain.ground(r.domain) for r in records)  # …against what arrived
+    records = interpret(delivery, taps, at=(lon, lat), stamped=self._stamp())       # units, decode, Z groups
+    answer  = agreed_geometry(ground(selection.domain, r.domain) for r in records)  # …against what arrived
     return crop_onto(records, answer, selection.parameters)
 ```
 
 Pre-fetch the fold runs over the leaf's **per-parameter footprints** (they differ in Z); post-fetch over
 the **native records** (grouped by Z). Neither fires on Z — a request that pins or apertures Z grounds
-it by identity, so every footprint yields the same answer geometry. It fires on **T**, which is what it
-exists for: a vendor returning different series lengths across the two fetches of one request, or a leaf
-declaring different reaches per parameter.
+it by identity, so every footprint yields the same answer geometry.
+
+**Be precise about which fold can actually fire, because the two are not symmetric.** The *pre-fetch*
+fold is live: a leaf declaring **different reaches per parameter** grounds its footprints to different
+answers, which is the limitation stated below. The *post-fetch* fold is a **law statement, structurally
+unfirable in this shape** — one delivery yields one tick lattice, stamped onto every record, and Z
+grounds by identity, so the records cannot disagree. It is kept because the law binds every producer
+that folds records, including a future shape that derives a lattice **per record**; it is not kept as a
+runtime guard, and no test can pin it through `project`. In particular it does **not** catch a vendor
+answering the two fetches of one request differently: those are two separate `project` calls, and the
+`RuntimeFailure` that catches them is the **Arbiter's** closed-projection check (see the invariant on
+per-winner projection, and `test_snapped_winner_domains_that_diverge_fail_the_whole_request`).
 
 **That second case is a real limitation, so state it rather than let it be discovered:** a leaf **cannot
 serve, in one call, two parameters whose declared reaches differ on a snapped axis.** A vendor offering
@@ -271,15 +291,16 @@ re-derives the mode inside the leaf, which is exactly what the second Provider m
 
 - **Per-parameter footprints** at the leaf's own geometry — static spatial and Z bounds, and a
   clock-anchored T axis that rolls with the run anchor.
-- **A `Snappable` axis wherever the leaf can resolve a snapped member.** `Snappable` is the facet
-  ADR-0002's *"only a regular axis can be snapped-to"* takes in code: `regular() -> RegularAxis`, which
-  turns a live rolling window into the lattice its series actually arrives on. A leaf that declares one
-  serves snapped requests on that axis; one that does not is declined **by the same path** that declines
-  a snapped X — no leaf writes that rejection.
+- **An axis that clips to cells wherever the leaf can resolve a snapped member.** For a rolling T that
+  is `RollingAxis.clip`, which materialises the live window into the lattice its series actually
+  arrives on before restricting it. A leaf that declares such an axis serves snapped requests on it;
+  one that declares a span is declined **by the algebra reading that declaration** — no leaf writes
+  that rejection.
 - **Its native series step** — how densely one run samples time, which is **not** the cadence
   (`CadenceDef` times *runs*; a 6-hourly run may publish an hourly series). It is declared with the
-  provider shape and is **required, not optional**, precisely so `Snappable` never lies: a leaf whose
-  series is genuinely irregular declares a different T axis and is declined honestly.
+  provider shape and is **required, not optional**, precisely so a rolling axis never invents a lattice
+  it does not have: a leaf whose series is genuinely irregular declares a different T axis and is
+  declined honestly.
 
 **The two clock reads are by design.** A snapped request reads the clock once when the leaf grounds
 pre-fetch (inside the rolling axis's `extent`) and once after the fetch to stamp provenance. The answer
@@ -294,20 +315,22 @@ must return a Coverage on `sel.domain`"* ([ADR-0001](../adr/0001-manifold-algebr
 and architecture states it for this node specifically — *"asked a fully enumerable Selection it samples
 to one co-domained `Coverage`, **like any Manifold**"*, with
 [§Reservoir](../architecture.md#reservoir) adding the parenthetical that settles it: **homogenization
-is *not* leaf-only**. What *is* leaf-forbidden is the Normalizer emitting on the request Domain — a
-different claim about a different component, and one easy to over-read.
+is *not* leaf-only**. What *is* leaf-forbidden is **normalization** emitting on the request Domain — a
+claim about a different step, and one easy to over-read: the tap table produces canonical values at the
+vendor's own geometry, and only the crop afterwards lands them on the answer's.
 
 **At what strength.** Three exist; the leaf owns the middle one:
 
-- *Identity-or-fail* — the delivered geometry must already equal the request positionally. This is what
-  [`_assemble_enumerable`](../../src/meteoscape/nodes/providers/open_meteo.py) does today (a length
-  check, then passthrough). It is **under-implementation, not the contract**: it can refuse a request
-  that is perfectly croppable, which contradicts closure.
+- *Identity-or-fail* — the delivered geometry must already equal the request positionally. The leaf
+  used to do this (a length check, then passthrough) and it was **under-implementation, not the
+  contract**: it refuses requests that are perfectly croppable, which contradicts closure. Gone at m4.
 - **Aligned crop — the leaf's promise.** Same step, on-phase anchor, differing extent; index arithmetic
   only, no interpolation. [`resample`](../../src/meteoscape/manifold/sampling.py) implements exactly
-  this, and m4 wires the wrapper into it — which also retires the leaf's hand-written length assertion
-  in favour of a check by the component that owns index math, **reported rather than asserted**
-  ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked), re-aimed at the answer).
+  this and the wrapper hands every answer through it — which also retired the hand-written length
+  assertion in favour of a check by the component that owns index math, **reported rather than
+  asserted** ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked), re-aimed at the
+  answer). A crop onto a geometry the vendor already delivered exactly is an equality that holds and a
+  no-op, which is how both request modes take one path.
 - *Kernels* — off-grid points, differing steps, coarser-grid re-aggregation. **Not the leaf's.**
   `resample` refuses these by name ("requires Reservoir homogenization"); they belong to
   [#5](../concerns.md#5-read-time-homogenization-fidelity) and
@@ -320,15 +343,24 @@ crop-ability gap.
 **What the answer carries**, whichever geometry it lands on:
 
 - **Native records**: `Coverage`s at the producer's **own** geometry, grouped by shared native Domain —
-  reaching the store un-flattened (ADR-0006). This is what the *Normalizer* emits and what a Store
+  reaching the store un-flattened (ADR-0006). This is what *normalization* produces and what a Store
   retains as identity; it is the intermediate, not the answer, until `ANY` makes it both.
 - **Canonical units**, converted by the wrapper from the Probe's vendor-unit delivery
   ([parameters.md](../parameters.md)); vendor-native units never escape the wrapper.
 - **Full Provider-authored provenance**, stamped at fetch: a single-fetch `Uniform` plane carrying the
   run `issue_time` from the leaf's cadence anchor and an `expiration` derived from that cadence
   (ADR-0003).
-- **Vendor looseness is trimmed, not rejected.** A vendor answering wider than asked is cropped; one
-  answering *shorter* than it declared is an **honest shorter answer**, not garbage.
+- **Vendor looseness is trimmed, not rejected — on a snapped ask.** A vendor answering wider than the
+  bounds is cropped, and one answering *shorter* is an **honest shorter answer**, not garbage: the
+  answer geometry is grounded against **what arrived**, so a short delivery simply grounds shorter and
+  there is nothing to fall short of.
+  **Against an *exact* ask the same shortness is a fault**, and the asymmetry is the whole point of the
+  two modes: an enumerable request names coordinates the leaf owes under closure, so a delivery ending
+  before them leaves a crop that is aligned but **short by a known count** — a `Shortfall`, translated
+  to `RuntimeFailure` ("delivered less than it declared"). That is the caller's own geometry going
+  unanswered, not vendor looseness. Interim: when
+  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) pads that tail as
+  `present=False`, the count is what padding consumes and the failure goes away.
 
 ### Outcomes
 
@@ -336,13 +368,14 @@ The leaf raises from the shared taxonomy
 ([architecture §Failure](../architecture.md#failure-nodata-and-availability)):
 
 - **`CapabilityMismatch`** — a request this leaf cannot serve: a shape it does not resolve (a snapped
-  member against an axis with no lattice), nothing left after clipping to the live window (including the
+  member against an axis that clips to no cells), nothing left after clipping to the live window (including the
   raced-empty case), or requested footprints / delivered records that resolve to different geometries.
   Pre-fetch wherever the fact is knowable pre-fetch — a decline must not cost a vendor call.
 - **`RuntimeFailure`** — an upstream fault or vendor garbage: 5xx, timeout, transport error, non-JSON
-  body, an unparseable envelope, a unit report contradicting the declaration, a series **off the
-  declared step** or gapped, keys the Probe was not asked for, and array-length disagreement.
-  **Never** a request the leaf merely cannot serve.
+  body, an unparseable envelope, an empty series, a unit report contradicting the declaration (or absent
+  where the Probe declared it would be there), a series **off the declared step** or gapped, keys the
+  Probe was not asked for, array-length disagreement, and a delivery **falling short of an exact
+  request's own coordinates**. **Never** a request the leaf merely cannot serve.
 - **`BadRequest`** is not a leaf's to raise — it belongs to the surface that parsed the caller's input.
 
 ### Vendor-face obligations
@@ -379,9 +412,28 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   single-fetch-per-request — *validated by:* `test_forecast_hourly_e2e_and_refetch` in
   [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py) (`route.call_count == 4` for
   two requests).
+  **Under a snapped request that turns into an exposure**, because each winner derives its T from its
+  own fetch: a vendor answering the two calls differently leaves two answers on two geometries, and the
+  Arbiter's closed-projection check fails the **whole request** with `RuntimeFailure`. Deliberately
+  unhandled — no fold reconciles winner domains — so a leaf author must not try to compensate for it
+  leaf-side; it is owned at [003c](../tickets/01-0110-request-shaping.md)'s landing and dissolves for
+  the common case when [006](../tickets/01-0130-retentive-store-freshness.md)'s retention collapses the
+  second fetch. *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
 
 ### What every leaf must uphold
 
+- **A leaf serves the modes its declarations imply, and writes no mode code.** A snapped ask is answered
+  on the leaf's own lattice within the bounds — mid-hour bounds floored onto its ticks before any vendor
+  call, a wider delivery trimmed, a disjoint one declined — with no branch on request shape anywhere in
+  the leaf and no snap arithmetic outside `RegularAxis.clip` — *validated by:*
+  `test_snapped_bounds_inside_window_map_to_floored_hours`,
+  `test_snapped_mid_hour_bounds_floor_both_edges`,
+  `test_snapped_bounds_straddling_window_clamp_to_window`,
+  `test_snapped_wider_vendor_response_is_trimmed`, `test_snapped_shorter_vendor_response_is_honest`,
+  `test_enumerable_t_in_a_selection_domain_is_served` in
+  [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py), and end to end
+  through the woven profile by `test_snapped_selection_resolves_through_the_woven_profile` in
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py).
 - **Canonical units at the leaf** — vendor-native units are converted before anything downstream sees
   them (Open-Meteo `km/h → m/s`) — *validated by:* `test_unit_mismatch_raises_runtime_failure` in
   [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py), live
@@ -394,14 +446,16 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   sole guard. Making such a Probe echo the *declared* units back would be a fabricated confirmation —
   the check would pass by construction. This is a live reading of
   [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted): for those providers the
-  unenforced, unrouted check is the only one there is. **⚠ pending — m4 stages 4–5** for the
-  declaration; today's single provider self-reports and is checked.
+  unenforced, unrouted check is the only one there is. Today's single provider declares `reports_units`
+  and is checked on every call.
 - **A `Probe` touches no manifold types** — it speaks `Interval`, `RegularAxis`, `ParameterData`,
   `ParameterId`, and `VendorVar`, and never `Domain`, `Selection`, `Coverage`, `Capability`,
   `Provenance`, or `Clock`. Each exclusion removes a way to be wrong rather than warning against it —
-  **⚠ unguarded**, and cheap to fix: an import-direction test on the vendor modules, modelled on
-  [test_parity_reader_guard.py](../../tests/deterministic/test_parity_reader_guard.py). **⚠ pending —
-  m4 stages 4–5** for the seam itself.
+  *validated by:* [test_probe_seam_guard.py](../../tests/deterministic/test_probe_seam_guard.py), a
+  static check over every vendor module that is not a shared one, so a **new** vendor file is guarded
+  the moment it exists. Two rules, because the module is not only its Probe: the manifold types are
+  never imported at all, and no `*Probe` class body references any of them — including `Clock`, which
+  the catalogue's `build` face may hold and hand to the wrapper but the Probe may never see.
 - **Vendor nulls survive as nodata**, never as `NaN` and never fabricated — *validated by:*
   `test_vendor_null_serializes_as_json_null`, `test_null_wind_speed_marks_both_components_absent`.
 - **Provenance is authored at fetch**, per parameter, with origin and expiration derived from the leaf's
@@ -413,25 +467,30 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   [test_composition.py](../../tests/deterministic/nodes/test_composition.py),
   [test_identity.py](../../tests/deterministic/test_identity.py).
 - **Native records carry native geometry**, grouped by shared Domain — *validated by:*
-  `test_normalize_returns_native_records_by_z`, `test_capability_declares_six_native_z_facts`.
-- **Declared geometry matches what the vendor actually delivers.** A leaf whose declared window and
-  delivered series disagree on phase resolves to two different lattices and declines **loudly** rather
-  than mis-indexing silently — the honest failure for a mis-declared provider — *validated by:* the live
+  `test_taps_group_into_four_native_levels`, `test_interpret_converts_and_decodes_every_served_parameter`,
+  `test_capability_declares_six_native_z_facts`.
+- **Declared geometry matches what the vendor actually delivers.** The wrapper derives the tick lattice
+  from the delivered stamps and holds it against the **declared** step, so a leaf whose series lands off
+  its own declaration fails **loudly** rather than grounding to one lattice and being indexed on another
+  — the honest failure for a mis-declared provider — *validated by:*
+  `test_series_off_the_declared_step_is_a_vendor_fault` in
+  [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py), and the live
   [parity check](../../tests/parity/test_open_meteo.py) (the only place declaration and delivery are
-  compared against reality). **⚠ pending — m4 stage 5** for the deterministic half.
+  compared against **reality**).
 - **Records folded into one answer must agree** on every axis the request pins or snaps: one `project`
   answers with one geometry (ADR-0001), and the only licence for multi-domain is an axis the request
-  left entirely to the producer — *partially validated by:*
-  `test_snapped_disjoint_vendor_window_is_mismatch` in
-  [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py) (the
-  no-overlap case only). **⚠ pending — m4 stage 5**: the law becomes `agreed_geometry` in `domain.py`,
-  binding every producer that folds records, and gains its two-record disagreement pin — no validator
-  covers records that each resolve fine but resolve *differently*.
+  left entirely to the producer — *validated by:* `test_agreed_geometry_folds_resolutions_that_agree` in
+  [test_domain.py](../../tests/deterministic/manifold/test_domain.py), where the law lives.
+  **Deliberately unvalidated at this edge, and not a gap:** the timeline shape stamps one derived
+  lattice onto every record of a delivery, so its records *cannot* disagree — the post-fetch fold is
+  unfirable by construction (see [Resolution](#resolution--how-a-request-becomes-an-answer-geometry)).
+  A shape that derives a lattice per record owes the pin the timeline shape cannot carry.
 - **Unservable is `CapabilityMismatch`, upstream fault is `RuntimeFailure`**, and a decline costs no
   vendor call — *validated by:* `test_snapped_raced_empty_raises_without_vendor_call`,
-  `test_snapped_malformed_shape_raises_without_vendor_call`,
+  `test_snapped_non_t_axis_raises_without_vendor_call`,
+  `test_snapped_disjoint_vendor_window_is_mismatch`,
   `test_httpx_transport_5xx_is_runtime_failure` and siblings.
-- **A reference reader imports no Meteoscape code** — not the Provider, its Normalizer, its taps, or
+- **A reference reader imports no Meteoscape code** — not the Provider, its shape wrapper, its taps, or
   conversion helpers, and nothing transitively reaching them — *validated by:*
   [test_parity_reader_guard.py](../../tests/deterministic/test_parity_reader_guard.py), which guards
   every module in `readers/` with no registration.
@@ -458,18 +517,18 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   face is settled, its **packaging** is not. Built-in vs optional partitioning, where filled catalogues
   live, entry-point discovery vs install extras. It decides when "author" stops meaning "us".
   **Scope note:** #26 covers provider *and calculator* scaffolding; this record covers only the
-  provider half. Calculator authoring is a distinct surface (no vendor face, no parity check, no
-  `Normalizer`, no fetch-time provenance) and would earn its own record if it ever needs one — it is
+  provider half. Calculator authoring is a distinct surface (no vendor face, no parity check, no tap
+  table, no fetch-time provenance) and would earn its own record if it ever needs one — it is
   deliberately absent here, not overlooked.
 - [#41 — Parity evidence is unenforced and unrouted](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)
   — the edge-local reading: this record's strongest promises are validated by a check nothing requires,
-  routes, or measures. Owner of the *parity-existence* **⚠ unguarded** marker (the *import-direction*
-  one is m4's to close, not #41's).
+  routes, or measures. Owner of this record's one remaining **⚠ unguarded** marker.
 - [#23 — Spatial vs temporal `RegularAxis` types](../concerns.md#23-spatial-vs-temporal-regularaxis-types)
   — **inverts the embedding reading.** There the split must stay *invisible* to request authors; here it
   is visible and wanted, because it is what turns coordinate-kind `isinstance` checks into static ones.
-  m4 adds one such narrowing (in `SnappedAxis.clip`), so a spatial sibling either brings its own or the
-  split makes it generic — recorded at #23, not decided here.
+  m4 adds **no** such narrowing — `RegularAxis.clip` is one coordinate-generic expression — so what a
+  spatial sibling would buy here is a float phase-tolerance policy stated statically rather than
+  chosen per call; recorded at #23, not decided here.
 - [#18 — Clock-anchored footprint fidelity](../concerns.md#18-clock-anchored-footprint-fidelity)
   — what a leaf **declares** (`CadenceDef` `{Δ, latency, max_lead}`, conservative by default) against the
   vendor's real availability. Over-promising surfaces as edge nodata; the durable fix is a provider's
@@ -489,26 +548,23 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
 
 ## Roadmap
 
-1. **The resolution algebra and the shape/vendor split land together** — `ground` / `Snappable` /
-   `agreed_geometry`, and `open_meteo` reduced to a `TimelineProbe` behind `TimelineProvider`. Every
-   **⚠ pending — m4** marker above clears — [m4](../tickets/01-0100-snapped-t-request-mode.md) stages 3–5.
-2. **A second Provider** — the first real test of *declaration, not gate*: **Visual Crossing** ships a
+1. **A second Provider** — the first real test of *declaration, not gate*: **Visual Crossing** ships a
    `TimelineProbe`, not a leaf (its Timeline API is the same point-plus-series shape, so no wrapper),
    inheriting snapped resolution by declaring its own geometry. Also the first shipped manifest to
    declare a `SecretSlot` and, likely, the first exercise of the non-self-reporting units path —
    [011](../tickets/01-0120-visual-crossing-provider.md). The **fallback behaviour** it enables is a
    separate ticket, [004](../tickets/01-0150-second-provider-fallback.md), and lands at the
    [MCP edge](./mcp.md).
-3. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
+2. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
    selection that does not depend on branch names —
    [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted); no owning ticket.
-4. **Store-shaped asks** — the Source stops passing requests through, the leaf answers multi-domain on
+3. **Store-shaped asks** — the Source stops passing requests through, the leaf answers multi-domain on
    `ANY`, the fact→product relabeling moves to the Reservoir's read-back, and `agreed_geometry`
    narrows: its rule holds on pinned and snapped axes, its exception opens on `ANY`, it returns the
    multi-domain carrier minted there, and its singular name is revisited against that carrier —
    [006](../tickets/01-0130-retentive-store-freshness.md).
-5. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
+4. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
    than a Probe ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) names it a deferred
    seam); no owning ticket.
-6. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
+5. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
    [#26](../concerns.md#26-provider--calculator-plugin-scaffolding); no owning ticket.

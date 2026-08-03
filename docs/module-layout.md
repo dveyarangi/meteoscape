@@ -35,9 +35,10 @@ src/meteoscape/
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
 │   │   └── calculators.py     # CalculatorManifest, CalculatorCatalog
 │   └── providers/
-│       ├── base.py            # Provider: project + capability + source_key (its geometry is published by the Capability, ADR-0007)
-│       ├── normalization.py
-│       └── <vendor>.py
+│       ├── base.py            # Provider: project + capability + source_key (its geometry is published by the Capability, ADR-0007); Transport/FetchRequest
+│       ├── timeline.py        # point+series shape: TimelineProvider (all algebra) + TimelineProbe/TimelineDelivery/TapTable (the vendor seam)
+│       ├── normalization.py   # shared native→canonical conversion edges (scale factors, quantity transforms)
+│       └── <vendor>.py        # one vendor's Probe + tap table + cadence + ProviderManifest — declarations, no algebra
 │
 └── api/                       # gateway + mcp_app
 

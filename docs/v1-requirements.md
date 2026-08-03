@@ -96,7 +96,7 @@ Python application author constructing and calling Meteoscape without a server),
 The agent-facing **product is 6**: air temperature (2 m), precipitation, wind **speed** (10 m), wind
 **direction** (10 m), relative humidity (2 m), **cloud cover** (total column).
 But **wind is canonical as u/v components** — providers
-deliver native speed/direction, the **Normalizer converts to `wind_u` / `wind_v` on ingest** (both
+deliver native speed/direction, **normalization converts to `wind_u` / `wind_v` on ingest** (both
 linear, so linear interpolation of u/v *is* correct wind interpolation), and **`wind_speed` /
 `wind_direction` are derived views served by Calculators** over `(wind_u, wind_v)`
 ([ADR-0002](./adr/0002-data-model.md) / [ADR-0004](./adr/0004-producer-resolution-and-capability.md)).
@@ -138,7 +138,7 @@ The Coverage's provenance plane is `Uniform` for an atomic result; the derived w
 **propagate** their u/v inputs' atomic origin verbatim (the derivation is lossless and invertible —
 [ADR-0003](./adr/0003-provenance-and-origin.md)).
 
-Every value is in its parameter's **canonical unit** (the Normalizer reconciles vendor units on ingest);
+Every value is in its parameter's **canonical unit** (normalization reconciles vendor units on ingest);
 the unit rides the Coverage's `capability` descriptor block, not the `ParameterData` slice. Freshness is
 the per-parameter provenance `expiration`.
 
@@ -219,7 +219,7 @@ lifts **without a contract change** — see the seams in
   `ParameterData` comes from one provider's latest run, whose `issue_time` is carried by that
   parameter's `ProvenanceField`. The **derived** `wind_speed` / `wind_direction` **propagate** their
   `wind_u` / `wind_v` inputs' atomic origin **verbatim** — no synthesis: the derivation is the lossless,
-  invertible inverse of the Normalizer's u/v conversion, so it preserves its input and the origin is
+  invertible inverse of the ingest u/v conversion, so it preserves its input and the origin is
   literally that wind field. (Synthesis tracks the **calculation method**, not the input count: a
   `SyntheticOrigin` — lineage + method tag — is minted by a method-bearing *or* multi-origin derivation,
   neither of which v1 has → [ADR-0003](./adr/0003-provenance-and-origin.md).) Because a provider serves
@@ -308,7 +308,7 @@ lifts **without a contract change** — see the seams in
 8. **Tests**: unit + integration with mocked HTTP transport (per the TDD skill); provider tests mock
    the transport, not the provider.
 9. **Derived wind via Calculator**: `wind_speed` / `wind_direction` are produced by a Calculator over the
-   canonical `wind_u` / `wind_v` (providers deliver native speed/direction; the Normalizer canonicalizes to
+   canonical `wind_u` / `wind_v` (providers deliver native speed/direction; normalization canonicalizes to
    u/v on ingest), **propagating** the u/v inputs' atomic origin verbatim (lossless invertible transform —
    no `SyntheticOrigin`; the edge serializer stays on the `AtomicOrigin` path). Requesting only
    `wind_speed` routes through its Calculator and its scoped Arbiter, and the internal `wind_u` / `wind_v`

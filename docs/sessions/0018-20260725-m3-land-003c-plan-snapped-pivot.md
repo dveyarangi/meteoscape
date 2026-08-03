@@ -7,7 +7,7 @@ Open-Meteo (1 passed, no retry consumed). **Arc 2:** 003c planning
 ([RFC 0008](../rfc/0008-20260725-003c-request-shaping.md)) survived three adversarial review
 rounds, and the accumulated findings drove the window-fitting design off the edge and into the
 algebra's reserved **Snapped mode** — minting
-[m4](../tickets/01-0100-snapped-t-request-mode.md), which now precedes 003c. Decisions live in the
+[m4](../tickets/done/01-0100-snapped-t-request-mode.md), which now precedes 003c. Decisions live in the
 tickets, RFCs, and amended docs; this record carries the reasoning trail.
 
 ## Arc 1 — m3 (parity) in brief
@@ -61,7 +61,7 @@ axis-type split assigned as m4's stage 0 on its own recorded trigger.
 
 ## Continuation
 
-- **[/align m4](../tickets/01-0100-snapped-t-request-mode.md)** is the next design session: firm the
+- **[/align m4](../tickets/done/01-0100-snapped-t-request-mode.md)** is the next design session: firm the
   axis member's shape, the intersective `matches` wording, the resolution home, and write the
   ADR-0002/ADR-0004 amendments. Then re-stage RFC 0008 and implement m4 → 003c.
 - **Push pending:** two commits ahead of origin at session end.

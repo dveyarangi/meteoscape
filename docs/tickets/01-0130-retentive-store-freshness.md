@@ -65,17 +65,26 @@ Store).
 **Store-lattice representation — resolved at m4 (2026-07-26).** The question was whether to mint a
 declared-lattice axis (open extent: `anchor + step`, where `RegularAxis` fixes all three of
 `(anchor, step, count)`) or to narrow what `quantize` actually requires. It is the second, and m4
-built the narrowing: **`Snappable`**, the facet form of ADR-0002's *"only a regular axis can be
-snapped-to"* — an axis that can produce a `RegularAxis` on demand. A store's retention grid satisfies
-it the way `RollingAxis` does, deriving its extent from the retention window at the clock, so no new
-axis kind is minted and the representation stays the `Store`'s own business
+built the narrowing: **`Axis.clip(bounds)`**, abstract on the axis base — one question a retention
+grid answers with the part of itself the request asks for, never with an enumeration. A store's
+retention grid answers it the way `RollingAxis` does, materialising from the retention window at the
+clock, so no new axis kind is minted and the representation stays the `Store`'s own business
 ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)).
 
-**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md)):
+**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)):
 the same per-axis fold of a request against a lattice, enclosing where `ground` clips, and it is where
 the fold's **`ANY`** case lands — the axis the unit spans wholly takes the answering axis whole.
 Reading the request-side verb before writing this one is the cheapest way to keep the two from
 diverging.
+
+**This ticket is a trigger for [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method).**
+Refill requests are the second in-tree author of *exact* requests, which is what makes the request
+side's two representations load-bearing rather than incidental — and the reason `ground` is a function
+taking the request rather than a method on it. Decide there before authoring refill: either the split
+stays and refill keeps building enumerable shapes, or the request side narrows to one representation
+and refill is written against that. Also re-read
+[#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — `quantize` is the third
+lattice-arithmetic site, which is that carve's trigger.
 
 The e2e's second-call **re-fetch assertion** (documenting no-retention, session 0010) flips here.
 

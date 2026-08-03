@@ -4,13 +4,12 @@
 
 > Formerly numbered **003b**; renumbered when 003b (capability domain) was inserted ahead of it.
 
-- **Status:** Planned — the window semantics ride
-  [m4 — Snapped request mode](./01-0100-snapped-t-request-mode.md); m4 must land first.
+- **Status:** Ready — the window semantics ride
+  [m4 — Snapped request mode](./done/01-0100-snapped-t-request-mode.md), which landed 2026-08-04.
 - **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**on hold** — it planned the
   superseded edge-clamp approach and is kept as that decision's record; its surviving decisions
-  stand, and it is re-staged after m4 lands).
-- **Depends on:** [m4](./01-0100-snapped-t-request-mode.md) (In progress; design aligned 2026-07-25,
-  algebra settled 2026-07-26, scope widened 2026-08-02), and
+  stand; re-stage it against the landed mode before implementing).
+- **Depends on:** [m4](./done/01-0100-snapped-t-request-mode.md) (done), and
   [003b — Capability carries its domain](./done/01-0060-capability-domain.md) (which reshapes
   [003a](./done/01-0040-profile-reach.md); 003a depends on 002, 002b).
 - **Outcome:** Free `start`/`end` request windows (ISO datetimes) served as the caller's bounds ∩
@@ -25,7 +24,7 @@
 The window semantics settled in the 2026-07-25 align through three shapes — containment-rejection
 → edge clamping → **Snapped-T resolution** — plus one reversal of a session-0013 rule (bare-date
 day-cells → datetimes only). The reasoning lives at its owners:
-[m4](./01-0100-snapped-t-request-mode.md) (why fitting belongs to resolution, the mode sketch) and
+[m4](./done/01-0100-snapped-t-request-mode.md) (why fitting belongs to resolution, the mode sketch) and
 [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md)'s hold banner (the clamp record). The
 rules below are the settled result.
 
@@ -35,7 +34,7 @@ Make the request flexible at the edge. The MCP adapter accepts optional `paramet
 the **6 product** params — temperature, precipitation, wind speed, wind direction, humidity, cloud
 cover; the internal `wind_u` / `wind_v` are not requestable; default all), `start`, and `end`, and
 builds the canonical `Selection`: a lat/lon **point** `Domain` whose T axis is a **Snapped-T**
-request — the caller's bounds as raw instants ([m4](./01-0100-snapped-t-request-mode.md)). Resolution
+request — the caller's bounds as raw instants ([m4](./done/01-0100-snapped-t-request-mode.md)). Resolution
 serves `bounds ∩ the winner's live window`; admission on a snapped T axis is **intersective**
 (enumerable requests keep whole-request containment); a **no-overlap** window resolves as
 `capability-mismatch` through admission — the edge never rejects on reach's word, and
@@ -83,7 +82,7 @@ no step; the *resolver*'s grid supplies anchor and step and authors the output l
   the session-0013 rationale — never a silently short answer — without day-cell semantics.
 - **`start` rides as the raw instant** — the *resolver* includes the tick whose cell *contains*
   `start`, flooring on **its own** lattice (the edge holds no step to floor with —
-  [m4](./01-0100-snapped-t-request-mode.md)). Never a ceil semantics: the stretch the caller asked for
+  [m4](./done/01-0100-snapped-t-request-mode.md)). Never a ceil semantics: the stretch the caller asked for
   is served, not dropped.
 - **`end` is inclusive** of the tick containing it — the raw instant rides as the upper bound and
   "last tick ≤ end" at resolution delivers it. An 18:30 `end` includes the 18:00 tick, and
@@ -133,7 +132,7 @@ contract, Time axis).
       resolution's intersection makes staleness harmless); `Settings.default_horizon` is gone;
       the served end is absolute (`start` clips, never shifts it).
 - [ ] Bounds outside the served range yield the **servable part** — resolution serves
-      `bounds ∩ the winner's live window` ([m4](./01-0100-snapped-t-request-mode.md)); a no-overlap
+      `bounds ∩ the winner's live window` ([m4](./done/01-0100-snapped-t-request-mode.md)); a no-overlap
       window is `capability-mismatch` via intersective admission; enumerable-mode admission is
       unchanged elsewhere; the response's `valid_time` shows what was served. (Mixed-reach
       membership under a future second provider →
@@ -147,7 +146,7 @@ contract, Time axis).
       snapped fitting of out-of-range bounds, and the no-overlap mismatch; the live snapped
       end-to-end validation is this ticket's landing parity run.
 - [ ] **Divergent winner domains are assessed at this landing** (inherited from
-      [m4](./01-0100-snapped-t-request-mode.md), [RFC 0009](../rfc/0009-20260725-m4-snapped-t-request-mode.md)
+      [m4](./done/01-0100-snapped-t-request-mode.md), [RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)
       fact 9 / decision 9). A request mixing direct and derived parameters resolves through **two**
       winners — the Provider and the wind `Calculator` — each issuing its own vendor fetch. Under
       snapped, each answer's T axis derives from its own response, so a window roll between the two
@@ -158,6 +157,13 @@ contract, Time axis).
       [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) /
       [#28](../concerns.md). [006](./01-0130-retentive-store-freshness.md)'s retention collapses the
       second fetch and dissolves the common case.
+- [ ] **The edge's request representation is settled here, not assumed.** This ticket is where
+      `build_selection` stops issuing exact `GridDomain` requests and issues snapped ones, which makes it
+      a trigger for
+      [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method): either the
+      request side keeps two representations (and `ground` stays a function taking the request), or the
+      edge's migration is the moment it narrows to one. Record the call; the edge is the request author
+      whose choice the rest inherit.
 
 ## User stories addressed
 

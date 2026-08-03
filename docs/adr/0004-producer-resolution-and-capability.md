@@ -114,6 +114,16 @@ same shape. The abstraction these are shapes of is the
     request must sit fully inside the footprint (X/Y/T, and exact-Z requests).
   - **`VantageAxis`** (a Continuous-Z aperture, [ADR-0002](./0002-data-model.md)):
     `self.interval.intersects(declared.extent)` — admit any producer the aperture **overlaps**.
+  - **`SnappedAxis`** (bounds-only T, [ADR-0002](./0002-data-model.md)): the same
+    `self.interval.intersects(declared.extent)` — admit any producer whose window the bounds
+    **overlap**, the winner then serving the servable part. **So admission is mode-dependent**:
+    containment for a request that names its coordinates, intersection for one that states only an
+    aperture or bounds. This needs no new machinery — the predicate belongs to the request axis, so a
+    new request-side aperture kind is admitted the moment it exists
+    ([#13](../concerns.md#13-candidate-admission-containment-vs-intersection) holds the scoped v1
+    position: single winner, wholesale, no per-cell fold).
+  Cross-kind bounds simply do not meet: a temporal interval against a spatial axis is **disjoint**, not
+  an error, which is what leaves a snapped X/Y unserved without any leaf writing that rejection.
   This is the **admission gate** — "could this producer contribute?", liberal by design — precedent
   `RollingAxis` clock-window matching and the `extent_scaling`-branched horizon edge above. It
   subsumes the quantifier reasoning it replaces: against a **point sample** (`extent [2,2]`)

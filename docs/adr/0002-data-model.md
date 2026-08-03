@@ -150,7 +150,8 @@ classDiagram
 - **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
   algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
   **separable** representation exposes — its per-axis `Axis`. An **`Axis` mirrors `Domain`**: its
-  universal surface is a span (`extent`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
+  universal surface is a span (`extent`), request-driven admission (`matches`), and **restriction to
+  bounds** (`clip`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
   `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
   `RegularAxis` generates its cells from `(anchor, step, count)` and stays snappable; an explicit one
   stores them. Whether a `RegularAxis` generates **bounded** cells (each spanning one step,
@@ -162,8 +163,16 @@ classDiagram
   base of the request **`VantageAxis`** (which only overrides `matches`); a span has no `RegularAxis`
   form (it is not `(anchor, step, count)`, so no `step = inf`/`nan`). A **continuous** axis carries only
   its bound — a plain `ContinuousAxis` (X/Y bounds) or a clock-anchored `RollingAxis` (`valid_time` window) —
-  a `FootprintDomain`'s X/Y and time axes. Curvilinear domains satisfy the base interface without being
-  separable. **Only a regular axis can be snapped-to.**
+  a `FootprintDomain`'s X/Y and time axes, and the **base of the request `SnappedAxis`** (which likewise
+  only overrides `matches`): the request-side aperture types are one family, cell-shaped and
+  span-shaped, not two unrelated mintings. Curvilinear domains satisfy the base interface without being
+  separable.
+
+  **"Only a regular axis can be snapped-to" is a consequence, not a rule the surface enforces.** It is
+  what `clip` hands back that decides: an axis is snappable-to when restricting it leaves **cells**, and
+  the one verb that needs cells checks (`ground`, below). Nothing in the axis surface forbids a snapped
+  X/Y — what leaves it unserved is narrower and lives in the request type, that a `SnappedAxis` carries
+  temporal bounds and so never meets a spatial axis at all.
 
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
@@ -173,6 +182,40 @@ classDiagram
     supplies anchor **and** step; the answer is the grid's cells within the bounds.
   - **Enumerable** (`exact`) — concrete coordinate set (regular-anchored or irregular point set) →
     a materialized (countable) Coverage result.
+
+- **The request side has its own representation, and resolution is a function over it.** A surface or
+  embedder composes a **`SelectionDomain`** from **`SelectableAxis`** members
+  (`RegularAxis | VantageAxis | SnappedAxis`): *structurally* separable, since exposing `axis()` is all
+  admission's per-axis gate reads, but **never enumerable** and **never nominally narrowed to** —
+  `Selection.domain` stays the base `Domain`, so a future non-separable request composition
+  ([#12](../concerns.md#12-curvilinear-domains)) arrives as a sibling representation rather than a
+  widening of this one. A `GridDomain` remains a legal request in its own right; internal authors
+  (the retentive store's refill) build them.
+
+  **`ground(request, against) -> EnumerableDomain`** is the resolution verb — ADR-0001's
+  shape-correspondence as one operation: pinned members pass through by identity, a snapped member
+  takes what the answering axis `clip`s itself to, and `ValueError` when a member cannot resolve (*why*
+  it matters is the caller's knowledge, not this layer's). It is a **function, not a `Domain` method**,
+  because being a *request* is a property of some representations only — a footprint is what requests
+  ground *against* — while callers hold a base `Domain` and must not branch on representation to learn
+  whether resolution is needed. So exactly one dispatch exists and it lives with the representations.
+  It becomes a method the moment the request side narrows to a single representation →
+  [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method), which owns
+  that end-state and its triggers.
+
+  **`ground` returns the enumerable *interface*, and v1 callers narrow past it.** What every caller
+  needs is indexability, so the declared return is `EnumerableDomain` and which enumerable
+  representation satisfies it stays the resolver's business. But `EnumerableDomain` does not expose
+  `axis()` — a caller reading per-axis coordinates, or handing the result to the sampler (which crops
+  `GridDomain` lattices only), narrows to `GridDomain` at that point. In v1 that narrowing is total,
+  because `GridDomain` is the only enumerable representation minted; a second one arrives with the
+  callers that must read it structurally.
+
+  **A fold beside it: `agreed_geometry`.** One `project` answers with **one** geometry (ADR-0001), so
+  folding several resolutions — a producer's per-parameter footprints, or the native records one fetch
+  yields — either returns the geometry they agree on or raises. The rule binds every producer that
+  folds records; its one licence to differ is an axis the request left entirely to the producer
+  (`ANY`), which arrives with the retentive store, so rule and exception stay in one module.
 
 - **One regular descriptor unifies snapped / declared-grid / exact.** A regular lattice is
   `{anchor, step, extent}`; its members differ in which parts are fixed — a **Snapped** request fixes
@@ -397,7 +440,7 @@ classDiagram
   algebra, is in that unit. Unit is therefore **id-entailed**, never a navigable degree of freedom: it
   is *not* in the parameter key, *not* in a `Capability` clause (a vendor emitting °F is the same
   parameter, not a different one), and *not* in a `Selection`. Unit conversion happens at **exactly two
-  boundaries** — the Provider's **Normalizer** on ingest (vendor unit → canonical, write-time, in the
+  boundaries** — the Provider's **normalization** on ingest (vendor unit → canonical, write-time, in the
   data) and the **surface adapter** on egress (canonical → a requested presentation unit, read-time,
   when presentation conversion is offered). In between, the whole tree —
   Capability matching, the Arbiter's fold, Calculators, the `Store` — is **unit-blind**: physics relies
@@ -408,7 +451,7 @@ classDiagram
   - **`CellStatistic = point | max | min | mean`** — a **window statistic**, *dimension-preserving*
     (mean temp is K, peak intensity is mm/hr); lives on `ParameterDef`, surfaced via the Coverage's
     `capability` (descriptor block); `point` is the degenerate window (an instant). The Provider's
-    Normalizer coerces vendor data to the canonical statistic, so it is not a freely-chosen runtime
+    normalization coerces vendor data to the canonical statistic, so it is not a freely-chosen runtime
     value.
   - **Calculus depth** — *dimension-changing* (`∫ rate dt → accumulation`, `mm/hr·h → mm`); this is the
     quantity `extent_scaling`, **not** a `CellStatistic` value. Accumulation is the **integration edge**
@@ -457,7 +500,7 @@ classDiagram
   Coverage self-describing without the global `ParameterTable`, which the stateless-Provider /
   store-and-flow model needs — while `ParameterData` stays pure `(values, present)`, so there is no
   id-entailed fact denormalized onto the slice to drift.
-- **A canonical-mono-unit interior** collapses unit handling to two edges (Normalizer ingest, surface
+- **A canonical-mono-unit interior** collapses unit handling to two edges (normalization on ingest, surface
   egress) and leaves the entire algebra unit-blind: Capability, the Arbiter's fold, and Calculators
   never negotiate or convert units, so a derived parameter's formula is unit-safe by *convention*.
 - **Vertical position on the Domain (not the key)** is the same move as extent: `temperature_2m` is an

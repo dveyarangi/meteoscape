@@ -6,7 +6,7 @@
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md),
   [003c — Request shaping](./01-0110-request-shaping.md), and
   [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (the second producer this ticket
-  falls back *to*; 011 in turn rides [m4](./01-0100-snapped-t-request-mode.md))
+  falls back *to*; 011 in turn rides [m4](./done/01-0100-snapped-t-request-mode.md))
 - **Outcome:** Wholesale priority fallback across two producers.
 - **Scope narrowed 2026-08-02 (align):** the **provider implementation moved to
   [011](./01-0120-visual-crossing-provider.md)** — Probe, manifest, secret slot, parity check, and the

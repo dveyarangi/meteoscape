@@ -2,9 +2,9 @@
 
 **Legacy id:** 011
 
-- **Status:** Planned
-- **Depends on:** [m4 — Snapped request mode](./01-0100-snapped-t-request-mode.md) (extracts
-  `TimelineProvider`; this ticket writes only a Probe behind it),
+- **Status:** Ready
+- **Depends on:** [m4 — Snapped request mode](./done/01-0100-snapped-t-request-mode.md) (done —
+  `TimelineProvider` is extracted; this ticket writes only a Probe behind it),
   [m3 — Provider parity checks](./done/01-0080-provider-parity-checks.md) (the harness this Probe's check
   plugs into)
 - **Blocks:** [004 — Second-provider fallback](./01-0150-second-provider-fallback.md) (needs a real second
