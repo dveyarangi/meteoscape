@@ -8,21 +8,30 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
+from fakes import STOPPED, footprint_domain, point_timeline_domain, snapped_point_domain
+from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 from meteoscape.manifold.domain import (
     LATTICE_TOLERANCE,
+    Axis,
     AxisName,
     Cell,
     ContinuousAxis,
     Domain,
+    EnumerableAxis,
+    EnumerableDomain,
     FootprintDomain,
     GridDomain,
     Interval,
     IntervalAxis,
     RegularAxis,
+    SelectionDomain,
+    SnappedAxis,
     VantageAxis,
+    agreed_geometry,
     as_separable,
     contains_extents,
     first_incomparable,
+    ground,
     split_extents,
     sub_lattice_offset,
 )
@@ -36,6 +45,32 @@ def test_interval_intersects() -> None:
     assert a.intersects(Interval(2.0, 8.0)) is True  # contained
     assert a.intersects(Interval(11.0, 20.0)) is False
     assert a.intersects(Interval(-10.0, -1.0)) is False
+
+
+def test_interval_intersection() -> None:
+    a = Interval(0.0, 10.0)
+    assert a.intersection(Interval(5.0, 15.0)) == Interval(5.0, 10.0)
+    assert a.intersection(Interval(2.0, 8.0)) == Interval(2.0, 8.0)
+    assert a.intersection(Interval(-5.0, 20.0)) == a
+    assert a.intersection(Interval(10.0, 20.0)) == Interval(10.0, 10.0)  # touch → an instant
+    assert a.intersection(Interval(11.0, 20.0)) is None
+
+
+def test_interval_of_different_coordinate_kinds_never_meets() -> None:
+    """A spatial span and a temporal one are disjoint, not a crash — a snapped X reaches this."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    space = Interval(-180.0, 180.0)
+    time = Interval(noon, noon + timedelta(days=7))
+
+    assert space.intersects(time) is False  # type: ignore[arg-type]
+    assert time.intersects(space) is False  # type: ignore[arg-type]
+    assert space.intersection(time) is None  # type: ignore[arg-type]
+
+    # The two reachable readings of that: admission declines, and the clip leaves nothing.
+    snapped_x = SnappedAxis(AxisName.X, time)
+    declared_x = ContinuousAxis(AxisName.X, space)
+    assert snapped_x.matches(declared_x) is False
+    assert declared_x.clip(snapped_x.interval) is None
 
 
 def test_interval_axis_single_cell() -> None:
@@ -73,6 +108,359 @@ def test_vantage_axis_matches_by_intersection() -> None:
     assert vantage.matches(sample_10m) is True
     assert vantage.matches(cloud) is True
     assert vantage.matches(sample_100m) is False
+
+
+def test_snapped_axis_rejects_naive_or_reversed_interval() -> None:
+    """Aware equal bounds are legal (current-conditions instant); naive / reversed are not."""
+    instant = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
+    equal = SnappedAxis(AxisName.T, Interval(instant, instant))
+    assert equal.extent == Interval(instant, instant)
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        SnappedAxis(
+            AxisName.T,
+            Interval(datetime(2026, 7, 11, 12, 0), datetime(2026, 7, 11, 13, 0, tzinfo=UTC)),
+        )
+    with pytest.raises(ValueError, match="timezone-aware"):
+        SnappedAxis(
+            AxisName.T,
+            Interval(datetime(2026, 7, 11, 12, 0, tzinfo=UTC), datetime(2026, 7, 11, 13, 0)),
+        )
+    with pytest.raises(ValueError, match="lower"):
+        SnappedAxis(
+            AxisName.T,
+            Interval(
+                datetime(2026, 7, 11, 13, 0, tzinfo=UTC), datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
+            ),
+        )
+
+
+def test_snapped_axis_matches_by_intersection() -> None:
+    """Overlap / boundary-touch admit; disjoint rejects; containment of the declared is not required."""
+    declared = ContinuousAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 11, 12, tzinfo=UTC), datetime(2026, 7, 18, 12, tzinfo=UTC)),
+    )
+    overlap = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 15, tzinfo=UTC), datetime(2026, 7, 20, tzinfo=UTC)),
+    )
+    # Request wider than declared — still admits (intersection, not containment).
+    wider = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 10, tzinfo=UTC), datetime(2026, 7, 20, tzinfo=UTC)),
+    )
+    touch_lower = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 10, tzinfo=UTC), datetime(2026, 7, 11, 12, tzinfo=UTC)),
+    )
+    touch_upper = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 18, 12, tzinfo=UTC), datetime(2026, 7, 19, tzinfo=UTC)),
+    )
+    before = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 1, tzinfo=UTC), datetime(2026, 7, 11, 11, tzinfo=UTC)),
+    )
+    after = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 18, 13, tzinfo=UTC), datetime(2026, 7, 25, tzinfo=UTC)),
+    )
+
+    assert overlap.matches(declared) is True
+    assert wider.matches(declared) is True
+    assert touch_lower.matches(declared) is True
+    assert touch_upper.matches(declared) is True
+    assert before.matches(declared) is False
+    assert after.matches(declared) is False
+
+    rolling = RollingAxis(
+        AxisName.T,
+        CadenceDef(timedelta(hours=1), timedelta(0), timedelta(days=7)),
+        STOPPED,
+        timedelta(hours=1),
+    )
+    # STOPPED = 2026-07-11 12:00 → window [12:00, +7d]; partial overlap admits.
+    assert overlap.matches(rolling) is True
+    assert before.matches(rolling) is False
+
+
+def test_snapped_axis_is_not_enumerable() -> None:
+    axis = SnappedAxis(
+        AxisName.T,
+        Interval(datetime(2026, 7, 11, 12, tzinfo=UTC), datetime(2026, 7, 12, tzinfo=UTC)),
+    )
+    assert isinstance(axis, ContinuousAxis)
+    assert not isinstance(axis, EnumerableAxis)
+
+
+def test_regular_axis_clip_keeps_the_lattice_and_moves_the_edges() -> None:
+    """Anchor and step stay the axis's own; the bounds decide where it starts and stops."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    cells = RegularAxis(AxisName.T, noon, timedelta(hours=1), 6, True)  # 12:00 … 17:00
+
+    def clip(lower: timedelta, upper: timedelta) -> Axis | None:
+        return cells.clip(Interval(noon + lower, noon + upper))
+
+    # Bounds wider than the axis trim nothing — a short axis is an honest short answer.
+    assert clip(timedelta(days=-1), timedelta(days=1)) == cells
+    # Both edges cut, on the tick.
+    assert clip(timedelta(hours=2), timedelta(hours=4)) == RegularAxis(
+        AxisName.T, noon + timedelta(hours=2), timedelta(hours=1), 3, True
+    )
+    # A cellular tick owns the span that follows it, so a mid-cell bound keeps its own cell.
+    assert clip(timedelta(minutes=30), timedelta(hours=2, minutes=45)) == RegularAxis(
+        AxisName.T, noon, timedelta(hours=1), 3, True
+    )
+    # An instant lands on the single cell containing it.
+    assert clip(timedelta(hours=3), timedelta(hours=3)) == RegularAxis(
+        AxisName.T, noon + timedelta(hours=3), timedelta(hours=1), 1, True
+    )
+    # Disjoint either way — nothing survives.
+    assert clip(timedelta(days=-2), timedelta(days=-1)) is None
+    assert clip(timedelta(days=1), timedelta(days=2)) is None
+
+
+def test_regular_axis_clip_of_instants_keeps_only_ticks_inside_the_bounds() -> None:
+    """`cellular=False` ticks own no span, so a bound between ticks excludes the one behind it."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    instants = RegularAxis(AxisName.T, noon, timedelta(hours=1), 6, False)
+
+    assert instants.clip(
+        Interval(noon + timedelta(minutes=30), noon + timedelta(hours=2, minutes=45))
+    ) == RegularAxis(AxisName.T, noon + timedelta(hours=1), timedelta(hours=1), 2, False)
+    # Bounds falling entirely between two ticks hold nothing.
+    assert (
+        instants.clip(Interval(noon + timedelta(minutes=30), noon + timedelta(minutes=45))) is None
+    )
+
+
+def test_regular_axis_clip_is_coordinate_generic() -> None:
+    """One expression serves both coordinate kinds — m4 adds no temporal narrowing (concern #23)."""
+    degrees = RegularAxis(AxisName.X, 0.0, 1.0, 5, False)  # 0.0 … 4.0
+    assert degrees.clip(Interval(1.0, 3.0)) == RegularAxis(AxisName.X, 1.0, 1.0, 3, False)
+    assert degrees.clip(Interval(10.0, 20.0)) is None
+
+
+def test_interval_axis_clip_is_whole_or_nothing() -> None:
+    """A single cell is never subdivided: bounds reaching into it keep it entire."""
+    column = IntervalAxis(AxisName.Z, Interval(0.0, 12_000.0))
+    assert column.clip(Interval(2_000.0, 3_000.0)) is column
+    assert column.clip(Interval(-100.0, 0.0)) is column  # touch admits, as `intersects` does
+    assert column.clip(Interval(12_001.0, 20_000.0)) is None
+
+    vantage = VantageAxis(AxisName.Z, Interval(0.0, 10.0))
+    assert vantage.clip(Interval(5.0, 50.0)) is vantage
+
+
+def test_continuous_axis_clip_stays_a_span() -> None:
+    """No cells appear from nowhere — which is why grounding a snapped member here declines."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    span = ContinuousAxis(AxisName.T, Interval(noon, noon + timedelta(days=7)))
+
+    part = span.clip(Interval(noon + timedelta(days=1), noon + timedelta(days=30)))
+    assert part == ContinuousAxis(
+        AxisName.T, Interval(noon + timedelta(days=1), noon + timedelta(days=7))
+    )
+    assert not isinstance(part, EnumerableAxis)
+    assert span.clip(Interval(noon - timedelta(days=2), noon - timedelta(days=1))) is None
+
+
+def _delivered(t: RegularAxis) -> GridDomain:
+    """A delivered record's geometry — the post-fetch thing a request grounds against."""
+    return GridDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: RegularAxis(AxisName.Z, 2.0, 1.0, 1, False),
+            AxisName.T: t,
+        }
+    )
+
+
+def test_ground_passes_pins_and_takes_the_clipped_lattice() -> None:
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = snapped_point_domain(start=noon + timedelta(hours=1), end=noon + timedelta(hours=2))
+    delivered = _delivered(RegularAxis(AxisName.T, noon, timedelta(hours=1), 6, True))
+
+    grounded = ground(request, delivered)
+    assert isinstance(grounded, GridDomain)
+    # Pinned members are the answer already — identity, not a rebuild.
+    assert grounded.axis(AxisName.X) is request.axis(AxisName.X)
+    assert grounded.axis(AxisName.Y) is request.axis(AxisName.Y)
+    assert grounded.axis(AxisName.Z) is request.axis(AxisName.Z)
+    assert grounded.axis(AxisName.T) == RegularAxis(
+        AxisName.T, noon + timedelta(hours=1), timedelta(hours=1), 2, True
+    )
+
+
+def test_ground_declines_when_nothing_survives_the_clip() -> None:
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = snapped_point_domain(start=noon + timedelta(hours=1), end=noon + timedelta(hours=2))
+    elsewhere = _delivered(
+        RegularAxis(AxisName.T, noon + timedelta(days=1), timedelta(hours=1), 3, True)
+    )
+    with pytest.raises(ValueError, match="no t within the requested bounds"):
+        ground(request, elsewhere)
+
+
+def test_ground_declines_an_answering_axis_without_cells() -> None:
+    """The snapped X/Y case: a declared span clips to a span, and a span has no cells to take."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = snapped_point_domain(start=noon + timedelta(hours=1), end=noon + timedelta(hours=2))
+    span_t = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(noon, noon + timedelta(days=7))),
+        }
+    )
+    with pytest.raises(ValueError, match="snapped t needs cells"):
+        ground(request, span_t)
+
+
+def test_ground_declines_a_snapped_spatial_axis_as_disjoint() -> None:
+    """`SnappedAxis` is temporal by type, so its bounds cannot address a spatial axis at all."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = SelectionDomain(
+        axes={
+            AxisName.X: SnappedAxis(AxisName.X, Interval(noon, noon + timedelta(hours=2))),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: RegularAxis(AxisName.T, noon, timedelta(hours=1), 2, False),
+        }
+    )
+    with pytest.raises(ValueError, match="no x within the requested bounds"):
+        ground(request, footprint_domain(STOPPED))
+
+
+def test_ground_reads_the_answering_geometry_only_for_snapped_members() -> None:
+    """Totality: a snapped member needs a per-axis read, identity needs nothing at all."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+
+    class _NonSeparable(Domain):
+        def matches(self, other: Domain) -> bool:
+            return False
+
+        def intersect(self, other: Domain) -> Domain:
+            raise NotImplementedError
+
+    snapped = snapped_point_domain(start=noon, end=noon + timedelta(hours=2))
+    with pytest.raises(ValueError, match="separable"):
+        ground(snapped, _NonSeparable())
+
+    pinned = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: RegularAxis(AxisName.T, noon, timedelta(hours=1), 2, False),
+        }
+    )
+    grounded = ground(pinned, _NonSeparable())
+    assert isinstance(grounded, GridDomain)
+    assert grounded.axes == pinned.axes
+
+
+def test_ground_of_an_exact_request_is_identity() -> None:
+    """An exact request is already its own answer — the identity that collapses the mode branch."""
+    grid = point_timeline_domain()
+    assert ground(grid, footprint_domain(STOPPED)) is grid
+
+
+def test_ground_declines_a_declared_geometry_as_a_request() -> None:
+    """Only the request side of the seam grounds: a footprint is what one grounds *against*."""
+    with pytest.raises(ValueError, match="not a request"):
+        ground(footprint_domain(STOPPED), point_timeline_domain())
+
+
+def test_agreed_geometry_folds_resolutions_that_agree() -> None:
+    """One project answers with one geometry (ADR-0001) — disagreement is the decline."""
+    first = point_timeline_domain()
+    assert agreed_geometry([first, point_timeline_domain()]) is first
+    with pytest.raises(ValueError, match="one geometry"):
+        agreed_geometry([first, point_timeline_domain(hours=3)])
+    with pytest.raises(ValueError, match="no geometry"):
+        agreed_geometry([])
+
+
+def test_selection_domain_four_axes_and_axis_access() -> None:
+    domain = snapped_point_domain(
+        start=datetime(2026, 7, 11, 12, tzinfo=UTC),
+        end=datetime(2026, 7, 12, tzinfo=UTC),
+        lon=13.41,
+        lat=52.52,
+    )
+    assert isinstance(domain.axis(AxisName.T), SnappedAxis)
+    assert domain.axis(AxisName.X).extent.lower == 13.41
+    assert not isinstance(domain, EnumerableDomain)
+
+    with pytest.raises(ValueError, match="four axes"):
+        SelectionDomain(
+            axes={
+                AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
+                AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
+                AxisName.T: SnappedAxis(
+                    AxisName.T,
+                    Interval(datetime(2026, 7, 11, tzinfo=UTC), datetime(2026, 7, 12, tzinfo=UTC)),
+                ),
+            }
+        )
+    with pytest.raises(ValueError, match="name"):
+        SelectionDomain(
+            axes={
+                AxisName.X: RegularAxis(AxisName.X, 1.0, 1.0, 1, False),
+                AxisName.Y: RegularAxis(AxisName.Y, 2.0, 1.0, 1, False),
+                AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+                AxisName.T: SnappedAxis(
+                    AxisName.X,  # mismatched name
+                    Interval(datetime(2026, 7, 11, tzinfo=UTC), datetime(2026, 7, 12, tzinfo=UTC)),
+                ),
+            }
+        )
+
+
+def test_selection_domain_matches_totality() -> None:
+    domain = snapped_point_domain(
+        start=datetime(2026, 7, 11, 12, tzinfo=UTC),
+        end=datetime(2026, 7, 12, tzinfo=UTC),
+    )
+
+    class _NonSeparable(Domain):
+        def matches(self, other: Domain) -> bool:
+            return False
+
+        def intersect(self, other: Domain) -> Domain:
+            raise NotImplementedError
+
+    assert domain.matches(_NonSeparable()) is False
+
+
+def test_footprint_matches_snapped_selection_by_intersection() -> None:
+    """Admission needs no new engine code — Footprint.matches folds request-side SnappedAxis.matches."""
+    footprint = footprint_domain(STOPPED)
+    overlapping = snapped_point_domain(
+        start=datetime(2026, 7, 12, tzinfo=UTC),
+        end=datetime(2026, 7, 20, tzinfo=UTC),
+        lon=13.41,
+        lat=52.52,
+    )
+    no_overlap = snapped_point_domain(
+        start=datetime(2026, 7, 1, tzinfo=UTC),
+        end=datetime(2026, 7, 11, 11, tzinfo=UTC),
+        lon=13.41,
+        lat=52.52,
+    )
+    outside_xy = snapped_point_domain(
+        start=datetime(2026, 7, 12, tzinfo=UTC),
+        end=datetime(2026, 7, 13, tzinfo=UTC),
+        lon=13.41,
+        lat=100.0,
+    )
+    assert footprint.matches(overlapping) is True
+    assert footprint.matches(no_overlap) is False
+    assert footprint.matches(outside_xy) is False
 
 
 def test_grid_domain_mixed_z_enumeration() -> None:
@@ -274,7 +662,7 @@ def test_footprint_domain_matches_by_extent() -> None:
             AxisName.X: ContinuousAxis(AxisName.X, Interval(-10.0, 10.0)),
             AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-5.0, 5.0)),
             AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
-            AxisName.T: RollingAxis(AxisName.T, cadence, clock),
+            AxisName.T: RollingAxis(AxisName.T, cadence, clock, timedelta(hours=1)),
         }
     )
 

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..clock import Clock, floor_to
-from .domain import Axis, AxisName, Interval
+from .domain import Axis, AxisName, Interval, RegularAxis
 
 
 @dataclass(frozen=True)
@@ -48,12 +48,33 @@ class RollingAxis(Axis):
     isolated here (out of `domain.py`) with the cadence it reads. The `clock` is a build-time dependency
     the Provider injects into the single axis that rolls (never threaded through `project`); reconciling
     the anchor with the provider's real availability is concern #18 (ADR-0003 / ADR-0004).
+
+    `step` is how densely one run samples time - never the cadence, which times *runs* (a 6-hourly run
+    may publish an hourly series), so conflating them would make that provider undeclarable. Required
+    rather than optional, so a rolling axis never invents a lattice it does not have.
     """
 
     name: AxisName
     cadence: CadenceDef
     clock: Clock
+    step: timedelta
 
     @property
     def extent(self) -> Interval:
         return self.cadence.valid_time(self.clock.now())
+
+    def clip(self, bounds: Interval) -> RegularAxis | None:
+        """The window materialized as the lattice its series arrives on, restricted to `bounds`.
+
+        The one clock read of a pre-fetch resolution. Cells, not instants: a tick owns the span that
+        follows it, which is what makes a bound falling mid-hour keep its own hour.
+        """
+        window = self.extent
+        materialized = RegularAxis(
+            self.name,
+            window.lower,
+            self.step,
+            (window.upper - window.lower) // self.step + 1,  # type: ignore[operator]
+            cellular=True,
+        )
+        return materialized.clip(bounds)

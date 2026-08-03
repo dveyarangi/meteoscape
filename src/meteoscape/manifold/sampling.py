@@ -25,7 +25,29 @@ from .domain import (
 from .provenance import PerParameter, PerPoint, ProvenanceField, Uniform
 
 
+class Shortfall(ValueError):
+    """The crop target runs past the source's end — aligned, and short by a known count.
+
+    Distinct from a crop index arithmetic cannot express (off-phase, or a different step): here the
+    overlap is well-defined and the missing tail is countable, which is what lets a caller diagnose a
+    producer that delivered less than it declared.
+
+    **Raising is interim scaffolding**; `missing` is the durable part, because the answer to a shortfall
+    is to pad that tail as `present=False` rather than to fail (concern #30).
+    """
+
+    def __init__(self, axis: AxisName, missing: int) -> None:
+        super().__init__(f"crop target runs {missing} cell(s) past the source on {axis.value}")
+        self.axis = axis
+        self.missing = missing
+
+
 def _aligned_offsets(outer: GridDomain, inner: GridDomain) -> dict[AxisName, int] | None:
+    """Per-axis start index of `inner` within `outer` — `None` when no index arithmetic expresses it.
+
+    `Shortfall` when the two agree on phase but `outer` ends first: a different failure, reported
+    rather than collapsed into the unimplementable one.
+    """
     offsets: dict[AxisName, int] = {}
     for name in AXIS_ORDER:
         outer_axis = outer.axes[name]
@@ -39,6 +61,9 @@ def _aligned_offsets(outer: GridDomain, inner: GridDomain) -> dict[AxisName, int
         offset = sub_lattice_offset(outer_axis, inner_axis)
         if offset is None:
             return None
+        missing = offset + inner_axis.count - outer_axis.count
+        if missing > 0:
+            raise Shortfall(name, missing)
         offsets[name] = offset
     return offsets
 

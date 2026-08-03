@@ -1,21 +1,15 @@
-"""The `Normalizer` protocol + shared native→canonical conversion utilities.
+"""Shared native→canonical conversion edges.
 
-A Normalizer maps a vendor's shape to canonical *semantics* (parameter identity, units, time
-encoding) in native geometry - vendor knowledge, so it lives inside a Provider. The Provider authors
-`Provenance` and passes it in; the Normalizer does not take the request Selection (homogenization is
-the Reservoir's read-back). Returns one or more native `Coverage` records grouped by shared native
-Domain ([ADR-0006](../../../docs/adr/0006-materialization-granularity-and-store-shape.md)).
-
-Conversion factors here are shared by provider normalizers and seed the planned unit catalogue.
+Vendor quantities are converted before anything downstream sees a value, at the shape wrapper that
+executes a producer's declared tap table ([parameters.md](../../../docs/parameters.md)). Both kinds of
+edge live here — a scale factor, and a transform between quantities — because neither is vendor
+knowledge: every vendor publishing wind as a speed and a bearing means the same thing by it. These are
+the seed of a verified conversion catalogue; until it exists, each edge is hand-declared per tap.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-from typing import Protocol, runtime_checkable
-
-from ...manifold.core import Coverage
-from ...manifold.provenance import Provenance
+import math
 
 KMH_TO_MS = 1.0 / 3.6
 
@@ -25,6 +19,15 @@ def kmh_to_ms(value: float) -> float:
     return value * KMH_TO_MS
 
 
-@runtime_checkable
-class Normalizer(Protocol):
-    def normalize(self, raw: object, provenance: Provenance) -> Sequence[Coverage]: ...
+def u_component(speed_ms: float, direction_deg: float) -> float:
+    """Eastward wind from speed and meteorological direction — degrees FROM which the wind blows.
+
+    That convention is the whole content of the minus sign: a wind *from* the east (90°) blows
+    westward, so its `u` is negative. `wind_from_uv` inverts this pair on the read side.
+    """
+    return -speed_ms * math.sin(math.radians(direction_deg))
+
+
+def v_component(speed_ms: float, direction_deg: float) -> float:
+    """Northward wind from speed and meteorological direction (see `u_component`)."""
+    return -speed_ms * math.cos(math.radians(direction_deg))

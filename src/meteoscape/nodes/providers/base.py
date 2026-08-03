@@ -1,7 +1,7 @@
 """Provider leaf Manifold: the composable fetch pipeline.
 
-A vendor-specific leaf that contributes native, normalized Coverages: adapter (auth / HTTP /
-endpoints) + its Normalizer + `CadenceDef` / grid declarations, with a `Clock` injected at build.
+A vendor-specific leaf that contributes native, normalized Coverages: a vendor `Probe` (auth / HTTP /
+endpoints / envelope) behind a shape wrapper that owns the geometry, with a `Clock` injected at build.
 Stateless, no storage, no children; authors the Coverage's provenance (a single-fetch `Uniform` plane)
 at fetch. Its `capability` is a stable `FootprintCapability` leaf built once from the cadence + clock:
 per-parameter footprints with static spatial / Z bounds and a clock-anchored `RollingAxis` on

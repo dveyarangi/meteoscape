@@ -4,8 +4,10 @@ representation.
 Representations vary behind one interface: separability is a *facet* (not the base type) and
 regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
 curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
-an axis. v1 ships `GridDomain` (the enumerable grid — mixed `EnumerableAxis` per axis) and
-`FootprintDomain` (a continuous provider footprint); `CurvilinearDomain` and `intersect` are declared seams.
+an axis. v1 ships `GridDomain` (the enumerable grid — mixed `EnumerableAxis` per axis),
+`FootprintDomain` (a continuous provider footprint), and `SelectionDomain` (the request-side form, which
+may carry bounds-only members); `ground` resolves the third against either of the first two.
+`CurvilinearDomain` and `intersect` are declared seams.
 
 See ADR-0002.
 """
@@ -13,10 +15,11 @@ See ADR-0002.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+from math import ceil, floor
 from typing import Protocol, runtime_checkable
 
 type Coordinate = float | datetime
@@ -54,7 +57,17 @@ class Interval[C: (float, datetime)]:
         return self.lower <= other.lower and other.upper <= self.upper
 
     def intersects(self, other: Interval[C]) -> bool:
+        if isinstance(self.lower, datetime) != isinstance(other.lower, datetime):
+            # Cross-kind pairing escapes the type var where an axis kind is temporal but its *name*
+            # is spatial (a snapped X): the two spans occupy different lines, so they never meet.
+            return False
         return self.lower <= other.upper and other.lower <= self.upper
+
+    def intersection(self, other: Interval[C]) -> Interval[C] | None:
+        """The span both cover - `None` when they do not meet; boundary-touch yields an instant."""
+        if not self.intersects(other):
+            return None
+        return Interval(max(self.lower, other.lower), min(self.upper, other.upper))
 
 
 @dataclass(frozen=True)
@@ -99,6 +112,16 @@ class Axis(ABC):
     def matches(self, declared: Axis) -> bool:
         """Whether this *requested* axis matches a *declared* axis — default: full containment."""
         return declared.extent.contains(self.extent)  # type: ignore[arg-type]
+
+    @abstractmethod
+    def clip(self, bounds: Interval) -> Axis | None:
+        """The part of me within `bounds` - `None` when none of me is.
+
+        Pure axis algebra: what comes back is whatever the restriction leaves - a span stays a span, a
+        lattice stays a lattice at its own phase, a clock-relative window materializes. Needing *cells*
+        is a property of `ground`, so the caller that needs them checks, never this (ADR-0002).
+        """
+        ...
 
 
 class EnumerableAxis(Axis):
@@ -148,6 +171,24 @@ class RegularAxis(EnumerableAxis):
         upper = self.anchor + self.step * (self.count - 1)  # type: ignore[operator]
         return Interval(self.anchor, upper)  # type: ignore[arg-type]
 
+    def clip(self, bounds: Interval) -> RegularAxis | None:
+        # One expression for both coordinate kinds: subtracting coordinates gives a step-like
+        # quantity, and dividing by the step gives a plain float either way (concern #23).
+        low = (bounds.lower - self.anchor) / self.step  # type: ignore[operator]
+        # A cellular tick owns the span that follows it, so a bound inside a cell keeps that cell;
+        # an instant tick is kept only when the bounds reach the tick itself.
+        first = max(0, floor(low) if self.cellular else ceil(low))
+        last = min(self.count - 1, floor((bounds.upper - self.anchor) / self.step))  # type: ignore[operator]
+        if first > last:
+            return None
+        return RegularAxis(
+            self.name,
+            self.anchor + first * self.step,  # type: ignore[operator]
+            self.step,
+            last - first + 1,
+            self.cellular,
+        )
+
     def __getitem__(self, index: int) -> Cell:
         if not 0 <= index < self.count:
             raise IndexError(index)
@@ -178,6 +219,10 @@ class IntervalAxis(EnumerableAxis):
     def extent(self) -> Interval:
         return self.interval
 
+    def clip(self, bounds: Interval) -> IntervalAxis | None:
+        """One cell is never subdivided: it survives whole, or not at all."""
+        return self if self.interval.intersects(bounds) else None
+
     def __getitem__(self, index: int) -> Cell:
         if index != 0:
             raise IndexError(index)
@@ -205,7 +250,8 @@ class ContinuousAxis(Axis):
 
     The unmarked, static continuous case; the clock-anchored `valid_time` specialization (`RollingAxis`)
     lives with the cadence it reads (`cadence.py`), keeping this module pure geometry. Z footprints use
-    `RegularAxis` (point) or `IntervalAxis` (column), not this type.
+    `RegularAxis` (point) or `IntervalAxis` (column), not this type. Also the base of the request
+    `SnappedAxis` (which only overrides `matches`).
     """
 
     name: AxisName
@@ -214,6 +260,40 @@ class ContinuousAxis(Axis):
     @property
     def extent(self) -> Interval:
         return self.interval
+
+    def clip(self, bounds: Interval) -> ContinuousAxis | None:
+        """A span restricted is still a span - no cells appear from nowhere."""
+        overlap = self.interval.intersection(bounds)
+        return None if overlap is None else ContinuousAxis(self.name, overlap)
+
+
+@dataclass(frozen=True)
+class SnappedAxis(ContinuousAxis):
+    """Bounds-only request axis: the resolver's grid supplies anchor and step (ADR-0002).
+
+    `ContinuousAxis` with intersective `matches` — the span-shaped dual of `VantageAxis`.
+    Temporal-only: the narrowed `interval` makes a float-coordinate snapped axis a type error.
+    """
+
+    interval: Interval[datetime]
+
+    def __post_init__(self) -> None:
+        # tz-awareness is invisible to the type system; ordering is a value rule
+        for edge in (self.interval.lower, self.interval.upper):
+            if edge.tzinfo is None:
+                raise ValueError(
+                    f"SnappedAxis bounds must be timezone-aware datetimes, got {edge!r}"
+                )
+        if self.interval.upper < self.interval.lower:
+            raise ValueError(
+                f"SnappedAxis lower bound {self.interval.lower} exceeds upper {self.interval.upper}"
+            )
+
+    def matches(self, declared: Axis) -> bool:
+        return self.interval.intersects(declared.extent)  # type: ignore[arg-type]
+
+    # `clip` is inherited: a snapped axis is never *asked* for a part of itself — it is the bounds
+    # another axis is clipped to (`ground`).
 
 
 LATTICE_TOLERANCE = 1e-9
@@ -253,15 +333,17 @@ def decode_flat_index(axis_counts: Mapping[AxisName, int], index: int) -> dict[A
 
 
 def sub_lattice_offset(outer: RegularAxis, inner: RegularAxis) -> int | None:
-    """Start index of `inner` within `outer`, or `None` if off-phase / incompatible.
+    """Start index of `inner`'s anchor on `outer`'s lattice, or `None` when it does not sit on one.
 
     Requires identical `step`, and `inner.anchor` on the outer lattice within float tolerance
-    (time axis uses exact `timedelta` arithmetic — no tolerance).
+    (time axis uses exact `timedelta` arithmetic — no tolerance). Whether `outer` reaches far enough
+    to *cover* `inner` is the caller's question: a lattice that agrees on phase and ends early is a
+    countable shortfall, not a misalignment.
 
     TODO(refactor): split spatial vs temporal `RegularAxis` types so this dispatch is not an
     `isinstance` crawl on the hot path — see concern #23.
     """
-    if outer.step != inner.step or inner.count > outer.count:
+    if outer.step != inner.step:
         return None
     delta = inner.anchor - outer.anchor  # type: ignore[operator]
     step = outer.step
@@ -287,8 +369,6 @@ def sub_lattice_offset(outer: RegularAxis, inner: RegularAxis) -> int | None:
         aligned = outer.anchor + step * offset
         if abs(inner.anchor - aligned) > LATTICE_TOLERANCE:
             return None
-    if offset + inner.count > outer.count:
-        return None
     return offset
 
 
@@ -342,6 +422,17 @@ def first_incomparable(
     return None
 
 
+def _admits_per_axis(declared: Mapping[AxisName, Axis], requested: Domain) -> bool:
+    """The declared-side admission fold every separable representation shares.
+
+    Total the way `Domain.matches` must be: a non-separable request is a survivable `False`, never a
+    crash, so an unknown representation skips a candidate instead of failing the loop (ADR-0002).
+    """
+    if not isinstance(requested, Separable):
+        return False
+    return all(requested.axis(name).matches(declared[name]) for name in AXIS_ORDER)
+
+
 def as_separable(domain: Domain) -> Separable | None:
     """The domain as `Separable`, or `None` — pure geometry, no error text, no producer key.
 
@@ -356,7 +447,8 @@ class Domain(ABC):
     """An abstract coordinate set over the 4 axes - continuous or enumerable.
 
     Only the set-algebra (`matches` / `intersect`) is universal; enumeration is the `EnumerableDomain`
-    refinement, so *being* one is the enumerability discriminator (ADR-0002).
+    refinement, so *being* one is the enumerability discriminator (ADR-0002). Resolution is **not**
+    universal - being a *request* is a property of some domains only, so `ground` is a function.
     """
 
     @abstractmethod
@@ -407,9 +499,7 @@ class GridDomain(EnumerableDomain):
         object.__setattr__(self, "_size", size)
 
     def matches(self, other: Domain) -> bool:
-        if not isinstance(other, Separable):
-            return False
-        return all(other.axis(name).matches(self.axes[name]) for name in AXIS_ORDER)
+        return _admits_per_axis(self.axes, other)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError
@@ -449,15 +539,99 @@ class FootprintDomain(Domain):
         _validate_four_axes(self.axes)
 
     def matches(self, other: Domain) -> bool:
-        if not isinstance(other, Separable):
-            return False
-        return all(other.axis(name).matches(self.axes[name]) for name in AXIS_ORDER)
+        return _admits_per_axis(self.axes, other)
 
     def intersect(self, other: Domain) -> Domain:
         raise NotImplementedError
 
     def axis(self, name: AxisName) -> Axis:
         return self.axes[name]
+
+
+type SelectableAxis = RegularAxis | VantageAxis | SnappedAxis
+
+
+@dataclass(frozen=True)
+class SelectionDomain(Domain):
+    """The request-side representation: one `SelectableAxis` per axis, so a member may state bounds only.
+
+    `Separable` structurally but never `Enumerable` — it has no cells until `ground` resolves it, and
+    nothing narrows to it nominally (`Selection.domain` stays base `Domain`), so a `GridDomain` remains
+    an equally legal request. See ADR-0002.
+    """
+
+    axes: Mapping[AxisName, SelectableAxis]
+
+    def __post_init__(self) -> None:
+        _validate_four_axes(self.axes)
+
+    def matches(self, other: Domain) -> bool:
+        return _admits_per_axis(self.axes, other)
+
+    def intersect(self, other: Domain) -> Domain:
+        raise NotImplementedError
+
+    def axis(self, name: AxisName) -> SelectableAxis:
+        return self.axes[name]
+
+
+def ground(request: Domain, against: Domain) -> EnumerableDomain:
+    """The answer geometry `request` asks for, resolved against `against`'s geometry.
+
+    ADR-0001's shape-correspondence as one operation: pinned members pass through by identity, a
+    snapped member takes what the answering axis clips itself to. The answering read is per-axis and
+    happens only for snapped members, so a fully pinned request resolves against *anything* - identity
+    reads nothing.
+
+    Deliberately a function rather than a `Domain` method, so that no caller holding a base `Domain`
+    has to branch on representation to learn whether resolution is needed; it becomes a method when the
+    request side narrows to one representation (ADR-0002, concern #42).
+
+    `ValueError` when a member cannot resolve: *why* that matters is the caller's knowledge, not this
+    layer's - a vendor answering a foreign window and a mis-quantized store are different failures.
+    """
+    if isinstance(request, EnumerableDomain):
+        return request  # an exact request is already its own answer
+    if not isinstance(request, SelectionDomain):
+        raise ValueError(f"{type(request).__name__} is a declared geometry, not a request")
+
+    answering = as_separable(against)
+    axes: dict[AxisName, EnumerableAxis] = {}
+    for name in AXIS_ORDER:
+        member = request.axes[name]
+        if not isinstance(member, SnappedAxis):
+            axes[name] = member
+            continue
+        if answering is None:
+            raise ValueError(f"a snapped {name.value} grounds only against separable geometry")
+        part = answering.axis(name).clip(member.interval)
+        if part is None:
+            raise ValueError(f"no {name.value} within the requested bounds")
+        if not isinstance(part, EnumerableAxis):
+            # Grounding is what needs cells — a declared span has none to snap to.
+            raise ValueError(
+                f"a snapped {name.value} needs cells; the answering {name.value} is a span"
+            )
+        axes[name] = part
+    return GridDomain(axes=axes)
+
+
+def agreed_geometry(grounded: Iterable[EnumerableDomain]) -> EnumerableDomain:
+    """The single geometry a set of resolutions agree on — `ValueError` when they disagree.
+
+    One `project` answers with one geometry (ADR-0001), so several declared footprints, or several
+    native records, may only differ on an axis the request left entirely to the producer — which is
+    `ANY`, and does not exist yet.
+    """
+    agreed: EnumerableDomain | None = None
+    for resolution in grounded:
+        if agreed is None:
+            agreed = resolution
+        elif resolution != agreed:
+            raise ValueError("resolutions disagree; one answer carries one geometry")
+    if agreed is None:
+        raise ValueError("no geometry to agree on")
+    return agreed
 
 
 class CurvilinearDomain(Domain):

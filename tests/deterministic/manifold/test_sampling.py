@@ -21,6 +21,7 @@ from meteoscape.manifold.domain import (
     RegularAxis,
 )
 from meteoscape.manifold.provenance import AtomicOrigin, PerParameter, Provenance, Uniform
+from meteoscape.manifold.sampling import Shortfall
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_U
 
@@ -204,6 +205,27 @@ async def test_off_phase_and_continuous_raise_not_implemented() -> None:
     )
     with pytest.raises(NotImplementedError, match="continuous"):
         await record.project(Selection(domain=continuous, parameters=frozenset({AIR_TEMPERATURE})))
+
+
+@pytest.mark.asyncio
+async def test_target_running_past_the_source_is_a_counted_shortfall() -> None:
+    """Aligned but unmet: the source ran out, which is diagnosable — not an unimplementable crop."""
+    domain = point_timeline_domain(hours=2)
+    record = _record(domain)
+    longer = GridDomain(
+        axes={
+            AxisName.X: domain.axes[AxisName.X],
+            AxisName.Y: domain.axes[AxisName.Y],
+            AxisName.Z: domain.axes[AxisName.Z],
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, 1, tzinfo=UTC), timedelta(hours=1), 3, False
+            ),
+        }
+    )
+    with pytest.raises(Shortfall) as caught:
+        await record.project(Selection(domain=longer, parameters=frozenset({AIR_TEMPERATURE})))
+    assert caught.value.axis is AxisName.T
+    assert caught.value.missing == 2
 
 
 @pytest.mark.asyncio

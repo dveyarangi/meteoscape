@@ -1,35 +1,21 @@
-"""Open-Meteo vendor leaf — provider, normalizer, cadence, and catalogue `MANIFEST`.
+"""Open-Meteo vendor leaf — its `Probe`, its declarations, and the catalogue `MANIFEST`.
 
-Serves the 6 canonical parameters via a `PointSeriesTap` table, mapping vendor HTTP responses into
-native timeline records (see `timeline.py`).
+Serves the 6 canonical parameters as a point plus an hourly series, so it contributes a
+`TimelineProbe` and a tap table to the shape in [timeline.py](./timeline.py) and no algebra of its
+own: one query out, one envelope parsed, everything geometric decided by what is declared here.
 """
 
 from __future__ import annotations
 
-import math
-from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 
 from ...clock import Clock
 from ...config import StoreSpec
-from ...errors import CapabilityMismatch, RuntimeFailure
+from ...errors import RuntimeFailure
 from ...identity import SourceKey
-from ...manifold.cadence import CadenceDef, RollingAxis
-from ...manifold.capability import EnumerableCapability, FootprintCapability
-from ...manifold.core import Coverage, Manifold, Selection
-from ...manifold.coverage import CoverageRecord
-from ...manifold.data import ParameterData
-from ...manifold.domain import (
-    AxisName,
-    ContinuousAxis,
-    FootprintDomain,
-    GridDomain,
-    Interval,
-    RegularAxis,
-    Separable,
-)
-from ...manifold.provenance import AtomicOrigin, Provenance, Uniform
+from ...manifold.cadence import CadenceDef
+from ...manifold.domain import Interval
 from ...parameters import (
     AIR_TEMPERATURE,
     CLOUD_COVER,
@@ -37,23 +23,23 @@ from ...parameters import (
     RELATIVE_HUMIDITY,
     WIND_U,
     WIND_V,
-    ParameterDef,
     ParameterId,
 )
 from ..catalog.paramtable import ParameterTable
 from ..catalog.providers import OfferingSpec, ProviderManifest
 from .base import FetchRequest, HttpxTransport, Provider, Transport
-from .normalization import kmh_to_ms
+from .normalization import u_component, v_component
 from .timeline import (
     HOURLY_STEP,
     Z_2M,
     Z_10M,
     Z_COLUMN,
     Z_SURFACE,
-    AxisSpec,
     PointSeriesTap,
+    TapTable,
+    TimelineDelivery,
+    TimelineProvider,
     VendorVar,
-    axis,
     passthrough,
     pointwise,
 )
@@ -74,337 +60,136 @@ _CANONICAL_IDS: frozenset[ParameterId] = frozenset(
     {AIR_TEMPERATURE, RELATIVE_HUMIDITY, WIND_U, WIND_V, PRECIPITATION, CLOUD_COVER}
 )
 
-
-def _u_component(speed_ms: float, direction_deg: float) -> float:
-    # Meteorological direction: degrees FROM which the wind blows.
-    rad = math.radians(direction_deg)
-    return -speed_ms * math.sin(rad)
-
-
-def _v_component(speed_ms: float, direction_deg: float) -> float:
-    return -speed_ms * math.cos(math.radians(direction_deg))
-
-
-_wind_u = pointwise("wind_speed_10m", "wind_direction_10m", fn=_u_component)
-_wind_v = pointwise("wind_speed_10m", "wind_direction_10m", fn=_v_component)
+_wind_u = pointwise("wind_speed_10m", "wind_direction_10m", fn=u_component)
+_wind_v = pointwise("wind_speed_10m", "wind_direction_10m", fn=v_component)
 
 _WIND_VARS = (
     VendorVar("wind_speed_10m", "km/h"),
     VendorVar("wind_direction_10m", "°"),
 )
 
-TAPS: tuple[PointSeriesTap, ...] = (
-    PointSeriesTap(
-        produces=AIR_TEMPERATURE,
-        vendor_vars=(VendorVar("temperature_2m", "°C"),),
-        z=Z_2M,
-        decode=passthrough("temperature_2m"),
-    ),
-    PointSeriesTap(
-        produces=RELATIVE_HUMIDITY,
-        vendor_vars=(VendorVar("relative_humidity_2m", "%"),),
-        z=Z_2M,
-        decode=passthrough("relative_humidity_2m"),
-    ),
-    PointSeriesTap(
-        produces=WIND_U,
-        vendor_vars=_WIND_VARS,
-        z=Z_10M,
-        decode=_wind_u,
-    ),
-    PointSeriesTap(
-        produces=WIND_V,
-        vendor_vars=_WIND_VARS,
-        z=Z_10M,
-        decode=_wind_v,
-    ),
-    PointSeriesTap(
-        produces=PRECIPITATION,
-        vendor_vars=(VendorVar("precipitation", "mm"),),
-        z=Z_SURFACE,
-        decode=passthrough("precipitation"),
-    ),
-    PointSeriesTap(
-        produces=CLOUD_COVER,
-        vendor_vars=(VendorVar("cloud_cover", "%"),),
-        z=Z_COLUMN,
-        decode=passthrough("cloud_cover"),
-    ),
+TAPS = TapTable(
+    (
+        PointSeriesTap(
+            produces=AIR_TEMPERATURE,
+            vendor_vars=(VendorVar("temperature_2m", "°C"),),
+            z=Z_2M,
+            decode=passthrough("temperature_2m"),
+        ),
+        PointSeriesTap(
+            produces=RELATIVE_HUMIDITY,
+            vendor_vars=(VendorVar("relative_humidity_2m", "%"),),
+            z=Z_2M,
+            decode=passthrough("relative_humidity_2m"),
+        ),
+        PointSeriesTap(
+            produces=WIND_U,
+            vendor_vars=_WIND_VARS,
+            z=Z_10M,
+            decode=_wind_u,
+        ),
+        PointSeriesTap(
+            produces=WIND_V,
+            vendor_vars=_WIND_VARS,
+            z=Z_10M,
+            decode=_wind_v,
+        ),
+        PointSeriesTap(
+            produces=PRECIPITATION,
+            vendor_vars=(VendorVar("precipitation", "mm"),),
+            z=Z_SURFACE,
+            decode=passthrough("precipitation"),
+        ),
+        PointSeriesTap(
+            produces=CLOUD_COVER,
+            vendor_vars=(VendorVar("cloud_cover", "%"),),
+            z=Z_COLUMN,
+            decode=passthrough("cloud_cover"),
+        ),
+    )
 )
 
 
-class OpenMeteoNormalizer:
-    """Maps Open-Meteo forecast JSON → native-geometry records (semantics only; no Selection)."""
+class OpenMeteoProbe:
+    """Open-Meteo's forecast endpoint: one query built, one envelope parsed, nothing interpreted.
 
-    def __init__(self, parameters: ParameterTable) -> None:
-        self._parameters = parameters
+    Both halves are vendor knowledge and nothing else — how this API spells a point and a span, and
+    where it puts the series. It never sees the request, so it cannot decide what is servable.
+    """
 
-    def normalize(
+    reports_units = True
+    """`hourly_units` is published on every response, so the wrapper checks it against the taps."""
+
+    def __init__(self, transport: Transport) -> None:
+        self._transport = transport
+
+    async def retrieve(
         self,
-        raw: object,
-        provenance: Provenance,
         *,
-        parameters: frozenset[ParameterId] | None = None,
-    ) -> Sequence[Coverage]:
+        longitude: float,
+        latitude: float,
+        over: Interval[datetime],
+        variables: Sequence[str],
+    ) -> TimelineDelivery:
+        raw = await self._transport.fetch(
+            self._query(longitude=longitude, latitude=latitude, over=over, variables=variables)
+        )
+        return self._parse(raw, variables)
+
+    def _query(
+        self,
+        *,
+        longitude: float,
+        latitude: float,
+        over: Interval[datetime],
+        variables: Sequence[str],
+    ) -> FetchRequest:
+        """The span as this vendor spells one: `start_hour` / `end_hour`, both inclusive, in UTC."""
+        return FetchRequest(
+            path="/v1/forecast",
+            params={
+                "latitude": _fmt_coord(latitude),
+                "longitude": _fmt_coord(longitude),
+                "hourly": ",".join(variables),
+                "start_hour": _fmt_hour(over.lower),
+                "end_hour": _fmt_hour(over.upper),
+                "timezone": "UTC",
+            },
+        )
+
+    def _parse(self, raw: object, variables: Sequence[str]) -> TimelineDelivery:
+        """The envelope as ticks plus named series — vendor keys, vendor units, vendor length.
+
+        The echoed `latitude` / `longitude` are deliberately dropped: the point is the one asked for,
+        and re-deriving it from the response would answer a question already settled.
+        """
         if not isinstance(raw, Mapping):
             raise RuntimeFailure("open-meteo response is not a JSON object")
-
-        wanted = _CANONICAL_IDS if parameters is None else parameters & _CANONICAL_IDS
-        taps = tuple(tap for tap in TAPS if tap.produces in wanted)
-        if not taps:
-            raise RuntimeFailure("open-meteo normalize received no recognised parameters")
-
         try:
-            latitude = float(raw["latitude"])
-            longitude = float(raw["longitude"])
             hourly = raw["hourly"]
             units = raw["hourly_units"]
-            times_raw = hourly["time"]
-        except (KeyError, TypeError, ValueError) as exc:
+            stamps = hourly["time"]
+        except (KeyError, TypeError) as exc:
             raise RuntimeFailure("open-meteo response missing required forecast fields") from exc
 
         if not isinstance(hourly, Mapping) or not isinstance(units, Mapping):
             raise RuntimeFailure("open-meteo hourly payload is malformed")
-        if not isinstance(times_raw, Sequence) or len(times_raw) == 0:
+        if not isinstance(stamps, Sequence) or len(stamps) == 0:
             raise RuntimeFailure("open-meteo hourly time axis is malformed")
 
-        times = [_parse_utc_hour(stamp) for stamp in times_raw]
-        for i, tick in enumerate(times):
-            if tick != times[0] + HOURLY_STEP * i:
-                raise RuntimeFailure("open-meteo hourly time axis is not hourly")
-        n = len(times)
+        valid_time = [_parse_utc_hour(stamp) for stamp in stamps]
+        series: dict[str, Sequence[float | None]] = {}
+        for name in variables:
+            values = hourly.get(name)
+            if not isinstance(values, Sequence) or len(values) != len(valid_time):
+                raise RuntimeFailure(f"open-meteo hourly array malformed for {name}")
+            series[name] = [_optional_float(cell, name) for cell in values]
 
-        converted = _converted_vendor_arrays(hourly, units, taps, n)
-
-        groups: dict[AxisSpec, list[PointSeriesTap]] = defaultdict(list)
-        for tap in taps:
-            groups[tap.z].append(tap)
-
-        records: list[Coverage] = []
-        for z_spec, group in groups.items():
-            ranges: dict[ParameterId, ParameterData] = {}
-            defs: dict[ParameterId, ParameterDef] = {}
-            for tap in group:
-                data = tap.decode({var.name: converted[var.name] for var in tap.vendor_vars})
-                if len(data.values) != n:
-                    raise RuntimeFailure(
-                        f"open-meteo decode length mismatch for {tap.produces}: "
-                        f"{len(data.values)} != {n}"
-                    )
-                ranges[tap.produces] = data
-                defs[tap.produces] = self._parameters.get(tap.produces)
-
-            domain = GridDomain(
-                axes={
-                    AxisName.X: RegularAxis(AxisName.X, longitude, 1.0, 1, False),
-                    AxisName.Y: RegularAxis(AxisName.Y, latitude, 1.0, 1, False),
-                    AxisName.Z: axis(z_spec),
-                    AxisName.T: RegularAxis(AxisName.T, times[0], HOURLY_STEP, n, True),
-                }
-            )
-            records.append(
-                CoverageRecord(
-                    capability=EnumerableCapability(domain=domain, parameters=defs),
-                    ranges=ranges,
-                    provenance=Uniform(provenance),
-                )
-            )
-        return records
-
-
-class OpenMeteoProvider(Provider):
-    """Open-Meteo forecast leaf — Selection → fetch-once → native records → assemble on `sel.domain`."""
-
-    def __init__(
-        self,
-        *,
-        transport: Transport,
-        clock: Clock,
-        parameters: ParameterTable,
-        dataset: str = BEST_MATCH,
-        cadence: CadenceDef = CADENCE,
-        normalizer: OpenMeteoNormalizer | None = None,
-    ) -> None:
-        self._transport = transport
-        self._clock = clock
-        self._parameters = parameters
-        self._dataset = dataset
-        self._cadence = cadence
-        self._normalizer = normalizer or OpenMeteoNormalizer(parameters)
-        self._source_key = SourceKey(provider=PROVIDER_ID, dataset=dataset)
-        self._footprints = _build_footprints(clock, cadence, parameters)
-        self._capability = FootprintCapability(footprints=self._footprints)
-
-    async def project(self, selection: Selection) -> Manifold:
-        taps = tuple(tap for tap in TAPS if tap.produces in selection.parameters)
-        if not taps:
-            raise RuntimeFailure("open-meteo Selection requests no served parameters")
-        request = _forecast_request(selection, taps)
-        raw = await self._transport.fetch(request)
-        now = self._clock.now()
-        provenance = Provenance(
-            origin=AtomicOrigin(self._source_key, self._cadence.anchor(now)),
-            fetched_at=now,
-            expiration=self._cadence.expiration(now),
+        return TimelineDelivery(
+            valid_time=valid_time,
+            series=series,
+            reported_units={name: token for name, token in units.items() if isinstance(token, str)},
         )
-        records = self._normalizer.normalize(
-            raw, provenance, parameters=frozenset(tap.produces for tap in taps)
-        )
-        return _assemble(records, selection)
-
-    @property
-    def capability(self) -> FootprintCapability:
-        return self._capability
-
-    @property
-    def source_key(self) -> SourceKey:
-        return self._source_key
-
-
-def _build_footprints(
-    clock: Clock,
-    cadence: CadenceDef,
-    parameters: ParameterTable,
-) -> Mapping[ParameterId, tuple[ParameterDef, FootprintDomain]]:
-    """The leaf's own geometry, at its concrete type.
-
-    The `Capability` widens these to `Domain` — it is the abstract advertisement, and a producer
-    declaring curvilinear geometry advertises through the same field ([#12](../concerns.md), source
-    role). The provider keeps the narrow map because it *knows* what it built.
-    """
-    footprints: dict[ParameterId, tuple[ParameterDef, FootprintDomain]] = {}
-    xy_t = {
-        AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
-        AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
-        AxisName.T: RollingAxis(AxisName.T, cadence, clock),
-    }
-    for tap in TAPS:
-        footprint = FootprintDomain(
-            axes={**xy_t, AxisName.Z: axis(tap.z)},
-        )
-        footprints[tap.produces] = (parameters.get(tap.produces), footprint)
-    return footprints
-
-
-def _forecast_request(selection: Selection, taps: Sequence[PointSeriesTap]) -> FetchRequest:
-    domain = selection.domain
-    if not isinstance(domain, Separable):
-        # Unservable shape, not an upstream fault — `RuntimeFailure` is for 5xx / timeout /
-        # malformed vendor payloads. Unreachable through the Arbiter (`serves` already declines a
-        # non-separable request), so this guards direct callers.
-        raise CapabilityMismatch("open-meteo cannot serve a non-separable Selection domain")
-
-    lon = domain.axis(AxisName.X).extent.lower
-    lat = domain.axis(AxisName.Y).extent.lower
-    t_extent = domain.axis(AxisName.T).extent
-    if not isinstance(lon, float) or not isinstance(lat, float):
-        raise RuntimeFailure("open-meteo Selection X/Y must be spatial floats")
-    if not isinstance(t_extent.lower, datetime) or not isinstance(t_extent.upper, datetime):
-        raise RuntimeFailure("open-meteo Selection T must be datetime")
-
-    hourly_vars: list[str] = []
-    seen: set[str] = set()
-    for tap in taps:
-        for var in tap.vendor_vars:
-            if var.name not in seen:
-                seen.add(var.name)
-                hourly_vars.append(var.name)
-
-    return FetchRequest(
-        path="/v1/forecast",
-        params={
-            "latitude": _fmt_coord(lat),
-            "longitude": _fmt_coord(lon),
-            "hourly": ",".join(hourly_vars),
-            "start_hour": _fmt_hour(t_extent.lower),
-            "end_hour": _fmt_hour(t_extent.upper),
-            "timezone": "UTC",
-        },
-    )
-
-
-def _assemble(records: Sequence[Coverage], selection: Selection) -> CoverageRecord:
-    """Project native records into one Coverage on `sel.domain` by value passthrough and Z relabeling."""
-    if not isinstance(selection.domain, GridDomain):
-        # Same category as the separability guard above: a request shape this leaf cannot serve.
-        raise CapabilityMismatch("open-meteo can only assemble onto a GridDomain selection")
-
-    ranges: dict[ParameterId, ParameterData] = {}
-    parameters: dict[ParameterId, ParameterDef] = {}
-    provenance_field = None
-    n = len(selection.domain)
-
-    for record in records:
-        if provenance_field is None:
-            provenance_field = record.provenance
-        for pid, data in record.ranges.items():
-            if pid not in selection.parameters:
-                continue
-            if len(data.values) != n:
-                raise RuntimeFailure(
-                    f"open-meteo native record length {len(data.values)} "
-                    f"does not match selection size {n} for {pid}"
-                )
-            ranges[pid] = data
-            parameters[pid] = record.capability.parameters[pid]
-
-    missing = selection.parameters - ranges.keys()
-    if missing:
-        raise RuntimeFailure(f"open-meteo assemble missing parameter(s): {sorted(missing)}")
-    if provenance_field is None:
-        raise RuntimeFailure("open-meteo assemble received no native records")
-
-    return CoverageRecord(
-        capability=EnumerableCapability(
-            domain=selection.domain,
-            parameters=parameters,
-        ),
-        ranges=ranges,
-        provenance=provenance_field,
-    )
-
-
-def _converted_vendor_arrays(
-    hourly: Mapping[str, object],
-    units: Mapping[str, object],
-    taps: Sequence[PointSeriesTap],
-    n: int,
-) -> dict[str, list[float | None]]:
-    """Verify `hourly_units`, convert-on-ingest (wind km/h→m/s), return per-var series."""
-    needed: dict[str, VendorVar] = {}
-    for tap in taps:
-        for var in tap.vendor_vars:
-            needed[var.name] = var
-
-    out: dict[str, list[float | None]] = {}
-    for name, expected in needed.items():
-        reported = units.get(name)
-        if not isinstance(reported, str) or not _units_match(reported, expected.unit):
-            raise RuntimeFailure(
-                f"open-meteo unit mismatch for {name}: expected {expected.unit!r}, got {reported!r}"
-            )
-        raw_series = hourly.get(name)
-        if not isinstance(raw_series, Sequence) or len(raw_series) != n:
-            raise RuntimeFailure(f"open-meteo hourly array malformed for {name}")
-        series = [_optional_float(cell, name) for cell in raw_series]
-        if expected.unit == "km/h":
-            series = [None if v is None else kmh_to_ms(v) for v in series]
-        out[name] = series
-    return out
-
-
-def _units_match(reported: str, expected: str) -> bool:
-    if reported == expected:
-        return True
-    aliases = {
-        "°C": {"°C", "degC", "celsius"},
-        "degC": {"°C", "degC", "celsius"},
-        "%": {"%", "percent"},
-        "°": {"°", "degree", "degrees"},
-        "km/h": {"km/h", "kmh"},
-        "mm": {"mm"},
-    }
-    return reported in aliases.get(expected, {expected})
 
 
 def _optional_float(cell: object, name: str) -> float | None:
@@ -449,13 +234,16 @@ def build(
     clock: Clock,
     parameters: ParameterTable,
 ) -> Provider:
-    """Catalogue `build` face — constructs the real `HttpxTransport` (tests inject via ctor)."""
+    """Catalogue `build` face — composes the shape with this vendor's Probe and declarations."""
     del settings, secret_value  # keyless; no offering settings in v1
-    return OpenMeteoProvider(
-        transport=HttpxTransport(BASE_URL),
+    return TimelineProvider(
+        probe=OpenMeteoProbe(HttpxTransport(BASE_URL)),
+        taps=TAPS,
+        step=HOURLY_STEP,
+        cadence=CADENCE,
         clock=clock,
         parameters=parameters,
-        dataset=spec.name,
+        source_key=SourceKey(provider=PROVIDER_ID, dataset=spec.name),
     )
 
 

@@ -9,11 +9,14 @@ import pytest
 import respx
 from fastmcp import Client
 
+from fakes import snapped_point_domain
 from meteoscape.api.mcp_app import build_mcp_app
-from meteoscape.clock import StoppedClock
+from meteoscape.clock import Clock, StoppedClock
 from meteoscape.config import Settings
+from meteoscape.errors import RuntimeFailure
 from meteoscape.manifold.cadence import RollingAxis
-from meteoscape.manifold.domain import AxisName, FootprintDomain
+from meteoscape.manifold.core import Selection
+from meteoscape.manifold.domain import AxisName, FootprintDomain, GridDomain, RegularAxis
 from meteoscape.nodes.providers.open_meteo import BASE_URL, CADENCE
 from meteoscape.nodes.store import StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED
@@ -33,7 +36,7 @@ class _AdvancingClock:
         return self.instant
 
 
-def _compose_default(clock: _AdvancingClock):
+def _compose_default(clock: Clock):
     settings = Settings()
     return compose(
         settings.profile(),
@@ -140,6 +143,79 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     assert payload["wind_direction"]["provenance"] == wind["provenance"]
 
     assert second.data["air_temperature"]["values"] == first.data["air_temperature"]["values"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_snapped_selection_resolves_through_the_woven_profile() -> None:
+    """The mode end to end, on the shape 003c will hand the edge: bounds in, the leaf's lattice out.
+
+    Mixed direct and derived parameters on purpose — that is **two** winners and two independent
+    vendor fetches, so the answer geometry both assemble onto is the thing under test, not just the
+    single-winner path. The MCP edge stays enumerable until 003c, so this enters at the Gateway.
+    """
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast())
+    )
+    gateway = _compose_default(_CLOCK)
+
+    coverage = await gateway.resolve(
+        Selection(
+            domain=snapped_point_domain(
+                start=datetime(2026, 7, 11, 14, 30, tzinfo=UTC),
+                end=datetime(2026, 7, 11, 17, 10, tzinfo=UTC),
+                lon=13.41,
+                lat=52.52,
+            ),
+            parameters=frozenset({AIR_TEMPERATURE, WIND_SPEED}),
+        )
+    )
+
+    # Mid-hour bounds floor onto the leaf's own ticks before the vendor is asked anything.
+    assert route.call_count == 2
+    asked = dict(route.calls[0].request.url.params)
+    assert asked["start_hour"] == "2026-07-11T14:00"
+    assert asked["end_hour"] == "2026-07-11T17:00"
+
+    assert isinstance(coverage.domain, GridDomain)
+    valid_time = coverage.domain.axis(AxisName.T)
+    assert valid_time == RegularAxis(
+        AxisName.T, datetime(2026, 7, 11, 14, tzinfo=UTC), timedelta(hours=1), 4, True
+    )
+    assert coverage.ranges[AIR_TEMPERATURE].values == pytest.approx([18.2, 18.3, 18.4, 18.0])
+    assert coverage.ranges[WIND_SPEED].values == pytest.approx([1.0] * 4)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_snapped_winner_domains_that_diverge_fail_the_whole_request() -> None:
+    """The divergence a snapped request makes reachable — deliberately unhandled, so pinned loud.
+
+    Each winner derives its T from its **own** fetch, so a vendor answering the two calls of one
+    request with different reaches leaves two answers on two geometries. No fold reconciles them:
+    the Arbiter's closed-projection check fails the request whole. Bounds run past the shorter
+    response on purpose — bounds inside both would ground identically and hide it.
+    """
+    respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        side_effect=[
+            httpx.Response(200, json=_canned_forecast(hours=168)),
+            httpx.Response(200, json=_canned_forecast(hours=100)),
+        ]
+    )
+    gateway = _compose_default(_CLOCK)
+
+    with pytest.raises(RuntimeFailure, match="closed-projection invariant broken"):
+        await gateway.resolve(
+            Selection(
+                domain=snapped_point_domain(
+                    start=datetime(2026, 7, 11, 14, 30, tzinfo=UTC),
+                    end=datetime(2026, 7, 18, 11, 10, tzinfo=UTC),
+                    lon=13.41,
+                    lat=52.52,
+                ),
+                parameters=frozenset({AIR_TEMPERATURE, WIND_SPEED}),
+            )
+        )
 
 
 def test_root_reach_is_the_live_leaf_domain_for_a_direct_parameter() -> None:

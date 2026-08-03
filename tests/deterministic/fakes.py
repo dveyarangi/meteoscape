@@ -20,6 +20,9 @@ from meteoscape.manifold.domain import (
     GridDomain,
     Interval,
     RegularAxis,
+    SelectionDomain,
+    SnappedAxis,
+    VantageAxis,
 )
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.catalog.paramtable import ParameterTable, StaticParameterTable
@@ -72,6 +75,24 @@ def point_timeline_domain(*, hours: int = 4, lon: float = 1.0, lat: float = 2.0)
     )
 
 
+def snapped_point_domain(
+    *,
+    start: datetime,
+    end: datetime,
+    lon: float = 1.0,
+    lat: float = 2.0,
+) -> SelectionDomain:
+    """Snapped-T counterpart of the MCP edge shape — count-1 X/Y, vantage Z, bounds-only T."""
+    return SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, lon, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, lat, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: SnappedAxis(AxisName.T, Interval(start, end)),
+        }
+    )
+
+
 def footprint_domain(
     clock: Clock = STOPPED,
     *,
@@ -83,7 +104,7 @@ def footprint_domain(
             AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
             AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
             AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
-            AxisName.T: RollingAxis(AxisName.T, cadence or _CADENCE, clock),
+            AxisName.T: RollingAxis(AxisName.T, cadence or _CADENCE, clock, timedelta(hours=1)),
         }
     )
 

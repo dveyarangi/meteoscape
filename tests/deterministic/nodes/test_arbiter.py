@@ -18,6 +18,7 @@ from fakes import (
     fake_catalog,
     footprint_domain,
     point_timeline_domain,
+    snapped_point_domain,
 )
 from meteoscape.config import ArbiterPolicy, OfferingDef
 from meteoscape.errors import CapabilityMismatch
@@ -166,6 +167,49 @@ async def test_beyond_footprint_raises_without_projecting() -> None:
     arbiter = _arbiter(registry)
     with pytest.raises(CapabilityMismatch):
         await arbiter.project(_point_selection(lat=100.0))  # outside Y footprint
+    assert provider.calls == []
+
+
+@pytest.mark.asyncio
+async def test_snapped_selection_admits_by_intersection() -> None:
+    """Non-duplication proof: snapped Selection rides existing serves → matches with no engine change."""
+    coverage = _coverage(AIR_TEMPERATURE)
+    provider = RecordingProvider(
+        source_key=SourceKey("fake", "default"),
+        capability=air_temperature_capability(STOPPED, core_parameters()),
+        coverage=coverage,
+    )
+    key = provider.source_key
+    registry = SourceRegistry(
+        sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
+    )
+    arbiter = _arbiter(registry)
+
+    overlapping = Selection(
+        domain=snapped_point_domain(
+            start=datetime(2026, 7, 12, tzinfo=UTC),
+            end=datetime(2026, 7, 14, tzinfo=UTC),
+            lon=13.41,
+            lat=52.52,
+        ),
+        parameters=frozenset({AIR_TEMPERATURE}),
+    )
+    result = await arbiter.project(overlapping)
+    assert result is coverage
+    assert len(provider.calls) == 1
+
+    provider.calls.clear()
+    no_overlap = Selection(
+        domain=snapped_point_domain(
+            start=datetime(2026, 7, 1, tzinfo=UTC),
+            end=datetime(2026, 7, 11, 11, tzinfo=UTC),
+            lon=13.41,
+            lat=52.52,
+        ),
+        parameters=frozenset({AIR_TEMPERATURE}),
+    )
+    with pytest.raises(CapabilityMismatch):
+        await arbiter.project(no_overlap)
     assert provider.calls == []
 
 
