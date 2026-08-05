@@ -198,7 +198,7 @@ before it), which this split is one way to state statically. m4's T path never m
 regular / vantage / snapped), so when it lands it must stay **invisible to request authors** — one
 constructor name per kind with coordinate-kind autodetection, or facade builders absorbing it
 ([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape). Expected
-internal toucher: [006](./tickets/01-0130-retentive-store-freshness.md)'s `quantize` — which is also the
+internal toucher: [006](./tickets/01-0115-retentive-store-freshness.md)'s `quantize` — which is also the
 third lattice-arithmetic site that would fire
 [#22](#22-lattice-helpers-vs-domain--sampling-module-split), now that `RegularAxis.clip` is the second.
 
@@ -239,10 +239,12 @@ would become unrepresentable rather than tested. That is the same *make it unrep
 This is about the *request* side only; `Coverage.domain` stays enumerable regardless
 ([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
 
-**Trigger:** whichever comes first — **006** authoring refill requests (a second in-tree exact-request
-author is what makes the split load-bearing rather than incidental), **003c** narrowing what the edge
-constructs, or #39's request-composition helper, which cannot avoid choosing *which* type embedders are
-handed. Until one fires, the whole cost is one `isinstance` pair in `domain.py`. Resolution moves into
+**Trigger:** whichever comes next — **006** authoring refill requests (a second in-tree exact-request
+author is what makes the split load-bearing rather than incidental) or #39's request-composition
+helper, which cannot avoid choosing *which* type embedders are handed. **003c fired first (2026-08-05
+re-stage align) and recorded: the split stays** — the edge authors a `SelectionDomain`, `ground`
+remains a function, and narrowing waits for the second author, now next in the queue. Until that
+trigger fires, the whole cost is one `isinstance` pair in `domain.py`. Resolution moves into
 ADR-0002, which owns the request vocabulary.
 
 ## 15. Coarser-grid resampling and aggregation semantics
@@ -435,7 +437,7 @@ declared reaches **differ on a snapped axis** — `agreed_geometry` refuses it, 
 answers with one geometry (ADR-0001) and the licence for a multi-domain answer is 006's `ANY`, which
 does not exist yet. A vendor offering 16 days of temperature but 5 of precipitation therefore declines
 a mixed snapped request with `capability-mismatch`. Correct under closure, and it dissolves at
-[006](./tickets/01-0130-retentive-store-freshness.md); it is the per-parameter cousin of this concern's
+[006](./tickets/01-0115-retentive-store-freshness.md); it is the per-parameter cousin of this concern's
 per-offering question → [edge/provider.md](./edge/provider.md).
 
 **The leaf side is unbuilt too, recorded 2026-08-03.** A second offering is not only an algebra
@@ -816,7 +818,16 @@ clamp was adopted first and superseded the same day — its reviews kept finding
 simulating resolution at the edge (clock races, per-input ordering rules); the trail is in the
 003c ticket and RFC 0008. Membership at the **declared** edge is thus *trim by the winner*, while
 this concern's runtime-degraded case is unchanged (a fault after admission still drops the
-parameter whole with a reason). Recorded revisit, triggered by **the first parameter set with
+parameter whole with a reason). **Two-fetch divergence under snapped (judged 2026-08-05, 003c's
+re-stage align):** a mixed direct+derived request resolves through two winners and two vendor
+fetches whose grounded T lattices can diverge (an hour roll between the fetches, or a vendor length
+change) → loud whole-request `runtime-failure` at the Arbiter's closed-projection check. Accepted
+as rare-and-loud **for exactly one ticket** — retention
+([006](./tickets/01-0115-retentive-store-freshness.md), moved to directly after 003c at the same
+align) collapses the warm path, and the cold-store residue (two disjoint-parameter fetches) is
+owned by 006's **refill-scope** decision; the full record is the
+[003c ticket](./tickets/01-0110-request-shaping.md)'s divergence criterion. Recorded revisit,
+triggered by **the first parameter set with
 diverging T reach (the second provider)**: under one-domain Selections a snapped window is
 resolved per winner *per parameter set* — whether a diverging bundle should be served at its
 narrowest common window or at each winner's own (shorter parameters dropping where they end) is

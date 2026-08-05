@@ -16,7 +16,7 @@ plan. Weaving is **pure construction, not projection**: Phase A exercises every 
 - **`StubStore`** lives in `nodes/store.py` beside the `Store` protocol — weave-time placeholder (no
   retention; `domain` / `project` / `capability` raise; `assimilate` no-op). `Store` moved out of
   `reservoir.py` (which keeps only `Reservoir`). The declared-grid representation question is filed on
-  [issue 006](../tickets/01-0130-retentive-store-freshness.md).
+  [issue 006](../tickets/01-0115-retentive-store-freshness.md).
 - **Fake provider is a test fixture only** (`tests/fakes.py`): declared `FootprintCapability` +
   `CadenceDef` + `source_key`; `project` raises. The production `ProviderCatalog` holds only real
   vendors — empty until Phase C registers Open-Meteo.
@@ -124,6 +124,6 @@ leaf, the MCP tool body, catalogue registration + `open_meteo_enabled=True` flip
 
 - Phase B (value-type behaviour) and Phase C (the spine) per
   [issue 001](../tickets/done/01-0020-walking-skeleton.md).
-- Store-grid representation decision → [issue 006](../tickets/01-0130-retentive-store-freshness.md).
+- Store-grid representation decision → [issue 006](../tickets/01-0115-retentive-store-freshness.md).
 - Wind `CalculatorSpec`s return to `Settings` at
   [002b](../tickets/done/01-0030.0010-derived-wind-calculator.md).

@@ -1,6 +1,6 @@
 # v1 delivery status
 
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 **Current stage:** 003a, m1, 003b, m2, m3, m5, and m4 have landed — reach lives on `Capability`
 ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, a
@@ -17,8 +17,12 @@ Snapped-T mode resolves through one verb (`ground`) over one abstract axis opera
 leaf split into a `TimelineProvider` shape owning all algebra and an injected `TimelineProbe` owning
 the vendor face, with the Probe seam guarded by an import-direction test
 ([edge/provider.md](../edge/provider.md), now Normative with no pending markers). The mode is
-product-invisible until 003c consumes it. **003c (request shaping) is now Ready**; 006 (retentive
-store) is an independent follow-on with its assumed storeless/private-lattice shape already in place.
+product-invisible until 003c consumes it. **003c (request shaping) is now Ready**, its
+[RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) re-staged 2026-08-05 against the landed
+mode. **006 (retentive store) moved to the position right after it** at that re-stage align:
+retention is the mechanism that collapses the mixed-request double fetch (003c accepts the
+divergence exposure for exactly that one ticket), and its assumed storeless/private-lattice shape
+is already in place.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -82,8 +86,8 @@ queue position, because it still has to be done in order.
 | 0090 | [Edge records and the `/edge` skill](./done/01-0090-edge-records.md) | Maint | Done | — | Per-surface Edge records (the architecture ↔ user-design seam documents) with an `/edge` skill; edge awareness wired into `/align` (challenge rule, `EDGE-FORMAT.md`) and `/sync-arch`; the MCP record populated and Normative. |
 | 0100 | [Snapped request mode (T instantiation)](./done/01-0100-snapped-t-request-mode.md) | Maint | Done | capability domain, provider parity checks | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Landed with the `TimelineProvider` / `TimelineProbe` split. |
 | 0110 | [Request shaping](./01-0110-request-shaping.md) | — | Ready | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
+| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. Moved ahead of Visual Crossing 2026-08-05 (003c re-stage align): retention is the mechanism that collapses the mixed-request double fetch, so it follows request shaping directly. |
 | 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Ready | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
-| 0130 | [Retentive store](./01-0130-retentive-store-freshness.md) | — | Planned | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. |
 | 0140 | [Off-grid homogenization](./01-0140-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back onto the requested point. |
 | 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
 | 0160 | [Unit-conversion catalogue](./01-0160-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by Visual Crossing provider | Shared verified native-to-canonical conversion edges. |
@@ -97,7 +101,7 @@ queue position, because it still has to be done in order.
 A ticket's filename is `RR-NNNN-slug.md` — release, position, name:
 
 ```
-docs/tickets/01-0130-retentive-store-freshness.md
+docs/tickets/01-0115-retentive-store-freshness.md
               │  │    └── slug — what the ticket is. Never changes. Cite tickets by this.
               │  └─────── position in the queue. Changes when priority changes.
               └────────── release (01 = v1). Bounds the sequence so numbers stay short.
@@ -136,7 +140,7 @@ that date cite them, and are left as written.
 | 003c | [request shaping](./01-0110-request-shaping.md) |
 | 004 | [second-provider fallback](./01-0150-second-provider-fallback.md) |
 | 005 | [per-parameter selection](./01-0170-per-parameter-selection.md) |
-| 006 | [retentive store](./01-0130-retentive-store-freshness.md) |
+| 006 | [retentive store](./01-0115-retentive-store-freshness.md) |
 | 007 | [off-grid homogenization](./01-0140-off-grid-homogenization.md) |
 | 008 | [config and graceful degrade](./01-0180-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./01-0190-error-taxonomy-partial-success.md) |
@@ -163,9 +167,12 @@ uses legacy ids because it predates the 2026-08-02 renumbering.
 5. ~~**m3**~~ — **landed**: the parity harness is live and the Open-Meteo reference check passed its
    acceptance run; every new Provider contribution, beginning with 011, ships its own parity check.
 6. ~~**m4**~~ — **landed**: the Snapped-T mode and the shape/vendor split, at their proper layer.
-   Next: **003c** on top of it, or **006** as an independent follow-on —
-   ~~m2~~ has **landed**, so the storeless/private-lattice shape 006 assumes is in place.
-7. Complete **007** after 006.
+   Next: **003c** on top of it — ~~m2~~ has **landed**, so the storeless/private-lattice shape 006
+   assumes is in place.
+7. **006 directly after 003c** (moved ahead of 011 on 2026-08-05, at 003c's re-stage align):
+   retention is the *mechanism* that collapses the mixed-request double fetch, so the divergence
+   exposure 003c opens is accepted for exactly one ticket rather than worked around. Complete
+   **007** after 006.
 8. Ship **011** (the Visual Crossing Probe — the first test of m4's shape/vendor split), introducing
    **010** when its unit spread creates the real case; then **004** for the fallback behaviour that
    second producer enables.
@@ -184,7 +191,11 @@ resolution.
   discriminator → [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - [005](./01-0170-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
-- [006](./01-0130-retentive-store-freshness.md): settle the private store-lattice representation.
+- [006](./01-0115-retentive-store-freshness.md): **refill scope** — whether a store miss refills
+  only the requested parameters or the source's whole offering; decides whether the cold-store
+  mixed-request double fetch (and its divergence residue) survives retention. Also verify the
+  partial-warm window-extension edge at its align. (The store-lattice representation question this
+  line used to carry was resolved at m4 — recorded in the ticket.)
 - [m3](./done/01-0080-provider-parity-checks.md) (done): *building* scheduled and changed-provider
   automation remains deliberate follow-on work, recorded in the ticket's follow-on section. What
   **enforces** parity coverage and **routes** its selection is now

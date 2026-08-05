@@ -99,7 +99,7 @@ request).
    narration — [003c](../tickets/01-0110-request-shaping.md)
    (on [m4](../tickets/done/01-0100-snapped-t-request-mode.md)).
 2. Fresh reuse — repeat asks answered from retained data —
-   [006](../tickets/01-0130-retentive-store-freshness.md).
+   [006](../tickets/01-0115-retentive-store-freshness.md).
 3. Off-grid fidelity — homogenized values at the requested point, not nearest-neighbor —
    [007](../tickets/01-0140-off-grid-homogenization.md).
 4. Provider fallback — upstream faults stop failing the whole request —

@@ -162,7 +162,7 @@ representations a leaf sees today:
 Source, `ANY` on the axes its storage unit spans wholly, answered **multi-domain**. It does not exist:
 `ANY` appears nowhere in `src`, and [`Reservoir.project`](../../src/meteoscape/nodes/reservoir.py) is a
 bare pass-through, so today a leaf receives the **edge's** request verbatim.
-[006](../tickets/01-0130-retentive-store-freshness.md) is where that changes, and it moves a boundary:
+[006](../tickets/01-0115-retentive-store-freshness.md) is where that changes, and it moves a boundary:
 
 - Today the leaf performs the **fact→product** relabeling itself: native Z cells (2 m, 10 m, surface,
   column) are dropped onto the request's single Z aperture by the identity grounding described under
@@ -273,7 +273,7 @@ serve, in one call, two parameters whose declared reaches differ on a snapped ax
 16 days of temperature but 5 of precipitation refuses a mixed snapped request with
 `CapabilityMismatch` rather than answering multi-domain. That is correct under closure — the licence for
 a multi-domain answer is `ANY`, which does not exist yet — and it dissolves at
-[006](../tickets/01-0130-retentive-store-freshness.md). Live driver:
+[006](../tickets/01-0115-retentive-store-freshness.md). Live driver:
 [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
 
 **The tick lattice is derived, never taken on the Probe's word.** `interpret` builds it from the
@@ -417,7 +417,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   Arbiter's closed-projection check fails the **whole request** with `RuntimeFailure`. Deliberately
   unhandled — no fold reconciles winner domains — so a leaf author must not try to compensate for it
   leaf-side; it is owned at [003c](../tickets/01-0110-request-shaping.md)'s landing and dissolves for
-  the common case when [006](../tickets/01-0130-retentive-store-freshness.md)'s retention collapses the
+  the common case when [006](../tickets/01-0115-retentive-store-freshness.md)'s retention collapses the
   second fetch. *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
 
 ### What every leaf must uphold
@@ -562,7 +562,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
    `ANY`, the fact→product relabeling moves to the Reservoir's read-back, and `agreed_geometry`
    narrows: its rule holds on pinned and snapped axes, its exception opens on `ANY`, it returns the
    multi-domain carrier minted there, and its singular name is revisited against that carrier —
-   [006](../tickets/01-0130-retentive-store-freshness.md).
+   [006](../tickets/01-0115-retentive-store-freshness.md).
 4. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
    than a Probe ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) names it a deferred
    seam); no owning ticket.

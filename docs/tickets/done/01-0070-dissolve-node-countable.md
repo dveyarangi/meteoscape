@@ -4,7 +4,7 @@
 - **Depends on:** [003b — Capability carries its domain](./01-0060-capability-domain.md) — shares the
   files (`weaver.py`, `composition.py`, `tests/fakes.py`) and reads geometry off the `Capability`,
   which 003b publishes.
-- **Blocks (soft):** [006 — Retentive store](../01-0130-retentive-store-freshness.md) assumes the `Store`
+- **Blocks (soft):** [006 — Retentive store](../01-0115-retentive-store-freshness.md) assumes the `Store`
   has **no public `domain`**; without this ticket 006 would have to do this dissolution itself.
 - **Owning decision:** [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) —
   *"Nodes are not `Countable`; `domain` lives only on the Coverage"* — already accepted; the code
@@ -46,7 +46,7 @@ ever hands an `EnumerableDomain` to the factory, so `StoreFactory.create` narrow
 reach is **continuous** (`FootprintCapability` — no grid to read), and the only enumerable-reach
 providers are materialized and wire storeless. The catalogue's `OfferingSpec.store` (authored beside
 the manifest by whoever knows the vendor grid) is the sole lattice channel; the lattice
-*representation* is [006](../01-0130-retentive-store-freshness.md)'s decision. The
+*representation* is [006](../01-0115-retentive-store-freshness.md)'s decision. The
 remote-but-enumerable residual (cloud ARCO, worth caching) stays with open question 2 /
 [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 
@@ -138,6 +138,6 @@ unrepresentable.
 
 ## Out of scope
 
-- The retentive `Store` itself and the lattice representation — [006](../01-0130-retentive-store-freshness.md).
+- The retentive `Store` itself and the lattice representation — [006](../01-0115-retentive-store-freshness.md).
 - Off-grid homogenization kernels — [007](../01-0140-off-grid-homogenization.md) / [#5](../../concerns.md#5-read-time-homogenization-fidelity).
 - Any real materialized provider (archive bundle, normals, static fields) — post-v1.

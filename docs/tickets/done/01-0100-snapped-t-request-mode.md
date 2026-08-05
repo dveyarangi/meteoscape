@@ -38,7 +38,7 @@ implementation (clamping) each found real holes — a clock-race producing spuri
 modes, degenerate folds — and every one of them lived in code *simulating* at the edge what the
 algebra already reserves a mode for. The Snapped mode's resolution law
 (`snapped → exact = anchor(grid) ⊕ step(grid) ⊕ bounds(request)`, ADR-0002 as amended at this
-align) is designed and unbuilt; [006](../01-0130-retentive-store-freshness.md)'s store `quantize` depends on the same
+align) is designed and unbuilt; [006](../01-0115-retentive-store-freshness.md)'s store `quantize` depends on the same
 axis machinery (restricting a declared lattice to requested bounds). Building the mode once replaces the
 simulation and retires its failure class.
 
@@ -151,7 +151,7 @@ freshness/run identity, never a promised response extent.
   Arbiter code and adds no per-cell fold: it pins the loud failure with a test, classifies it
   **Race** at [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge), and hands
   the judgement to [003c](../01-0110-request-shaping.md)'s landing, where the mode first becomes
-  reachable from the edge ([006](../01-0130-retentive-store-freshness.md)'s retention collapses the
+  reachable from the edge ([006](../01-0115-retentive-store-freshness.md)'s retention collapses the
   second fetch and dissolves the common case).
 - **Shape-correspondence** (ADR-0001) already states the contract: the answer mirrors the
   question's mode — an enumerable answer to a snapped question, on the resolver's lattice.
@@ -169,7 +169,7 @@ freshness/run identity, never a promised response extent.
      sibling types it would double every request-facing axis kind, an embedding-vocabulary cost to
      settle first (kept internal via construction autodetection, or absorbed by facade builders —
      recorded at #23 / [#39](../../concerns.md#39-python-embedding-surface-and-public-failures)).
-     [006](../01-0130-retentive-store-freshness.md)'s `quantize` remains the expected toucher of
+     [006](../01-0115-retentive-store-freshness.md)'s `quantize` remains the expected toucher of
      [#22](../../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — untriggered, but now
      one site away, since `clip` joins `sub_lattice_offset` as lattice arithmetic in `domain.py`.
   2. *Admission and resolution are per-axis folds, mode-dispatched by axis kind* — the existing
@@ -193,7 +193,7 @@ freshness/run identity, never a promised response extent.
   in the answer's `Coverage.domain`, exactly ADR-0006's "domain lives only on the Coverage" (m2's
   closure of the declaration channel is untouched). Admission needs no lattice either
   (bounds ∩ continuous footprint window). The pass-through Reservoir forwards; when
-  [006](../01-0130-retentive-store-freshness.md) lands, its `quantize` — designed to consume snapped
+  [006](../01-0115-retentive-store-freshness.md) lands, its `quantize` — designed to consume snapped
   requests against the store lattice — inserts the store-side half between the same two points.
   This mode is the request-side counterpart of machinery 006 needs anyway; nothing temporary.
 
@@ -219,7 +219,7 @@ freshness/run identity, never a promised response extent.
   Open-ended bounds are **deferred** (#30's diverging-reach trigger), not part of this landing.
 - [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md) — the shape-correspondence paragraph
   names the operation that computes it (`ground`). **At landing.**
-- [006](../01-0130-retentive-store-freshness.md) — its open store-lattice question closes on
+- [006](../01-0115-retentive-store-freshness.md) — its open store-lattice question closes on
   `Axis.clip` (*narrow what `quantize` requires*: one bounds question the retention grid answers,
   never enumeration), and `quantize` is restated as `ground`'s store-side sibling. **At landing.**
 - [#21](../../concerns.md#21-serves-extent-vs-project-crop-ability) narrows to the off-phase case alone
@@ -263,7 +263,7 @@ freshness/run identity, never a promised response extent.
       single-origin.
 - [x] **The leaf carries no snapped-mode code** — no mode branch, no lattice arithmetic, no
       `SnappedAxis` import: a geometry declaration and `ground` calls. This is the property
-      [011](../01-0120-visual-crossing-provider.md) and [006](../01-0130-retentive-store-freshness.md) inherit;
+      [011](../01-0120-visual-crossing-provider.md) and [006](../01-0115-retentive-store-freshness.md) inherit;
       if it is false, the algebra is in the wrong place.
 - [x] **Non-duplication guard:** the design document can truthfully state — *"enabling snapped
       X/Y is: declare an enumerable X/Y geometry, settle float phase tolerance in `RegularAxis.clip`,
@@ -280,7 +280,7 @@ freshness/run identity, never a promised response extent.
   provider's grid. When the Grid-realization driver arrives (roadmap), enabling X/Y should be
   the sibling type plus edge wiring over this ticket's pattern, not new algebra.
 - Snapped Z — Z already has its own request modes (vantage / cell-addressing, ADR-0002).
-- Store-lattice snapping (`quantize`) — [006](../01-0130-retentive-store-freshness.md)'s.
+- Store-lattice snapping (`quantize`) — [006](../01-0115-retentive-store-freshness.md)'s.
 - Coverage reconcilers / per-cell folds (#28) — untouched by the scoped #13 position.
 - **A second provider *shape*** — the `TimelineProvider` / `TimelineProbe` split lands for the
   timeline family only. Gridded NWP and soundings stay the deferred seam `timeline.py` already names;

@@ -2,7 +2,11 @@
 
 **Legacy id:** 006
 
-- **Status:** Planned
+- **Status:** Ready — moved ahead of
+  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) on 2026-08-05 (003c's
+  re-stage align): retention is the *mechanism* that collapses the mixed-request double fetch,
+  whose divergence [003c](./01-0110-request-shaping.md) accepts for exactly one ticket on the
+  strength of this ordering.
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
 
@@ -77,12 +81,26 @@ the fold's **`ANY`** case lands — the axis the unit spans wholly takes the ans
 Reading the request-side verb before writing this one is the cheapest way to keep the two from
 diverging.
 
+**Refill scope — decide at this ticket's align (minted 2026-08-05, 003c's re-stage).** Refill as
+drafted above is per-parameter: a miss refills only the *requested* parameters, so a cold-store
+mixed request (direct parameters through the Provider; `wind_u`/`wind_v` through the Calculator's
+scoped Arbiter) still issues **two vendor fetches with disjoint variable sets** — the divergence
+exposure [003c](./01-0110-request-shaping.md) accepted survives on that path. The alternative: a
+miss refills the source's **whole offering** — one vendor call returns all its variables anyway, so
+the first fetch would populate `wind_u`/`wind_v` and the second would hit the store even
+stone-cold. Decide which, and record the traffic/behaviour trade. At the same align, **verify the
+partial-warm edge**: one parameter fresh, another refetched, full-horizon bounds — the
+window-extension-refetches-whole rule appears to prevent a retained window and a fresh one serving
+two different T ranges, but "retention dissolves the divergence" leans on that and it has never
+been checked.
+
 **This ticket is a trigger for [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method).**
 Refill requests are the second in-tree author of *exact* requests, which is what makes the request
 side's two representations load-bearing rather than incidental — and the reason `ground` is a function
-taking the request rather than a method on it. Decide there before authoring refill: either the split
-stays and refill keeps building enumerable shapes, or the request side narrows to one representation
-and refill is written against that. Also re-read
+taking the request rather than a method on it. 003c recorded its half of the call on 2026-08-05 —
+**the split stays and the edge authors `SelectionDomain`** — so the decision left here is whether
+refill keeps building enumerable shapes (the split stays for good) or refill's arrival is the moment
+the request side narrows to one representation and refill is written against that. Also re-read
 [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — `quantize` is the third
 lattice-arithmetic site, which is that carve's trigger.
 

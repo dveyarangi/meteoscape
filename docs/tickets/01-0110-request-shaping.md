@@ -6,9 +6,9 @@
 
 - **Status:** Ready — the window semantics ride
   [m4 — Snapped request mode](./done/01-0100-snapped-t-request-mode.md), which landed 2026-08-04.
-- **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**on hold** — it planned the
-  superseded edge-clamp approach and is kept as that decision's record; its surviving decisions
-  stand; re-stage it against the landed mode before implementing).
+- **Plan:** [RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) (**re-staged 2026-08-05**
+  against the landed Snapped-T mode; the superseded edge-clamp staging is preserved in its
+  §Superseded approach as that decision's record).
 - **Depends on:** [m4](./done/01-0100-snapped-t-request-mode.md) (done), and
   [003b — Capability carries its domain](./done/01-0060-capability-domain.md) (which reshapes
   [003a](./done/01-0040-profile-reach.md); 003a depends on 002, 002b).
@@ -152,18 +152,33 @@ contract, Time axis).
       snapped, each answer's T axis derives from its own response, so a window roll between the two
       fetches (or a vendor length change) makes the Arbiter's closed-projection check fail the whole
       request with `runtime-failure`. m4 pins the behaviour as loud and deliberate; **this ticket is
-      where it becomes reachable from the edge**, so it must land with a judgement recorded:
+      where it becomes reachable from the edge**, ~~so it must land with a judgement recorded:
       accepted as rare-and-loud, mitigated, or escalated to
       [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) /
-      [#28](../concerns.md). [006](./01-0130-retentive-store-freshness.md)'s retention collapses the
-      second fetch and dissolves the common case.
+      [#28](../concerns.md)~~ — **judged at the 2026-08-05 re-stage align: accepted as
+      rare-and-loud, for exactly one ticket.** No mitigation is built — window-freezing and
+      domain-folding stay rejected on [RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)
+      decision 11's grounds, and retention is the mechanism, not a workaround:
+      [006](./01-0115-retentive-store-freshness.md) follows this ticket directly in the queue
+      (reordered at the same align) and collapses the second fetch **on the warm path** (a
+      fully-fresh repeat is served with no provider call). The residue — a cold store still issues
+      two disjoint-parameter fetches, since neither today's engaged-tap fetch nor 006's
+      per-parameter refill widens across parameters — is owned by 006's **refill-scope** decision.
+      The landing re-confirms this judgement against the shipped behaviour rather than re-opening
+      it.
 - [ ] **The edge's request representation is settled here, not assumed.** This ticket is where
       `build_selection` stops issuing exact `GridDomain` requests and issues snapped ones, which makes it
       a trigger for
-      [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method): either the
+      [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method): ~~either the
       request side keeps two representations (and `ground` stays a function taking the request), or the
       edge's migration is the moment it narrows to one. Record the call; the edge is the request author
-      whose choice the rest inherit.
+      whose choice the rest inherit.~~ **The call, recorded at the 2026-08-05 re-stage align: the
+      split stays.** The edge authors a `SelectionDomain` and `ground` remains a function — the
+      second in-tree request author that would make narrowing load-bearing
+      ([006](./01-0115-retentive-store-freshness.md)'s refill) does not exist yet, and the
+      narrowing's costs (widening `SelectableAxis`, restating `resample`'s target, pre-deciding the
+      refill representation) all remain as #42 lists them. Narrowing re-arises at 006 with its
+      author in hand; this criterion is satisfied by the edge migration matching the recorded call.
 
 ## User stories addressed
 

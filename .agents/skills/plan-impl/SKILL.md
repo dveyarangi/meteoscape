@@ -21,7 +21,13 @@ description: Plan implementation for ticket/task at hand
 
 - Prefer reuse and reduction of existing nouns, verbs and adjectives; when adding shape - make sure documentation supports it, if in any doubt - /align with user.
 
+- Any wrinkle against architecture should be resolved; when solution is not found or following first-principles makes the code weird - align with user. Architecture must lead code shape even if code disagrees. Do not expose public methods or create flows that are not in architecture.
+
 - If planned code includes a temporary solution that is dissolved by future development, add RFC instruction to append TODO comment to code that flags this. Otherwise code changes can start relying or considering the temporal code, which can be hard to disentangle later.
+
+- As an additional pass, try to explain things to yourself simply, as if you are teaching the architecture, and being asked reasonable question and look for areas that evade simple or common-sense explanation.
+
+- Make sure there is no ambiguity or optionality or decisions defered to implementation type. The RFC must state the single proper way to do things.
 
 - In overall, always consider future development and potential code reuse when selecting code shapes.
 
