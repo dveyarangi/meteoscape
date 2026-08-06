@@ -11,10 +11,6 @@ The goal of this skill is to compare current works input documentation (ticket, 
 
 Look for architectural or responsibility leakage.
 
-If discrepancies or leakages found, describe them in short and suggest ways to amend documentation or/and code. Do not make changes until requested. In case the cause is has big blast radius or significantly ambiguous, /align with user. 
+If discrepancies or leakages found, describe them in short and suggest ways to amend documentation or/and code. Do not make changes until requested. In case the cause has big blast radius or is significantly ambiguous, /align with user.
 
-- In case RFC (original or amended) describes undocumented architecture, make sure to point this out as a discrepancy.
-
-In overall we must make sure that architecture -> ticket -> RFC -> code is as unambiguous and correct as possible.
-
-Apply /sync-arch skill rules that you think are useful for this task.
+Apply /plan-impl and /sync-arch skill rules that you think are useful for this task.

@@ -7,7 +7,7 @@ description: >-
 Please advise me on current project/regarded aspect. 
 Tell me, whichever is relevant:
 - What is great? 
-- What is good enough? 
+- What is good enough?
 - What is questionable?
 - What is missing?
 - What is redundant? 

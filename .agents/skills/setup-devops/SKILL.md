@@ -1,5 +1,5 @@
 ---
-name: setup-project
+name: setup-devops
 description: Programming project setup, including language, package manager, containerization/deployment form, CICD pipeline, dependencies roster, observability frameworks 
 ---
 

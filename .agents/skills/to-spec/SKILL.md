@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: Generate a specification from the client brief and write it as a local markdown file in issues/<YYYYMMDD>_<name>/prd.md. Use when the user wants to turn a client request into a structured PRD.
+description: Incept a new body of work — generate a PRD from the client brief and write it as a local markdown file under docs/. Use when a big change or new effort arrives and needs a structured PRD before decomposition into tickets.
 ---
 
 This skill will be invoked when the user wants to create a PRD. You may skip steps if you don't consider them necessary.
@@ -17,7 +17,9 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
-5. Once you have a complete understanding of the problem and solution, use the template below to write the spec. The spec should be written as a local markdown file at `session/<YYYYMMDD>_<name>/spec.md`. Create the `session/<YYYYMMDD>_<name>/` directory if it doesn't exist. Do NOT submit a GitHub issue or call any external service.
+5. Once you have a complete understanding of the problem and solution, use the template below to write the spec. The spec is a local markdown file under `docs/`, named for the effort — agree the filename with the user (the existing release contract is `docs/v1-requirements.md`; not every PRD is a requirements doc). Do NOT submit a GitHub issue or call any external service.
+
+6. Hand off: once the PRD is written, decomposition into tickets is /to-tickets.
 
 <prd-template>
 
