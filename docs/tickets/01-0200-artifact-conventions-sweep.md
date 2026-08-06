@@ -53,6 +53,14 @@ transient-with-`done/` / append-only) are the other axes.
      *prerequisite* of the parent — which must sort *before* it, so it cannot nest. Nesting
      expresses "extends or fixes an already-positioned parent", not "carved out of work that
      hasn't started."
+   - **Ticket-criteria altitude (2026-08-06).** The behavior-altitude rule landed in the
+     `to-tickets` skill (criteria state observable behavior; code shape is the RFC's; refactor
+     criteria = behavior preserved + constraint machine-enforced + dependents unblocked). The
+     [delivery status](./README.md)'s phrase "individual tickets own implementation detail and
+     acceptance criteria" predates it and reads as license for shape-in-criteria — sharpen it at
+     the sweep (tickets own the definition of done; implementation detail is each ticket's
+     RFC's), and fold the altitude rule into the registry so the skill stops being its private
+     owner.
 3. **Registry home:** extend the [documentation map](../README.md) table or mint a sibling
    conventions document — decided at the align.
 4. **Skill slimming:** each artifact-supporting skill references the registry for conventions it
