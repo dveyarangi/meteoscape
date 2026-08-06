@@ -2,25 +2,32 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from fakes import core_parameters, point_timeline_domain
+from fakes import STOPPED, core_parameters, footprint_capability, point_timeline_domain
 from meteoscape.api.gateway import Gateway
 from meteoscape.api.mcp_app import build_mcp_app, build_selection, serialize_coverage
-from meteoscape.clock import StoppedClock, floor_to
-from meteoscape.errors import CapabilityMismatch, RuntimeFailure
+from meteoscape.clock import StoppedClock
+from meteoscape.errors import BadRequest, CapabilityMismatch, RuntimeFailure
 from meteoscape.identity import SourceKey
-from meteoscape.manifold.capability import EnumerableCapability
+from meteoscape.manifold.capability import Capability, EnumerableCapability
 from meteoscape.manifold.core import Coverage, Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
-from meteoscape.manifold.domain import AxisName, GridDomain, RegularAxis, VantageAxis
+from meteoscape.manifold.domain import (
+    AxisName,
+    FootprintDomain,
+    Interval,
+    RegularAxis,
+    SelectionDomain,
+    SnappedAxis,
+    VantageAxis,
+)
 from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
-from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import (
     AIR_TEMPERATURE,
     CLOUD_COVER,
@@ -29,10 +36,54 @@ from meteoscape.parameters import (
     WIND_DIRECTION,
     WIND_SPEED,
     WIND_U,
+    ParameterId,
 )
 
-_HORIZON = timedelta(days=7)
+# Mid-hour on purpose: raw instants must ride unfloored — the production Metronome floors to the
+# hour, so only a mid-hour StoppedClock exercises the raw rule directly (RFC 0008 fact 7).
 _CLOCK = StoppedClock(datetime(2026, 7, 11, 12, 34, tzinfo=UTC))
+
+
+def _capability(*pids: ParameterId) -> Capability:
+    """A rolling-reach envelope under the test clock — reach folds are asserted against it."""
+    return footprint_capability(_CLOCK, core_parameters(), frozenset(pids))
+
+
+def _reach_end(capability: Capability, pid: ParameterId = AIR_TEMPERATURE) -> datetime:
+    reach = capability.reach(pid)
+    assert isinstance(reach, FootprintDomain)
+    upper = reach.axis(AxisName.T).extent.upper
+    assert isinstance(upper, datetime)
+    return upper
+
+
+def _build(
+    *,
+    latitude: float = 52.52,
+    longitude: float = 13.41,
+    parameter_names: list[str] | None = None,
+    start: str | None = None,
+    end: str | None = None,
+    capability: Capability | None = None,
+) -> Selection:
+    return build_selection(
+        latitude=latitude,
+        longitude=longitude,
+        parameter_names=parameter_names,
+        start=start,
+        end=end,
+        clock=_CLOCK,
+        capability=capability if capability is not None else _capability(AIR_TEMPERATURE),
+        table=core_parameters(),
+    )
+
+
+def _snapped_t(selection: Selection) -> SnappedAxis:
+    domain = selection.domain
+    assert isinstance(domain, SelectionDomain)
+    t = domain.axis(AxisName.T)
+    assert isinstance(t, SnappedAxis)
+    return t
 
 
 def _coverage(
@@ -79,9 +130,8 @@ class _RecordingView:
     def __init__(self, result: Coverage, parameters=None) -> None:
         self.calls: list[Selection] = []
         self._result = result
-        table = core_parameters()
         pids = parameters if parameters is not None else {AIR_TEMPERATURE}
-        self._parameters = {pid: table.get(pid) for pid in pids}
+        self._pids = frozenset(pids)
 
     async def project(self, selection: Selection) -> Manifold:
         self.calls.append(selection)
@@ -89,57 +139,98 @@ class _RecordingView:
 
     @property
     def capability(self):
-        return EnumerableCapability(
-            domain=self._result.domain,
-            parameters=self._parameters,
-        )
+        # A rolling footprint, not the canned coverage's 2-hour lattice: the reach fold for an
+        # omitted `end` must land after `now`, or every defaulted request degenerates (RFC 0008).
+        return footprint_capability(STOPPED, core_parameters(), self._pids)
 
 
-def test_build_selection_floors_now_and_uses_vantage_z() -> None:
-    table = StaticParameterTable.core()
-    envelope = {AIR_TEMPERATURE: table.get(AIR_TEMPERATURE)}
-    selection = build_selection(
-        latitude=52.52,
-        longitude=13.41,
-        parameter_names=None,
-        start=None,
-        end=None,
-        clock=_CLOCK,
-        default_horizon=_HORIZON,
-        envelope=envelope,
-        table=table,
-    )
+def test_build_selection_authors_snapped_window_and_vantage_z() -> None:
+    capability = _capability(AIR_TEMPERATURE)
+    selection = _build(capability=capability)
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
-    # `Selection.domain` is a bare `Domain` — a curvilinear request target is left open (#12).
     domain = selection.domain
-    assert isinstance(domain, GridDomain)
+    assert isinstance(domain, SelectionDomain)
     assert domain.axis(AxisName.X).extent.lower == pytest.approx(13.41)
     assert domain.axis(AxisName.Y).extent.lower == pytest.approx(52.52)
     z = domain.axis(AxisName.Z)
     assert isinstance(z, VantageAxis)
     assert z.extent.lower == pytest.approx(0.0)
     assert z.extent.upper == pytest.approx(10.0)
-    t = domain.axis(AxisName.T)
-    assert isinstance(t, RegularAxis)
-    assert t.anchor == floor_to(_CLOCK.now(), timedelta(hours=1))
-    assert t.count == 168
-    assert t.cellular is True
+    # Omitted bounds: `start` is the raw mid-hour `now` (no edge flooring), `end` the folded
+    # reach end read live off the capability.
+    t = _snapped_t(selection)
+    assert t.interval == Interval(_CLOCK.now(), _reach_end(capability))
+
+
+def test_build_selection_carries_explicit_bounds_as_raw_utc_instants() -> None:
+    selection = _build(start="2026-07-12T06:15", end="2026-07-13T18:30")
+    t = _snapped_t(selection)
+    # Naive datetimes read as UTC; mid-hour instants ride raw — fitting is the resolver's.
+    assert t.interval == Interval(
+        datetime(2026, 7, 12, 6, 15, tzinfo=UTC),
+        datetime(2026, 7, 13, 18, 30, tzinfo=UTC),
+    )
+
+
+def test_build_selection_normalizes_offset_bounds_to_utc() -> None:
+    selection = _build(start="2026-07-12T14:00+02:00", end="2026-07-12T20:00Z")
+    t = _snapped_t(selection)
+    assert t.interval == Interval(
+        datetime(2026, 7, 12, 12, 0, tzinfo=UTC),
+        datetime(2026, 7, 12, 20, 0, tzinfo=UTC),
+    )
+
+
+def test_build_selection_accepts_single_instant_window() -> None:
+    instant = datetime(2026, 7, 12, 6, 0, tzinfo=UTC)
+    selection = _build(start="2026-07-12T06:00", end="2026-07-12T06:00")
+    assert _snapped_t(selection).interval == Interval(instant, instant)
+
+
+@pytest.mark.parametrize("raw", ["2026-07-20", "2026-W30-1"])
+def test_build_selection_rejects_bare_dates_with_guidance(raw: str) -> None:
+    with pytest.raises(BadRequest, match="bare dates are not accepted") as excinfo:
+        _build(start=raw)
+    assert f"{raw}T00:00" in str(excinfo.value)
+
+
+def test_build_selection_rejects_unparsable_bounds() -> None:
+    with pytest.raises(BadRequest, match="unparsable"):
+        _build(end="half past nine")
+
+
+def test_build_selection_rejects_backwards_window() -> None:
+    with pytest.raises(BadRequest, match="start is after end"):
+        _build(start="2026-07-13T00:00", end="2026-07-12T00:00")
+
+
+def test_build_selection_rejects_past_end_against_implicit_now() -> None:
+    with pytest.raises(BadRequest, match="is before now"):
+        _build(end="2026-07-10T00:00")
+
+
+def test_build_selection_beyond_reach_start_authors_single_instant_ask() -> None:
+    # Beyond the 7-day fake reach: the edge still never rejects on reach's word — it authors the
+    # single-instant ask and admission answers capability-mismatch (RFC 0008 decision 7).
+    capability = _capability(AIR_TEMPERATURE)
+    start = datetime(2026, 8, 1, 0, 0, tzinfo=UTC)
+    assert _reach_end(capability) < start
+    selection = _build(start="2026-08-01T00:00", capability=capability)
+    assert _snapped_t(selection).interval == Interval(start, start)
+
+
+def test_build_selection_rejects_explicitly_empty_parameters() -> None:
+    with pytest.raises(BadRequest, match="must not be empty"):
+        _build(parameter_names=[])
+
+
+def test_build_selection_empty_menu_is_capability_mismatch() -> None:
+    with pytest.raises(CapabilityMismatch, match="serves no parameters"):
+        _build(capability=_capability())
 
 
 def test_build_selection_default_menu_is_exposure_intersect_capability() -> None:
-    table = StaticParameterTable.core()
-    envelope = {pid: table.get(pid) for pid in table}
-    selection = build_selection(
-        latitude=0.0,
-        longitude=0.0,
-        parameter_names=None,
-        start=None,
-        end=None,
-        clock=_CLOCK,
-        default_horizon=_HORIZON,
-        envelope=envelope,
-        table=table,
-    )
+    selection = _build(capability=_capability(*core_parameters()))
     assert selection.parameters == frozenset(
         {
             AIR_TEMPERATURE,
@@ -154,78 +245,20 @@ def test_build_selection_default_menu_is_exposure_intersect_capability() -> None
 
 
 def test_build_selection_rejects_internal_wind_components() -> None:
-    table = StaticParameterTable.core()
-    envelope = {pid: table.get(pid) for pid in table}
-    with pytest.raises(Exception, match="not requestable"):
-        build_selection(
-            latitude=0.0,
-            longitude=0.0,
-            parameter_names=["wind_u"],
-            start=None,
-            end=None,
-            clock=_CLOCK,
-            default_horizon=_HORIZON,
-            envelope=envelope,
-            table=table,
-        )
+    with pytest.raises(BadRequest, match="not requestable"):
+        _build(parameter_names=["wind_u"], capability=_capability(*core_parameters()))
 
 
-def test_build_selection_rejects_bad_lat_lon_and_window() -> None:
-    table = StaticParameterTable.core()
-    envelope = {AIR_TEMPERATURE: table.get(AIR_TEMPERATURE)}
-    with pytest.raises(Exception, match="latitude"):
-        build_selection(
-            latitude=100.0,
-            longitude=0.0,
-            parameter_names=None,
-            start=None,
-            end=None,
-            clock=_CLOCK,
-            default_horizon=_HORIZON,
-            envelope=envelope,
-            table=table,
-        )
-    with pytest.raises(Exception, match="longitude"):
-        build_selection(
-            latitude=0.0,
-            longitude=200.0,
-            parameter_names=None,
-            start=None,
-            end=None,
-            clock=_CLOCK,
-            default_horizon=_HORIZON,
-            envelope=envelope,
-            table=table,
-        )
-    with pytest.raises(Exception, match="start/end"):
-        build_selection(
-            latitude=0.0,
-            longitude=0.0,
-            parameter_names=None,
-            start="2026-07-11T00:00:00Z",
-            end=None,
-            clock=_CLOCK,
-            default_horizon=_HORIZON,
-            envelope=envelope,
-            table=table,
-        )
+def test_build_selection_rejects_bad_lat_lon() -> None:
+    with pytest.raises(BadRequest, match="latitude"):
+        _build(latitude=100.0)
+    with pytest.raises(BadRequest, match="longitude"):
+        _build(longitude=200.0)
 
 
 def test_build_selection_rejects_unknown_parameter() -> None:
-    table = StaticParameterTable.core()
-    envelope = {AIR_TEMPERATURE: table.get(AIR_TEMPERATURE)}
-    with pytest.raises(Exception, match="unknown parameter"):
-        build_selection(
-            latitude=0.0,
-            longitude=0.0,
-            parameter_names=["not_a_param"],
-            start=None,
-            end=None,
-            clock=_CLOCK,
-            default_horizon=_HORIZON,
-            envelope=envelope,
-            table=table,
-        )
+    with pytest.raises(BadRequest, match="unknown parameter"):
+        _build(parameter_names=["not_a_param"])
 
 
 def test_serialize_coverage_schema_and_nodata() -> None:
@@ -256,7 +289,7 @@ async def test_tool_error_prefixes() -> None:
             raise self._exc
 
     async def _call(exc: Exception) -> None:
-        app = build_mcp_app(Gateway(_FailingView(exc)), _CLOCK, _HORIZON)
+        app = build_mcp_app(Gateway(_FailingView(exc)), _CLOCK)
         async with Client(app) as client:
             await client.call_tool(
                 "forecast_hourly",
@@ -272,12 +305,19 @@ async def test_tool_error_prefixes() -> None:
 @pytest.mark.asyncio
 async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     view = _RecordingView(_coverage(hours=2))
-    app = build_mcp_app(Gateway(view), _CLOCK, _HORIZON)
+    app = build_mcp_app(Gateway(view), _CLOCK)
     tool = await app.get_tool("forecast_hourly")
     assert tool is not None
-    assert "air_temperature" in (tool.description or "")
-    assert "168" in (tool.description or "")
-    assert "wind_u" not in (tool.description or "")
+    description = tool.description or ""
+    assert "air_temperature" in description
+    assert "wind_u" not in description
+    # Relative horizon off the fake footprint (7-day cadence in fakes) — never absolute instants,
+    # since the description is built once and frozen for the process lifetime.
+    assert "Horizon: out to 7 days ahead of the latest model run." in description
+    assert "`end` is inclusive" in description
+    assert "servable part" in description
+    assert "168" not in description
+    assert "reserved" not in description
 
     async with Client(app) as client:
         result = await client.call_tool(
@@ -287,18 +327,30 @@ async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     assert result.data["air_temperature"]["unit"] == "degC"
     assert len(view.calls) == 1
     selection = view.calls[0]
+    t = _snapped_t(selection)
+    assert t.interval == Interval(_CLOCK.now(), _reach_end(view.capability))
     domain = selection.domain
-    assert isinstance(domain, GridDomain)
-    t = domain.axis(AxisName.T)
-    assert isinstance(t, RegularAxis)
-    assert t.count == 168
+    assert isinstance(domain, SelectionDomain)
     assert isinstance(domain.axis(AxisName.Z), VantageAxis)
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
 
 
 @pytest.mark.asyncio
+async def test_narration_with_empty_menu_skips_horizon() -> None:
+    # The no-provider profile: startup must not raise (a `min` over zero reaches would), and the
+    # description simply has no horizon to narrate.
+    view = _RecordingView(_coverage(), parameters=set())
+    app = build_mcp_app(Gateway(view), _CLOCK)
+    tool = await app.get_tool("forecast_hourly")
+    assert tool is not None
+    description = tool.description or ""
+    assert "(none)" in description
+    assert "Horizon" not in description
+
+
+@pytest.mark.asyncio
 async def test_bad_request_via_tool() -> None:
-    app = build_mcp_app(Gateway(_RecordingView(_coverage())), _CLOCK, _HORIZON)
+    app = build_mcp_app(Gateway(_RecordingView(_coverage())), _CLOCK)
     async with Client(app) as client:
         with pytest.raises(ToolError, match=r"^bad-request:"):
             await client.call_tool(

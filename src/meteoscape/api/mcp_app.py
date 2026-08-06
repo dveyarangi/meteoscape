@@ -7,21 +7,26 @@ Builds the FastMCP app and registers `forecast_hourly`. Translates a call into a
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from ..clock import Clock, floor_to
+from ..clock import Clock
 from ..errors import BadRequest, CapabilityMismatch, RuntimeFailure
+from ..manifold.capability import Capability
 from ..manifold.core import Coverage, Selection
 from ..manifold.domain import (
     AxisName,
     Coordinate,
+    Domain,
     GridDomain,
     Interval,
     RegularAxis,
+    SelectionDomain,
+    SnappedAxis,
     VantageAxis,
+    as_separable,
 )
 from ..manifold.provenance import AtomicOrigin
 from ..nodes.catalog.paramtable import ParameterTable, StaticParameterTable
@@ -59,24 +64,25 @@ _EXPOSURE: frozenset[ParameterId] = frozenset(
 def build_mcp_app(
     gateway: Gateway,
     clock: Clock,
-    default_horizon: timedelta,
     *,
     parameters: ParameterTable | None = None,
 ) -> FastMCP:
     """Construct the MCP app with `forecast_hourly` registered against a woven Gateway."""
     table = parameters or StaticParameterTable.core()
-    envelope = gateway.best_view.capability.parameters
-    hour_count = _horizon_hours(default_horizon)
-    menu = _exposed_menu(envelope)
+    capability = gateway.best_view.capability
+    menu = _exposed_menu(capability.parameters)
     served = ", ".join(sorted(menu)) or "(none)"
-
     mcp: FastMCP = FastMCP("meteoscape")
     description = (
         "Hourly point forecast for a latitude/longitude. "
         f"Served parameters: {served}. "
-        f"Default window: {hour_count} hourly ticks from floor(now, 1h) UTC. "
+        f"{_horizon_sentence(capability, menu)}"
         "Optional `parameters` selects a subset (default: all served). "
-        "Optional `start`/`end` are reserved until request shaping lands."
+        "Optional `start`/`end` bound the hourly window (ISO 8601 datetimes, UTC; naive times "
+        "read as UTC; bare dates are not accepted — give e.g. 2026-07-20T00:00; `end` is "
+        "inclusive; omit `start` to begin now; omit `end` to run to the full horizon; bounds "
+        "outside the served range yield the servable part — the response's `valid_time` shows "
+        "the window actually served)."
     )
 
     @mcp.tool(description=description)
@@ -95,8 +101,7 @@ def build_mcp_app(
                 start=start,
                 end=end,
                 clock=clock,
-                default_horizon=default_horizon,
-                envelope=envelope,
+                capability=capability,
                 table=table,
             )
             coverage = await gateway.resolve(selection)
@@ -119,30 +124,103 @@ def build_selection(
     start: str | None,
     end: str | None,
     clock: Clock,
-    default_horizon: timedelta,
-    envelope: Mapping[ParameterId, object],
+    capability: Capability,
     table: ParameterTable,
 ) -> Selection:
-    """Wire lat/lon (+ optional parameter names) into the v1 request Selection."""
+    """Author the canonical request: point X/Y, vantage Z, and a Snapped-T window of raw instants.
+
+    The edge holds no tick arithmetic — the resolver's grid supplies anchor and step and fits the
+    bounds (`ground`/`clip`, ADR-0002). `BadRequest` stays purely syntactic; whether a well-formed
+    window is servable is admission's question, so the edge never rejects on reach's word.
+    """
     if not -90.0 <= latitude <= 90.0:
         raise BadRequest(f"latitude out of range: {latitude}")
     if not -180.0 <= longitude <= 180.0:
         raise BadRequest(f"longitude out of range: {longitude}")
-    if start is not None or end is not None:
-        raise BadRequest("start/end not yet supported")
 
-    params = _resolve_parameters(parameter_names, envelope=envelope, table=table)
-    hours = _horizon_hours(default_horizon)
-    anchor = floor_to(clock.now(), _HOUR)
-    domain = GridDomain(
+    params = _resolve_parameters(parameter_names, envelope=capability.parameters, table=table)
+    if not params:
+        # Before the reach fold, which is undefined over zero parameters (RFC 0008 decision 3).
+        raise CapabilityMismatch("profile serves no parameters")
+
+    start_i = _parse_bound(start) if start is not None else clock.now()
+    if end is not None:
+        end_i = _parse_bound(end)
+        if start_i > end_i:
+            raise BadRequest(
+                f"start is after end ({start!r} > {end!r})"
+                if start is not None
+                else f"end {end!r} is before now"
+            )
+    else:
+        # The folded reach end, read live — a hint resolution's intersection may trim, not a
+        # promise. `min` over the requested parameters (never a sentinel): at the first
+        # diverging-reach parameter set the fold is what keeps a mixed response one shape (#30).
+        reach_end = min(_t_extent(capability.reach(p)).upper for p in params)
+        # A start beyond reach authors the single-instant ask; admission answers
+        # capability-mismatch (RFC 0008 decision 7).
+        end_i = max(reach_end, start_i)
+
+    domain = SelectionDomain(
         axes={
             AxisName.X: RegularAxis(AxisName.X, longitude, _SPATIAL_STEP, 1, False),
             AxisName.Y: RegularAxis(AxisName.Y, latitude, _SPATIAL_STEP, 1, False),
             AxisName.Z: VantageAxis(AxisName.Z, _VANTAGE_Z),
-            AxisName.T: RegularAxis(AxisName.T, anchor, _HOUR, hours, True),
+            AxisName.T: SnappedAxis(AxisName.T, Interval(start_i, end_i)),
         }
     )
     return Selection(domain=domain, parameters=params)
+
+
+def _parse_bound(raw: str) -> datetime:
+    """One `start`/`end` string as an aware-UTC raw instant; naive reads as UTC.
+
+    `date.fromisoformat` probes first: `datetime.fromisoformat` silently reads a bare date as
+    midnight, which would be the silently short answer session 0013 rejected — a bare (or week)
+    date is refused loudly with the fix in the message instead (RFC 0008 decision 5).
+    """
+    try:
+        date.fromisoformat(raw)
+    except ValueError:
+        pass
+    else:
+        raise BadRequest(f"bare dates are not accepted; use a datetime like {raw}T00:00")
+    try:
+        instant = datetime.fromisoformat(raw)
+    except ValueError as exc:
+        raise BadRequest(f"unparsable start/end: {raw!r}") from exc
+    return instant.replace(tzinfo=UTC) if instant.tzinfo is None else instant.astimezone(UTC)
+
+
+def _t_extent(reach: Domain) -> Interval[datetime]:
+    """A reach's T extent, narrowed: the axis extent is coordinate-generic (cf. `_iso_z`)."""
+    separable = as_separable(reach)
+    if separable is None:
+        raise TypeError(f"reach must be separable, got {type(reach).__name__}")
+    extent = separable.axis(AxisName.T).extent
+    lower, upper = extent.lower, extent.upper
+    if not isinstance(lower, datetime) or not isinstance(upper, datetime):
+        raise TypeError(f"expected a datetime extent, got {extent!r}")
+    return Interval(lower, upper)
+
+
+def _horizon_sentence(capability: Capability, menu: frozenset[ParameterId]) -> str:
+    """The description's horizon sentence — empty when the menu is (nothing to narrate, and a
+    `min` over zero reaches must not raise at startup).
+
+    Narrated relatively ("out to N ahead of the latest run"), never as absolute instants: the
+    description is built once and frozen for the process lifetime, and a `RollingAxis` extent
+    length is invariant as its bounds move, which keeps the relative form true indefinitely.
+    The `min` fold over the exposed menu mirrors `build_selection`'s reach-end fold, so the
+    description promises no further than the narrowest served parameter reaches.
+    """
+    if not menu:
+        return ""
+    extents = (_t_extent(capability.reach(pid)) for pid in menu)
+    horizon = min(extent.upper - extent.lower for extent in extents)
+    hours = int(horizon // _HOUR)
+    span = f"{hours // 24} days" if hours % 24 == 0 else f"{hours} hours"
+    return f"Horizon: out to {span} ahead of the latest model run. "
 
 
 def serialize_coverage(coverage: Coverage) -> dict[str, object]:
@@ -185,6 +263,9 @@ def _resolve_parameters(
     envelope: Mapping[ParameterId, object],
     table: ParameterTable,
 ) -> frozenset[ParameterId]:
+    if names is not None and not names:
+        # `None` means "all served"; an explicitly empty ask is meaningless (RFC 0008 decision 3).
+        raise BadRequest("parameters must not be empty; omit it to get all served parameters")
     menu = _exposed_menu(envelope)
     if names is None:
         return menu
@@ -199,13 +280,6 @@ def _resolve_parameters(
             raise BadRequest(f"parameter {name!r} is not served by this profile")
         resolved.append(pid)
     return frozenset(resolved)
-
-
-def _horizon_hours(horizon: timedelta) -> int:
-    hours = horizon / _HOUR
-    if hours != int(hours) or int(hours) < 1:
-        raise ValueError(f"default_horizon must be a positive whole number of hours, got {horizon}")
-    return int(hours)
 
 
 def _iso_z(moment: Coordinate) -> str:

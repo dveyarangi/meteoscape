@@ -60,7 +60,7 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
         clock,
         StoreFactory(),
     )
-    app = build_mcp_app(gateway, clock, settings.default_horizon)
+    app = build_mcp_app(gateway, clock)
     async with Client(app) as client:
         result = await client.call_tool("forecast_hourly", _REQUEST)
     payload = result.data

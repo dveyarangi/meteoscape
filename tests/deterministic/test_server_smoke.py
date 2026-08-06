@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from meteoscape.api.gateway import Gateway
 from meteoscape.api.mcp_app import build_mcp_app
@@ -25,7 +25,6 @@ def test_forecast_hourly_is_registered() -> None:
     app = build_mcp_app(
         Gateway(_EmptyView()),
         StoppedClock(datetime(2026, 7, 11, tzinfo=UTC)),
-        timedelta(days=7),
     )
     tool = asyncio.run(app.get_tool("forecast_hourly"))
     assert tool is not None

@@ -14,10 +14,12 @@ each vendor itself.
 
 > **Current status:** early v1 development. `forecast_hourly` serves the full canonical v1
 > parameter set through Open-Meteo — six provider-served parameters plus derived wind
-> speed/direction — with per-value source provenance, expiration, and nodata handling. Request
-> shaping (free `start`/`end` windows), second-provider fallback, retentive caching, and off-grid
-> read-back are still ahead. See the [v1 delivery status](./docs/tickets/README.md) for the
-> authoritative capability matrix and execution order.
+> speed/direction — with per-value source provenance, expiration, and nodata handling, and free
+> `start`/`end` request windows: bounds are served as their intersection with the live provider
+> window, and omitted bounds default to now and the profile's full reach. Second-provider
+> fallback, retentive caching, and off-grid read-back are still ahead. See the
+> [v1 delivery status](./docs/tickets/README.md) for the authoritative capability matrix and
+> execution order.
 
 ## v1 target
 

@@ -67,5 +67,5 @@ def main() -> None:
         clock,
         StoreFactory(),
     )
-    app = build_mcp_app(gateway, clock, settings.default_horizon)
+    app = build_mcp_app(gateway, clock)
     app.run()

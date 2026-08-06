@@ -13,14 +13,26 @@ subset of it.
 **Request** — `forecast_hourly(latitude, longitude, parameters?, start?, end?)`:
 
 - `latitude` ∈ [−90, 90], `longitude` ∈ [−180, 180]; out of range → `bad-request`.
-- `start` / `end` are **reserved**: any value → `bad-request` until request shaping lands
-  (Roadmap 1). The served window is the edge-authored default: **168 hourly ticks anchored at
-  `floor(now, 1h)` UTC** (a 7-day Horizon).
+- `start` / `end` — optional free window bounds, **ISO 8601 datetimes only**: offset-aware
+  normalizes to UTC, naive reads as UTC; a bare date (or week date) → `bad-request` with the
+  datetime fix in the message; unparsable → `bad-request`. The window is served as
+  **`bounds ∩ the winner's live window`** on the winner's own lattice
+  ([m4](../tickets/done/01-0100-snapped-t-request-mode.md)): the tick containing `start` is
+  served, `end` is inclusive of its containing tick, and `start == end` yields exactly one tick.
+  Omitted `start` begins at the tick containing now; omitted `end` runs to the profile's live
+  reach end. A backwards window (raw instants, implicit `start = now`) → `bad-request`; a
+  well-formed window with no overlap with the served range → `capability-mismatch` — admission's
+  answer, never the edge's, which holds no reach authority. Out-of-range bounds yield the
+  **servable part**; the response's `valid_time` shows the window actually served. Landed
+  2026-08-06 ([003c](../tickets/done/01-0110-request-shaping.md)) as a **compatible** contract
+  change: the schema always declared `start`/`end`; only the semantics went live.
 - `parameters` — optional list of product parameter names; default is the full served menu.
   The menu is *exposure ∩ woven capability*; today: `air_temperature`, `precipitation`,
   `relative_humidity`, `cloud_cover`, `wind_speed`, `wind_direction`. The wind components
   `wind_u` / `wind_v` are Calculator inputs, never requestable. Unknown, non-requestable, or
-  profile-unserved names → `bad-request` (whole request, before resolution).
+  profile-unserved names → `bad-request` (whole request, before resolution); an **explicitly
+  empty list** → `bad-request` (`None` keeps meaning "all served"); an empty *served* menu →
+  `capability-mismatch`.
 - Vertical vantage is edge-authored near-surface (0–10 m aperture); the caller does not choose.
 
 **Response** — one JSON object:
@@ -70,6 +82,22 @@ request).
 - Per-parameter provenance (`source`, `exp`) is always present on served parameters —
   *validated by:* serializer tests in
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
+- The tool description narrates the served menu and the profile's reach as a **relative horizon**
+  ("out to N ahead of the latest model run"), never absolute instants: the description is built
+  once and frozen for the process lifetime, and a `RollingAxis` extent length is clock-invariant,
+  which keeps the relative form true indefinitely — *validated by:*
+  [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py)
+  (`test_forecast_hourly_builds_selection_and_narrates`, the empty-menu skip) and the e2e
+  default-window case ([test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)).
+- A zero-overlap window is answered at admission — `capability-mismatch` with **no vendor
+  call** — and out-of-range bounds reach the vendor as exactly the clipped lattice —
+  *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
+  (`test_history_window_is_capability_mismatch_with_no_vendor_call`,
+  `test_out_of_range_bounds_fetch_exactly_the_clipped_window`).
+- A vendor delivering fewer ticks than declared is an honest shorter answer, disclosed through
+  `valid_time` — never a fault ([edge/provider.md](./provider.md)) — *validated by:*
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
+  (`test_short_vendor_delivery_is_disclosed_not_failed`).
 
 ## Concerns
 
@@ -81,9 +109,9 @@ request).
   catalogue grows (010).
 - [#15 — Coarser-grid resampling](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)
   — a future caller-facing resolution knob; today this edge always serves hourly.
-- [#29 — Narrated reach](../concerns.md#29-narrated-reach-what-a-profile-promises) — what the
-  profile promises ahead vs what a caller gets; the default window is edge-authored from the
-  Horizon, and reach narration lands with 003c (Roadmap 1).
+- [#29 — Narrated reach](../concerns.md#29-narrated-reach-what-a-profile-promises) — the
+  narrated horizon is one number for the whole globe (a `min` fold over the served menu); the
+  per-location truth is the deferred capabilities-introspection tool.
 - [#30 — Response membership under degraded fallback](../concerns.md#30-response-membership-under-runtime-degraded-fallback)
   — membership semantics at this edge shift when fallback lands (Roadmap 4).
 - [#36 — Unserved and uncomparable are indistinguishable](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
@@ -95,9 +123,9 @@ request).
 
 ## Roadmap
 
-1. Free `start`/`end` request windows — out-of-range asks yield the servable part, with reach
-   narration — [003c](../tickets/01-0110-request-shaping.md)
-   (on [m4](../tickets/done/01-0100-snapped-t-request-mode.md)).
+1. ~~Free `start`/`end` request windows — out-of-range asks yield the servable part, with reach
+   narration~~ — **landed 2026-08-06**
+   ([003c](../tickets/done/01-0110-request-shaping.md)).
 2. Fresh reuse — repeat asks answered from retained data —
    [006](../tickets/01-0115-retentive-store-freshness.md).
 3. Off-grid fidelity — homogenized values at the requested point, not nearest-neighbor —

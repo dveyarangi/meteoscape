@@ -87,7 +87,7 @@ def test_default_compose_and_forecast_hourly_registered() -> None:
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
 
-    app = build_mcp_app(gateway, clock, settings.default_horizon)
+    app = build_mcp_app(gateway, clock)
     tool = asyncio.run(app.get_tool("forecast_hourly"))
     assert tool is not None
     assert tool.name == "forecast_hourly"

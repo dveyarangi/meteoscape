@@ -8,6 +8,7 @@ import httpx
 import pytest
 import respx
 from fastmcp import Client
+from fastmcp.exceptions import ToolError
 
 from fakes import snapped_point_domain
 from meteoscape.api.mcp_app import build_mcp_app
@@ -90,17 +91,19 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         _CLOCK,
         StoreFactory(),
     )
-    app = build_mcp_app(gateway, _CLOCK, settings.default_horizon)
+    app = build_mcp_app(gateway, _CLOCK)
 
+    # The explicit window is exactly the 168 canned ticks (inclusive `end` = the last canned
+    # tick), so the valid_time pins below survive the reach-end default verbatim.
+    request = {
+        "latitude": 52.52,
+        "longitude": 13.41,
+        "start": "2026-07-11T12:00",
+        "end": "2026-07-18T11:00",
+    }
     async with Client(app) as client:
-        first = await client.call_tool(
-            "forecast_hourly",
-            {"latitude": 52.52, "longitude": 13.41},
-        )
-        second = await client.call_tool(
-            "forecast_hourly",
-            {"latitude": 52.52, "longitude": 13.41},
-        )
+        first = await client.call_tool("forecast_hourly", request)
+        second = await client.call_tool("forecast_hourly", request)
 
     # StubStore has no retention: each request performs one source fetch plus one wind u/v fetch.
     # A retentive Store will make the second request reuse both.
@@ -147,12 +150,47 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_forecast_hourly_default_window_is_the_full_reach() -> None:
+    """Omitted bounds run from now to the folded reach end — the whole conservative window.
+
+    384 ticks: the resolver serves `[floor(now), A + max_lead]` with `A = floor(now) - latency`,
+    so under `CADENCE` (Δ = 1 h, latency 1 h, max_lead 16 d) the count is 16 d/1 h - 1 + 1 = 384.
+    Response shape only — the fetch count stays pinned in the refetch test alone, whose
+    no-retention comment ticket 006 flips.
+    """
+    respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=384))
+    )
+    gateway = _compose_default(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    # The production horizon sentence belongs where the real profile is composed (RFC 0008
+    # stage 2): 16 days is Open-Meteo's `CADENCE.max_lead`, invariant as the window rolls.
+    tool = await app.get_tool("forecast_hourly")
+    assert tool is not None
+    assert "out to 16 days ahead of the latest model run" in (tool.description or "")
+
+    async with Client(app) as client:
+        result = await client.call_tool(
+            "forecast_hourly",
+            {"latitude": 52.52, "longitude": 13.41},
+        )
+
+    payload = result.data
+    assert len(payload["valid_time"]) == 384
+    assert payload["valid_time"][0] == "2026-07-11T12:00:00Z"
+    assert payload["valid_time"][-1] == "2026-07-27T11:00:00Z"
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_snapped_selection_resolves_through_the_woven_profile() -> None:
-    """The mode end to end, on the shape 003c will hand the edge: bounds in, the leaf's lattice out.
+    """The mode end to end: bounds in, the leaf's lattice out.
 
     Mixed direct and derived parameters on purpose — that is **two** winners and two independent
     vendor fetches, so the answer geometry both assemble onto is the thing under test, not just the
-    single-winner path. The MCP edge stays enumerable until 003c, so this enters at the Gateway.
+    single-winner path. Enters at the Gateway: the geometry contract pinned here is the engine's,
+    independent of the MCP edge's authoring.
     """
     route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
         return_value=httpx.Response(200, json=_canned_forecast())
@@ -216,6 +254,101 @@ async def test_snapped_winner_domains_that_diverge_fail_the_whole_request() -> N
                 parameters=frozenset({AIR_TEMPERATURE, WIND_SPEED}),
             )
         )
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_history_window_is_capability_mismatch_with_no_vendor_call() -> None:
+    """A well-formed window wholly before the live window: admission answers, nothing is fetched.
+
+    The edge never rejects on reach's word — the mismatch is intersective admission's (m4), so
+    the proof it happened at admission is that the vendor was never asked.
+    """
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast())
+    )
+    gateway = _compose_default(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    async with Client(app) as client:
+        with pytest.raises(ToolError, match=r"^capability-mismatch:"):
+            await client.call_tool(
+                "forecast_hourly",
+                {
+                    "latitude": 52.52,
+                    "longitude": 13.41,
+                    "start": "2025-07-11T12:00",
+                    "end": "2025-07-18T11:00",
+                },
+            )
+    assert route.call_count == 0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_out_of_range_bounds_fetch_exactly_the_clipped_window() -> None:
+    """An early `start` and an over-horizon `end` reach the vendor as the clipped lattice.
+
+    The winner grounds `bounds ∩ its live window` on its own grid and asks for exactly that —
+    `[A, A + max_lead]` with `A = 2026-07-11T11:00` under the stopped clock. Direct parameter
+    only (one winner, one fetch), so the captured query is the whole vendor conversation.
+    """
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=384))
+    )
+    gateway = _compose_default(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    async with Client(app) as client:
+        await client.call_tool(
+            "forecast_hourly",
+            {
+                "latitude": 52.52,
+                "longitude": 13.41,
+                "parameters": ["air_temperature"],
+                "start": "2026-07-01T00:00",
+                "end": "2026-09-01T00:00",
+            },
+        )
+
+    assert route.call_count == 1
+    asked = dict(route.calls[0].request.url.params)
+    assert asked["start_hour"] == "2026-07-11T11:00"
+    assert asked["end_hour"] == "2026-07-27T11:00"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_short_vendor_delivery_is_disclosed_not_failed() -> None:
+    """A vendor answering fewer ticks than declared is an honest shorter answer, not a fault.
+
+    The same 168-asked/100-delivered pair as the divergence pin above, but direct parameters
+    only — one winner, one fetch — so the shorter delivery exercises disclosure instead of
+    tripping the closed-projection check. The response's `valid_time` is the disclosure: it shows
+    the 100-tick window actually served.
+    """
+    respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=100))
+    )
+    gateway = _compose_default(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    async with Client(app) as client:
+        result = await client.call_tool(
+            "forecast_hourly",
+            {
+                "latitude": 52.52,
+                "longitude": 13.41,
+                "parameters": ["air_temperature"],
+                "start": "2026-07-11T12:00",
+                "end": "2026-07-18T11:00",
+            },
+        )
+
+    payload = result.data
+    assert len(payload["valid_time"]) == 100
+    assert payload["valid_time"][0] == "2026-07-11T12:00:00Z"
+    assert payload["valid_time"][-1] == "2026-07-15T15:00:00Z"
 
 
 def test_root_reach_is_the_live_leaf_domain_for_a_direct_parameter() -> None:

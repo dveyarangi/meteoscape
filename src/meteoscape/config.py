@@ -91,9 +91,6 @@ class Settings(BaseSettings):
     retention_interval: timedelta = timedelta(days=14)
     """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""
 
-    default_horizon: timedelta = timedelta(days=7)
-    """Forward horizon applied only when the caller omits `end`."""
-
     def offerings(self) -> tuple[OfferingDef, ...]:
         """Enabled producer declarations with explicit offering names."""
         defs: list[OfferingDef] = []
