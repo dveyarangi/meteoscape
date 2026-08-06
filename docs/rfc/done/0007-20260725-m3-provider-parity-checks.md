@@ -83,7 +83,7 @@ deterministic gate.
      no-`meteoscape`-imports rule (decision 2).
    - Bounded request: Berlin `52.52, 13.41` (the manual-check and e2e precedent), all six product
      parameters, **the surface's default window** (currently the fixed 168 h horizon; after
-     [003c](../../tickets/01-0110-request-shaping.md), the reach-end default — the comparison aligns by
+     [003c](../../tickets/done/01-0110-request-shaping.md), the reach-end default — the comparison aligns by
      declared valid-times, so it is insensitive to which), UTC. A second location (southern
      hemisphere / negative longitude, exercising sign conventions) is a cheap follow-on, not part
      of m3.

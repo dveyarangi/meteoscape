@@ -781,7 +781,7 @@ uv run pytest` green.
    carries the split.
    Roadmap stage 1 is removed by the same edit. The
    [glossary](../../glossary.md) gains *Ground* (disambiguated from the vertical datum) and *Clip*; the
-   [003c ticket](../../tickets/01-0110-request-shaping.md) records divergence as a landing risk
+   [003c ticket](../../tickets/done/01-0110-request-shaping.md) records divergence as a landing risk
    it owns, and carries
    [#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method) as a decision
    its migration forces; [delivery status](../../tickets/README.md) m4 row → Done and execution-order note; ticket +

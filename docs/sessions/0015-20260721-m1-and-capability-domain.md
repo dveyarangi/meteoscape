@@ -106,7 +106,7 @@ below geometry. What a profile should narrate against that gap is undecided.
 - **Commit the uncommitted doc set**; `main` is 4 commits ahead of `origin/main` and unpushed. CI is
   green as of `ee503cf`.
 - **Run [003b](../tickets/done/01-0060-capability-domain.md)** before
-  [003c](../tickets/01-0110-request-shaping.md), which would otherwise write the first consumer against
+  [003c](../tickets/done/01-0110-request-shaping.md), which would otherwise write the first consumer against
   the contract 003b deletes.
 - **003c carries one decision from this session**: the narrated horizon is **relative**, never absolute
   instants. The tool description is built once and frozen for the process lifetime, so an absolute date

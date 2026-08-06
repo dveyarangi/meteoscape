@@ -17,7 +17,7 @@
 - **Depends on:** [003b — Capability carries its domain](./01-0060-capability-domain.md) (reach
   on the `Capability`), [m3](./01-0080-provider-parity-checks.md) (parity harness guards the
   provider change), both done.
-- **Blocks:** [003c — Request shaping](../01-0110-request-shaping.md) — its window semantics ride this
+- **Blocks:** [003c — Request shaping](./01-0110-request-shaping.md) — its window semantics ride this
   mode instead of edge-side clamping.
 - **Outcome:** the request path supports the **Snapped** mode
   [ADR-0002](../../adr/0002-data-model.md) reserves — *"bounds fixed, lattice open, resolved against
@@ -150,7 +150,7 @@ freshness/run identity, never a promised response extent.
   the deferred "second provider with diverging reach" case** — it is live today. m4 changes no
   Arbiter code and adds no per-cell fold: it pins the loud failure with a test, classifies it
   **Race** at [#40](../../concerns.md#40-composing-servable-requests-at-the-embedding-edge), and hands
-  the judgement to [003c](../01-0110-request-shaping.md)'s landing, where the mode first becomes
+  the judgement to [003c](./01-0110-request-shaping.md)'s landing, where the mode first becomes
   reachable from the edge ([006](../01-0115-retentive-store-freshness.md)'s retention collapses the
   second fetch and dissolves the common case).
 - **Shape-correspondence** (ADR-0001) already states the contract: the answer mirrors the
@@ -240,7 +240,7 @@ freshness/run identity, never a promised response extent.
 - [#13](../../concerns.md#13-candidate-admission-containment-vs-intersection) — record the scoped v1
   position; the general per-cell-fold widening stays open. **At landing.**
 - [v1-requirements §Time axis](../../v1-requirements.md) and
-  [003c](../01-0110-request-shaping.md) — **done at the align (2026-07-25):** bounds-only wording,
+  [003c](./01-0110-request-shaping.md) — **done at the align (2026-07-25):** bounds-only wording,
   raw-instant bounds, resolver-side cell containment, reach-filled default `end`.
 - [architecture.md](../../architecture.md) — ~~the Selection/mode sentence gains the snapped request
   example if needed.~~ **Done at the align (2026-07-25):** a §Request modes section (mode = the

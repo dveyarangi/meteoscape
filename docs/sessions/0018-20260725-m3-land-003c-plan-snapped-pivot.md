@@ -4,7 +4,7 @@ One session, two arcs. **Arc 1:** [m3](../tickets/done/01-0080-provider-parity-c
 align → [RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md) → Cursor
 implementation → validation → landed, in a day — including a live acceptance run against real
 Open-Meteo (1 passed, no retry consumed). **Arc 2:** 003c planning
-([RFC 0008](../rfc/0008-20260725-003c-request-shaping.md)) survived three adversarial review
+([RFC 0008](../rfc/done/0008-20260725-003c-request-shaping.md)) survived three adversarial review
 rounds, and the accumulated findings drove the window-fitting design off the edge and into the
 algebra's reserved **Snapped mode** — minting
 [m4](../tickets/done/01-0100-snapped-t-request-mode.md), which now precedes 003c. Decisions live in the

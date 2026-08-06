@@ -13,7 +13,7 @@
 ## What to build
 
 Build-time only — **no surface change and no request-path change**.
-[003b](../01-0110-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
+[003b](./01-0110-request-shaping.md) is the consumer. Two methods in a new **`nodes/reach.py`**:
 
 ```
 validate_calculators(ProfileDef) -> None                     # is it wired?  (raises)
@@ -73,7 +73,7 @@ Build notes, each grounded in [ADR-0007](../../adr/0007-capability-carries-its-d
 
 **Wiring is 003b's.** This ticket delivers `validate_calculators`, `resolve_reach`, and the
 `Provider.footprints` accessor; calling them from `compose()` — validate **before** `weave`, reach
-after — and handing the map to the surface is [003b](../01-0110-request-shaping.md), which already touches
+after — and handing the map to the surface is [003b](./01-0110-request-shaping.md), which already touches
 composition.
 
 ### Geometry: none added
@@ -148,4 +148,4 @@ That collapses three standing concerns to **no-ops for this ticket** (session 00
 ## User stories addressed
 
 Enables user story 10 (envelope narration), delivered by
-[003b](../01-0110-request-shaping.md).
+[003b](./01-0110-request-shaping.md).

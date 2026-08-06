@@ -5,7 +5,7 @@
 - **Status:** Ready — moved ahead of
   [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) on 2026-08-05 (003c's
   re-stage align): retention is the *mechanism* that collapses the mixed-request double fetch,
-  whose divergence [003c](./01-0110-request-shaping.md) accepts for exactly one ticket on the
+  whose divergence [003c](./done/01-0110-request-shaping.md) accepts for exactly one ticket on the
   strength of this ordering.
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
@@ -85,7 +85,7 @@ diverging.
 drafted above is per-parameter: a miss refills only the *requested* parameters, so a cold-store
 mixed request (direct parameters through the Provider; `wind_u`/`wind_v` through the Calculator's
 scoped Arbiter) still issues **two vendor fetches with disjoint variable sets** — the divergence
-exposure [003c](./01-0110-request-shaping.md) accepted survives on that path. The alternative: a
+exposure [003c](./done/01-0110-request-shaping.md) accepted survives on that path. The alternative: a
 miss refills the source's **whole offering** — one vendor call returns all its variables anyway, so
 the first fetch would populate `wind_u`/`wind_v` and the second would hit the store even
 stone-cold. Decide which, and record the traffic/behaviour trade. At the same align, **verify the

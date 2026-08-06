@@ -3,7 +3,7 @@
 Continues [session 0012](./0012-20260714-002b-align-derived-wind.md). An `align` pass on
 ticket 003 — which the session ended by splitting into
 [003a](../tickets/done/01-0040-profile-reach.md) (the reach algebra) and
-[003b](../tickets/01-0110-request-shaping.md) (the edge). Opened by repairing **drift in the release
+[003b](../tickets/done/01-0110-request-shaping.md) (the edge). Opened by repairing **drift in the release
 contract**, then split the ticket, then spent its length on one branch — *how does a surface know how
 far a profile reaches* — which reversed itself several times before landing. The reversal trail is
 recorded below, because most of what was explored is plausible enough to be re-proposed.

@@ -80,7 +80,7 @@ shape of the work, not commitments.
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context — #39.
 3. Request-composition ergonomics — `SelectionDomain` / mode builders ride
    [m4](../tickets/done/01-0100-snapped-t-request-mode.md) and
-   [003c](../tickets/01-0110-request-shaping.md); they become embedder vocabulary when the facade
+   [003c](../tickets/done/01-0110-request-shaping.md); they become embedder vocabulary when the facade
    lands. Whether those builders are merely **shape-safe** (unservable shapes unrepresentable, no
    capability read) or **capability-aware** (validated against a live `Capability`, therefore
    advisory) is [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge).

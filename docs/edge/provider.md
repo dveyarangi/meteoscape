@@ -416,7 +416,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   own fetch: a vendor answering the two calls differently leaves two answers on two geometries, and the
   Arbiter's closed-projection check fails the **whole request** with `RuntimeFailure`. Deliberately
   unhandled — no fold reconciles winner domains — so a leaf author must not try to compensate for it
-  leaf-side; it is owned at [003c](../tickets/01-0110-request-shaping.md)'s landing and dissolves for
+  leaf-side; it is owned at [003c](../tickets/done/01-0110-request-shaping.md)'s landing and dissolves for
   the common case when [006](../tickets/01-0115-retentive-store-freshness.md)'s retention collapses the
   second fetch. *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
 

@@ -4,7 +4,7 @@
 
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md),
-  [003c — Request shaping](./01-0110-request-shaping.md), and
+  [003c — Request shaping](./done/01-0110-request-shaping.md), and
   [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (the second producer this ticket
   falls back *to*; 011 in turn rides [m4](./done/01-0100-snapped-t-request-mode.md))
 - **Outcome:** Wholesale priority fallback across two producers.

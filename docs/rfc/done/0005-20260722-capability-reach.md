@@ -444,7 +444,7 @@ forgotten, and stage 9 is where it closes.
 - The **X/Y-first preference** — decided-but-unbuilt; incomparable candidates raise. Trigger: the
   first regional provider.
 - **`Domain.intersect`** — declared seam, needed by area products folding X/Y and T jointly.
-- **Surface narration** and the omitted-`end` default → [003c](../../tickets/01-0110-request-shaping.md).
+- **Surface narration** and the omitted-`end` default → [003c](../../tickets/done/01-0110-request-shaping.md).
 - **Node-`Countable`** → [m2](../../tickets/done/01-0070-dissolve-node-countable.md), immediately after. 003b must
   not deepen what m2 deletes: leave `_source_grid` and the `Countable` isinstance sites alone, and add
   no new reader of a node's `domain`. The order is load-bearing — `CountableFakeProvider` inherits

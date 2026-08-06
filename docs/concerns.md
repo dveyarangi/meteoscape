@@ -232,7 +232,7 @@ would become unrepresentable rather than tested. That is the same *make it unrep
 - **A crop target is coordinates, not bounds.** `resample` takes a `Selection` whose domain must be
   enumerable. One request representation means either it stops taking a `Selection`, or the grounded
   result is re-wrapped into one on every crop.
-- **Two authors would have to move together** — the edge ([003c](./tickets/01-0110-request-shaping.md)) and
+- **Two authors would have to move together** — the edge ([003c](./tickets/done/01-0110-request-shaping.md)) and
   006's refill — and store keys are stated in enumerable terms, so 006's quantize-then-key path would be
   restated too.
 
@@ -826,7 +826,7 @@ as rare-and-loud **for exactly one ticket** — retention
 ([006](./tickets/01-0115-retentive-store-freshness.md), moved to directly after 003c at the same
 align) collapses the warm path, and the cold-store residue (two disjoint-parameter fetches) is
 owned by 006's **refill-scope** decision; the full record is the
-[003c ticket](./tickets/01-0110-request-shaping.md)'s divergence criterion. Recorded revisit,
+[003c ticket](./tickets/done/01-0110-request-shaping.md)'s divergence criterion. Recorded revisit,
 triggered by **the first parameter set with
 diverging T reach (the second provider)**: under one-domain Selections a snapped window is
 resolved per winner *per parameter set* — whether a diverging bundle should be served at its

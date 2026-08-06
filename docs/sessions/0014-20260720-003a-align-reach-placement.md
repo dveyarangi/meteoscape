@@ -219,4 +219,4 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 
 **Next:** implement [003a](../tickets/done/01-0040-profile-reach.md) — now a smaller ticket than at session
 start (one build-time function, one leaf accessor, `Interval.intersect`; no node changes), then
-[003b](../tickets/01-0110-request-shaping.md) on top of it.
+[003b](../tickets/done/01-0110-request-shaping.md) on top of it.

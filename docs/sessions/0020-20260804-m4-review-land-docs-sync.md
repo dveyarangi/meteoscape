@@ -65,7 +65,7 @@ All owned elsewhere; none minted here:
 - **Parity-existence is the edge record's one remaining ⚠ unguarded promise** →
   [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 - **RFC 0008 must be re-staged against the landed mode before 003c implementation** — recorded in
-  the [003c ticket](../tickets/01-0110-request-shaping.md) status; the RFC planned the superseded
+  the [003c ticket](../tickets/done/01-0110-request-shaping.md) status; the RFC planned the superseded
   edge-clamp.
 - **Two request representations** → [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)
   (triggers: 006's refill, 003c's edge migration, #39's builder).

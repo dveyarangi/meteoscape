@@ -20,7 +20,7 @@ reports none), so `main` is red. Triage found the errors are not one problem: a 
 the checker caught, the rest are the `Separable` facet and the Manifold facets **working as designed**
 — a test holding a base-typed value and reaching for a refinement's member.
 
-It runs **before [003b](../01-0110-request-shaping.md)** because 003b is the first consumer of
+It runs **before [003b](./01-0110-request-shaping.md)** because 003b is the first consumer of
 `resolve_reach`, and settling how reach's geometry is typed while the resolver has no caller is
 cheaper than renegotiating it once the surface depends on it.
 
