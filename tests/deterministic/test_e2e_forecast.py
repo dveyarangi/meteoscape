@@ -49,8 +49,11 @@ def _compose_default(clock: Clock):
     )
 
 
-def _canned_forecast(*, hours: int = _HOURS) -> dict:
-    start = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
+def _canned_forecast(
+    *,
+    hours: int = _HOURS,
+    start: datetime = datetime(2026, 7, 11, 12, 0, tzinfo=UTC),
+) -> dict:
     times = [(start + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M") for i in range(hours)]
     return {
         "latitude": 52.52,
@@ -151,24 +154,19 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_forecast_hourly_default_window_is_the_full_reach() -> None:
-    """Omitted bounds run from now to the folded reach end — the whole conservative window.
+    """Omitted bounds run from stopped noon to the day-anchored shelf end.
 
-    384 ticks: the resolver serves `[floor(now), A + max_lead]` with `A = floor(now) - latency`,
-    so under `CADENCE` (Δ = 1 h, latency 1 h, max_lead 16 d) the count is 16 d/1 h - 1 + 1 = 384.
-    Response shape only — the fetch count stays pinned in the refetch test alone, whose
-    no-retention comment ticket 006 flips.
+    The shelf has 384 hourly ticks; the 12 before noon are outside the default request.
     """
     respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
-        return_value=httpx.Response(200, json=_canned_forecast(hours=384))
+        return_value=httpx.Response(200, json=_canned_forecast(hours=372))
     )
     gateway = _compose_default(_CLOCK)
     app = build_mcp_app(gateway, _CLOCK)
 
-    # The production horizon sentence belongs where the real profile is composed (RFC 0008
-    # stage 2): 16 days is Open-Meteo's `CADENCE.max_lead`, invariant as the window rolls.
     tool = await app.get_tool("forecast_hourly")
     assert tool is not None
-    assert "out to 16 days ahead of the latest model run" in (tool.description or "")
+    assert "out to 15 days ahead of the latest model run" in (tool.description or "")
 
     async with Client(app) as client:
         result = await client.call_tool(
@@ -177,9 +175,9 @@ async def test_forecast_hourly_default_window_is_the_full_reach() -> None:
         )
 
     payload = result.data
-    assert len(payload["valid_time"]) == 384
+    assert len(payload["valid_time"]) == 372
     assert payload["valid_time"][0] == "2026-07-11T12:00:00Z"
-    assert payload["valid_time"][-1] == "2026-07-27T11:00:00Z"
+    assert payload["valid_time"][-1] == "2026-07-26T23:00:00Z"
 
 
 @pytest.mark.asyncio
@@ -290,11 +288,12 @@ async def test_out_of_range_bounds_fetch_exactly_the_clipped_window() -> None:
     """An early `start` and an over-horizon `end` reach the vendor as the clipped lattice.
 
     The winner grounds `bounds ∩ its live window` on its own grid and asks for exactly that —
-    `[A, A + max_lead]` with `A = 2026-07-11T11:00` under the stopped clock. Direct parameter
-    only (one winner, one fetch), so the captured query is the whole vendor conversation.
+    `[today00, today00+383h]` under the stopped noon clock. Direct parameter only (one winner,
+    one fetch), so the captured query is the whole vendor conversation.
     """
+    midnight = datetime(2026, 7, 11, 0, tzinfo=UTC)
     route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
-        return_value=httpx.Response(200, json=_canned_forecast(hours=384))
+        return_value=httpx.Response(200, json=_canned_forecast(hours=408, start=midnight))
     )
     gateway = _compose_default(_CLOCK)
     app = build_mcp_app(gateway, _CLOCK)
@@ -313,8 +312,8 @@ async def test_out_of_range_bounds_fetch_exactly_the_clipped_window() -> None:
 
     assert route.call_count == 1
     asked = dict(route.calls[0].request.url.params)
-    assert asked["start_hour"] == "2026-07-11T11:00"
-    assert asked["end_hour"] == "2026-07-27T11:00"
+    assert asked["start_hour"] == "2026-07-11T00:00"
+    assert asked["end_hour"] == "2026-07-26T23:00"
 
 
 @pytest.mark.asyncio

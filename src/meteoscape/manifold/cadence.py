@@ -1,12 +1,4 @@
-"""`CadenceDef` - a Provider's run-cadence declaration, the origin of every time-relative quantity -
-plus `RollingAxis`, its geometry face.
-
-From three per-provider facts - the run interval `Δ`, the `publication_latency` `L`, and the furthest
-forward `max_lead` - one effective run `anchor` at request time `now` yields the run identity
-(`issue_time`), freshness (`expiration`), and the footprint's rolling `valid_time` window. `RollingAxis`
-projects that window into the `Axis` surface; it lives here rather than in `domain.py` so geometry stays
-clock-free - the one clock-relative axis is isolated with the cadence it reads. See ADR-0003.
-"""
+"""Provider timing and its clock-relative `valid_time` axis."""
 
 from __future__ import annotations
 
@@ -19,11 +11,12 @@ from .domain import Axis, AxisName, Interval, RegularAxis
 
 @dataclass(frozen=True)
 class CadenceDef:
-    """Run interval `Δ`, publication latency `L`, and `max_lead` - the timing every derivation reads."""
+    """Run timing plus an optional independent quantum for the availability window."""
 
     cadence: timedelta
     publication_latency: timedelta
     max_lead: timedelta
+    window_quantum: timedelta | None = None
 
     def anchor(self, now: datetime) -> datetime:
         """The effective run at `now`: the latest run whose publication (`r + L`) has already passed."""
@@ -34,25 +27,14 @@ class CadenceDef:
         return self.anchor(now) + self.cadence + self.publication_latency
 
     def valid_time(self, now: datetime) -> Interval[datetime]:
-        """The run's forecast window `[A, A + max_lead]` - the footprint's rolling `valid_time` extent."""
-        anchor = self.anchor(now)
-        return Interval(lower=anchor, upper=anchor + self.max_lead)
+        """Return the quantum-shelved availability window, or the run window when unshelved."""
+        base = floor_to(now, self.window_quantum) if self.window_quantum else self.anchor(now)
+        return Interval(lower=base, upper=base + self.max_lead)
 
 
 @dataclass(frozen=True)
 class RollingAxis(Axis):
-    """The clock-anchored continuous axis: a `FootprintDomain`'s `valid_time` axis.
-
-    `extent` resolves to the cadence's `valid_time(clock.now())` window `[A, A + max_lead]` at read, so
-    this axis is deliberately **clock-relative** - the one intentional exception to axis-as-pure-geometry,
-    isolated here (out of `domain.py`) with the cadence it reads. The `clock` is a build-time dependency
-    the Provider injects into the single axis that rolls (never threaded through `project`); reconciling
-    the anchor with the provider's real availability is concern #18 (ADR-0003 / ADR-0004).
-
-    `step` is how densely one run samples time - never the cadence, which times *runs* (a 6-hourly run
-    may publish an hourly series), so conflating them would make that provider undeclarable. Required
-    rather than optional, so a rolling axis never invents a lattice it does not have.
-    """
+    """Clock-relative `valid_time`; `step` is series sampling, not run cadence."""
 
     name: AxisName
     cadence: CadenceDef
@@ -64,11 +46,7 @@ class RollingAxis(Axis):
         return self.cadence.valid_time(self.clock.now())
 
     def clip(self, bounds: Interval) -> RegularAxis | None:
-        """The window materialized as the lattice its series arrives on, restricted to `bounds`.
-
-        The one clock read of a pre-fetch resolution. Cells, not instants: a tick owns the span that
-        follows it, which is what makes a bound falling mid-hour keep its own hour.
-        """
+        """Materialize the current window at the series step, restricted to `bounds`."""
         window = self.extent
         materialized = RegularAxis(
             self.name,

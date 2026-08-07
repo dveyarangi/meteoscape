@@ -109,8 +109,8 @@ def footprint_domain(
     )
 
 
-def _footprint(clock: Clock) -> FootprintDomain:
-    return footprint_domain(clock)
+def _footprint(clock: Clock, cadence: CadenceDef | None = None) -> FootprintDomain:
+    return footprint_domain(clock, cadence=cadence)
 
 
 def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> FootprintCapability:
@@ -119,9 +119,13 @@ def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> Foot
 
 
 def footprint_capability(
-    clock: Clock, parameters: ParameterTable, pids: frozenset[ParameterId]
+    clock: Clock,
+    parameters: ParameterTable,
+    pids: frozenset[ParameterId],
+    *,
+    cadence: CadenceDef | None = None,
 ) -> FootprintCapability:
-    footprint = _footprint(clock)
+    footprint = _footprint(clock, cadence)
     return FootprintCapability(footprints={pid: (parameters.get(pid), footprint) for pid in pids})
 
 

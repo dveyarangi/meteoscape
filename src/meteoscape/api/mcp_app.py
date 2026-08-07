@@ -219,7 +219,8 @@ def _horizon_sentence(capability: Capability, menu: frozenset[ParameterId]) -> s
     extents = (_t_extent(capability.reach(pid)) for pid in menu)
     horizon = min(extent.upper - extent.lower for extent in extents)
     hours = int(horizon // _HOUR)
-    span = f"{hours // 24} days" if hours % 24 == 0 else f"{hours} hours"
+    days = hours // 24
+    span = f"{days} days" if days >= 1 else f"{hours} hours"
     return f"Horizon: out to {span} ahead of the latest model run. "
 
 

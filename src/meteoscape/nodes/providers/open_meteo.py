@@ -49,11 +49,12 @@ IMPL_ID = "open-meteo"
 PROVIDER_ID = "open-meteo"
 BEST_MATCH = "best_match"
 
-# Conservative cadence estimate; provider-real availability can refine it behind the same seam.
+# The vendor serves 16 calendar days of hourly ticks: [today00, today00+15d23h].
 CADENCE = CadenceDef(
     cadence=timedelta(hours=1),
     publication_latency=timedelta(hours=1),
-    max_lead=timedelta(days=16),
+    max_lead=timedelta(hours=383),
+    window_quantum=timedelta(hours=24),
 )
 
 _CANONICAL_IDS: frozenset[ParameterId] = frozenset(

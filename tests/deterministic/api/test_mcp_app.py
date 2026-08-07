@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastmcp import Client
@@ -14,6 +14,7 @@ from meteoscape.api.mcp_app import build_mcp_app, build_selection, serialize_cov
 from meteoscape.clock import StoppedClock
 from meteoscape.errors import BadRequest, CapabilityMismatch, RuntimeFailure
 from meteoscape.identity import SourceKey
+from meteoscape.manifold.cadence import CadenceDef
 from meteoscape.manifold.capability import Capability, EnumerableCapability
 from meteoscape.manifold.core import Coverage, Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
@@ -127,11 +128,18 @@ def _coverage(
 
 
 class _RecordingView:
-    def __init__(self, result: Coverage, parameters=None) -> None:
+    def __init__(
+        self,
+        result: Coverage,
+        parameters=None,
+        *,
+        cadence=None,
+    ) -> None:
         self.calls: list[Selection] = []
         self._result = result
         pids = parameters if parameters is not None else {AIR_TEMPERATURE}
         self._pids = frozenset(pids)
+        self._cadence = cadence
 
     async def project(self, selection: Selection) -> Manifold:
         self.calls.append(selection)
@@ -141,7 +149,7 @@ class _RecordingView:
     def capability(self):
         # A rolling footprint, not the canned coverage's 2-hour lattice: the reach fold for an
         # omitted `end` must land after `now`, or every defaulted request degenerates (RFC 0008).
-        return footprint_capability(STOPPED, core_parameters(), self._pids)
+        return footprint_capability(STOPPED, core_parameters(), self._pids, cadence=self._cadence)
 
 
 def test_build_selection_authors_snapped_window_and_vantage_z() -> None:
@@ -333,6 +341,36 @@ async def test_forecast_hourly_builds_selection_and_narrates() -> None:
     assert isinstance(domain, SelectionDomain)
     assert isinstance(domain.axis(AxisName.Z), VantageAxis)
     assert selection.parameters == frozenset({AIR_TEMPERATURE})
+
+
+@pytest.mark.asyncio
+async def test_horizon_floors_non_exact_days_to_whole_days() -> None:
+    """383 h of shelf reach narrates as 15 days — never overstates what every request can get."""
+    cadence = CadenceDef(
+        cadence=timedelta(hours=1),
+        publication_latency=timedelta(0),
+        max_lead=timedelta(hours=383),
+        window_quantum=timedelta(hours=24),
+    )
+    view = _RecordingView(_coverage(hours=2), cadence=cadence)
+    app = build_mcp_app(Gateway(view), _CLOCK)
+    tool = await app.get_tool("forecast_hourly")
+    assert tool is not None
+    assert "Horizon: out to 15 days ahead of the latest model run." in (tool.description or "")
+
+
+@pytest.mark.asyncio
+async def test_horizon_narrates_sub_day_reach_in_hours() -> None:
+    cadence = CadenceDef(
+        cadence=timedelta(hours=1),
+        publication_latency=timedelta(0),
+        max_lead=timedelta(hours=18),
+    )
+    view = _RecordingView(_coverage(hours=2), cadence=cadence)
+    app = build_mcp_app(Gateway(view), _CLOCK)
+    tool = await app.get_tool("forecast_hourly")
+    assert tool is not None
+    assert "Horizon: out to 18 hours ahead of the latest model run." in (tool.description or "")
 
 
 @pytest.mark.asyncio
