@@ -7,7 +7,7 @@
 - **Owning docs:** [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) (producer resolution),
   [ADR-0005](../../adr/0005-build-time-composition.md) (build-time composition),
   [ADR-0003](../../adr/0003-provenance-and-origin.md) (provenance propagation)
-- **Planning source:** [session 0012 — 002b align](../../sessions/0012-20260714-002b-align-derived-wind.md)
+- **Planning source:** session 0012 — 002b align
   (the 7 align decisions + the "002b implementation deltas" this RFC turns into a build plan)
 
 > Accepted plan for ticket 002b (implemented). Stages S0–S6 and decisions D1–D3 / F6–F7 below are the

@@ -22,10 +22,10 @@ role `Reservoir(store, Provider)`, wired over a **stub `Store`** — no retentio
 identity homogenization only; no fallback, no caching, one parameter.
 
 See `docs/architecture.md` (Major components, Data / request flow, Config/binders/Weaver),
-`docs/v1-requirements.md` (Goal, Runtime), and `docs/sessions/0002-20260708-openmeteo-provider-plan.md`
+`docs/v1-requirements.md` (Goal, Runtime), and the Open-Meteo provider planning record (session 0002)
 (the leaf design: `Transport` / `FetchRequest` / `HttpxTransport`, Provider-authored provenance;
 **Phase C uses a scalar 1:1 normalizer** — `Channel` / N:M wind lands at issue 002, see
-[session 0009](../../sessions/0009-20260712-phase-c-spine-plan.md)).
+session 0009).
 
 ## Implementation plan
 
@@ -38,15 +38,14 @@ and the runtime value-type behaviour (Phases B–C) de-risks the shape while a f
 
 **Phase A — weave the graph** (build path; a fix here is an afternoon, later it ripples). Source half
 only — the Calculator graph has nothing to wire until 002b (`CalculatorBinder.build` itself lands now,
-empty). **Planned in detail — decisions + TDD cycle list — in
-[session 0007](../../sessions/0007-20260711-phase-a-weave-plan.md)**; headline decisions:
+empty). **Planned in detail — decisions + TDD cycle list — in session 0007**; headline decisions:
 `StoreFactory`-injected `Weaver` + interim `StubStore`, fake provider as test fixture only,
 strict binders (`CompositionError`) with degrade owned by `Settings`, `compose(profile, catalog, …)`
 in `server.py`, empty weave legal, `open_meteo_enabled=False` until Phase C.
 
 **Phase B — make the value types behave** (runtime leaves; test-first). Independent of Phase A, but
 needed before the request path can project. **Planned in detail — decisions + TDD cycle list — in
-[session 0008](../../sessions/0008-20260712-phase-b-value-types-plan.md)**; headline decisions:
+session 0008**; headline decisions:
 `contains` = extent (reach) containment for every representation (tick alignment lives in the
 sampling engine / `quantize` / `serves`, never geometry); `Axis.extent` = tick span (`cellular`
 affects only `Cell.bounds`; the extensive horizon-edge goes to `serves` at 002); four axes mandatory
@@ -67,7 +66,7 @@ real `Reservoir.project` (pure delegate) + `Arbiter.project` (real admission, si
 guarded assembly); MCP adapter Selection-building + Coverage serialization under the
 **`forecast_hourly`** tool. The **e2e test on mocked transport** closes here, where Phase B's
 behaviour meets the graph Phase A wove. **Planned in detail — decisions + TDD cycle list — in
-[session 0009](../../sessions/0009-20260712-phase-c-spine-plan.md)**; headline decisions:
+session 0009**; headline decisions:
 single-parameter leaf (capability never advertises what the server won't attempt), source lattice
 optional until 006's store consumes one, exact 2 m Z cell on the request (fat cell is capability
 *reach*; mixed-height bundles → concern #24), `start_hour`/`end_hour` exact-window fetch, connect

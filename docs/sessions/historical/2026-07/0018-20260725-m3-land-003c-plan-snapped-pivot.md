@@ -1,13 +1,13 @@
 # 0018 · 2026-07-25 · m3 lands; 003c planning pivots window fitting to the Snapped mode
 
-One session, two arcs. **Arc 1:** [m3](../tickets/done/01-0080-provider-parity-checks.md) went
-align → [RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md) → Cursor
+One session, two arcs. **Arc 1:** [m3](../../../tickets/done/01-0080-provider-parity-checks.md) went
+align → [RFC 0007](../../../rfc/done/0007-20260725-m3-provider-parity-checks.md) → Cursor
 implementation → validation → landed, in a day — including a live acceptance run against real
 Open-Meteo (1 passed, no retry consumed). **Arc 2:** 003c planning
-([RFC 0008](../rfc/done/0008-20260725-003c-request-shaping.md)) survived three adversarial review
+([RFC 0008](../../../rfc/done/0008-20260725-003c-request-shaping.md)) survived three adversarial review
 rounds, and the accumulated findings drove the window-fitting design off the edge and into the
 algebra's reserved **Snapped mode** — minting
-[m4](../tickets/done/01-0100-snapped-t-request-mode.md), which now precedes 003c. Decisions live in the
+[m4](../../../tickets/done/01-0100-snapped-t-request-mode.md), which now precedes 003c. Decisions live in the
 tickets, RFCs, and amended docs; this record carries the reasoning trail.
 
 ## Arc 1 — m3 (parity) in brief
@@ -33,7 +33,7 @@ The instructive part of the day. The sequence:
    aligned, specified, and reviewed. Round 2 found a staging bug and a benign clock race; round 3
    found a *spurious-mismatch* race on the clamped lower edge, an empty-menu crash, and more.
 3. The pattern behind every finding: the edge was **simulating at the wrong layer** what
-   [ADR-0002](../adr/0002-data-model.md) already reserves as the Snapped mode ("step fixed,
+   [ADR-0002](../../../adr/0002-data-model.md) already reserves as the Snapped mode ("step fixed,
    anchor/extent open, resolvable against a declared grid"). Moving fitting to resolution — the
    authority with one clock read — dissolves the clamp math, the races, the edge reach-fold, and
    most of the vendor-clamp failure class. The lesson worth keeping: **repeated review findings
@@ -56,12 +56,12 @@ target; ADR-0006's "domain lives only on the Coverage" is the request shape's na
 mode-scoped assembly strictness (enumerable keeps the length assertion — it remains 006's refill
 language; snapped validates response coherence); one generic axis member with T-only enablement
 (X/Y is blocked by the Timeline-only invariant, not by machinery — with a falsifiable
-wiring-not-algebra guard criterion); and [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s
+wiring-not-algebra guard criterion); and [#23](../../../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s
 axis-type split assigned as m4's stage 0 on its own recorded trigger.
 
 ## Continuation
 
-- **[/align m4](../tickets/done/01-0100-snapped-t-request-mode.md)** is the next design session: firm the
+- **[/align m4](../../../tickets/done/01-0100-snapped-t-request-mode.md)** is the next design session: firm the
   axis member's shape, the intersective `matches` wording, the resolution home, and write the
   ADR-0002/ADR-0004 amendments. Then re-stage RFC 0008 and implement m4 → 003c.
 - **Push pending:** two commits ahead of origin at session end.

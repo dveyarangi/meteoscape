@@ -1,7 +1,7 @@
 # 0007 · 2026-07-11 · Phase A — weave-the-graph plan (align session)
 
-Continues [session 0006](./0006-20260711-namespace-polish.md). Grilled the Phase A scope of
-[issue 001](../tickets/done/01-0020-walking-skeleton.md) — the build seam
+Continues session 0006. Grilled the Phase A scope of
+[issue 001](../../../tickets/done/01-0020-walking-skeleton.md) — the build seam
 (`OfferingDef` → `SourceBinder` → `SourceRegistry` → `ProfileDef` → `Weaver`), reshaped across
 sessions 0003–0006 and never executed. This doc records the decisions and the TDD implementation
 plan. Weaving is **pure construction, not projection**: Phase A exercises every node's *built face*
@@ -12,11 +12,11 @@ plan. Weaving is **pure construction, not projection**: Phase A exercises every 
 - **Weaver allocates every `Store`, via an injected concrete `StoreFactory`** — today
   `create` returns `StubStore` (ignores lattice). The Weaver owns *where* stores exist; the
   factory owns *what* a store is. Retentive factory lands at 006. Stores arriving live in `ProfileDef`
-  **rejected** — recorded in [ADR-0005](../adr/0005-build-time-composition.md).
+  **rejected** — recorded in [ADR-0005](../../../adr/0005-build-time-composition.md).
 - **`StubStore`** lives in `nodes/store.py` beside the `Store` protocol — weave-time placeholder (no
   retention; `domain` / `project` / `capability` raise; `assimilate` no-op). `Store` moved out of
   `reservoir.py` (which keeps only `Reservoir`). The declared-grid representation question is filed on
-  [issue 006](../tickets/01-0115-retentive-store-freshness.md).
+  [issue 006](../../../tickets/01-0115-retentive-store-freshness.md).
 - **Fake provider is a test fixture only** (`tests/fakes.py`): declared `FootprintCapability` +
   `CadenceDef` + `source_key`; `project` raises. The production `ProviderCatalog` holds only real
   vendors — empty until Phase C registers Open-Meteo.
@@ -32,7 +32,7 @@ plan. Weaving is **pure construction, not projection**: Phase A exercises every 
   `secret_ref`, duplicate `SourceKey`, or unresolvable source lattice (non-`Countable` provider, no
   `default_lattice`) → **`CompositionError`** at startup. Graceful degrade (absent TWC key) happens
   where enablement lives — `Settings` never emits the def
-  ([v1-requirements](../v1-requirements.md) and issue 008 updated).
+  ([v1-requirements](../../../v1-requirements.md) and issue 008 updated).
 - **`CompositionError`** is the build-time error category, defined in `nodes/composition.py` — *not*
   `errors.py`, which stays the request-path taxonomy adapters map to protocol errors. `CycleError`
   (002b) will subclass it.
@@ -123,7 +123,7 @@ leaf, the MCP tool body, catalogue registration + `open_meteo_enabled=True` flip
 ## Continuation
 
 - Phase B (value-type behaviour) and Phase C (the spine) per
-  [issue 001](../tickets/done/01-0020-walking-skeleton.md).
-- Store-grid representation decision → [issue 006](../tickets/01-0115-retentive-store-freshness.md).
+  [issue 001](../../../tickets/done/01-0020-walking-skeleton.md).
+- Store-grid representation decision → [issue 006](../../../tickets/01-0115-retentive-store-freshness.md).
 - Wind `CalculatorSpec`s return to `Settings` at
-  [002b](../tickets/done/01-0030.0010-derived-wind-calculator.md).
+  [002b](../../../tickets/done/01-0030.0010-derived-wind-calculator.md).

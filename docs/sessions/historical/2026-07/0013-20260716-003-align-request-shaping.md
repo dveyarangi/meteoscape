@@ -1,9 +1,9 @@
 # 0013 · 2026-07-16 · 003 align — request shaping: `Capability.reach`, window semantics, membership
 
-Continues [session 0012](./0012-20260714-002b-align-derived-wind.md). An `align` pass on
+Continues session 0012. An `align` pass on
 ticket 003 — which the session ended by splitting into
-[003a](../tickets/done/01-0040-profile-reach.md) (the reach algebra) and
-[003b](../tickets/done/01-0110-request-shaping.md) (the edge). Opened by repairing **drift in the release
+[003a](../../../tickets/done/01-0040-profile-reach.md) (the reach algebra) and
+[003b](../../../tickets/done/01-0110-request-shaping.md) (the edge). Opened by repairing **drift in the release
 contract**, then split the ticket, then spent its length on one branch — *how does a surface know how
 far a profile reaches* — which reversed itself several times before landing. The reversal trail is
 recorded below, because most of what was explored is plausible enough to be re-proposed.
@@ -34,7 +34,7 @@ it cannot author capability). The ADR is current; sessions are historical.
    no decision to rediscover. *(No new ticket, no `ideas.md` entry — the contract already carries it.)*
 
 2. **`Capability` gains a per-parameter `reach` `Domain`** (→ ADR-0004 amended,
-   [#29](../concerns.md#29-narrated-reach-what-a-profile-promises)). It folds by the same
+   [#29](../../../concerns.md#29-narrated-reach-what-a-profile-promises)). It folds by the same
    leaf/composite algebra as `serves`: leaf → its footprint; **derived → per-axis intersection** (a
    Calculator needs *all* its inputs); reservoir → forwards. Three rules keep it honest:
    - **A composite joins per axis, following the request's shape there.** Admission is whole-request
@@ -66,7 +66,7 @@ it cannot author capability). The ADR is current; sessions are historical.
    pair (see the trail below). Dropped because **quality is a policy outcome**: capability answers
    *can you serve this*, quality answers *how well did it go* — which the response already reports per
    parameter via provenance. Every objection raised against a narrated quality boundary was one error
-   in four costumes: it leaked priority ordering ([#7](../concerns.md#7-quality-scoring)), its meaning
+   in four costumes: it leaked priority ordering ([#7](../../../concerns.md#7-quality-scoring)), its meaning
    flipped with the reconciler mode, it was unverifiable through `serves` (`any(...)` answers
    *whether*, never *who*), and it gave the agent no decision procedure. A deployment that sells
    quality tiers expresses them as **separate profiles behind separate tools** — the sibling-tool
@@ -139,7 +139,7 @@ is. The usual "no driver" argument does not apply — the driver exists, it was 
 error/nodata taxonomy and where the failure is live in the core answer path — not Phase 2's
 operational substrate. Doc home **`v1-requirements`**, whose job is v1's positions on contract seams;
 the `present = None` assertion is now qualified as the *elided all-present case* rather than a claim
-that gaps cannot occur. Work owner **[ticket 002c](../tickets/done/01-0030.0020-provider-nodata-mask.md)** — 002's
+that gaps cannot occur. Work owner **[ticket 002c](../../../tickets/done/01-0030.0020-provider-nodata-mask.md)** — 002's
 unfinished business (002 specified it, the build missed it), the same relationship 002b had to 002,
 and a **blocker for 009**, whose nodata-vs-failure distinction assumes the mask exists.
 
@@ -148,7 +148,7 @@ and a **blocker for 009**, whose nodata-vs-failure distinction assumes the mask 
 Same report shape as 002c ("contract requires X, code lacks X, status says done"), **different
 resolution** — and the contrast is the useful part.
 
-[ADR-0002](../adr/0002-data-model.md) requires the Z axis to carry one axis-level
+[ADR-0002](../../../adr/0002-data-model.md) requires the Z axis to carry one axis-level
 **`vertical_reference`** (`above_ground` / `isobaric` / `height_above_msl`); `architecture.md` and the
 glossary echo it. The implementation has **no such property anywhere** — `Axis` declares itself "pure
 geometry", `GridDomain` carries only axes, and `vertical_reference` appears **zero times** in `src/`.
@@ -174,10 +174,10 @@ fully resolved — only unbuilt.
 > **Superseded (session 0014).** The fold was reversed on re-align: `ParameterData` took ownership of
 > `present`'s length, which removed this section's load-bearing argument, and no construction site was
 > found that can misalign today — including `Calculator`, whose only kernel is pointwise. Now
-> [concern #31](../concerns.md#31-positional-alignment-is-asserted-never-checked). The reasoning below
+> [concern #31](../../../concerns.md#31-positional-alignment-is-asserted-never-checked). The reasoning below
 > is kept as the trail.
 
-[ADR-0004](../adr/0004-producer-resolution-and-capability.md) requires a Calculator node to validate
+[ADR-0004](../../../adr/0004-producer-resolution-and-capability.md) requires a Calculator node to validate
 its kernel's payload — `ranges` keyed by the declared output group **and aligned to the returned
 `Domain`**, "a build/derivation failure, not silent corruption". `Calculator.project` checks the keys
 and **not** the alignment.
@@ -194,7 +194,7 @@ change the disposition: the fix is **one `__post_init__`** rather than a change 
 site, and **002c makes the invariant load-bearing** — `present` stops being always-`None` and becomes a
 real array that must align with `values` *and* the domain.
 
-So: **folded into [002c](../tickets/done/01-0030.0020-provider-nodata-mask.md)** rather than given its own ticket,
+So: **folded into [002c](../../../tickets/done/01-0030.0020-provider-nodata-mask.md)** rather than given its own ticket,
 and fixed on the **type** rather than in `Calculator`. That covers all five sites at once, satisfies
 ADR-0004's node requirement as a consequence, and follows the architecture's own "deep modules"
 principle instead of asking every caller to remember. The failure it prevents is the bad kind: a
@@ -244,7 +244,7 @@ relabels each axis back onto the request, which is `quantize`'s documented "oppo
 mechanic.
 
 Also corrected en route: I invented a `Store.report()` method with bespoke types. There is none —
-**held** is the store's own `capability` ([store.py:36](../../src/meteoscape/nodes/store.py)) and
+**held** is the store's own `capability` ([store.py:36](../../../../src/meteoscape/nodes/store.py)) and
 **fresh** is `expiration > now` off the provenance `summary`; ADR-0001 says outright that "the algebra
 needs no `is_current` operation". I also called the per-unit staleness granularity an open question
 for 006; ADR-0003 already fixes it as **per-parameter**.
@@ -278,8 +278,8 @@ is why "mode is an input" kept resurfacing.
 Three policies had been bleeding together; separating them dissolved most of the argument:
 
 - **Fallback** — *who serves a parameter* (the reconciler's; wholesale, one winner).
-- **Membership** — *what a beyond-reach request gets* (→ [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)).
-- **Narration** — *what the client is told up front* (→ [#29](../concerns.md#29-narrated-reach-what-a-profile-promises)).
+- **Membership** — *what a beyond-reach request gets* (→ [#30](../../../concerns.md#30-response-membership-under-runtime-degraded-fallback)).
+- **Narration** — *what the client is told up front* (→ [#29](../../../concerns.md#29-narrated-reach-what-a-profile-promises)).
 
 The **ordering asymmetry** — **under `priority` mode** — is why only one direction leaves residue:
 admission compares a candidate's reach to the **request**, not to the primary. A **longer** fallback is
@@ -386,7 +386,7 @@ it. What stays open is only whether a profile *stuck on* `priority` deserves a p
   (**worth it, low priority** — needs #13 + #28 + a per-cell reason channel); backward reach for
   historical provision (should absorb into `reach` without a contract change, since it is a `Domain`).
 - **Watch at 003b build:** free windows are the first requests to leave the fixed hourly on-lattice
-  shape, so [#21](../concerns.md#21-serves-extent-vs-project-crop-ability) (`serves` admits by extent
+  shape, so [#21](../../../concerns.md#21-serves-extent-vs-project-crop-ability) (`serves` admits by extent
   while the sampling engine only crops aligned identical-step lattices) stops being theoretical —
   flooring `start` to the hour keeps requests on-phase, which is what holds it at bay.
 - **003 align is complete** — both halves are ready for the build pass, 003a first.

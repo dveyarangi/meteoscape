@@ -1,7 +1,7 @@
 # 0017 · 2026-07-24/25 · m2 align, validation, and landing
 
-An align-then-validate cycle over [m2](../tickets/done/01-0070-dissolve-node-countable.md): ticket
-reviewed against the architecture docs for "invisible edges," [RFC 0006](../rfc/done/0006-20260724-m2-dissolve-node-countable.md)
+An align-then-validate cycle over [m2](../../../tickets/done/01-0070-dissolve-node-countable.md): ticket
+reviewed against the architecture docs for "invisible edges," [RFC 0006](../../../rfc/done/0006-20260724-m2-dissolve-node-countable.md)
 built in parallel with the grilling, implementation done externally (Cursor), then validated here
 with a doc-vs-code lens. Landed as three commits (CODE m2, DOCS m2, DOCS agents). Rules live in the
 ticket, the RFC, and the amended ADRs; this record carries the reasoning trail.
@@ -15,7 +15,7 @@ ticket, the RFC, and the amended ADRs; this record carries the reasoning trail.
   and get no store at all — so a capability can never feed the factory, and the catalogue's
   `OfferingSpec.store` (authored beside the manifest by whoever knows the vendor grid) was already
   the real declaration channel. The enumerable-but-unholdable residual (cloud ARCO) stays with
-  [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
+  [#37](../../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - **The binder invariant became loud in both directions** — a configured store on a materialized
   offering was being *silently discarded*; now both contradictions raise `CompositionError`.
 - **Doc updates became ticket rows.** The ticket originally scheduled no doc work despite reversing
@@ -50,7 +50,7 @@ of the habitual gate set.
 
 ## Continuation
 
-- **[m3 — Provider parity checks](../tickets/done/01-0080-provider-parity-checks.md)** is Ready and next in
+- **[m3 — Provider parity checks](../../../tickets/done/01-0080-provider-parity-checks.md)** is Ready and next in
   the maintenance stream; must land before 004's second Provider.
 - **003c** (request shaping) and **006** (retentive store) both unblocked; 006's assumed
   storeless/private-lattice shape is now in place.

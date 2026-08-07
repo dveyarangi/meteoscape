@@ -1,10 +1,10 @@
 # 0005 · 2026-07-10 · ProfileDef / plugin-manifest seam align
 
-Continues [session 0004](./0004-20260709-identity-registry-weaver.md). Grilled and locked the
+Continues session 0004. Grilled and locked the
 config → catalogue → binders → ProfileConfig/ProfileDef → Weaver seam; former concern **#21** evacuated
-into [ADR-0005](../adr/0005-build-time-composition.md) and
-[architecture](../architecture.md#config-binders-weaver). Namespace polish (**#22**) settled in
-[session 0006](./0006-20260711-namespace-polish.md).
+into [ADR-0005](../../../adr/0005-build-time-composition.md) and
+[architecture](../../../architecture.md#config-binders-weaver). Namespace polish (**#22**) settled in
+session 0006.
 
 ## Decisions
 
@@ -17,9 +17,9 @@ into [ADR-0005](../adr/0005-build-time-composition.md) and
   (catalog-resolved bindings, not Calculator nodes). `ProfileDef` = both registries + root/arbiter.
 - **`Weaver.weave(ProfileDef)`** — holds no catalogue; Calculators built at weave.
 - **Source lattice** on `RegisteredSource`; profile root store separate.
-- **#21 evacuated**; **#22** → [session 0006](./0006-20260711-namespace-polish.md).
+- **#21 evacuated**; **#22** → session 0006.
 
 ## Open / continuation
 
 - Implement `SourceBinder.build` / `CalculatorBinder.build` / `Weaver.weave` / first Provider leaf.
-- [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection) build leftover.
+- [#20](../../../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection) build leftover.

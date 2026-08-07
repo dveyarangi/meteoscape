@@ -1,7 +1,7 @@
 # 0009 · 2026-07-12 · Phase C — spine plan (align session)
 
-Continues [session 0008](./0008-20260712-phase-b-value-types-plan.md) (Phase B landed). Grilled
-Phase C of [issue 001](../tickets/done/01-0020-walking-skeleton.md) — the real Open-Meteo leaf,
+Continues session 0008 (Phase B landed). Grilled
+Phase C of [issue 001](../../../tickets/done/01-0020-walking-skeleton.md) — the real Open-Meteo leaf,
 the composite behaviours, and the MCP edge — resolving every fork session 0002 left open. Along the
 way the tool contract was reshaped (`forecast_hourly`), one contract change was weighed and declined
 (per-parameter Selection domains), and concern #24 was filed. Deliverable: the decisions below + the
@@ -55,7 +55,7 @@ TDD cycle list.
   single target lattice, 006's quantize, the serializer's shared `valid_time`, and ADR-0001/0002.
   The need (serve `temperature_2m` exactly) is met by exact-Z Selections + the edge alias table
   (003); the mixed-height bundle fork (fat shared Z cell vs per-Z-group edge Selections) is
-  **[concern #24](../concerns.md)**,
+  **[concern #24](../../../concerns.md)**,
   decided at 002/003 with the fetch-cost trade in view.
 - **The tool is `forecast_hourly`; optional `start`/`end` stay in the contract.** Shape-named: a
   daily/aggregated product is different statistics — a **sibling tool** with its own narratable
@@ -204,6 +204,6 @@ fork (002/003).
 ## Continuation
 
 - Build Phase C per the cycle list; the e2e closes
-  [issue 001](../tickets/done/01-0020-walking-skeleton.md).
-- Concern #24 decision point arrives at [issue 002](../tickets/done/01-0030-core-5-parameters.md) /
-  [issue 003](../tickets/done/01-0110-request-shaping.md).
+  [issue 001](../../../tickets/done/01-0020-walking-skeleton.md).
+- Concern #24 decision point arrives at [issue 002](../../../tickets/done/01-0030-core-5-parameters.md) /
+  [issue 003](../../../tickets/done/01-0110-request-shaping.md).

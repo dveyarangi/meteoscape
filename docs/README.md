@@ -14,7 +14,7 @@ so that each fact has one owner.
 | How is a Provider implemented and independently verified? | [Edge — Provider surface](./edge/provider.md) |
 | How is a work item's implementation planned, and why that shape? | [Implementation RFCs](./rfc) |
 | What remains deliberately unresolved? | [Open concerns](./concerns.md) and [ideas](./ideas.md) |
-| Why was a past choice made? | [Development sessions](./sessions), [completed tickets](./tickets/done), and [resolved RFCs](./rfc/done) |
+| Why was a past choice made? | Unlinked development-session records, [completed tickets](./tickets/done), and [resolved RFCs](./rfc/done) |
 
 Current delivery terms such as **Done**, **In progress**, **Ready**, **Partial**, **Planned**,
 **Blocked**, and **Next**

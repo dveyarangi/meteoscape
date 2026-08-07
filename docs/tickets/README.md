@@ -12,7 +12,7 @@ comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns 
 [architecture](../architecture.md) and [ADRs](../adr) own design decisions, and individual tickets own
 implementation detail and acceptance criteria.
 
-Dated [sessions](../sessions) and [completed tickets](./done) are historical records. They explain how
+Dated session records and [completed tickets](./done) are historical records. They explain how
 the project reached its current state; they do not override this page.
 
 ## Status vocabulary

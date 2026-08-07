@@ -1,8 +1,8 @@
 # 0006 · 2026-07-11 · Namespace polish (#22)
 
-Continues [session 0005](./0005-20260710-profiledef-manifest-seam.md). Evacuates concern **#22** into
-glossary / [ADR-0005](../adr/0005-build-time-composition.md) /
-[architecture](../architecture.md#config-binders-weaver).
+Continues session 0005. Evacuates concern **#22** into
+glossary / [ADR-0005](../../../adr/0005-build-time-composition.md) /
+[architecture](../../../architecture.md#config-binders-weaver).
 
 ## Decisions
 
@@ -18,6 +18,6 @@ glossary / [ADR-0005](../adr/0005-build-time-composition.md) /
 
 ## Open / continuation
 
-- Walking skeleton ([001](../tickets/done/01-0020-walking-skeleton.md)): `SourceBinder.build` /
+- Walking skeleton ([001](../../../tickets/done/01-0020-walking-skeleton.md)): `SourceBinder.build` /
   `Weaver.weave` / first Provider leaf.
-- [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection) build leftover.
+- [#20](../../../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection) build leftover.

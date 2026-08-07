@@ -1,10 +1,10 @@
 # 0014 · 2026-07-20 · 003a align — reach: inner bound, selected, and moved off `Capability`
 
-Align session on [ticket 003a](../tickets/done/01-0040-profile-reach.md). Two **reversals of session 0013**
+Align session on [ticket 003a](../../../tickets/done/01-0040-profile-reach.md). Two **reversals of session 0013**
 landed, both driven by the same question — *what is reach actually for?* — and the answers produced a
 new ADR, a renamed ticket, a new concern, and a smaller ticket than we started with.
 
-The full rules live in **[ADR-0007](../adr/0007-capability-carries-its-domain.md)**; this record carries the
+The full rules live in **[ADR-0007](../../../adr/0007-capability-carries-its-domain.md)**; this record carries the
 reasoning trail, the rejected positions, and what remains open.
 
 ## Starting position
@@ -128,7 +128,7 @@ Established that a profile **is** allowed holes, but v1 provably cannot produce 
 - reach is **per-parameter**, so a `2 m` / `10 m` Z divergence is two single-cell reaches, not a gap;
 - every v1 source is a **forecast grid** — holes come from observation- and archive-shaped sources;
 - a footprint declares **reach, not resolution**, so anything the homogenization kernel fills
-  ([#5](../concerns.md#5-read-time-homogenization-fidelity)) was never a hole.
+  ([#5](../../../concerns.md#5-read-time-homogenization-fidelity)) was never a hole.
 
 Real holing products (all named extension points): station networks (X/Y point set + irregular T),
 gapped grid archives (T), radar mosaics (X/Y edges), polar swaths (curvilinear X/Y, no Z hole).
@@ -139,7 +139,7 @@ one that handled it would be wrong for grids. That validated the slot as real ra
 **`dense_axes` rejected** as the config lever's shape: density is neither a per-axis boolean nor
 independent of the request — a polar swath's X/Y is *curvilinear*, not sparse, and its answerability
 depends on the caller issuing a **"fat" T request** spanning revisits. The lever's shape is left
-deliberately unspecified in [#29](../concerns.md#29-narrated-reach-what-a-profile-promises);
+deliberately unspecified in [#29](../../../concerns.md#29-narrated-reach-what-a-profile-promises);
 its only permitted job is to **narrow candidates or assert an invariant**, never to declare reach
 (a second source of truth that can drift from the members and lie to callers).
 
@@ -151,9 +151,9 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
   synthesize a `Domain` and freeze its `RollingAxis` at build — a live defect for derived wind), and
   intersection fell as well. The resolver needs only extent *containment*, which `Interval.contains`
   already provides; `Domain.intersect` stays a declared seam.
-- **[#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — no carve.** The ticket
+- **[#22](../../../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — no carve.** The ticket
   adds no geometry to `domain.py` and no consumer of the index arithmetic. Trigger untouched.
-- **[#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types) — no split.** Dominance is
+- **[#23](../../../concerns.md#23-spatial-vs-temporal-regularaxis-types) — no split.** Dominance is
   `contains`, which works on `float` and `datetime` without dispatch, and `Interval` is already
   generic over the constrained TypeVar `C: (float, datetime)`. **Zero new `isinstance` dispatch**, so
   #23 is neither compounded nor earned.
@@ -163,11 +163,11 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 
 ## Docs updated
 
-- **New:** [ADR-0007](../adr/0007-capability-carries-its-domain.md) — the rule, placement, slot, actionable-
+- **New:** [ADR-0007](../../../adr/0007-capability-carries-its-domain.md) — the rule, placement, slot, actionable-
   error constraint, consequences, and five rejected alternatives.
-- **New:** [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) — runtime
-  footprint-awareness; [#33](../concerns.md#33-reconciler-owns-domain-composition) — reach rule
-  ↔ reconciler coupling; [#34](../concerns.md#34-producer-dag-walking-is-duplicated) — duplicated
+- **New:** [#32](../../../concerns.md#32-footprint-aware-ranking-inside-the-algebra) — runtime
+  footprint-awareness; [#33](../../../concerns.md#33-reconciler-owns-domain-composition) — reach rule
+  ↔ reconciler coupling; [#34](../../../concerns.md#34-producer-dag-walking-is-duplicated) — duplicated
   producer-DAG walk.
 - **ADR-0004** — 0013's reach amendment replaced by a pointer; Capability carries no reach, a leaf
   publishes its footprint.
@@ -183,20 +183,20 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
   *"Profile reach"*; What-to-build and every AC rewritten.
 - **ticket 003b** — consumes the build-time map; `compose()` wiring replaces the earlier weave-forcing
   draft.
-- **`docs/sessions/0013-*`** left intact as history (links repointed only); ADR-0007 supersedes it.
+- **The earlier request-shaping record** remains intact as history; ADR-0007 supersedes it.
 
 ## Open / continuation
 
 - **The config lever's shape** — narrowing the candidate set (so a `Global × 10 d` fallback cannot cap a
   `Global-minus-poles × 16 d` primary). Deliberately unspecified;
-  [#29](../concerns.md#29-narrated-reach-what-a-profile-promises) holds the constraints.
+  [#29](../../../concerns.md#29-narrated-reach-what-a-profile-promises) holds the constraints.
   No v1 driver.
 - **A second reach rule** — obs+forecast and polar-swath compositions each need one, and the swath case
   is already known to constrain the **request's shape**, not merely axis dominance. That is why v1
   ships `grid` as a named unit with **no `ReachRule` protocol, no config, no registry** — freezing an
-  interface on one implementation is [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s
+  interface on one implementation is [#28](../../../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s
   recorded mistake.
-- **Reach rule ↔ reconciler coupling** ([#33](../concerns.md#33-reconciler-owns-domain-composition))
+- **Reach rule ↔ reconciler coupling** ([#33](../../../concerns.md#33-reconciler-owns-domain-composition))
   — surfaced late in the session, from the question *"does reach follow priority?"*. It does not, but
   that is **`grid`'s choice, not a law**: the reconciler **bounds** what any reach rule may truthfully
   claim (a splicing reconciler serves what no single producer covers, so its reach is wider than
@@ -204,7 +204,7 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
   judgment stays with the mode. Open whether the two collapse into one profile-mode declaration or the
   reach rule is derived from the reconciler. Same trigger as #28; no v1 pressure, since `priority` +
   `grid` agree by construction.
-- **Runtime footprint-awareness** ([#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra))
+- **Runtime footprint-awareness** ([#32](../../../concerns.md#32-footprint-aware-ranking-inside-the-algebra))
   — assessed this session as a **separate mechanism** from reach (one `Domain` vs an ordering; build-time
   vs per-request; raises vs ranks). Revisit putting footprint on `Capability` only when a real runtime
   consumer appears.
@@ -215,8 +215,8 @@ its only permitted job is to **narrow candidates or assert an invariant**, never
 - **Not re-litigated, still standing from 0013:** one reach and no quality ladder (quality is a policy
   outcome the response reports via provenance, not a capability); per-parameter reach is never a
   request axis; membership past the edge is
-  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
+  [#30](../../../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
-**Next:** implement [003a](../tickets/done/01-0040-profile-reach.md) — now a smaller ticket than at session
+**Next:** implement [003a](../../../tickets/done/01-0040-profile-reach.md) — now a smaller ticket than at session
 start (one build-time function, one leaf accessor, `Interval.intersect`; no node changes), then
-[003b](../tickets/done/01-0110-request-shaping.md) on top of it.
+[003b](../../../tickets/done/01-0110-request-shaping.md) on top of it.
