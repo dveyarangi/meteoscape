@@ -42,9 +42,11 @@ context, and which internal failures are deliberately *not* caught.
 
 **Open — compatibility:** define what import paths and behavior are supported during `0.x`, how
 deprecations work, and what observable consistency is required between embedded and protocol use
-without presupposing shared facade or wiring. Once these decisions land, delivery belongs in a
-Phase-1 ticket; the concern then moves into the public API guide and, if the compatibility trade-off
-proves durable and surprising, an ADR.
+without presupposing shared facade or wiring. Delivery is assigned to the
+[supported Python embedding surface](./tickets/01-0192-supported-python-embedding.md); its own align
+resolves these decisions before implementation. Once they land, this concern moves into the Edge
+record and public API guide and, if the compatibility trade-off proves durable and surprising, an
+ADR.
 
 ## 40. Composing servable requests at the embedding edge
 
@@ -375,7 +377,9 @@ Coverage — and **never** inside `ParameterData`. Open: the trace's **shape and
 per-parameter / per-cell); its relation to per-parameter **provenance** (provenance = *what the data is*;
 trace = *how it was chosen*); and the wider **observability** surface (structured logs + metrics: selection
 counts, fallback rate, cache hit-rate, provider latency / error). Keeping the trace a sidecar channel leaves
-the read-only algebra untouched. v1 may emit a **minimal structured log**; the structured sidecar is deferred.
+the read-only algebra untouched. Phase 1's **minimal structured log** is assigned to
+[minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md); the ticket's own align
+selects that narrow event surface. The structured sidecar and wider metrics remain deferred here.
 
 ## 36. Unserved and uncomparable are indistinguishable
 

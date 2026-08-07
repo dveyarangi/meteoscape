@@ -139,5 +139,5 @@ unrepresentable.
 ## Out of scope
 
 - The retentive `Store` itself and the lattice representation — [006](../01-0115-retentive-store-freshness.md).
-- Off-grid homogenization kernels — [007](../01-0140-off-grid-homogenization.md) / [#5](../../concerns.md#5-read-time-homogenization-fidelity).
+- Off-grid homogenization kernels — [007](../01-0117-off-grid-homogenization.md) / [#5](../../concerns.md#5-read-time-homogenization-fidelity).
 - Any real materialized provider (archive bundle, normals, static fields) — post-v1.

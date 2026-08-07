@@ -276,7 +276,7 @@ freshness/run identity, never a promised response extent.
 - **Snapped X/Y — same pattern (a spatial sibling type), deliberately not minted**: its answer is
   a spatial **Grid**, and the v1 invariant is *"Timeline realization, no Grid output"*
   ([v1-requirements](../../v1-requirements.md)) — off-grid points are answered at the requested point
-  by read-time homogenization ([007](../01-0140-off-grid-homogenization.md)), never by emitting the
+  by read-time homogenization ([007](../01-0117-off-grid-homogenization.md)), never by emitting the
   provider's grid. When the Grid-realization driver arrives (roadmap), enabling X/Y should be
   the sibling type plus edge wiring over this ticket's pattern, not new algebra.
 - Snapped Z — Z already has its own request modes (vantage / cell-addressing, ADR-0002).

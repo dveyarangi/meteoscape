@@ -1,8 +1,8 @@
 # v1 delivery status
 
-**Last updated:** 2026-08-05
+**Last updated:** 2026-08-07
 
-**Current stage:** 003a, m1, 003b, m2, m3, m5, and m4 have landed — reach lives on `Capability`
+**Current stage:** 003a, m1, 003b, m2, m3, m5, m4, and 003c have landed — reach lives on `Capability`
 ([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, a
 materialized provider wires storeless
 ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)), the live parity harness
@@ -12,17 +12,22 @@ passed its acceptance run on 2026-07-25, so 011's second Provider is no longer g
 per-surface [Edge records](../edge) carry each product edge's contract, invariants, and staged
 roadmap.
 
-**[m4 — Snapped request mode](./done/01-0100-snapped-t-request-mode.md) landed 2026-08-04**: the
-Snapped-T mode resolves through one verb (`ground`) over one abstract axis operation (`clip`), and the
-leaf split into a `TimelineProvider` shape owning all algebra and an injected `TimelineProbe` owning
-the vendor face, with the Probe seam guarded by an import-direction test
-([edge/provider.md](../edge/provider.md), now Normative with no pending markers). The mode is
-product-invisible until 003c consumes it. **003c (request shaping) is now Ready**, its
-[RFC 0008](../rfc/0008-20260725-003c-request-shaping.md) re-staged 2026-08-05 against the landed
-mode. **006 (retentive store) moved to the position right after it** at that re-stage align:
-retention is the mechanism that collapses the mixed-request double fetch (003c accepts the
-divergence exposure for exactly that one ticket), and its assumed storeless/private-lattice shape
-is already in place.
+**[003c — Request shaping](./done/01-0110-request-shaping.md) landed 2026-08-06**
+([RFC 0008](../rfc/done/0008-20260725-003c-request-shaping.md)): the MCP edge accepts free
+`start`/`end` windows (ISO datetimes only) and authors them as Snapped-T raw-instant bounds;
+resolution serves `bounds ∩ the winner's live window`; an omitted `end` defaults to the profile's
+folded reach end read live; `Settings.default_horizon` is deleted; and the tool description
+narrates the served parameters plus a relative-horizon reach. The two-fetch divergence judgement
+(accepted rare-and-loud for exactly one ticket) was re-confirmed against shipped behaviour.
+**The landing's acceptance probe then did its job**: the live parity run passes only near UTC
+midnight — Open-Meteo's availability is *day-quantized* (`[today00, today00+16d−1h]`, probed
+2026-08-06), while the declared window slides with the clock, so the full-reach default draws a
+vendor 400 for ~23 hours of every day.
+**[0112 — Day-anchored availability window](./01-0112-day-anchored-availability-window.md)**
+fixes the declaration shape ([RFC 0010](../rfc/0010-20260806-day-anchored-availability-window.md))
+and precedes everything else; then **[006 — retentive store](./01-0115-retentive-store-freshness.md)**,
+whose align opens with **refill scope** and the **open-ended request member**, followed immediately
+by **[007 — off-grid homogenization](./01-0117-off-grid-homogenization.md)** before another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -49,15 +54,16 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 
 | Capability | Status | Current behavior |
 |---|---|---|
-| MCP `forecast_hourly` | Partial | Registered and callable with latitude/longitude; the default window is fixed and `start`/`end` are rejected. |
+| MCP `forecast_hourly` | Available | Registered and callable: latitude/longitude, optional parameter subset, and free `start`/`end` windows; omitted bounds default to now → the profile's live reach. |
+| Python embedding surface | Planned | No supported facade yet; internal composition is deliberately not public API. The [embedding ticket](./01-0192-supported-python-embedding.md)'s own align selects the contract. |
 | Open-Meteo forecast | Available | Fetches all six provider-served canonical parameters. |
 | Parameter selection | Partial | Accepts optional subsets of the six exposed product parameters. |
 | Provenance and freshness metadata | Available | Returned parameters include source and expiration metadata. |
 | Error surface | Partial | Stable error categories exist; per-parameter partial-failure reasons remain. |
-| Resolution logging/trace | Unassigned | Required by the product roadmap but not owned by active work. |
+| Resolution logging/trace | Planned | [Minimal structured logging](./01-0195-minimal-resolution-logging.md) is assigned for Phase 1; the richer trace sidecar and metrics remain deferred at [concern #14](../concerns.md#14-resolution-trace-and-observability). |
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. |
 | Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
-| Free request windows | Planned | Parameter subsets work; `start`/`end` shaping and reach-based defaults remain. |
+| Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; out-of-range bounds yield the servable part; reach narrated in the tool description. |
 | Second provider and fallback | Planned | Only Open-Meteo is configured. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Planned | Stores are non-retentive placeholders. |
@@ -85,15 +91,18 @@ queue position, because it still has to be done in order.
 | 0080 | [Provider parity checks](./done/01-0080-provider-parity-checks.md) | Maint | Done | core canonical parameters, derived wind | Opt-in live single-Provider parity harness (`uv run pytest tests/parity`) and the Open-Meteo reference check; wind calm floor. Every new Provider ships its own check. |
 | 0090 | [Edge records and the `/edge` skill](./done/01-0090-edge-records.md) | Maint | Done | — | Per-surface Edge records (the architecture ↔ user-design seam documents) with an `/edge` skill; edge awareness wired into `/align` (challenge rule, `EDGE-FORMAT.md`) and `/sync-arch`; the MCP record populated and Normative. |
 | 0100 | [Snapped request mode (T instantiation)](./done/01-0100-snapped-t-request-mode.md) | Maint | Done | capability domain, provider parity checks | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Landed with the `TimelineProvider` / `TimelineProbe` split. |
-| 0110 | [Request shaping](./01-0110-request-shaping.md) | — | Ready | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
+| 0110 | [Request shaping](./done/01-0110-request-shaping.md) | — | Done | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
+| 0112 | [Day-anchored availability window](./01-0112-day-anchored-availability-window.md) | — | Ready | request shaping | `CadenceDef.window_quantum`: the availability window anchors to the vendor's calendar quantum; Open-Meteo declares its probed day-quantized truth; the 003c parity probe passes at any hour. |
 | 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. Moved ahead of Visual Crossing 2026-08-05 (003c re-stage align): retention is the mechanism that collapses the mixed-request double fetch, so it follows request shaping directly. |
+| 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
 | 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Ready | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
-| 0140 | [Off-grid homogenization](./01-0140-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back onto the requested point. |
 | 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
 | 0160 | [Unit-conversion catalogue](./01-0160-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by Visual Crossing provider | Shared verified native-to-canonical conversion edges. |
 | 0170 | [Per-parameter selection](./01-0170-per-parameter-selection.md) | — | Planned | second-provider fallback | One response assembled from different winning providers by parameter. |
 | 0180 | [Config and graceful degrade](./01-0180-config-secrets-degrade.md) | — | Partial | Visual Crossing provider | Complete key-present/key-absent provider construction behavior. |
 | 0190 | [Errors and partial success](./01-0190-error-taxonomy-partial-success.md) | — | Partial | provider nodata mask, request shaping, second-provider fallback | Per-parameter absence reasons and capable-but-faulting partial results. |
+| 0192 | [Supported Python embedding surface](./01-0192-supported-python-embedding.md) | — | Planned (own align precedes) | off-grid homogenization, per-parameter selection, config and graceful degrade, errors and partial success | Supported headless package boundary with public failures and MCP-equivalent v1 semantics. |
+| 0195 | [Minimal resolution logging](./01-0195-minimal-resolution-logging.md) | — | Planned (own align precedes) | retentive store, second-provider fallback, per-parameter selection, errors and partial success | Structured producer-selection, fall-through, and Store hit/refill evidence; no data-product change. |
 | 0200 | [Artifact conventions sweep](./01-0200-artifact-conventions-sweep.md) | Maint | Planned (own align precedes) | edge records | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), skills slimmed to reference it. |
 
 ## Ticket numbering
@@ -137,11 +146,11 @@ that date cite them, and are left as written.
 | 003 | split in 2026-07-16 into profile reach + request shaping; never existed after |
 | 003a | [profile reach](./done/01-0040-profile-reach.md) |
 | 003b | [capability carries its domain](./done/01-0060-capability-domain.md) — **but before 2026-07-21 this id meant request shaping** |
-| 003c | [request shaping](./01-0110-request-shaping.md) |
+| 003c | [request shaping](./done/01-0110-request-shaping.md) |
 | 004 | [second-provider fallback](./01-0150-second-provider-fallback.md) |
 | 005 | [per-parameter selection](./01-0170-per-parameter-selection.md) |
 | 006 | [retentive store](./01-0115-retentive-store-freshness.md) |
-| 007 | [off-grid homogenization](./01-0140-off-grid-homogenization.md) |
+| 007 | [off-grid homogenization](./01-0117-off-grid-homogenization.md) |
 | 008 | [config and graceful degrade](./01-0180-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./01-0190-error-taxonomy-partial-success.md) |
 | 010 | [unit-conversion catalogue](./01-0160-unit-conversion-edge.md) |
@@ -167,16 +176,21 @@ uses legacy ids because it predates the 2026-08-02 renumbering.
 5. ~~**m3**~~ — **landed**: the parity harness is live and the Open-Meteo reference check passed its
    acceptance run; every new Provider contribution, beginning with 011, ships its own parity check.
 6. ~~**m4**~~ — **landed**: the Snapped-T mode and the shape/vendor split, at their proper layer.
-   Next: **003c** on top of it — ~~m2~~ has **landed**, so the storeless/private-lattice shape 006
-   assumes is in place.
-7. **006 directly after 003c** (moved ahead of 011 on 2026-08-05, at 003c's re-stage align):
-   retention is the *mechanism* that collapses the mixed-request double fetch, so the divergence
-   exposure 003c opens is accepted for exactly one ticket rather than worked around. Complete
-   **007** after 006.
-8. Ship **011** (the Visual Crossing Probe — the first test of m4's shape/vendor split), introducing
+   ~~**003c**~~ — **landed** on top of it: free windows at the edge, reach narration,
+   `default_horizon` gone.
+7. **Day-anchored availability before everything else** — repair the live provider declaration that
+   currently makes the full-reach default time-of-day-dependent.
+8. **006, then 007** — retention collapses the mixed-request double fetch; off-grid homogenization
+   immediately completes the storing `Reservoir` by sampling its private lattice back onto the exact
+   requested point. No new Provider lands between those two halves of the retention path.
+9. Ship **011** (the Visual Crossing Probe — the first test of m4's shape/vendor split), introducing
    **010** when its unit spread creates the real case; then **004** for the fallback behaviour that
    second producer enables.
-9. Close the v1 multi-provider surface with **005**, **008**, and **009**.
+10. Close the v1 multi-provider surface with **005**, **008**, and **009**.
+11. Finish the Phase-1 surface with the [supported Python embedding
+    surface](./01-0192-supported-python-embedding.md) and [minimal resolution
+    logging](./01-0195-minimal-resolution-logging.md); the artifact-conventions maintenance sweep
+    remains last.
 
 This ordering clears the known contract violation, establishes independent Provider conformance,
 then prioritizes real retention and request shaping before provider fallback and per-parameter
@@ -184,8 +198,12 @@ resolution.
 
 ## Decisions still owned by tickets
 
-- Delivery planning: either assign Phase 1 resolution logging to a v1 ticket/acceptance criterion or
-  move it to the operational-substrate phase.
+- [Supported Python embedding surface](./01-0192-supported-python-embedding.md): its own align selects
+  the facade/lifecycle, public failure contract, request ergonomics, and `0.x` compatibility policy
+  still open at concerns #39/#40; this queue pass deliberately selects none of them.
+- [Minimal resolution logging](./01-0195-minimal-resolution-logging.md): its own align selects the
+  event granularity, correlation, and sensitive-field policy; the structured trace sidecar and wider
+  metrics surface remain deferred at concern #14.
 - [m2](./done/01-0070-dissolve-node-countable.md): where a storeless materialized producer's read-back
   homogenization lives, and whether `EnumerableCapability` remains the "already materialized"
   discriminator → [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).

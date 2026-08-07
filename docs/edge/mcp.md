@@ -117,9 +117,10 @@ request).
 - [#36 — Unserved and uncomparable are indistinguishable](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
   — the edge-local reading of silent omission: the caller cannot tell why a parameter is
   absent, and today neither can the engine (Roadmap 6).
-- [#14 — Resolution trace](../concerns.md#14-resolution-trace-and-observability) — the
-  roadmap-required resolution narration has no owning ticket; when it lands, it lands at this
-  edge.
+- [#14 — Resolution trace](../concerns.md#14-resolution-trace-and-observability) — Phase 1's
+  contract-neutral structured logs are assigned to [minimal resolution
+  logging](../tickets/01-0195-minimal-resolution-logging.md); the richer trace sidecar remains
+  deferred and would become a separate edge concern before changing this surface.
 
 ## Roadmap
 
@@ -128,8 +129,9 @@ request).
    ([003c](../tickets/done/01-0110-request-shaping.md)).
 2. Fresh reuse — repeat asks answered from retained data —
    [006](../tickets/01-0115-retentive-store-freshness.md).
-3. Off-grid fidelity — homogenized values at the requested point, not nearest-neighbor —
-   [007](../tickets/01-0140-off-grid-homogenization.md).
+3. Off-grid fidelity — nearest-neighbor read-back from the Store lattice, reported at the exact
+   requested point —
+   [007](../tickets/01-0117-off-grid-homogenization.md).
 4. Provider fallback — upstream faults stop failing the whole request —
    [004](../tickets/01-0150-second-provider-fallback.md).
 5. Per-parameter assembly — one response, different winning sources per parameter —
