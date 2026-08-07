@@ -1,6 +1,6 @@
 ---
 name: improve-comments
-description: Write or improve code base comments
+description: Write or improve codebase comments
 ---
 
 

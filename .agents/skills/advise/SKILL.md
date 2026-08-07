@@ -1,7 +1,7 @@
 ---
 name: advise
 description: >-
-  Advise me on current project by answering strategical questions
+  Strategic advisory read on the project or a regarded aspect.
 ---
 
 Please advise me on current project/regarded aspect. 

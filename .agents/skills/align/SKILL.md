@@ -1,6 +1,6 @@
 ---
 name: align
-description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (glossary.md, ADRs) inline as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.
+description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.
 ---
 
 <what-to-do>
@@ -9,7 +9,7 @@ Interview me relentlessly about every aspect of this plan until we reach a share
 
 Ask the questions one at a time, waiting for feedback on each question before continuing. Asking multiple questions at once is bewildering. Do not use platform (Cursor/Claude Code) question format, output plain md.
 
-If a *fact* can be foundby exploring the codebase, look it up rather than asking me. The *decisions*, though, are mine - put each one to me and wait for my answer.
+If a *fact* can be found by exploring the codebase, look it up rather than asking me. The *decisions*, though, are mine - put each one to me and wait for my answer.
 
 Do not enact the plan until I confirm we have reached a shared understanding.
 </what-to-do>
@@ -88,7 +88,7 @@ When a term is resolved, update `glossary.md` right there. Don't batch these up 
 `glossary.md` should be totally devoid of implementation details. Do not treat `glossary.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
 
 
-## Update architecture.md inline
+### Update architecture.md inline
 
 When high-level architecture of this project changes, update `architecture.md`. Use format in [ARCH-FORMAT.md](./ARCH-FORMAT.md).
 
@@ -99,7 +99,7 @@ When high-level architecture of this project changes, update `architecture.md`. 
 
 ### Extract open questions and risks
 
-Open questions and risks should live in [docs/concerns.md](./docs/concerns.md) The concerns should be sorted highest priority first; Settled items move out to other architecture docs.
+Open questions and risks should live in [docs/concerns.md](../../../docs/concerns.md). The concerns should be sorted highest priority first; settled items move out to other architecture docs.
 
 ### Record resolutions in the owning ticket inline
 

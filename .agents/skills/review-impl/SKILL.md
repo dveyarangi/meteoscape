@@ -1,11 +1,11 @@
 ---
-name: code-review
+name: review-impl
 description: >-
-  Rules for reviewing code changes.
+  Review implementation against its input documentation (ticket, RFC, architecture docs) — match, leakage, doc-caused weirdness. Use after an implementation pass.
 ---
 
 
-The goal of this skill is to compare current works input documentation (ticket, RFC and architectural docs) and the code and find out:
+The goal of this skill is to compare the current work's input documentation (ticket, RFC and architectural docs) and the code and find out:
 - How good the code shape matches and represents the documentation?
 - Where the code shape went wrong or weird because of underspecification or contradiction in the docs?
 

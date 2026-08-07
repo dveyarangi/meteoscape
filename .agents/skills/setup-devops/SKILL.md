@@ -1,6 +1,6 @@
 ---
 name: setup-devops
-description: Programming project setup, including language, package manager, containerization/deployment form, CICD pipeline, dependencies roster, observability frameworks 
+description: Set up the project's engineering scaffolding, from toolchain to CICD and observability. Use when initializing a repo or filling a setup gap.
 ---
 
 # Programming project setup
@@ -10,8 +10,6 @@ description: Programming project setup, including language, package manager, con
 Scan existing repository to find out setup aspects already evident/decided upon;
 If not found, suggest options with pros, cons and tradeoffs explained.
 
-## Language
-
 ## Package manager
 Look up for best stable option on web
 
@@ -19,10 +17,10 @@ Look up for best stable option on web
 For backend app, wrap with docker compose
 
 ## CICD pipeline
-Setup initial GitHub/chosen provider repository if missing; Set up provider CICD script/configuration for build; to not attach deployment configuration, it is out of scope
+Setup initial GitHub/chosen provider repository if missing; Set up provider CICD script/configuration for build; do not attach deployment configuration — it is out of scope
 
 ## Dependencies
-Repare roster of selected package management type; only populate it if there is dependency data in project sources/docs
+Prepare the roster for the selected package manager; only populate it if there is dependency data in project sources/docs
 
 ## Observability
 For backend app, attach Sentry.io dependency

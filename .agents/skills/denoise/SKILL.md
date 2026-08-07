@@ -7,13 +7,13 @@ description: >-
 
 # Denoise
 
-The topic in context or entire codebase, on user request. Learn where this repo already treats each fact as
+Scope: the topic in context, or the entire codebase on user request. Learn where this repo already treats each fact as
 authoritative; follow that layering — do not invent one. Out of scope: code structure, reorganizing where facts live.
 Always explore `architecture.md`, `glossary.md` and relevant ADRs too.
 
-**Unwrinkle.** Cross-explore for contradictions, under or overstatements, redundancies or other misalignments between docs, make sure different architecture docs are aligned with each-other. 
+**Unwrinkle.** Cross-explore for contradictions, under or overstatements, redundancies or other misalignments between docs; make sure different architecture docs are aligned with each other.
 In case of load-bearing or rippling contradiction, ask user about resolution, explaining the context and providing ways to amend with recommendation. Use `/align` skill if decision is multi-step.
-Exclude previous sessions and RFC - they are historical records, not architectural statements. All truth statement should live in architecture, adrs or code.
+Exclude previous sessions and RFCs — they are historical records, not architectural statements. All truth statements should live in architecture, ADRs or code.
 
 **Deduplicate.** A fact is explained once, at its canonical home; elsewhere
 replace the restatement with `→ [<label>: <hint>](<path>#<anchor>)` — one

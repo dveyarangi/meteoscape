@@ -3,7 +3,7 @@ name: to-spec
 description: Incept a new body of work — generate a PRD from the client brief and write it as a local markdown file under docs/. Use when a big change or new effort arrives and needs a structured PRD before decomposition into tickets.
 ---
 
-This skill will be invoked when the user wants to create a PRD. You may skip steps if you don't consider them necessary.
+You may skip steps you don't consider necessary.
 
 1. Ask the user for a long, detailed description of the problem they want to solve and any potential ideas for solutions.
 

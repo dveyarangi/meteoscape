@@ -1,12 +1,14 @@
 ---
 name: commit
 description: >-
-  Rules for committing changes to code repository; Do not commit unless got explicit instruction or permission from user
+  Rules for committing changes to the code repository. Never commit without explicit instruction or permission from the user.
 ---
 
-- Look and pending changes; group them by content aligning with origin topic, ticket, rfc or change type (docs/code/cicd).
+- Commit the work in current session only. Do not commit changes of other session that might represent a work in progress. When in doubt, ask user.
 
-- Separate implementation and documentation commits; tags them with either DOCS, CODE or CICD.
+- Look at pending changes; group them by content aligning with origin topic, ticket, rfc or change type (docs/code/cicd).
+
+- Separate implementation and documentation commits; tag them with either DOCS, CODE or CICD.
 
 - In case the file changes belong to several groups, commit the file with the group forming its dominant topic and mention the bleed in that commit's message.
 
@@ -14,8 +16,8 @@ description: >-
 
 - Unless already working in branch or instructed to branch - commit to default branch.
 
-- Always run ruff check, ruff format --check, pyright and pytests before commiting (the same gate
-  set CI runs).
+- When commiting code change, always run ruff check, ruff format --check, pyright and pytests before commiting (the same gate
+  set CI runs). Pure doc changes do not need the checks.
 
-- Do not commit unless got explicit instruction or permission from user.
-- Separately, do not push unless got explicit instruction or permission from user.
+- Do not commit without explicit instruction or permission from user.
+- Separately, do not push without explicit instruction or permission from user.
