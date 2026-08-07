@@ -31,7 +31,9 @@ Note that future development/planned extension prose can stay in docs/code where
 domain definitions.
 
 **Session, tickets and RFCs** are allowed to carry duplicate relevant architectural context; those docs are not core architecture, but historical records or current work digests. Their corresponding `README.md` files should be pure, though.
-Core architecture docs must not reference sessions, tickets or RFCs.
+Core architecture docs must not reference sessions, tickets or RFCs. One exception: a queued
+concern's `→ queued as <ticket-slug>` marker in `concerns.md` is delivery routing, not
+architecture — keep it.
 
 **Workflow.** Scan → inventory **Safe** / **Needs you** → apply safe items
 (obvious dupes, non-load-bearing evolution, link normalization) → pause on

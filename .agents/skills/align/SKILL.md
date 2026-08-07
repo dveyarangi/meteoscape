@@ -1,6 +1,6 @@
 ---
 name: align
-description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.
+description: Grilling session that challenges current plan against the existing domain model, sharpens terminology, and updates documentation as decisions crystallise. Use to stress-test a plan against their project's language and documented decisions.
 ---
 
 <what-to-do>

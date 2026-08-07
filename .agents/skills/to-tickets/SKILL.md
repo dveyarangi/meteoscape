@@ -33,6 +33,10 @@ Break the parent into **tracer bullet** tickets. Each ticket is a thin vertical 
 
 Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
 
+A ticket blocked on unresolved product or architectural decisions may begin as a **decision-bearing
+HITL ticket**. It is the eventual feature ticket in an earlier phase, not a separate decision slice;
+name it for the product outcome it will deliver.
+
 <vertical-slice-rules>
 - The goal is to break down into small deliverables that can be tested by user, before the entire schema/service/UI is built. Vertical step-by-step.
 - Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
@@ -104,6 +108,29 @@ Reference the parent's user stories or acceptance criteria by number:
 
 </ticket-template>
 
+### Decision-bearing ticket lifecycle
+
+A decision-bearing ticket is the working document for an [/align](../align/SKILL.md) session and
+then becomes the implementation-ready feature ticket for the same outcome. Do not mint separate
+decision and implementation tickets for that outcome.
+
+- **At minting:** `Outcome`, `What to build`, and `Acceptance criteria` describe the alignment exit:
+  the decision is landed in its durable home and the feature is unblocked. Hold the decision tree —
+  evidence, alternatives, and open questions — in the ticket.
+- **Concern promotion:** leave only the architectural contact surface in `concerns.md` under its
+  stable anchor, add `→ queued as <ticket-slug>`, and move the deliberation into the ticket.
+- **During alignment:** follow [/align](../align/SKILL.md)'s inline resolution rule; the ticket is the
+  live working document.
+- **At resolution:** land decisions in their durable homes, remove the resolved concern entry (or
+  retain separately-scoped residue), and rewrite the same ticket in place to feature altitude:
+  behavioral outcome, end-to-end work, acceptance criteria, blockers, and parent scope. Preserve
+  its slug and parent; keep its queue position unless the resolved dependencies require reordering
+  under the repository's numbering rules.
+- **If the resolved feature is too coarse for one RFC:** retain the ticket as the parent/end-state
+  and decompose it through `/to-tickets`; do not create a sibling merely to hold the implementation.
+- **If alignment eliminates the feature:** complete the ticket as a landed decision; this is the
+  only case where it closes without becoming an implementation ticket.
+
 ### Acceptance criteria hold the behavior altitude
 
 - A criterion states what is observably true when the ticket is done — verifiable by a test, a
@@ -115,6 +142,8 @@ Reference the parent's user stories or acceptance criteria by number:
 - A refactor too large for one RFC splits into subtickets
   (→ [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering)), one RFC per child; the
   parent's criteria state the end-state that only holds when all children land.
+- While a ticket is decision-bearing, its provisional criteria follow the decision-bearing
+  lifecycle above. Once transformed, this behavior-altitude rule applies in full.
 - The `Outcome` line holds the same altitude as the criteria.
 - A ticket that fits none of these shapes → `/align` before writing it.
 
