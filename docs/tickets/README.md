@@ -1,9 +1,11 @@
 # v1 delivery status
 
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-08
 
 **Current stage:** [0112 — day-anchored availability](./done/01-0112-day-anchored-availability-window.md)
-has landed. Next is [006 — retentive store](./01-0115-retentive-store-freshness.md), followed by
+has landed, and [006 — retentive store](./01-0115-retentive-store-freshness.md)'s align is complete:
+the ticket is split into four subtickets, starting with
+[`ANY` as the boundless snapped member](./01-0115.0010-any-boundless-member.md). Then
 [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md) before another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
@@ -70,7 +72,11 @@ queue position, because it still has to be done in order.
 | 0100 | [Snapped request mode (T instantiation)](./done/01-0100-snapped-t-request-mode.md) | Maint | Done | capability domain, provider parity checks | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Landed with the `TimelineProvider` / `TimelineProbe` split. |
 | 0110 | [Request shaping](./done/01-0110-request-shaping.md) | — | Done | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
 | 0112 | [Day-anchored availability window](./done/01-0112-day-anchored-availability-window.md) | — | Done | request shaping | `CadenceDef.window_quantum`: the availability window anchors to the vendor's calendar quantum; Open-Meteo declares its probed day-quantized truth; the 003c parity probe passes at any hour. |
-| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. |
+| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready (split) | core canonical parameters | Decision record and union of criteria; delivered by the four subtickets below (align completed 2026-08-08). |
+| 0115.0010 | [`ANY` as the boundless snapped member](./01-0115.0010-any-boundless-member.md) | — | Ready | core canonical parameters | Boundless snapped member, `ground`'s open arm, shared `clip` tolerance. No behavior change. |
+| 0115.0020 | [Multi-domain carrier and timeline rework](./01-0115.0020-multidomain-carrier-timeline.md) | — | Planned | `ANY` boundless member | Carrier minted; `agreed_geometry` returns a group; both eager folds retired; natural fetch unit. No behavior change. |
+| 0115.0030 | [Retentive timeline Store](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + unit-granular store with covers-or-refetch-whole; unit-tested, unwired. |
+| 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive timeline store | Retention live in both positions; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
 | 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Ready | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
 | 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
@@ -186,11 +192,14 @@ resolution.
   discriminator → [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - [005](./01-0170-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
-- [006](./01-0115-retentive-store-freshness.md): **refill scope** — whether a store miss refills
-  only the requested parameters or the source's whole offering; decides whether the cold-store
-  mixed-request double fetch (and its divergence residue) survives retention. Also verify the
-  partial-warm window-extension edge at its align. (The store-lattice representation question this
-  line used to carry was resolved at m4 — recorded in the ticket.)
+- [006](./01-0115-retentive-store-freshness.md): align completed 2026-08-08 — refill scope (ask
+  narrow, answer natural, store absorbs), the partial-warm edge (covers-or-refetch-whole), `ANY` as
+  the boundless snapped member, the group-returning fold, and the #22/#23 deferrals are all
+  recorded in the ticket; narrow-answering providers moved to
+  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence) (decided
+  at 011). Still ticket-owned: the fold/carrier **naming checkpoint** (fires at
+  [0115.0020](./01-0115.0020-multidomain-carrier-timeline.md)) and `assimilate`'s concrete shapes
+  (revisited at [0115.0030](./01-0115.0030-timeline-store.md)).
 - [m3](./done/01-0080-provider-parity-checks.md) (done): *building* scheduled and changed-provider
   automation remains deliberate follow-on work, recorded in the ticket's follow-on section. What
   **enforces** parity coverage and **routes** its selection is now
