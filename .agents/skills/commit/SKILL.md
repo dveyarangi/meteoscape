@@ -6,9 +6,9 @@ description: >-
 
 - Commit the work in current session only. Do not commit changes of other session that might represent a work in progress. When in doubt, ask user.
 
-- Look at pending changes; group them by content aligning with origin topic, ticket, rfc or change type (docs/code/cicd).
+- Look at pending changes; group them by content aligning with origin topic, ticket, rfc or change type (docs/code/cicd/skills).
 
-- Separate implementation and documentation commits; tag them with either DOCS, CODE or CICD.
+- Separate implementation and documentation commits; tag them with either DOCS, CODE, CICD or SKILL. Changes to the agent skills corpus take SKILL.
 
 - In case the file changes belong to several groups, commit the file with the group forming its dominant topic and mention the bleed in that commit's message.
 
