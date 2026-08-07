@@ -42,3 +42,7 @@ product/feature ideas that haven't earned a decision yet.
   `issue_time` / `expiration` from that instead of the static cadence-model `{Δ, L}` estimate
   ([ADR-0003](./adr/0003-provenance-and-origin.md)); fall back to the configured cadence only when
   no real signal is available.
+- **Provider-real availability signal.** Where a vendor exposes what it currently serves (forward
+  and archive edges), drive the footprint window from that signal behind the same `CadenceDef`
+  declaration seam; keep the static `{max_lead, window_quantum?}` estimate as fallback
+  ([#18](./concerns.md#18-clock-anchored-footprint-fidelity)).

@@ -176,7 +176,8 @@ _Avoid_: Issue-time axis
 The fitness of a producer's data for a Parameter under an Arbiter's objective. → [architecture.md](./architecture.md#arbiter)
 
 **Cadence**:
-A Provider's forecast-cycle timing, including run interval, publication latency, and maximum lead. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+A Provider's timing declaration: run interval and publication latency define run identity and freshness;
+maximum lead and an optional shelf quantum define its availability window. → [ADR-0003](./adr/0003-provenance-and-origin.md)
 
 **Consensus**:
 A Reconciler that blends overlapping contributors instead of selecting one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
@@ -224,7 +225,7 @@ The summary a surface narrates of what a profile can answer — its served Param
 _Avoid_: Capability (the admission authority), coverage
 
 **Horizon**:
-How far ahead a profile serves — the `valid_time` projection of a Reach, as a length ahead of the latest run rather than an instant. → [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)
+A conservative statement of how far ahead a profile serves — the `valid_time` projection of a Reach, narrated as a duration ahead of the latest run rather than an instant. → [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)
 _Avoid_: Reach (the whole Domain, not one axis of it); default window (what the edge authors from a Horizon); lead time
 
 ### Composition

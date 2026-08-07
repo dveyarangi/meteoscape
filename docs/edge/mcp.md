@@ -84,10 +84,14 @@ request).
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
 - The tool description narrates the served menu and the profile's reach as a **relative horizon**
   ("out to N ahead of the latest model run"), never absolute instants: the description is built
-  once and frozen for the process lifetime, and a `RollingAxis` extent length is clock-invariant,
-  which keeps the relative form true indefinitely — *validated by:*
+  once and frozen for the process lifetime, and a `RollingAxis` extent length is clock-invariant.
+  Durations of at least one day are floored to whole days; shorter durations remain whole hours, so a
+  run-anchored reach stays exact and Open-Meteo's current shelf-anchored declaration stays conservative
+  against its independently moving run clock — *validated by:*
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py)
-  (`test_forecast_hourly_builds_selection_and_narrates`, the empty-menu skip) and the e2e
+  (`test_forecast_hourly_builds_selection_and_narrates`,
+  `test_horizon_floors_non_exact_days_to_whole_days`,
+  `test_horizon_narrates_sub_day_reach_in_hours`, the empty-menu skip) and the e2e
   default-window case ([test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)).
 - A zero-overlap window is answered at admission — `capability-mismatch` with **no vendor
   call** — and out-of-range bounds reach the vendor as exactly the clipped lattice —

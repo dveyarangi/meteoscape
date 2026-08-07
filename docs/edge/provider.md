@@ -290,7 +290,8 @@ re-derives the mode inside the leaf, which is exactly what the second Provider m
 **What the leaf must therefore declare**, for any of it to work:
 
 - **Per-parameter footprints** at the leaf's own geometry — static spatial and Z bounds, and a
-  clock-anchored T axis that rolls with the run anchor.
+  clock-relative T axis whose `CadenceDef` declares the availability base; without a
+  `window_quantum` it follows the run → [ADR-0003: cadence](../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence).
 - **An axis that clips to cells wherever the leaf can resolve a snapped member.** For a rolling T that
   is `RollingAxis.clip`, which materialises the live window into the lattice its series actually
   arrives on before restricting it. A leaf that declares such an axis serves snapped requests on it;
@@ -303,10 +304,11 @@ re-derives the mode inside the leaf, which is exactly what the second Provider m
   declined honestly.
 
 **The two clock reads are by design.** A snapped request reads the clock once when the leaf grounds
-pre-fetch (inside the rolling axis's `extent`) and once after the fetch to stamp provenance. The answer
-is clipped to the **requested bounds**, never to the racy window, so a window that rolls between them
-at worst trims the answer — except the raced-empty case, where the clip finds no overlap and the leaf
-declines pre-fetch, without a vendor call.
+pre-fetch (inside the rolling axis's availability `extent`) and once after the fetch to stamp run
+provenance. They share a `Clock`, not necessarily an anchor. The answer is clipped to the **requested
+bounds**, never to the racy window, so a window that rolls between them at worst trims the answer —
+except the raced-empty case, where the clip finds no overlap and the leaf declines pre-fetch, without
+a vendor call.
 
 ### Response — what a leaf returns
 
@@ -530,9 +532,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   spatial sibling would buy here is a float phase-tolerance policy stated statically rather than
   chosen per call; recorded at #23, not decided here.
 - [#18 — Clock-anchored footprint fidelity](../concerns.md#18-clock-anchored-footprint-fidelity)
-  — what a leaf **declares** (`CadenceDef` `{Δ, latency, max_lead}`, conservative by default) against the
-  vendor's real availability. Over-promising surfaces as edge nodata; the durable fix is a provider's
-  actual availability signal behind the same declaration seam.
+  — static declaration versus vendor-real availability; over-promising surfaces here as edge nodata.
 - [#20 — Provider multi-resolution offerings](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)
   — `OfferingSpec` is a manifest concept, so a provider exposing several resolutions grows this edge's
   face first.

@@ -86,10 +86,10 @@ same shape. The abstraction these are shapes of is the
     declared geometry, which is why it is not derived from `reach` →
     [#29](../concerns.md#29-narrated-reach-what-a-profile-promises).
 
-- **A leaf's temporal footprint is clock-anchored** — its `valid_time` window tracks the provider's run
-  anchor (the cadence, [ADR-0003](./0003-provenance-and-origin.md)), encapsulated in the continuous
-  footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves` stays a plain `matches`. The
-  per-provider numbers are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+- **A leaf's temporal footprint is clock-relative** — its cadence declares the availability base
+  separately from run identity/freshness → [ADR-0003](./0003-provenance-and-origin.md). The window is
+  encapsulated in the continuous footprint `Domain` ([ADR-0002](./0002-data-model.md)) so `serves`
+  stays a plain `matches`; declaration fidelity is [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
 
 - **The predicate** `serves(parameter, requested_domain)` reads the pair `(def, offered)` and asks
   whether a **valid, non-lossy resampler path** exists from `offered` to `requested` — the
@@ -456,7 +456,7 @@ required for per-candidate fall-through and per-parameter omission is tracked in
   **not re-linked per Selection**; which contributors fire is decided at `project` by intersecting each
   footprint with the requested `Domain`.
 - **Deferred seams:**
-  - **Probed / discovered real availability.** The clock-anchored footprint (above) declares the
+  - **Probed / discovered real availability.** The clock-relative footprint (above) declares the
     *envelope*; a leaf that reflects **which runs / timesteps actually exist at request time** — vs the declared
     window — needs **I/O at selection time**, reopening the **Arbiter → Broker** pressure
     ([#8](../concerns.md#8-arbiter-to-broker-pressure)). A metadata-only window performs no probe; the

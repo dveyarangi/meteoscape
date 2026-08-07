@@ -1,6 +1,6 @@
 # RFC 0010 · 2026-08-06 · Day-anchored availability window — implementation plan
 
-Implementation plan for [day-anchored availability window](../tickets/01-0112-day-anchored-availability-window.md).
+Implementation plan for [day-anchored availability window](../../tickets/done/01-0112-day-anchored-availability-window.md).
 The *why* — the probed vendor shape, the rejected alternatives (max_lead cut; probe-side clamp) —
 is the ticket's; this plan is the single way to build it.
 
@@ -13,19 +13,19 @@ edge, or Probe changes.
 
 | Boundary | Owner | What this does to it |
 |---|---|---|
-| `CadenceDef` / `RollingAxis` (`manifold/cadence.py`) | [ADR-0003 §cadence](../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence) | The one widening: `window_quantum: timedelta \| None = None`; `valid_time` branches on it. `anchor`, `expiration`, `RollingAxis` untouched. ADR-0003 amended at landing (stage 4). |
-| Open-Meteo declaration (`nodes/providers/open_meteo.py`) | [edge/provider.md](../edge/provider.md) | `CADENCE` declares the probed truth: `window_quantum=24 h`, `max_lead=383 h`; `cadence`/`publication_latency` stay 1 h / 1 h. |
-| Narration (`api/mcp_app.py`, `_horizon_sentence`) | [edge/mcp.md](../edge/mcp.md) | One formula change: whole-days **floor** replaces the `% 24 == 0` branch. No other edge change. |
+| `CadenceDef` / `RollingAxis` (`manifold/cadence.py`) | [ADR-0003 §cadence](../../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence) | The one widening: `window_quantum: timedelta \| None = None`; `valid_time` branches on it. `anchor`, `expiration`, `RollingAxis` untouched. ADR-0003 amended at landing (stage 4). |
+| Open-Meteo declaration (`nodes/providers/open_meteo.py`) | [edge/provider.md](../../edge/provider.md) | `CADENCE` declares the probed truth: `window_quantum=24 h`, `max_lead=383 h`; `cadence`/`publication_latency` stay 1 h / 1 h. |
+| Narration (`api/mcp_app.py`, `_horizon_sentence`) | [edge/mcp.md](../../edge/mcp.md) | One formula change: whole-days **floor** replaces the `% 24 == 0` branch. No other edge change. |
 | Provenance / freshness | ADR-0003 | **Untouched** — `issue_time = anchor(now)`, `expiration = A + Δ + L` keep reading the run clock ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) lines 217–219 are the only consumers; verified 2026-08-06). |
 | Admission / `ground` / `clip` | ADR-0002/0004 | **Untouched** — they read `extent`/`valid_time`; the truthful window flows through existing code. |
-| Probe seam | [edge/provider.md](../edge/provider.md) | **Untouched** — the Probe stays clock-free; the fix is precisely *not* a vendor-face clamp. |
+| Probe seam | [edge/provider.md](../../edge/provider.md) | **Untouched** — the Probe stays clock-free; the fix is precisely *not* a vendor-face clamp. |
 
 ## Facts that shape the implementation (verified 2026-08-06)
 
 1. **The vendor's availability, live-probed:** `end_hour = today00+16d−1h` → 200,
    `today00+16d` → 400 (upper edge is midnight-quantized, exclusive at +16 d);
    `start_hour` back to ~92 days → 200 (archive-deep lower edge — out of scope, recorded at
-   [#18](../concerns.md#18-clock-anchored-footprint-fidelity) as residue). Single-tick ask at the
+   [#18](../../concerns.md#18-clock-anchored-footprint-fidelity) as residue). Single-tick ask at the
    last hour → 200.
 2. **`CadenceDef` consumers are exactly three**: `valid_time` (the footprint window — the thing
    being fixed), `anchor` (provenance `issue_time`), `expiration` (freshness) —
@@ -50,7 +50,7 @@ edge, or Probe changes.
    is *guaranteed* true: `window.upper − run-anchor ≥ 15 d 1 h` at every hour for the day-anchored
    window, and exactly 7 d for the run-anchored fakes. The ≤ 23 h understatement is the accepted
    trade (user-accepted 2026-08-06; the exact sentence becomes narration's business again at the
-   open-ended flip, owned by the [retentive-store ticket](../tickets/01-0115-retentive-store-freshness.md)'s
+   open-ended flip, owned by the [retentive-store ticket](../../tickets/01-0115-retentive-store-freshness.md)'s
    align).
 7. **The default request under the e2e noon clock serves 372 ticks**: bounds
    `[Jul 11 12:00, reach end Jul 26 23:00]` on the hourly lattice — `24·16 − 12 = 372` (the
@@ -59,7 +59,7 @@ edge, or Probe changes.
 8. **Two-fetch divergence is neither created nor removed.** The race window moves from every hour
    boundary to the midnight boundary (a request in flight across 00:00 UTC can straddle two
    windows); the judgement and ownership recorded at 003c
-   ([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback), retention next)
+   ([#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback), retention next)
    carry over unchanged.
 
 ## Design decisions
@@ -143,15 +143,15 @@ uv run pytest` green.
      their windows are interior or their asserts derive from `CADENCE`.
 4. **Live probe + docs sync + status** — `uv run pytest tests/parity` at whatever hour it is (the
    probe is the acceptance criterion precisely because it must no longer care); then:
-   [ADR-0003 §cadence](../adr/0003-provenance-and-origin.md) — the forward-edge bullet gains the
-   window-quantum form and the two-clocks sentence; [#18](../concerns.md#18-clock-anchored-footprint-fidelity)
+   [ADR-0003 §cadence](../../adr/0003-provenance-and-origin.md) — the forward-edge bullet gains the
+   window-quantum form and the two-clocks sentence; [#18](../../concerns.md#18-clock-anchored-footprint-fidelity)
    — "the numbers, not the shape" corrected, the probe record (both edges), residue restated
    (archive lower edge; real availability signal → `ideas.md`);
-   [retentive-store ticket](../tickets/01-0115-retentive-store-freshness.md) — the open-ended
+   [retentive-store ticket](../../tickets/01-0115-retentive-store-freshness.md) — the open-ended
    member agenda item (one-sided open + `ANY` designed together; the edge's omitted-`end` flip
-   and the narration sentence decided there); [delivery status](../tickets/README.md) — 0112 row
+   and the narration sentence decided there); [delivery status](../../tickets/README.md) — 0112 row
    → Done, current-stage note (the 003c landing's probe re-armed and passing);
-   [edge/mcp.md](../edge/mcp.md) needs **no contract change** (no absolute horizon is pinned
+   [edge/mcp.md](../../edge/mcp.md) needs **no contract change** (no absolute horizon is pinned
    there; the narration invariant's mechanism is untouched). Ticket criteria checked; ticket +
    this RFC → `done/`.
 
@@ -168,7 +168,7 @@ uv run pytest` green.
 
 - **Archive lower edge (~92 d)** — the vendor serves it; we do not declare it. A product-scope
   decision (history through `forecast_hourly`: provenance/freshness semantics for past data,
-  payload, parity evidence) recorded at [#18](../concerns.md#18-clock-anchored-footprint-fidelity)
+  payload, parity evidence) recorded at [#18](../../concerns.md#18-clock-anchored-footprint-fidelity)
   as unlocked residue, not planned here.
 - **Open-ended request member** ("no bounds — whatever is available") — reserved vocabulary
   (006's `ANY`, the "deferred m4 form"); designed at the retentive-store align together with the

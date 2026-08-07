@@ -85,7 +85,7 @@ new here is that they bound what the edge can promise:
   non-identical-step selections the sampler cannot crop → [#21](#21-serves-extent-vs-project-crop-ability),
   where the symptom is an internal `NotImplementedError`, not even a clean mismatch.
 - Declared windows are **clock-relative estimates**: a `RollingAxis` extent moves with the clock and
-  the cadence `{Δ, L, max_lead}` is a conservative guess → [#18](#18-clock-anchored-footprint-fidelity).
+  unprobed provider timing may be conservative → [#18](#18-clock-anchored-footprint-fidelity).
   A reach read is instantaneous truth, never durable — an embedder that reads reach and composes a
   request later is already out of date.
 - **Miss reasons are indistinguishable** — "does not cover" and "cannot be compared" are the same
@@ -412,11 +412,10 @@ for") is worth having as well, or whether the trace alone is enough.
 **Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
 → [ADR-0003: cadence](./adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence).
-What stays open is **the numbers, not the shape**: the concrete per-provider `{Δ, L, max_lead}` (v1 specifies a **conservative
-default** — floor to the hour, generous `L` — accepting occasional edge nodata), and the residual
-**estimate error** (under-estimating `L` still over-promises → edge nodata; over-estimating
-under-promises). The real fix is a provider's **actual reference / availability signal** when it exposes
-one (rounded guess as fallback) → `ideas.md`. Additive; no contract change.
+Open: timing facts for providers without probe evidence; residual estimate error in Open-Meteo's run
+cadence; and its vendor-served ~92-day archive edge, which remains undeclared pending product decisions
+about history, provenance, payload, and parity evidence. Provider-real reference and availability
+signals are the intended escape from static estimates → [ideas: freshness](./ideas.md#freshness).
 
 ## 11. Incremental synthetic recompute
 
@@ -657,7 +656,7 @@ set to prove it.
 
 A surface needs to tell callers **how far this profile reaches** — the MCP tool
 description narrates it; window *fitting* is resolution's, via the Snapped-T request mode
-([m4](./tickets/done/01-0100-snapped-t-request-mode.md); membership notes →
+([ADR-0002: Domain & Selection](./adr/0002-data-model.md#domain--selection); membership notes →
 [#30](#30-response-membership-under-runtime-degraded-fallback)). The mechanism is **Reach**: the per-parameter `Domain` a `Capability` publishes, composed up the
 graph and read off the woven root ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). What stays
 open here is the **product** question, not the mechanism: **what a profile should promise**, given that
@@ -677,6 +676,13 @@ narrates is therefore an upper bound on what a running system will serve, and th
 resampler-reachability / probed-availability seams inside `serves`
 ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)). Whether a profile should narrate the
 declared bound, or something hedged against those, is a **product** decision this concern owns.
+
+**Shelf-quantized reach adds a static-proof obligation.** Open-Meteo's whole-day floor is conservative,
+but that is not a law of `window_quantum`: a shorter shelf window near the end of its quantum can leave
+less time ahead of the latest run than its extent suggests. Before another shelf-quantized offering
+contributes to this surface, either its declaration must prove the narrated floor is below the minimum
+`window.upper - run_anchor`, or the horizon derivation/sentence must change. This stays surface policy,
+not a generic `CadenceDef` constraint.
 
 **Why one reach and not a quality/completeness ladder.** A **quality reach** (how far every parameter
 comes from its best source) is rejected because **quality is a policy outcome, not a capability**.

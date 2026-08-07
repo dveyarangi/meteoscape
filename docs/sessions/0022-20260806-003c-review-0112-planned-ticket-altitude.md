@@ -27,9 +27,9 @@ the skills.
   ("no bounds — whatever is available") was recognized as 006's reserved `ANY` vocabulary and
   routed to the retentive-store align rather than minted alone.
 - **Planned the fix**: ticket
-  [0112 — day-anchored availability window](../tickets/01-0112-day-anchored-availability-window.md)
+  [0112 — day-anchored availability window](../tickets/done/01-0112-day-anchored-availability-window.md)
   (Ready, queue position between 003c and the retentive store) and
-  [RFC 0010](../rfc/0010-20260806-day-anchored-availability-window.md) — `CadenceDef.window_quantum`,
+  [RFC 0010](../rfc/done/0010-20260806-day-anchored-availability-window.md) — `CadenceDef.window_quantum`,
   Open-Meteo declaring its probed truth, narration flooring to whole days, provenance/freshness
   provably untouched.
 - **Extracted the altitude rule into the skills** (align): 0112's first-draft criteria carried
@@ -42,8 +42,8 @@ the skills.
 
 - **Open-Meteo's availability shape, live-probed** (day-quantized forward edge, archive-deep
   lower) and the day-anchored declaration as its fix →
-  [0112 ticket](../tickets/01-0112-day-anchored-availability-window.md) (why),
-  [RFC 0010](../rfc/0010-20260806-day-anchored-availability-window.md) (how).
+  [0112 ticket](../tickets/done/01-0112-day-anchored-availability-window.md) (why),
+  [RFC 0010](../rfc/done/0010-20260806-day-anchored-availability-window.md) (how).
 - **No declaration cut, no vendor-face clamp** — the declaration layer owns vendor truth; the
   parity guard must stay able to catch mis-declarations → 0112 ticket §Why.
 - **The open-ended request member is designed at the retentive-store align, together with `ANY`**

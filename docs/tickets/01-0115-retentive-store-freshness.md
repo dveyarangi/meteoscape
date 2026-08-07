@@ -94,6 +94,12 @@ window-extension-refetches-whole rule appears to prevent a retained window and a
 two different T ranges, but "retention dissolves the divergence" leans on that and it has never
 been checked.
 
+**Open-ended request member — decide at this ticket's align (minted 2026-08-07, 0112 landing).**
+One-sided open bounds ("no bounds — whatever is available") designed together with `ANY` / the
+whole-axis form: the MCP edge's omitted-`end` flip and the floor-narration sentence become
+narration's own question again here, with retention landing in the same ticket. Reserved vocabulary
+is 006's `ANY` (the deferred m4 form); do not mint the open-ended member alone.
+
 **This ticket is a trigger for [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method).**
 Refill requests are the second in-tree author of *exact* requests, which is what makes the request
 side's two representations load-bearing rather than incidental — and the reason `ground` is a function

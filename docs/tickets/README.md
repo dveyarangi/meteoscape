@@ -2,32 +2,9 @@
 
 **Last updated:** 2026-08-07
 
-**Current stage:** 003a, m1, 003b, m2, m3, m5, m4, and 003c have landed — reach lives on `Capability`
-([ADR-0007](../adr/0007-capability-carries-its-domain.md)), `Countable` is a result-only facet, a
-materialized provider wires storeless
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)), the live parity harness
-runs under `tests/parity/` beside the deterministic suite under `tests/deterministic/`
-([RFC 0007](../rfc/done/0007-20260725-m3-provider-parity-checks.md) — the Open-Meteo reference check
-passed its acceptance run on 2026-07-25, so 011's second Provider is no longer gated on it), and
-per-surface [Edge records](../edge) carry each product edge's contract, invariants, and staged
-roadmap.
-
-**[003c — Request shaping](./done/01-0110-request-shaping.md) landed 2026-08-06**
-([RFC 0008](../rfc/done/0008-20260725-003c-request-shaping.md)): the MCP edge accepts free
-`start`/`end` windows (ISO datetimes only) and authors them as Snapped-T raw-instant bounds;
-resolution serves `bounds ∩ the winner's live window`; an omitted `end` defaults to the profile's
-folded reach end read live; `Settings.default_horizon` is deleted; and the tool description
-narrates the served parameters plus a relative-horizon reach. The two-fetch divergence judgement
-(accepted rare-and-loud for exactly one ticket) was re-confirmed against shipped behaviour.
-**The landing's acceptance probe then did its job**: the live parity run passes only near UTC
-midnight — Open-Meteo's availability is *day-quantized* (`[today00, today00+16d−1h]`, probed
-2026-08-06), while the declared window slides with the clock, so the full-reach default draws a
-vendor 400 for ~23 hours of every day.
-**[0112 — Day-anchored availability window](./01-0112-day-anchored-availability-window.md)**
-fixes the declaration shape ([RFC 0010](../rfc/0010-20260806-day-anchored-availability-window.md))
-and precedes everything else; then **[006 — retentive store](./01-0115-retentive-store-freshness.md)**,
-whose align opens with **refill scope** and the **open-ended request member**, followed immediately
-by **[007 — off-grid homogenization](./01-0117-off-grid-homogenization.md)** before another Provider.
+**Current stage:** [0112 — day-anchored availability](./done/01-0112-day-anchored-availability-window.md)
+has landed. Next is [006 — retentive store](./01-0115-retentive-store-freshness.md), followed by
+[007 — off-grid homogenization](./01-0117-off-grid-homogenization.md) before another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -63,7 +40,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Resolution logging/trace | Planned | [Minimal structured logging](./01-0195-minimal-resolution-logging.md) is assigned for Phase 1; the richer trace sidecar and metrics remain deferred at [concern #14](../concerns.md#14-resolution-trace-and-observability). |
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. |
 | Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
-| Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; out-of-range bounds yield the servable part; reach narrated in the tool description. |
+| Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
 | Second provider and fallback | Planned | Only Open-Meteo is configured. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Planned | Stores are non-retentive placeholders. |
@@ -92,8 +69,8 @@ queue position, because it still has to be done in order.
 | 0090 | [Edge records and the `/edge` skill](./done/01-0090-edge-records.md) | Maint | Done | — | Per-surface Edge records (the architecture ↔ user-design seam documents) with an `/edge` skill; edge awareness wired into `/align` (challenge rule, `EDGE-FORMAT.md`) and `/sync-arch`; the MCP record populated and Normative. |
 | 0100 | [Snapped request mode (T instantiation)](./done/01-0100-snapped-t-request-mode.md) | Maint | Done | capability domain, provider parity checks | The reserved Snapped mode as one bounds-only axis member, enabled on T: intersective admission, resolution serves `bounds ∩ live window` on the winner's own lattice. Landed with the `TimelineProvider` / `TimelineProbe` split. |
 | 0110 | [Request shaping](./done/01-0110-request-shaping.md) | — | Done | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
-| 0112 | [Day-anchored availability window](./01-0112-day-anchored-availability-window.md) | — | Ready | request shaping | `CadenceDef.window_quantum`: the availability window anchors to the vendor's calendar quantum; Open-Meteo declares its probed day-quantized truth; the 003c parity probe passes at any hour. |
-| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. Moved ahead of Visual Crossing 2026-08-05 (003c re-stage align): retention is the mechanism that collapses the mixed-request double fetch, so it follows request shaping directly. |
+| 0112 | [Day-anchored availability window](./done/01-0112-day-anchored-availability-window.md) | — | Done | request shaping | `CadenceDef.window_quantum`: the availability window anchors to the vendor's calendar quantum; Open-Meteo declares its probed day-quantized truth; the 003c parity probe passes at any hour. |
+| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready | core canonical parameters | Fresh reuse, partial refill, and replacement semantics. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
 | 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Ready | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
 | 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
