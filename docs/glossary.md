@@ -207,7 +207,11 @@ The continuous, snapped, or enumerable form of Domain carried by a Selection —
 
 **Snapped**:
 The request mode that fixes only an axis's bounds; the resolver's grid supplies anchor and step, and the answer is the grid's cells within the bounds. → [ADR-0002](./adr/0002-data-model.md)
-_Avoid_: Soft window, clamped window, bounded-ANY (defers regularity too)
+_Avoid_: Soft window, clamped window, bounded-ANY
+
+**ANY**:
+The boundless form of the Snapped member — a request member that leaves one axis entirely to the producer: the answer keeps the producer's native cells on that axis and may group records that differ there. Not a separate axis kind; Snapped and ANY are one member kind differing only in whether bounds are present. A one-sided open bound is the same family's deferred "from X onward" form. → [006](./tickets/01-0115-retentive-store-freshness.md), [architecture.md](./architecture.md#request-modes)
+_Avoid_: Wildcard, unbounded, whole-axis
 
 **Canonical lattice**:
 A Store-private per-axis grid used to determine storable coordinates. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
@@ -219,6 +223,14 @@ _Avoid_: Resolve (the Gateway's verb), realize, instantiate; **above_ground** / 
 **Quantize**:
 The Store transformation from a Selection to enclosing, atomically storable units on its Canonical lattice. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Snap, align, round
+
+**Refill**:
+The Reservoir's fetch-on-miss: when a requested unit is missing or stale, one projection of the child over the quantized store shape, whose answer is assimilated before serving. The ask names the missing parameters; the answer may carry the child's natural fetch unit. → [006](./tickets/01-0115-retentive-store-freshness.md)
+_Avoid_: Cache fill, fetch-through, backfill, revalidation
+
+**Natural fetch unit**:
+What one trip to a producer inherently carries — the Provider's own economy fact. An answer may be wider than the ask's parameter set by carrying it, never narrower. → [006](./tickets/01-0115-retentive-store-freshness.md), [#43](./concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)
+_Avoid_: Whole offering (one producer's particular natural unit, not the concept)
 
 **Envelope**:
 The summary a surface narrates of what a profile can answer — its served Parameters and Reach. → [#29](./concerns.md#29-narrated-reach-what-a-profile-promises)

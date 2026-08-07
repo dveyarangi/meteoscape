@@ -50,10 +50,14 @@ plane. The capability/matching half is
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
   unit spans the axis wholly.** Each axis with a declared lattice snaps onto it and widens outward to
-  whole units (extent ≥ request); an axis **without** a declared lattice (for example, Z) **passes
-  through unchanged**, its cell becoming part of the unit key; an axis the unit spans **entirely** is
-  asked as **`ANY`** — the same widening carried to its limit, answered at the producer's native
-  extent ([ADR-0002](./0002-data-model.md)). A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
+  whole units (extent ≥ request); an axis **without** a declared lattice **passes through unchanged**,
+  its cell becoming part of the unit key (the **best-view** store's Z — product units keyed by the
+  request's vantage cell); an axis the unit spans **entirely**, or whose native cell only the answer
+  can supply (a **Source** store's Z), is asked as **`ANY`** — the same widening carried to its limit,
+  answered at the producer's native extent ([ADR-0002](./0002-data-model.md)). **Which axes a store
+  defers is therefore position-derived** from the fact→product boundary below: a Source store defers
+  T and Z; the best-view store — and a stored Calculator's store, whose child likewise answers
+  product-shaped views — defers only T. A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
   same rule, no vertical special case. "Quantize preserves Z semantics" is thus by construction.
 
 - **The fact→product boundary sits at the Source's read-back.** One vertical fact travels:

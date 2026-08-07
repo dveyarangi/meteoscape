@@ -2,13 +2,30 @@
 
 **Legacy id:** 006
 
-- **Status:** Ready — moved ahead of
+- **Status:** Ready — align completed 2026-08-08; everything below is current state. Moved ahead of
   [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) on 2026-08-05 (003c's
   re-stage align): retention is the *mechanism* that collapses the mixed-request double fetch,
   whose divergence [003c](./done/01-0110-request-shaping.md) accepts for exactly one ticket on the
   strength of this ordering.
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
-- **Outcome:** Fresh reuse, partial refill, and single-origin whole-window replacement.
+- **Outcome:** Fresh reuse, refill, and single-origin whole-unit replacement.
+- **Split 2026-08-08 into four subtickets** (historical ticket sizes ran 40–230 code lines; this one
+  projected ~750–1000 raw). This ticket remains the **decision record** and the union of acceptance
+  criteria; each slice carries its own scope, budget, and criteria, lands green, and only the last
+  changes observable behavior. **The split follows to-tickets' refactor-subticket rule** ("a
+  refactor too large for one RFC splits into subtickets, one RFC per child; the parent's criteria
+  state the end-state that only holds when all children land"), not its vertical-slice rule:
+  slices 1–2 are refactors in that rule's exact form (behavior unchanged, suite green through the
+  reshape, machine-enforced guards, dependents unblocked), slice 3 is the new leaf verifiable by
+  its own tests, and slice 4 is the demoable exit that delivers the parent's behavior. A strictly
+  vertical decomposition was examined and rejected: a thin end-to-end slice would have to retain
+  request-shaped (flattened) units first — the exact per-fetch flatten ADR-0006 rejects — and then
+  rework them; one undivided ticket (~750–1000 raw lines) fails the size rule this split was made
+  under:
+  1. [`ANY` as the boundless snapped member](./01-0115.0010-any-boundless-member.md)
+  2. [Multi-domain carrier and the timeline rework](./01-0115.0020-multidomain-carrier-timeline.md)
+  3. [The retentive timeline Store](./01-0115.0030-timeline-store.md)
+  4. [The Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md)
 
 ## Parent PRD
 
@@ -16,99 +33,119 @@
 
 ## What to build
 
-Replace the stub `Store` with the real **retentive in-memory `Store`** — a
-`Writable` Manifold with **private per-axis lattices** (hourly + spatial; no public `domain` —
-[ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)), **unit-granular** (units
-`(parameter, per-axis cells, window)`; `assimilate` splits a native record into units), wired into
-**both** positions (each `Source` and the best view). `project` runs the `Reservoir` pipeline:
-`quantize` the request onto the store lattices (per axis: snap + widen to whole assimilable units — a
-parameter's timeline at a spatial cell; identity on axes without a lattice; **`ANY` on axes the unit
-spans wholly** — for v1's timeline store that is `T` and `Z`, see below), read the per-unit
+Replace the stub `Store` with the real **retentive in-memory `Store`** — a `Writable` Manifold with
+**private per-axis lattices** (spatial from `StoreSpec`; T inherited from answers; no public
+`domain` — [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)),
+**unit-granular** (units `(parameter, per-axis cells, window)`; `assimilate` splits a native answer
+into units), wired into **both** positions (each `Source` and the best view). `project` runs the
+`Reservoir` pipeline: `quantize` the request onto the store shape, read the per-unit
 **{held, fresh, origin}** report (**held** = the store's own `capability`; **fresh** =
 `expiration > now` off each `ParameterData`'s provenance `summary` — no `is_current` operation
-exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), serve units that are **fresh and
-single-origin**, and **refill the missing/stale parameters whole** from the child in **one** call
-(`child.project(store_shape)`), then `assimilate` (replacing whole units atomically). The Source's
-read-back relabels matched native cells onto the handed shape (the fact→product boundary).
+exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), serve units that are **fresh
+and single-origin**, **refill the missing/stale parameters** from the child in **one** call
+(`child.project(store_shape)`), `assimilate` (whole units replaced atomically), then read-back:
+relabel matched native cells onto the handed shape and crop to the request (the fact→product
+boundary).
 
-**Native geometry must survive the fetch (session 0013).** `quantize` asks **`ANY`** on the axes the
-unit spans entirely; by shape-correspondence ([ADR-0001](../adr/0001-manifold-algebra-and-composition.md))
-the Provider then answers **multi-domain** — temperature at 2 m beside wind at 10 m — instead of
-flattening onto one requested Z. This is what lets the store key units by **native** cells while still
-paying for **one** vendor fetch; a fully-enumerable ask would force the flatten and destroy the cells
-before they could be stored, and asking per parameter group would multiply vendor traffic for data one
-call returns. **Which axes are `ANY` is derived from the unit definition, not hardcoded** — a grid
-store would invert it (`X/Y` whole, `T` celled), so the `Reservoir` stays generic.
+**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)) —
+the same per-axis fold, enclosing where `ground` clips, delegating to `Axis.clip`: a latticed axis
+(X/Y) resolves to the pinned **containing cells** (`clip` with a degenerate interval — a cellular
+tick owns the span that follows it); an axis the unit defers to the producer (T and Z here) takes
+**`ANY`**; anything else passes identity. **Which axes are `ANY` derives from the unit definition,
+not hardcoded** — a grid store inverts it (X/Y whole, T celled) — so the `Reservoir` stays generic.
+Read the request-side verb before writing this one to keep the siblings from diverging. `quantize`
+writes **zero new index arithmetic**, so [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split)'s
+`lattice.py` carve stands down (if raw index math appears after all, carve on the spot — pure
+refactor) and [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s type split stays
+deferred. What **is** 006's: the spatial snap is the first live float-lattice snap, so
+`RegularAxis.clip` gains the float boundary tolerance — applied in **index space** (fraction of a
+step), keeping `clip` one branch-free expression for both coordinate kinds — reconciled with
+`LATTICE_TOLERANCE` as **one shared policy** (one constant derived from the other; pinned by a
+boundary-point test; no second tolerance minted).
+
+**Request vocabulary: `ANY`, as the boundless snapped member.**
+`SnappedAxis.interval: Interval[datetime] | None`; the `SelectableAxis` union is unchanged —
+bounded and open are one member kind differing only in bounds. The temporal narrowing bites only
+when bounds are present (a bounded spatial snapped member stays a type error; a boundless member is
+axis-generic and sits on Z). One-sided open bounds are **unrepresentable by construction**
+(`Interval` requires both edges) until the "from X onward" form's own author
+([011](./01-0120-visual-crossing-provider.md) / [004](./01-0150-second-provider-fallback.md))
+changes the field type. An open member has no `extent` (clear error; no live caller reads a request
+member's extent) and `matches` everything. The MCP edge **keeps its omitted-`end` flip** — that
+flip *is* the fold of per-parameter reach ends into one shared answer window
+([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s one-shape rule) —
+and narration is untouched: the `Reservoir` forwards capability unchanged, so the horizon sentence
+and the reach read stay honest under retention.
+
+**Refill authors a `SelectionDomain`** — pinned X/Y cells plus boundless T/Z members; it cannot be
+enumerable (`ANY` has no coordinate list). No request-side narrowing lands here; after this ticket
+both in-tree request authors speak `SelectionDomain` and
+[#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)'s remaining
+trigger is #39's request-composition helper.
+
+**Native geometry survives the fetch.** `quantize`'s `ANY` on T/Z makes the Provider answer
+**multi-domain** — temperature at 2 m beside wind at 10 m — instead of flattening onto one requested
+Z, so units land keyed by **native** cells from a **single** vendor fetch. (A fully-enumerable ask
+would force the flatten and destroy the cells; per-parameter-group asks would multiply vendor
+traffic for data one call returns.)
+
+**The carrier, and the fold that returns it.** This ticket mints the multi-domain carrier: a
+`Manifold` grouping single-domain Coverages, whose own `project` folds onto a fully enumerable
+Selection — the retirement home of `_assemble`, which is how closure is preserved.
+`agreed_geometry` **always returns a group**: its law (records must agree on every *bounded* axis)
+is permanent; the licence to differ keys on **boundless** members; a fully-bounded request's group
+is a degenerate single, unwrapped at both call sites (both in the timeline wrapper this ticket
+rewrites). Fold and carrier names are settled at implementation — the singular `_geometry` dies
+with the group return.
+
+**Retire the eager folds — both facets.** `open_meteo.project`'s eager Z flatten (`_assemble`
+applied at fetch) and the parameter crop at answer assembly (`_as_delivered` keeping only
+`selection.parameters`) retire together — they are the same eager fold on different facets, and one
+law replaces both: *the answer carries the provider's natural shape; the store absorbs it; the
+serve crops.* ADR-0006's rejection of per-fetch flattening ("lossy on the data plane; the store
+cannot answer availability honestly") becomes live here, because this is the ticket where anything
+is retained at all.
+
+**Refill scope: ask narrow, answer natural, store absorbs.** The ask names the missing/stale
+*requested* parameters; the answer may carry the provider's **natural fetch unit** — wider than the
+ask on the parameter facet, never narrower (ADR-0001's answer discipline gains that sentence when
+this lands). Open-Meteo's natural unit is its whole offering — the same single variable-listed call
+— so a cold mixed request's first fetch warms `wind_u`/`wind_v` and the Calculator's second
+`Selection` hits the store: 003c's accepted divergence dissolves as a **leaf property**, with no
+`Reservoir` knob and no config. A narrow-answering (per-variable-billed) provider re-accepts the
+divergence for its own parameters as its economy choice →
+[#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence), decided
+at the first billed provider (011). Single-cadence consequence: a source's units age together (one
+`CadenceDef` ⇒ one fetch time, one expiration per trip), so per-parameter staleness divergence
+never occurs live for Open-Meteo; the freshness check stays per-unit and generic (a future source
+may carry per-parameter cadences), exercised with mocked expirations.
+
+**Serve gate: covers-or-refetch-whole.** A unit serves from store only if it is fresh and its
+retained window ⊇ the grounded request window; anything less (extension, disjoint, regrow)
+refetches the **whole unit** — the refill ask is the store shape, `ANY` on T, so the trip lands the
+provider's entire live timeline and the store then holds the full horizon — **replacing it
+atomically**, old window discarded. One retained window per `(parameter, spatial-cell)` unit —
+never two coexisting windows, never a retained-head + fresh-tail splice — and the serve crops every
+parameter to the same grounded request window, so two T ranges in one response is unrepresentable.
+Accepted cost: a disjoint-window request discards still-fresh data (requests slide forward with the
+clock; the vendor cannot serve the past; splicing is the mixed-run risk this rule kills —
+cross-vantage-window reuse stays parked at
+[#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows)). 0112's day-anchoring is
+load-bearing for fresh reuse: a same-day full-horizon repeat grounds to the identical day-anchored
+window and serves with no trip.
 
 **`assimilate` consumes the answer, not a pre-sliced record.** The store slices it per parameter,
 because only the store holds both halves of each unit `Selection` — `X/Y`+`T` from its private
-lattice, the native cell from the answer. Having the `Reservoir` slice would leak the lattice out of
-the store. *(Tentative — revisit the concrete shapes when building them here.)*
+lattice, the native cell from the answer. Having the `Reservoir` slice would leak the lattice out
+of the store. *(Tentative — revisit the concrete shapes when building them here.)*
 
-**Retire the eager flatten.** `open_meteo.project` currently ends in `_assemble(records, selection)`,
-labelled an "interim fold". Under a fully-enumerable ask that is *correct* behaviour, not a shortcut —
-which is why it must be the **ask** that changes. m4 sharpened the same point from the other side: it
-states the law `_assemble` rests on — *native records must ground identically on every axis the
-request pins or snaps* — and declines when they do not. `ANY` is precisely the licence to break that
-law on one axis, so this ticket lifts it there and mints the multi-domain carrier that `ANY` justifies
-(m4 deliberately did not: a carrier for a request that asked for one geometry only defers the fold to
-callers that all want it folded). `_assemble` remains as the multi-domain answer's own
-`project` (used when someone does hand it a fully enumerable Selection); it stops being applied
-eagerly at fetch. ADR-0006 lists per-fetch flattening among its **rejected** options ("lossy on the
-data plane; the store cannot answer availability honestly") — that rejection becomes live here,
-because this is the ticket where anything is retained at all.
-
-Freshness is read straight off each `ParameterData`'s `expiration` (`fresh ⇔ expiration > now`). Refill
-is **per-parameter and spatial** — a fresh parameter is reused while a stale one is refetched, each
-parameter resolved independently; a parameter's `valid_time` window stays **single-origin** (temporal
-miss or extension refetches the whole window). A separate **configurable retention interval** bounds
-memory (housekeeping only; the `Arbiter` never serves stale entries — LRU declined). See
+A separate **configurable retention interval** bounds memory (housekeeping only; the `Arbiter`
+never serves stale entries — LRU declined). The store-lattice representation stays the `Store`'s
+own business: its retention grid answers `Axis.clip` by materializing from the retention window at
+the clock, the way `RollingAxis` does — no new axis kind
+([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)). See
 `docs/v1-requirements.md` (v1 invariants, Config & secrets) and `docs/architecture.md` (Reservoir,
 Store).
-
-**Store-lattice representation — resolved at m4 (2026-07-26).** The question was whether to mint a
-declared-lattice axis (open extent: `anchor + step`, where `RegularAxis` fixes all three of
-`(anchor, step, count)`) or to narrow what `quantize` actually requires. It is the second, and m4
-built the narrowing: **`Axis.clip(bounds)`**, abstract on the axis base — one question a retention
-grid answers with the part of itself the request asks for, never with an enumeration. A store's
-retention grid answers it the way `RollingAxis` does, materialising from the retention window at the
-clock, so no new axis kind is minted and the representation stays the `Store`'s own business
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)).
-
-**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)):
-the same per-axis fold of a request against a lattice, enclosing where `ground` clips, and it is where
-the fold's **`ANY`** case lands — the axis the unit spans wholly takes the answering axis whole.
-Reading the request-side verb before writing this one is the cheapest way to keep the two from
-diverging.
-
-**Refill scope — decide at this ticket's align (minted 2026-08-05, 003c's re-stage).** Refill as
-drafted above is per-parameter: a miss refills only the *requested* parameters, so a cold-store
-mixed request (direct parameters through the Provider; `wind_u`/`wind_v` through the Calculator's
-scoped Arbiter) still issues **two vendor fetches with disjoint variable sets** — the divergence
-exposure [003c](./done/01-0110-request-shaping.md) accepted survives on that path. The alternative: a
-miss refills the source's **whole offering** — one vendor call returns all its variables anyway, so
-the first fetch would populate `wind_u`/`wind_v` and the second would hit the store even
-stone-cold. Decide which, and record the traffic/behaviour trade. At the same align, **verify the
-partial-warm edge**: one parameter fresh, another refetched, full-horizon bounds — the
-window-extension-refetches-whole rule appears to prevent a retained window and a fresh one serving
-two different T ranges, but "retention dissolves the divergence" leans on that and it has never
-been checked.
-
-**Open-ended request member — decide at this ticket's align (minted 2026-08-07, 0112 landing).**
-One-sided open bounds ("no bounds — whatever is available") designed together with `ANY` / the
-whole-axis form: the MCP edge's omitted-`end` flip and the floor-narration sentence become
-narration's own question again here, with retention landing in the same ticket. Reserved vocabulary
-is 006's `ANY` (the deferred m4 form); do not mint the open-ended member alone.
-
-**This ticket is a trigger for [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method).**
-Refill requests are the second in-tree author of *exact* requests, which is what makes the request
-side's two representations load-bearing rather than incidental — and the reason `ground` is a function
-taking the request rather than a method on it. 003c recorded its half of the call on 2026-08-05 —
-**the split stays and the edge authors `SelectionDomain`** — so the decision left here is whether
-refill keeps building enumerable shapes (the split stays for good) or refill's arrival is the moment
-the request side narrows to one representation and refill is written against that. Also re-read
-[#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) — `quantize` is the third
-lattice-arithmetic site, which is that carve's trigger.
 
 The e2e's second-call **re-fetch assertion** (documenting no-retention, session 0010) flips here.
 
@@ -124,13 +161,19 @@ The e2e's second-call **re-fetch assertion** (documenting no-retention, session 
 - [ ] `open_meteo.project` no longer flattens eagerly; a request whose Z differs from a prior one
       **reuses** the stored native units rather than refetching.
 - [ ] A fully-fresh repeat request is served with **no** provider call.
-- [ ] A fresh parameter is reused while another (stale) parameter is refetched (per-parameter, TTL =
-      `expiration`).
-- [ ] A temporal miss or window-extension refetches the **whole** window single-origin (no `valid_time`
-      splice).
+- [ ] Per-unit freshness is honored: a parameter with unexpired provenance serves with no trip while
+      an expired one triggers refill (differing expirations **mocked** — a single-cadence source's
+      units age together, so the live path never manufactures this state).
+- [ ] A stone-cold mixed request (direct parameters + calculator inputs) issues **one** vendor
+      fetch: the answer carries the provider's natural fetch unit (whole offering for Open-Meteo),
+      the store absorbs it, and the Calculator's input `Selection` is served from the store —
+      same `issue_time` across all assembled parameters.
+- [ ] A temporal miss or window-extension refetches the **whole unit** single-origin
+      (covers-or-refetch-whole: no `valid_time` splice, old window discarded, the refetched unit
+      lands the provider's full live timeline).
 - [ ] The retention interval is configurable and only bounds memory (never serves stale).
-- [ ] Unit + mocked-transport integration tests cover fresh-serve, per-parameter partial refill, and
-      whole-window single-origin refetch.
+- [ ] Unit + mocked-transport integration tests cover fresh-serve, per-parameter refill (mocked
+      expirations), and whole-unit single-origin refetch.
 
 ## User stories addressed
 

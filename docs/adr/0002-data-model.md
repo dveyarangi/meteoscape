@@ -215,7 +215,9 @@ classDiagram
   folding several resolutions — a producer's per-parameter footprints, or the native records one fetch
   yields — either returns the geometry they agree on or raises. The rule binds every producer that
   folds records; its one licence to differ is an axis the request left entirely to the producer
-  (`ANY`), which arrives with the retentive store, so rule and exception stay in one module.
+  (`ANY` — the boundless snapped member), where the fold returns the grouped resolutions instead of
+  raising; a fully-bounded request's group is a degenerate single. Rule and exception stay in one
+  module.
 
 - **One regular descriptor unifies snapped / declared-grid / exact.** A regular lattice is
   `{anchor, step, extent}`; its members differ in which parts are fixed — a **Snapped** request fixes
@@ -232,8 +234,9 @@ classDiagram
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
   declared lattice snaps onto it **and widens the extent outward to whole assimilable units**, so the
   retrieval shape **encloses** the request (extent **≥** request; the rounding is the store lattice's
-  own business); an axis **without** a declared lattice (for example, Z) **passes through identity**, its cell
-  becoming part of the unit key
+  own business); an axis the unit defers to the producer takes **`ANY`** (T and Z in the timeline
+  store — see the `ANY` bullet below), its native cell entering the unit key from the *answer*; an
+  axis with neither role **passes through identity**
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). At
   **read** the `Reservoir` **homogenizes** the stored cells back onto the requested `Domain` — extent
   **=** request (`snapped → exact` above) — so a **fully enumerable** `project(sel)` returns a Coverage
@@ -244,10 +247,13 @@ classDiagram
   **read-back, not the `Store`'s job**; the two steps move extent in **opposite directions** (quantize
   widens past the request, read-back crops back to it). The per-axis snap is `quantize`'s internal
   mechanism (no standalone operation): a snapped axis adopts the grid's anchor and step within its
-  bounds (the `valid_time` case), a **concrete coordinate snaps to its nearest grid node** (the
-  lat/lon case); `issue_time` is not requested, so it is never snapped. A Snapped request is resolved
+  bounds (the `valid_time` case), a **concrete coordinate lands in the cell containing it** (the
+  lat/lon case — `clip` with a degenerate interval; a cellular tick owns the span that follows it);
+  `issue_time` is not requested, so it is never snapped. A Snapped request is resolved
   by **whichever node resolves** — a storing node's `quantize`, or a storeless leaf onto its private
-  vendor lattice; store **refill** Selections stay enumerable (store-shaped). Store lattices are
+  vendor lattice; a store **refill** Selection is a `SelectionDomain` — quantized pinned cells on
+  latticed axes, `ANY` where the unit defers to the producer — never enumerable (`ANY` has no
+  coordinate list). Store lattices are
   **private to the `Store`** and **emergent per node**; there is no global lattice config and no
   public node `domain`.
 
@@ -288,12 +294,17 @@ classDiagram
   analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
 
-- **`ANY` is a third axis kind, on any axis**: "answer this axis at your own native
+- **`ANY` is the boundless snapped member, on any axis** — not a separate axis kind: one member kind
+  whose bounds may be absent, "answer this axis at your own native
   cells." It is the **limit of `quantize`'s widening** — where a declared lattice snaps and widens to
   the next unit boundary, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
   is derived from the store's assimilable unit, not from the axis**: an axis is `ANY` exactly when the
-  unit spans it entirely. A timeline store (unit = one parameter's whole timeline at a spatial cell)
-  asks `ANY` on `T` and `Z` with `X/Y` snapped; a grid store (unit = one parameter's whole field at a
+  unit spans it entirely or defers its native cell to the producer. A timeline store (unit = one
+  parameter's whole timeline at a spatial cell)
+  asks `ANY` on `T` and `Z` with `X/Y` quantized to pinned cells — that is the **Source**-position
+  store; the **best-view** store (and a stored Calculator's) defers only `T`, its child answering
+  product-shaped views, so the request's vantage Z passes identity into the unit key
+  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md), the fact→product boundary); a grid store (unit = one parameter's whole field at a
   time step) inverts it. So nothing here is vertical- or timeline-specific — the Source stays generic
   and only the unit definition varies. Read-back is unchanged: the stored extent encloses the request
   on every axis, and homogenization crops or relabels each axis back independently.

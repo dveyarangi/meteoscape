@@ -177,6 +177,14 @@ bare pass-through, so today a leaf receives the **edge's** request verbatim.
 - Consequence worth stating plainly: **the leaf's co-domained answer path becomes transitional in the
   composed graph.** Closure still requires it for any direct or enumerable ask, but the shipped wiring
   stops exercising it once the Reservoir stores.
+- **The same move happens on the parameter facet (006 align, 2026-08-07): the answer is licensed to
+  carry the leaf's natural fetch unit** — wider than the ask's parameter set, never narrower. The
+  crop to `selection.parameters` at answer assembly retires together with the eager Z flatten (they
+  are the same eager fold on different facets); the store absorbs the whole answer and the serve
+  crops. Open-Meteo's natural unit is its whole offering, which is what collapses the cold
+  mixed-request double fetch; a leaf that answers narrow (per-variable billing) re-accepts that
+  divergence for its own parameters as a declared economy choice —
+  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence).
 
 **A leaf does not inspect request shape.** It **declares its geometry** — per-parameter footprints,
 with a lattice-bearing axis wherever it can resolve a snapped member — and the request is resolved
@@ -234,7 +242,14 @@ decision 10). Rule and exception stay in one module by design.
 
 *Naming checkpoint at 006:* `agreed_` names the operation and survives; the singular `_geometry` is
 what the carrier puts in question. Deliberately not pre-renamed — the carrier's own name is the input
-that decision needs, and 006 touches every call site anyway.
+that decision needs, and 006 touches every call site anyway. *006's align decided the return shape
+(2026-08-08): the fold **always returns a group** — degenerate single on fully-bounded requests
+(both call sites unwrap), the multi-domain grouping where open axes let records keep their own
+cells. `ANY` itself is the **boundless snapped member** (`interval=None`), so `SelectableAxis`
+gains no new kind and the divergence licence keys on boundlessness inside the fold. Names confirmed
+2026-08-08, closing this checkpoint: the fold is **`agreed_geometries`** (the `agreed_` stem
+survives; the plural is the group) and the carrier is **`CoverageGroup`** —
+[RFC 0012](../rfc/0012-20260808-multidomain-carrier-timeline.md) implements them.*
 
 **Two call sites, and what each grounds against.** The wrapper calls `ground` once before the vendor
 call and once after — never in between, and never anywhere else. Both ends are plural, so both fold:
@@ -420,7 +435,10 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   unhandled — no fold reconciles winner domains — so a leaf author must not try to compensate for it
   leaf-side; it is owned at [003c](../tickets/done/01-0110-request-shaping.md)'s landing and dissolves for
   the common case when [006](../tickets/01-0115-retentive-store-freshness.md)'s retention collapses the
-  second fetch. *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
+  second fetch — a dissolution that is a **per-provider property** (it rests on the leaf answering its
+  natural fetch unit;
+  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)).
+  *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
 
 ### What every leaf must uphold
 

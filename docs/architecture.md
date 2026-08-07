@@ -113,7 +113,7 @@ Mode is the Domain's shape ([ADR-0002](./adr/0002-data-model.md)), and which sha
 | the full lattice — anchor, step, count | **Enumerable** (`exact`) | a Coverage co-domained on `sel.domain` (closed projection) |
 | only the **bounds** | **Snapped** — bounds; anchor and step deferred to the resolver | an enumerable answer on the **resolver's** lattice within the bounds |
 | only a region, wanting a continuous field | **Continuous** (`region`) | a field — no materializing surface in v1 |
-| nothing, deferring to the producer | **`ANY`** (axis kind) | the producer's native cells (may be multi-domain) |
+| nothing, deferring to the producer | **`ANY`** (the Snapped member without bounds — not a separate axis kind) | the producer's native cells (may be multi-domain) |
 
 Admission follows the mode: enumerable and continuous request axes admit by containment; a snapped axis — like the vantage Z aperture — admits by **intersection**, the winner serving the servable part ([#13](./concerns.md#13-candidate-admission-containment-vs-intersection), scoped). Per axis, what is real:
 

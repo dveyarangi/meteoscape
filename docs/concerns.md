@@ -178,6 +178,10 @@ pure refactor, no contract change. Not blocking; do not split preemptively.
 **Count as of [m4](./tickets/done/01-0100-snapped-t-request-mode.md) (2026-08-02):** `RegularAxis.clip` adds a
 second site of index arithmetic in `domain.py` beside `sub_lattice_offset`, so 006's `quantize` is the
 third and should re-read this entry before writing its own.
+**006 re-read (2026-08-08 align): the trigger does not fire.** `quantize` as resolved writes no new
+arithmetic — T/Z are `ANY`, and the spatial snap delegates to `Axis.clip` with a degenerate interval
+— so the site count stays two. No carve; escape hatch stands (if implementation ends up writing raw
+index math, carve on the spot — pure refactor).
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
@@ -203,6 +207,15 @@ constructor name per kind with coordinate-kind autodetection, or facade builders
 internal toucher: [006](./tickets/01-0115-retentive-store-freshness.md)'s `quantize` — which is also the
 third lattice-arithmetic site that would fire
 [#22](#22-lattice-helpers-vs-domain--sampling-module-split), now that `RegularAxis.clip` is the second.
+**006 touched it (2026-08-08 align) and chose reuse over split:** `quantize`'s spatial snap — the
+first live float-lattice snap — delegates to `RegularAxis.clip`, which gains the float boundary
+tolerance in **index space** (fraction of a step), keeping `clip` one branch-free expression for
+both coordinate kinds. The constant is reconciled with `LATTICE_TOLERANCE` as one shared policy
+(no second tolerance minted), pinned by a boundary-point test. Evidence for this split's eventual
+"state it statically" argument, but the split itself stays deferred; the snapped member's temporal
+narrowing bites only on *bounds* — a bounded spatial snapped member stays a type error, while the
+boundless (`ANY`) form is axis-generic — and `quantize` authors pinned cells plus boundless
+members, never a bounded spatial one.
 
 ## 42. Two request representations, so resolution cannot be a method
 
@@ -245,9 +258,49 @@ This is about the *request* side only; `Coverage.domain` stays enumerable regard
 author is what makes the split load-bearing rather than incidental) or #39's request-composition
 helper, which cannot avoid choosing *which* type embedders are handed. **003c fired first (2026-08-05
 re-stage align) and recorded: the split stays** — the edge authors a `SelectionDomain`, `ground`
-remains a function, and narrowing waits for the second author, now next in the queue. Until that
-trigger fires, the whole cost is one `isinstance` pair in `domain.py`. Resolution moves into
-ADR-0002, which owns the request vocabulary.
+remains a function, and narrowing waits for the second author, now next in the queue.
+**006 fired second (2026-08-08 align) and dissolved its own premise:** refill's ask carries `ANY`
+on T and Z, which has no coordinate list by definition, so refill *cannot* author an
+`EnumerableDomain` — it authors a `SelectionDomain` (pinned X/Y members plus boundless snapped
+members, the `ANY` form 006 enables; the `SelectableAxis` union itself is unchanged). No second enumerable author appeared: both in-tree request authors now speak
+`SelectionDomain`, and the enumerable request shape's remaining author is the internal crop target
+(`resample`) — already listed above as a cost of narrowing. That mildly *supports* the
+one-representation end-state without forcing it; the remaining trigger is #39's request-composition
+helper. Until it fires, the whole cost is one `isinstance` pair in `domain.py`. Resolution moves
+into ADR-0002, which owns the request vocabulary.
+
+## 43. Narrow-answering providers re-open mixed-request run divergence
+
+**Kind:** provider economy seam (no v1 driver — Open-Meteo answers wide) ·
+**Refs:** [006](./tickets/01-0115-retentive-store-freshness.md),
+[011](./tickets/01-0120-visual-crossing-provider.md), [Edge — Provider](./edge/provider.md),
+[ADR-0003](./adr/0003-provenance-and-origin.md)
+
+006's align (2026-08-07) resolved refill scope as **ask narrow, answer natural**: the `Reservoir`
+asks for the missing/stale *requested* parameters; the answer is licensed to carry the provider's
+**natural fetch unit** — wider on the parameter facet, never narrower — and the store absorbs it.
+Open-Meteo's natural unit is its whole offering (one variable-listed call either way), which is what
+dissolves [003c](./tickets/done/01-0110-request-shaping.md)'s cold mixed-request double fetch: the
+first fetch warms `wind_u`/`wind_v`, so the Calculator's second `Selection` hits the store. That
+makes the dissolution a **per-provider property**: a per-variable-billed provider whose natural unit
+is exactly-what-was-asked re-accepts the two-fetch run-divergence exposure *for its own parameters*.
+
+Graded responses, cheapest first — decide at the first billed provider
+([011](./tickets/01-0120-visual-crossing-provider.md)):
+
+1. **Accept per-provider** — the divergence is recorded as that provider's economy choice.
+2. **Detect and narrate** — assembly compares `AtomicOrigin.issue_time` across the assembled
+   parameters (the data already exists in the `PerParameter` provenance plane) and narrates a
+   mixed-run response. Cheap, and honest narration is the product's register.
+3. **Closure-widened ask** — at fan-out, widen a source's direct-parameter `Selection` by the
+   calculator inputs that source serves. Static from `RegisteredCalculator.inputs` (no prediction,
+   no runtime carrier). Independent value beyond divergence: one call instead of two for a
+   per-*call*-billed vendor, and one round trip instead of two sequential ones.
+
+**Rejected:** carrying request context / breadcrumbs on `Selection` or `Coverage`. `Coverage`
+already carries the detection half (`issue_time`); a `Selection`-side carrier would duplicate at
+runtime what the registries know statically, and `Selection` staying pure "what is asked" is
+load-bearing for composability.
 
 ## 15. Coarser-grid resampling and aggregation semantics
 
