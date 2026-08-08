@@ -16,10 +16,10 @@ each vendor itself.
 > parameter set through Open-Meteo — six provider-served parameters plus derived wind
 > speed/direction — with per-value source provenance, expiration, and nodata handling, and free
 > `start`/`end` request windows: bounds are served as their intersection with the live provider
-> window, and omitted bounds default to now and the profile's full reach. Second-provider
-> fallback, retentive caching, and off-grid read-back are still ahead. See the
-> [v1 delivery status](./docs/tickets/README.md) for the authoritative capability matrix and
-> execution order.
+> window, and omitted bounds default to now and the profile's full reach. Retentive caching,
+> off-grid read-back, second-provider fallback, and the supported Python embedding surface are
+> still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
+> capability matrix and execution order.
 
 ## v1 target
 
@@ -33,11 +33,18 @@ each vendor itself.
   relayed: v1 serves wind speed/direction from canonical wind components, so you get a
   consistent answer no matter how each vendor represents wind. User-defined derivations
   (dewpoint, heat index, …) are roadmap.
-- **MCP-native** — one tool, `forecast_hourly`, returning an hourly point-forecast `Timeline`
-  for the core surface parameters (temperature, wind, precipitation, humidity, cloud cover).
+- **MCP-native, embeddable** — one tool, `forecast_hourly`, returning an hourly point-forecast
+  `Timeline` for the core surface parameters (temperature, wind, precipitation, humidity, cloud
+  cover); the same capability is reachable headlessly through a supported Python embedding
+  surface, without running a protocol server.
 
-Beyond v1, the roadmap includes usage monitoring and quota/rate-limit control over vendor APIs,
-user-defined derived parameters, and surfaces beyond MCP.
+Beyond v1, the work turns to **operator-private sources**: station observations and archived
+forecast runs projected read-only from an operator's own database, per-source/per-parameter bias
+validation against those observations, and — once measured bias proves stable — forecast
+correction. Further out: more source shapes (grids, file and FTP transports), user-defined derived
+parameters, and usage monitoring with quota/rate-limit control over vendor APIs. The
+[product roadmap](./docs/product-roadmap.md) carries the direction and the sequencing rule behind
+it.
 
 **Under the hood.** MeteoScape is organized around a recursive **Manifold** algebra that gives
 normalization, selection, caching, and homogenization one uniform contract. See
