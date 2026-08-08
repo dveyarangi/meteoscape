@@ -28,7 +28,7 @@ src/meteoscape/
 │   # store.py — Store protocol + StoreFactory + substrate implementations
 │   # reservoir.py — Reservoir composite only (Store + child)
 │   # arbiter.py — Producer + Reconciler (owns priority AND per-parameter domain composition) + build_reconciler
-│   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef; validate_calculators (weave's precondition: inputs producible + cycle guard)
+│   ├── composition.py         # SourceBinder + CalculatorBinder → SourceRegistry + CalculatorRegistry; ProfileDef; validate_calculators (weave's precondition: inputs producible + cycle guard); require_separable — the shared build-time geometry guard both composition folds (arbiter, calculator) narrow through, each supplying its own rule and declarer (ADR-0007)
 │   ├── weaver.py              # allocate Stores; wire Source/Calculator Producers and scoped/top Arbiters
 │   ├── catalog/               # injected catalogues above manifold — cohesive plugin faces
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
