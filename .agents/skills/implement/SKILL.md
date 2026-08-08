@@ -21,6 +21,6 @@ Make sure comments adhere to /improve-comments rules
 
 Run typechecking and single tests files regularly, and the full test suite once in the end.
 
-Once done, if relevant, use /sync-arch to review the work.
+Once done, if relevant, use /review-impl and /sync-arch to review the work.
 
 Do not commit your work until requested.
