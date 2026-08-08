@@ -45,8 +45,13 @@ class RollingAxis(Axis):
     def extent(self) -> Interval:
         return self.cadence.valid_time(self.clock.now())
 
-    def clip(self, bounds: Interval) -> RegularAxis | None:
-        """Materialize the current window at the series step, restricted to `bounds`."""
+    def clip(self, bounds: Interval | None) -> RegularAxis | None:
+        """Materialize the current window at the series step, restricted to `bounds`.
+
+        One clock read per call, so the whole window and a restriction of it are consistent within a
+        call but not across two: whoever resolves must clip once and pass the resulting lattice on,
+        never re-derive it from the axis.
+        """
         window = self.extent
         materialized = RegularAxis(
             self.name,
@@ -55,4 +60,4 @@ class RollingAxis(Axis):
             (window.upper - window.lower) // self.step + 1,  # type: ignore[operator]
             cellular=True,
         )
-        return materialized.clip(bounds)
+        return materialized if bounds is None else materialized.clip(bounds)

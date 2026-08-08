@@ -32,6 +32,7 @@ from meteoscape.manifold.domain import (
     contains_extents,
     first_incomparable,
     ground,
+    open_axes,
     split_extents,
     sub_lattice_offset,
 )
@@ -232,6 +233,14 @@ def test_open_member_has_no_extent_and_clips_to_itself() -> None:
         _ = open_z.extent
     # `clip` stays total for the `Axis` contract: nothing bounds the boundless.
     assert open_z.clip(Interval(0.0, 1.0)) is open_z
+    assert open_z.clip(None) is open_z
+
+
+def test_bounded_snapped_member_clip_without_bounds_is_itself() -> None:
+    """A snapped member is never asked for a part of itself — no bounds changes nothing."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    member = SnappedAxis(AxisName.T, Interval(noon, noon + timedelta(hours=2)))
+    assert member.clip(None) is member
 
 
 def test_regular_axis_clip_keeps_the_lattice_and_moves_the_edges() -> None:
@@ -282,6 +291,12 @@ def test_regular_axis_clip_is_coordinate_generic() -> None:
     assert degrees.clip(Interval(10.0, 20.0)) is None
 
 
+def test_regular_axis_clip_without_bounds_is_the_axis_entire() -> None:
+    """No bounds = nothing to restrict — `ANY` takes the same verb with an empty argument."""
+    cells = RegularAxis(AxisName.X, 0.0, 1.0, 5, False)
+    assert cells.clip(None) is cells
+
+
 def test_regular_axis_clip_absorbs_float_noise_at_a_cell_edge() -> None:
     """A bound float-noise off a cell edge clips into the containing cell.
 
@@ -320,9 +335,11 @@ def test_interval_axis_clip_is_whole_or_nothing() -> None:
     assert column.clip(Interval(2_000.0, 3_000.0)) is column
     assert column.clip(Interval(-100.0, 0.0)) is column  # touch admits, as `intersects` does
     assert column.clip(Interval(12_001.0, 20_000.0)) is None
+    assert column.clip(None) is column
 
     vantage = VantageAxis(AxisName.Z, Interval(0.0, 10.0))
     assert vantage.clip(Interval(5.0, 50.0)) is vantage
+    assert vantage.clip(None) is vantage
 
 
 def test_continuous_axis_clip_stays_a_span() -> None:
@@ -336,6 +353,7 @@ def test_continuous_axis_clip_stays_a_span() -> None:
     )
     assert not isinstance(part, EnumerableAxis)
     assert span.clip(Interval(noon - timedelta(days=2), noon - timedelta(days=1))) is None
+    assert span.clip(None) is span
 
 
 def _delivered(t: RegularAxis) -> GridDomain:
@@ -388,6 +406,27 @@ def test_ground_answers_an_open_member_with_the_answering_axis_whole() -> None:
     assert grounded.axis(AxisName.X) is request.axis(AxisName.X)
 
 
+def test_ground_answers_an_open_t_against_a_rolling_footprint() -> None:
+    """Pre-fetch: a boundless T materializes the live window once — the gap decision 1 closes."""
+    request = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: SnappedAxis(AxisName.T),
+        }
+    )
+    footprint = footprint_domain(STOPPED)
+    grounded = ground(request, footprint)
+    assert isinstance(grounded, GridDomain)
+    # STOPPED = 2026-07-11 12:00; fakes cadence max_lead = 7d at hourly step.
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    assert grounded.axis(AxisName.T) == RegularAxis(
+        AxisName.T, noon, timedelta(hours=1), 7 * 24 + 1, True
+    )
+    assert grounded.axis(AxisName.Z) is request.axis(AxisName.Z)
+
+
 def test_ground_declines_an_open_member_against_a_declared_span() -> None:
     """Cells are still ground's requirement: `ANY` against a span declines like a bounded member."""
     noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
@@ -407,7 +446,7 @@ def test_ground_declines_an_open_member_against_a_declared_span() -> None:
             AxisName.T: ContinuousAxis(AxisName.T, Interval(noon, noon + timedelta(days=7))),
         }
     )
-    with pytest.raises(ValueError, match="an open t needs cells"):
+    with pytest.raises(ValueError, match="a snapped t needs cells"):
         ground(request, span_t)
 
 
@@ -493,13 +532,83 @@ def test_ground_declines_a_declared_geometry_as_a_request() -> None:
 
 
 def test_agreed_geometry_folds_resolutions_that_agree() -> None:
-    """One project answers with one geometry (ADR-0001) — disagreement is the decline."""
-    first = point_timeline_domain()
-    assert agreed_geometry([first, point_timeline_domain()]) is first
-    with pytest.raises(ValueError, match="one geometry"):
-        agreed_geometry([first, point_timeline_domain(hours=3)])
+    """One project answers with one geometry on bounded axes (ADR-0001) — disagreement names the axis."""
+    first = point_timeline_domain()  # an exact request leaves no axis open, so nothing may differ
+    agreed = agreed_geometry([first, point_timeline_domain()], request=first)
+    assert agreed is first
+    with pytest.raises(ValueError, match="disagree on t"):
+        agreed_geometry([first, point_timeline_domain(hours=3)], request=first)
     with pytest.raises(ValueError, match="no geometry"):
-        agreed_geometry([])
+        agreed_geometry([], request=first)
+
+
+def test_agreed_geometry_needs_axes_only_for_differing_members() -> None:
+    """Separability is the precondition of comparing differing members, not of publishing agreeing
+    ones — an exact non-separable request grounds by identity everywhere (concern #12, target role)."""
+
+    class _CurvilinearExact(EnumerableDomain):
+        def matches(self, other: Domain) -> bool:
+            return False
+
+        def intersect(self, other: Domain) -> Domain:
+            raise NotImplementedError
+
+        def __getitem__(self, index: int):
+            raise IndexError(index)
+
+        def __len__(self) -> int:
+            return 0
+
+        def enumerate(self):
+            return iter(())
+
+    exact = _CurvilinearExact()
+    assert agreed_geometry([exact, exact], request=exact) is exact
+    with pytest.raises(ValueError, match="axes"):
+        agreed_geometry([exact, point_timeline_domain()], request=exact)
+
+
+def test_agreed_geometry_licenses_difference_on_open_axes() -> None:
+    """Axes the request left open let resolutions differ; the first stands for the bounded shape."""
+    at_2m = point_timeline_domain()
+    at_10m = GridDomain(
+        axes={
+            AxisName.X: at_2m.axis(AxisName.X),
+            AxisName.Y: at_2m.axis(AxisName.Y),
+            AxisName.Z: RegularAxis(AxisName.Z, 10.0, 1.0, 1, False),
+            AxisName.T: at_2m.axis(AxisName.T),
+        }
+    )
+    open_z = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: SnappedAxis(AxisName.Z),
+            AxisName.T: RegularAxis(
+                AxisName.T, datetime(2026, 7, 11, 12, tzinfo=UTC), timedelta(hours=1), 1, True
+            ),
+        }
+    )
+    assert agreed_geometry([at_2m, at_10m], request=open_z) is at_2m
+    # The same difference is a disagreement once the request pins Z.
+    with pytest.raises(ValueError, match="disagree on z"):
+        agreed_geometry([at_2m, at_10m], request=at_2m)
+
+
+def test_open_axes_names_boundless_snapped_members() -> None:
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    open_zt = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: SnappedAxis(AxisName.Z),
+            AxisName.T: SnappedAxis(AxisName.T),
+        }
+    )
+    assert open_axes(open_zt) == frozenset({AxisName.Z, AxisName.T})
+    bounded = snapped_point_domain(start=noon, end=noon + timedelta(hours=2))
+    assert open_axes(bounded) == frozenset()
+    assert open_axes(point_timeline_domain()) == frozenset()
 
 
 def test_selection_domain_four_axes_and_axis_access() -> None:

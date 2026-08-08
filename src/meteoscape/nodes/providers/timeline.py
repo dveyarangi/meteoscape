@@ -22,8 +22,8 @@ from ...errors import CapabilityMismatch, RuntimeFailure
 from ...identity import SourceKey
 from ...manifold.cadence import CadenceDef, RollingAxis
 from ...manifold.capability import EnumerableCapability, GranularCapability
-from ...manifold.core import Coverage, Manifold, Selection
-from ...manifold.coverage import CoverageRecord
+from ...manifold.core import Manifold, Selection
+from ...manifold.coverage import CoverageRecord, CoverageSet
 from ...manifold.data import ParameterData
 from ...manifold.domain import (
     AxisName,
@@ -36,9 +36,10 @@ from ...manifold.domain import (
     RegularAxis,
     agreed_geometry,
     ground,
+    open_axes,
 )
 from ...manifold.provenance import AtomicOrigin, Provenance, Uniform
-from ...manifold.sampling import Shortfall, resample
+from ...manifold.sampling import Shortfall
 from ...parameters import ParameterDef, ParameterId
 from ..catalog.paramtable import ParameterTable
 from .base import Provider
@@ -92,9 +93,21 @@ class TimelineProvider(Provider):
         self._capability = GranularCapability(reaches=self._footprints)
 
     async def project(self, selection: Selection) -> Manifold:
-        engaged = self._taps.engaged_by(selection.parameters)
-        if not engaged:
-            raise RuntimeFailure(f"{self._source} Selection requests no served parameters")
+        """One vendor call, answered either at the geometry the ask pinned or at this producer's own.
+
+        Anything unservable is settled before the wire. The branch below reads one derived fact —
+        `open_axes`, the axes the ask left entirely to the producer: where there are any, the answer
+        keeps its native cells *and* the whole fetch unit they arrived in; where there are none, it is
+        cropped to exactly what was named. No snap arithmetic and no request-shape gate live here.
+        """
+        if not selection.parameters:
+            raise CapabilityMismatch(f"{self._source} Selection requests no served parameters")
+        unserved = selection.parameters - self._taps.parameters
+        if unserved:
+            raise CapabilityMismatch(f"{self._source} does not serve {sorted(unserved)}")
+        boundless = open_axes(selection.domain)
+        # One Probe call whatever the tap count, so the whole table is the natural fetch unit here.
+        engaged = self._taps if boundless else self._taps.engaged_by(selection.parameters)
         wanted = self._resolve(selection.domain, engaged)
         longitude, latitude = self._point_of(wanted)
         delivery = await self._probe.retrieve(
@@ -103,8 +116,17 @@ class TimelineProvider(Provider):
             over=self._window_of(wanted),
             variables=engaged.variables,
         )
+        # No empty-records guard, and the silence is deliberate: the guards above leave `engaged`
+        # non-empty, `by_level()` yields a group per engaged tap, and `interpret` values every one or
+        # raises — so an empty delivery cannot arrive here. It is unasserted rather than unreachable
+        # by luck; if a later shape makes it reachable it needs its own `RuntimeFailure`, because the
+        # fold below would report a vendor returning nothing as `CapabilityMismatch`.
         records = self._interpret(delivery, engaged, longitude=longitude, latitude=latitude)
-        return self._assemble(records, selection)
+        answer = self._answered_geometry(records, selection)
+        group = CoverageSet(tuple(records))
+        if boundless:
+            return group
+        return await self._delivered(group, answer, selection.parameters)
 
     @property
     def capability(self) -> GranularCapability:
@@ -119,12 +141,13 @@ class TimelineProvider(Provider):
     def _resolve(self, request: Domain, taps: TapTable) -> GridDomain:
         """The pre-fetch `ground`: what this producer's own declared geometry answers the request with.
 
-        One fetch carries one geometry, so the engaged taps must ground alike — their footprints
-        differ only in Z, which a request pins itself.
+        One fetch carries one geometry on every bounded axis; boundless axes license per-footprint
+        difference, which the fold validates while answering the bounded shape.
         """
         try:
             wanted = agreed_geometry(
-                ground(request, self._footprints[tap.produces][1]) for tap in taps
+                (ground(request, self._footprints[tap.produces][1]) for tap in taps),
+                request=request,
             )
         except ValueError as exc:
             raise CapabilityMismatch(f"{self._source} cannot serve this selection: {exc}") from exc
@@ -145,6 +168,11 @@ class TimelineProvider(Provider):
 
         The clamp to the live window, the floor of both bounds onto this producer's ticks,
         end-inclusivity, and the raced-empty decline are all one `clip` inside `ground`.
+
+        Reading the window off a single resolution is sound only because this shape takes **one**
+        `CadenceDef`, so every footprint's T materializes identically — including a boundless T, which
+        every footprint grounds into the same live window. A shape carrying per-parameter cadences
+        loses that guarantee and must fold its own window here.
         """
         span = wanted.axis(AxisName.T).extent
         if not isinstance(span.lower, datetime) or not isinstance(span.upper, datetime):
@@ -160,7 +188,7 @@ class TimelineProvider(Provider):
         *,
         longitude: float,
         latitude: float,
-    ) -> Sequence[Coverage]:
+    ) -> Sequence[CoverageRecord]:
         """The vendor's account as native records: canonical values on the geometry delivered.
 
         One record per Z cell (ADR-0006) — every parameter's values are positional to the delivered
@@ -172,7 +200,7 @@ class TimelineProvider(Provider):
         values = taps.interpret(delivery, source=self._source)
         valid_time = self._lattice_of(delivery.valid_time)
         provenance = Uniform(self._stamp())
-        records: list[Coverage] = []
+        records: list[CoverageRecord] = []
         for z_spec, group in taps.by_level().items():
             domain = GridDomain(
                 axes={
@@ -219,86 +247,49 @@ class TimelineProvider(Provider):
             expiration=self._cadence.expiration(now),
         )
 
-    # --- Assembly: the answer, on the geometry the request asked for ---
+    # --- The answer: the geometry this fetch answers with, and the fold onto it ---
 
-    def _assemble(self, records: Sequence[Coverage], selection: Selection) -> CoverageRecord:
-        """One Coverage from one fetch: resolve the request against what arrived, then crop to it.
-
-        Both request modes take this path — grounding an already-exact request is the identity, so
-        what would be a mode branch is an equality that happens to hold. The vendor is the authority
-        on what exists and the request on what is in bounds, which is why a wider answer is trimmed
-        rather than refused; only a series missing the bounds entirely leaves nothing to answer with.
-        """
-        if not records:
-            raise RuntimeFailure(f"{self._source} assemble received no native records")
-        answer = self._answered_geometry(records, selection)
-        return self._cropped(
-            self._as_delivered(records, selection, answer), answer, selection.parameters
-        )
-
-    def _answered_geometry(self, records: Sequence[Coverage], selection: Selection) -> GridDomain:
+    def _answered_geometry(
+        self, records: Sequence[CoverageRecord], selection: Selection
+    ) -> GridDomain:
         """The geometry this fetch answers with: the request, resolved against every record delivered.
 
-        The fold is a **law, not a live guard here** — do not read it as one: this shape stamps one
-        derived lattice onto every record and Z grounds by identity, so its records cannot disagree. It
-        is kept because a shape deriving a lattice *per record* would need it, and because divergence
+        Its **raising** arm is a law, not a live guard here — do not read it as one: this shape stamps
+        one derived lattice onto every record, so on a bounded axis its records cannot disagree. It is
+        kept because a shape deriving a lattice *per record* would need it, and because divergence
         between the two fetches of one request is the **Arbiter's** to catch, never this.
+
+        On an axis the ask left open, records legitimately differ and the fold validates that instead
+        of firing; what it returns is then read only where the answer is cropped.
         """
         try:
-            answer = agreed_geometry(ground(selection.domain, record.domain) for record in records)
+            answer = agreed_geometry(
+                (ground(selection.domain, record.domain) for record in records),
+                request=selection.domain,
+            )
         except ValueError as exc:
             raise CapabilityMismatch(f"{self._source} cannot answer this selection: {exc}") from exc
         # The answer of a grounded request is a grid; the crop reads it per axis.
         assert isinstance(answer, GridDomain)
         return answer
 
-    def _as_delivered(
-        self, records: Sequence[Coverage], selection: Selection, answer: GridDomain
-    ) -> CoverageRecord:
-        """The fetch as parsed: the answer's geometry carried on the vendor's own tick lattice.
+    async def _delivered(
+        self, group: CoverageSet, answer: GridDomain, parameters: frozenset[ParameterId]
+    ) -> Manifold:
+        """The fetch folded onto the answer — and this wrapper's whole fault boundary.
 
-        Every record is one response's series at one Z, and X/Y/Z are single cells, so each
-        parameter's values are positional to the delivered ticks — which is what lets one Coverage
-        hold them all.
+        The vendor is the authority on what exists and the request on what is in bounds, which is why
+        a wider delivery is trimmed rather than refused. A `Shortfall` can only come from an **exact**
+        request: a snapped answer is grounded against the delivery, so there is nothing for it to fall
+        short of. It means the caller's own coordinates went unanswered — aligned, short by a known
+        count, and a fault rather than an unservable request.
+
+        **TODO (temporary):** this translation goes with the raise it catches, once a short tail is
+        padded as `present=False`
+        ([#30](../../../../docs/concerns.md#30-response-membership-under-runtime-degraded-fallback)).
         """
-        ranges: dict[ParameterId, ParameterData] = {}
-        parameters: dict[ParameterId, ParameterDef] = {}
-        for record in records:
-            for pid, data in record.ranges.items():
-                if pid in selection.parameters:
-                    ranges[pid] = data
-                    parameters[pid] = record.capability.parameters[pid]
-
-        missing = selection.parameters - ranges.keys()
-        if missing:
-            raise RuntimeFailure(f"{self._source} assemble missing parameter(s): {sorted(missing)}")
-
-        # One response, one lattice: every record's T is built from the same delivered series.
-        delivered = records[0].domain
-        assert isinstance(delivered, GridDomain)
-        return CoverageRecord(
-            capability=EnumerableCapability(
-                domain=GridDomain(axes={**answer.axes, AxisName.T: delivered.axis(AxisName.T)}),
-                parameters=parameters,
-            ),
-            ranges=ranges,
-            provenance=records[0].provenance,
-        )
-
-    def _cropped(
-        self, delivered: CoverageRecord, answer: GridDomain, parameters: frozenset[ParameterId]
-    ) -> CoverageRecord:
-        """Trim the delivered series to the answer — a no-op when the vendor gave exactly it.
-
-        A `Shortfall` can only come from an **exact** request: a snapped answer is grounded against the
-        delivery, so there is nothing for it to fall short of. It means the caller's own coordinates went
-        unanswered — aligned, short by a known count, and a fault rather than an unservable request.
-        Interim: when concern #30 pads that tail, both this branch and the failure go.
-        """
-        if delivered.domain == answer:
-            return delivered
         try:
-            return resample(delivered, Selection(domain=answer, parameters=parameters))
+            return await group.project(Selection(domain=answer, parameters=parameters))
         except Shortfall as exc:
             raise RuntimeFailure(f"{self._source} delivered less than it declared: {exc}") from exc
 
@@ -431,8 +422,9 @@ class TapTable:
     ) -> dict[str, Sequence[float | None]]:
         """Each declared variable in canonical units — a report contradicting the declaration faults.
 
-        **Interim:** the one conversion edge v1 has is wind km/h→m/s, hardcoded against the declared
-        unit token; a verified conversion catalogue would replace both the check and the conversion.
+        **TODO (temporary):** the one conversion edge v1 has is wind km/h→m/s, hardcoded against the
+        declared unit token; a verified conversion catalogue replaces both the check and the branch
+        ([#10](../../../../docs/concerns.md#10-parameter-conventions)).
         """
         reported = delivery.reported_units
         out: dict[str, Sequence[float | None]] = {}

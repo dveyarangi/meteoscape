@@ -117,6 +117,8 @@ def test_rolling_axis_clips_to_the_lattice_its_series_arrives_on() -> None:
     )
     # The window rolled past the bounds — the raced-empty answer.
     assert axis.clip(Interval(NOON - timedelta(days=2), NOON - timedelta(days=1))) is None
+    # No bounds: the live window materialized once — the series step, not a span.
+    assert axis.clip(None) == RegularAxis(AxisName.T, NOON, timedelta(hours=1), 7, True)
 
 
 def test_rolling_axis_lattice_moves_with_the_clock() -> None:

@@ -114,8 +114,9 @@ class Axis(ABC):
         return declared.extent.contains(self.extent)  # type: ignore[arg-type]
 
     @abstractmethod
-    def clip(self, bounds: Interval) -> Axis | None:
-        """The part of me within `bounds` - `None` when none of me is.
+    def clip(self, bounds: Interval | None) -> Axis | None:
+        """The part of me within `bounds` — all of me when there are none, `None` when we
+        do not meet.
 
         Pure axis algebra: what comes back is whatever the restriction leaves - a span stays a span, a
         lattice stays a lattice at its own phase, a clock-relative window materializes. Needing *cells*
@@ -171,7 +172,9 @@ class RegularAxis(EnumerableAxis):
         upper = self.anchor + self.step * (self.count - 1)  # type: ignore[operator]
         return Interval(self.anchor, upper)  # type: ignore[arg-type]
 
-    def clip(self, bounds: Interval) -> RegularAxis | None:
+    def clip(self, bounds: Interval | None) -> RegularAxis | None:
+        if bounds is None:
+            return self
         # One expression for both coordinate kinds: subtracting coordinates gives a step-like
         # quantity, and dividing by the step gives a plain float either way (concern #23). The
         # tolerance rides that dimensionless quotient, so a bound float-noise off a cell edge
@@ -227,9 +230,9 @@ class IntervalAxis(EnumerableAxis):
     def extent(self) -> Interval:
         return self.interval
 
-    def clip(self, bounds: Interval) -> IntervalAxis | None:
+    def clip(self, bounds: Interval | None) -> IntervalAxis | None:
         """One cell is never subdivided: it survives whole, or not at all."""
-        return self if self.interval.intersects(bounds) else None
+        return self if bounds is None or self.interval.intersects(bounds) else None
 
     def __getitem__(self, index: int) -> Cell:
         if index != 0:
@@ -268,8 +271,10 @@ class ContinuousAxis(Axis):
     def extent(self) -> Interval:
         return self.interval
 
-    def clip(self, bounds: Interval) -> ContinuousAxis | None:
+    def clip(self, bounds: Interval | None) -> ContinuousAxis | None:
         """A span restricted is still a span - no cells appear from nowhere."""
+        if bounds is None:
+            return self
         overlap = self.interval.intersection(bounds)
         return None if overlap is None else ContinuousAxis(self.name, overlap)
 
@@ -311,10 +316,10 @@ class SnappedAxis(Axis):
     def matches(self, declared: Axis) -> bool:
         return self.interval is None or self.interval.intersects(declared.extent)  # type: ignore[arg-type]
 
-    def clip(self, bounds: Interval) -> Axis | None:
+    def clip(self, bounds: Interval | None) -> Axis | None:
         # A snapped axis is the bounds another axis is clipped to; it is never asked for a part
         # of itself. Kept total for the `Axis` contract:
-        if self.interval is None:
+        if bounds is None or self.interval is None:
             return self
         overlap = self.interval.intersection(bounds)  # type: ignore[arg-type]
         return None if overlap is None else SnappedAxis(self.name, overlap)
@@ -457,7 +462,7 @@ def as_separable(domain: Domain) -> Separable | None:
     """The domain as `Separable`, or `None` — pure geometry, no error text, no producer key.
 
     Returns rather than raises so each caller stays the sole author of its `CompositionError`, with
-    its own context — the reconciler names the parameter, a Calculator's capability its key — rather
+    its own context — the reconciler names the parameter, the Calculator node its key — rather
     than dressing up a generic geometry error (ADR-0007).
     """
     return domain if isinstance(domain, Separable) else None
@@ -624,12 +629,7 @@ def ground(request: Domain, against: Domain) -> EnumerableDomain:
             continue
         if answering is None:
             raise ValueError(f"a snapped {name.value} grounds only against separable geometry")
-        if member.interval is None:  # ANY — take the answering axis whole
-            whole = answering.axis(name)
-            if not isinstance(whole, EnumerableAxis):
-                raise ValueError(f"an open {name.value} needs cells; the answering axis is a span")
-            axes[name] = whole
-            continue
+        # No bounds → the axis entire (ANY); one clock read on a RollingAxis, never two.
         part = answering.axis(name).clip(member.interval)
         if part is None:
             raise ValueError(f"no {name.value} within the requested bounds")
@@ -642,22 +642,58 @@ def ground(request: Domain, against: Domain) -> EnumerableDomain:
     return GridDomain(axes=axes)
 
 
-def agreed_geometry(grounded: Iterable[EnumerableDomain]) -> EnumerableDomain:
-    """The single geometry a set of resolutions agree on — `ValueError` when they disagree.
+def open_axes(domain: Domain) -> frozenset[AxisName]:
+    """The axes a request leaves entirely to the producer — empty for anything but a Selection.
 
-    One `project` answers with one geometry (ADR-0001), so several declared footprints, or several
-    native records, may only differ on an axis the request left entirely to the producer — which is
-    `ANY`, and which nothing in-tree authors yet.
+    The single reading of boundlessness: it licenses differing resolutions in `agreed_geometry` and
+    tells a producer its answer may keep its native shape. Both read it here rather than inspecting
+    request representation themselves, which is what keeps *what the ask left open* one fact.
+
+    The empty answer for every other representation is **silent by construction**, and that is the
+    risk worth naming rather than the convenience: a second request representation carrying a
+    boundless member would lose its licence here with nothing raised and nothing logged — the fold
+    would then raise on a difference the request had actually granted. `SelectionDomain` is the only
+    request representation minted, so the arm is total today; whichever representation wins in
+    concern #42 has to be added here first.
     """
-    agreed: EnumerableDomain | None = None
+    if not isinstance(domain, SelectionDomain):
+        return frozenset()
+    return frozenset(
+        name
+        for name in AXIS_ORDER
+        if isinstance(member := domain.axes[name], SnappedAxis) and member.interval is None
+    )
+
+
+def agreed_geometry(grounded: Iterable[EnumerableDomain], *, request: Domain) -> EnumerableDomain:
+    """The one geometry a set of resolutions agree to answer `request` with.
+
+    ADR-0002's fold rule: resolutions must be equal on every axis the request does not leave
+    entirely to the producer; the first disagreement raises naming the axis, and an empty input
+    raises. On open axes resolutions may differ — records keep their own domains, so the fold
+    validates the licence and returns the **first** resolution, authoritative on every bounded
+    axis. The licence (`open_axes`) is derived here — a fact of the request, never a caller's
+    claim.
+
+    Duplicates fold on whole equality, so only *distinct* resolutions must expose axes
+    (`Separable`); an agreeing non-separable resolution passes (concern #12's target role).
+    """
+    boundless = open_axes(request)
+    members: list[EnumerableDomain] = []
     for resolution in grounded:
-        if agreed is None:
-            agreed = resolution
-        elif resolution != agreed:
-            raise ValueError("resolutions disagree; one answer carries one geometry")
-    if agreed is None:
+        if resolution in members:
+            continue
+        if members:
+            reference, novel = as_separable(members[0]), as_separable(resolution)
+            if reference is None or novel is None:
+                raise ValueError("distinct resolutions need axes to license their difference")
+            for name in AXIS_ORDER:
+                if name not in boundless and reference.axis(name) != novel.axis(name):
+                    raise ValueError(f"resolutions disagree on {name.value}")
+        members.append(resolution)
+    if not members:
         raise ValueError("no geometry to agree on")
-    return agreed
+    return members[0]
 
 
 class CurvilinearDomain(Domain):

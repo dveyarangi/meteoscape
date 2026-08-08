@@ -16,6 +16,7 @@ from meteoscape.errors import CapabilityMismatch, RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Coverage, Selection
+from meteoscape.manifold.coverage import CoverageSet
 from meteoscape.manifold.domain import (
     Axis,
     AxisName,
@@ -54,6 +55,7 @@ from meteoscape.parameters import (
     CLOUD_COVER,
     PRECIPITATION,
     RELATIVE_HUMIDITY,
+    WIND_SPEED,
     WIND_U,
     WIND_V,
     ParameterId,
@@ -96,14 +98,16 @@ async def _delivered(raw: object, *variables: str) -> TimelineDelivery:
     )
 
 
-def _selection(*, hours: int = 4, parameters=None) -> Selection:
+def _selection(*, hours: int = 4, parameters=None, z: float = 2.0) -> Selection:
+    """An exact ask, at `z` — which must be the asked parameters' own native level, since a footprint
+    admits only requests its declared Z contains."""
     start = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
     return Selection(
         domain=GridDomain(
             axes={
                 AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
                 AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
-                AxisName.Z: RegularAxis(AxisName.Z, 2.0, 1.0, 1, False),
+                AxisName.Z: RegularAxis(AxisName.Z, z, 1.0, 1, False),
                 AxisName.T: RegularAxis(AxisName.T, start, timedelta(hours=1), hours, True),
             }
         ),
@@ -289,6 +293,28 @@ async def test_snapped_non_t_axis_raises_without_vendor_call() -> None:
 
 
 @pytest.mark.asyncio
+async def test_an_ask_naming_no_parameters_declines_before_any_fetch() -> None:
+    """An ask engaging nothing this leaf serves is settled before the wire — and it must be named as
+    such, because a boundless ask engages the whole table and would otherwise pay for a call that
+    was asking for nothing."""
+    transport = _CapturingTransport(_canned_hourly(hours=1))
+    provider = _provider(transport)
+    with pytest.raises(CapabilityMismatch, match="requests no served parameters"):
+        await provider.project(_selection(hours=1, parameters=frozenset()))
+    assert transport.requests == []
+
+
+@pytest.mark.asyncio
+async def test_an_unserved_parameter_declines_before_any_fetch() -> None:
+    """Unservable, not a fault: what this leaf never taps is a mismatch, and costs no vendor call."""
+    transport = _CapturingTransport(_canned_hourly(hours=1))
+    provider = _provider(transport)
+    with pytest.raises(CapabilityMismatch, match="does not serve"):
+        await provider.project(_selection(hours=1, parameters={WIND_SPEED}))
+    assert transport.requests == []
+
+
+@pytest.mark.asyncio
 async def test_snapped_assembles_request_xyz_and_vendor_t() -> None:
     start = datetime(2026, 7, 12, 0, tzinfo=UTC)
     end = datetime(2026, 7, 12, 3, tzinfo=UTC)
@@ -413,6 +439,70 @@ async def test_short_vendor_series_against_an_exact_request_is_a_vendor_fault() 
         await provider.project(_selection(hours=4))
 
 
+ALL_SERVED = frozenset(
+    {AIR_TEMPERATURE, RELATIVE_HUMIDITY, WIND_U, WIND_V, PRECIPITATION, CLOUD_COVER}
+)
+
+
+def _boundless_selection(*, parameters) -> Selection:
+    """The store-shaped ask: X/Y pinned, Z and T left entirely to the producer."""
+    return Selection(
+        domain=SelectionDomain(
+            axes={
+                AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+                AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+                AxisName.Z: SnappedAxis(AxisName.Z),
+                AxisName.T: SnappedAxis(AxisName.T),
+            }
+        ),
+        parameters=frozenset(parameters),
+    )
+
+
+def _reached(answer: CoverageSet, pid: ParameterId) -> GridDomain:
+    """The geometry a group's parameter is keyed by, read through what the group advertises."""
+    reach = answer.capability.reach(pid)
+    assert isinstance(reach, GridDomain)
+    return reach
+
+
+@pytest.mark.asyncio
+async def test_a_boundless_ask_answers_multi_domain_from_one_fetch() -> None:
+    """The natural shape: one call, one record per native level, each parameter still at its own Z."""
+    transport = _CapturingTransport(_canned_hourly(hours=3))
+    provider = _provider(transport)
+
+    answer = await provider.project(_boundless_selection(parameters=ALL_SERVED))
+
+    assert isinstance(answer, CoverageSet)
+    assert len(transport.requests) == 1
+    assert len(answer.records) == 4
+    assert set(answer.capability.parameters) == ALL_SERVED
+    assert _reached(answer, AIR_TEMPERATURE).axis(AxisName.Z).extent.lower == pytest.approx(2.0)
+    assert _reached(answer, WIND_U).axis(AxisName.Z).extent.lower == pytest.approx(10.0)
+    assert _reached(answer, PRECIPITATION).axis(AxisName.Z).extent.lower == pytest.approx(0.0)
+    assert _reached(answer, CLOUD_COVER).axis(AxisName.Z).extent.upper == pytest.approx(TOA_M)
+    # The answer carries the series delivered, never the whole window the boundless T asked over.
+    delivered_t = _reached(answer, AIR_TEMPERATURE).axis(AxisName.T)
+    assert isinstance(delivered_t, RegularAxis)
+    assert delivered_t.count == 3
+
+
+@pytest.mark.asyncio
+async def test_a_boundless_ask_for_one_parameter_carries_the_whole_offering() -> None:
+    """The natural fetch unit: this vendor lists its variables in one call either way, so an ask that
+    left an axis open is answered with everything that call returned."""
+    transport = _CapturingTransport(_canned_hourly(hours=2))
+    provider = _provider(transport)
+
+    answer = await provider.project(_boundless_selection(parameters={AIR_TEMPERATURE}))
+
+    assert isinstance(answer, CoverageSet)
+    assert len(transport.requests) == 1
+    assert transport.requests[0].params["hourly"] == ",".join(TAPS.variables)
+    assert set(answer.capability.parameters) == ALL_SERVED
+
+
 def test_taps_group_into_four_native_levels() -> None:
     """One native record per Z cell (ADR-0006) — the grouping the six parameters fall into."""
     groups = TAPS.by_level()
@@ -524,7 +614,7 @@ async def test_provenance_authored_from_cadence_and_clock() -> None:
 async def test_wind_fetch_requests_shared_vendor_vars_once() -> None:
     transport = _CapturingTransport(_canned_hourly(hours=1))
     provider = _provider(transport)
-    await provider.project(_selection(hours=1, parameters={WIND_U, WIND_V}))
+    await provider.project(_selection(hours=1, parameters={WIND_U, WIND_V}, z=10.0))
     hourly = transport.requests[0].params["hourly"]
     assert hourly == "wind_speed_10m,wind_direction_10m"
 
