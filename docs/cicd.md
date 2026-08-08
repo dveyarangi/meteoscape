@@ -40,7 +40,7 @@ Remote: `github.com/dveyarangi/meteoscape`.
 
 > The pytest suite includes packaging and MCP-startup smoke coverage, unit and property tests, and
 > mocked-provider integration coverage. Last-observed health and outstanding gate failures live in
-> the [v1 delivery status](./tickets/README.md); CI remains authoritative.
+> the [delivery status](./tickets/README.md); CI remains authoritative.
 
 Live Provider parity checks (`uv run pytest tests/parity`) are deliberately **outside CI**:
 `testpaths` scopes the default run to `tests/deterministic/`, keeping the gate network-free —

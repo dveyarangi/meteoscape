@@ -8,7 +8,7 @@ so that each fact has one owner.
 | Why does the product exist, and where is it going? | [Product roadmap](./product-roadmap.md) |
 | What must v1 demonstrate? | [v1 requirements](./v1-requirements.md) |
 | What are the durable system boundaries and decisions? | [Architecture](./architecture.md), [ADRs](./adr), and [glossary](./glossary.md) |
-| What is implemented, ready, or next? | [v1 delivery status](./tickets/README.md) |
+| What is implemented, ready, or next? | [delivery status](./tickets/README.md) |
 | What does an individual work item require? | [Active tickets](./tickets) |
 | What is the living status of a product edge — contract, invariants, concerns, staged evolution? | [Edge records](./edge) — one per product surface; customer-facing descriptions derive from them |
 | How is a Provider implemented and independently verified? | [Edge — Provider surface](./edge/provider.md) |

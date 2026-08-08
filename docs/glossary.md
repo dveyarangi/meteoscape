@@ -407,6 +407,10 @@ _Avoid_: Core, intake, sonde, client, adapter; Transport (the HTTP seam a Probe 
 An independent comparison between a single-Provider Meteoscape profile and that external producer's reference response for the same request. → [edge/provider.md](./edge/provider.md)
 _Avoid_: Truth check, accuracy test, Provider unit test
 
+**Collector**:
+The operator-owned external service that continuously captures vendor forecasts and station observations into the operator's database, which Meteoscape's archive sources project over read-only. Its schema is an external contract Meteoscape adapts to but does not own. → [#45](./concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)
+_Avoid_: Scraper, harvester, ingester; archive (the accumulated data, not the process that accumulates it)
+
 **Source**:
 The role of a Reservoir that serves retained data or fetches it from one Provider. → [architecture.md](./architecture.md#source)
 

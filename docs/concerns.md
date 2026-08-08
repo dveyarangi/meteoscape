@@ -43,7 +43,7 @@ context, and which internal failures are deliberately *not* caught.
 **Open — compatibility:** define what import paths and behavior are supported during `0.x`, how
 deprecations work, and what observable consistency is required between embedded and protocol use
 without presupposing shared facade or wiring. Delivery is assigned to the
-[supported Python embedding surface](./tickets/01-0192-supported-python-embedding.md); its own align
+[supported Python embedding surface](./tickets/01-0125-supported-python-embedding.md); its own align
 resolves these decisions before implementation. Once they land, this concern moves into the Edge
 record and public API guide and, if the compatibility trade-off proves durable and surprising, an
 ADR.
@@ -273,7 +273,7 @@ into ADR-0002, which owns the request vocabulary.
 
 **Kind:** provider economy seam (no v1 driver — Open-Meteo answers wide) ·
 **Refs:** [006](./tickets/01-0115-retentive-store-freshness.md),
-[011](./tickets/01-0120-visual-crossing-provider.md), [Edge — Provider](./edge/provider.md),
+[011](./tickets/01-0120-twc-provider.md), [Edge — Provider](./edge/provider.md),
 [ADR-0003](./adr/0003-provenance-and-origin.md)
 
 006's align (2026-08-07) resolved refill scope as **ask narrow, answer natural**: the `Reservoir`
@@ -286,7 +286,7 @@ makes the dissolution a **per-provider property**: a per-variable-billed provide
 is exactly-what-was-asked re-accepts the two-fetch run-divergence exposure *for its own parameters*.
 
 Graded responses, cheapest first — decide at the first billed provider
-([011](./tickets/01-0120-visual-crossing-provider.md)):
+([011](./tickets/01-0120-twc-provider.md)):
 
 1. **Accept per-provider** — the divergence is recorded as that provider's economy choice.
 2. **Detect and narrate** — assembly compares `AtomicOrigin.issue_time` across the assembled
@@ -539,6 +539,44 @@ plain inclusion is suspect — unlike a ∀-claim statistic cell. Options when i
 (cache misses fall through to the Sources, which re-match native units honestly — correct, just
 colder), or a declared tolerance policy at the edge. No v1 work; the fall-through path is already
 correct.
+
+## 44. Dedicated live archive Store for throughput
+
+**Kind:** deferred seam (2026-08-08 align) · **Refs:**
+[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
+[#9](#9-cross-run-combination),
+[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md)
+
+Release 02 deliberately gives meteoscape **no owned persistence**: the archive is the operator's
+collector MongoDB, and meteoscape projects over it read-only ("the framework doesn't own
+persistence, it projects over whatever does"). At some later point throughput will want a
+**dedicated live archive Store** — meteoscape-owned, write-path, retention-managed — as a second
+persistent Store shape beside the in-memory retentive Store. Nothing is designed; when it opens,
+the categorical `issue_time` key (#9) and ADR-0006's unit granularity are the constraints it
+inherits. Trigger: measured read pressure on the collector DB, or an embedder that needs archive
+writes meteoscape-side.
+
+## 45. The collector schema is a contract meteoscape depends on but does not own
+
+**Kind:** external-contract risk (2026-08-08 align) · **Refs:**
+[Mongo obs source](./tickets/02-0130-mongo-obs-source.md),
+[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md) ·
+**→ queued as [mongo-obs-source](./tickets/02-0130-mongo-obs-source.md)** (its align settles the
+mitigations below)
+
+The collector (external repo) writes parsed documents in its own schema — common camelCase forecast
+fields sparse per provider (`ibm`, `tomorrow`, `visualcrossing`), two obs schemas (a regional
+station-network source carrying `raw` payload and `method`; legacy `ibm_hod`), a `stations`
+registry, and a `state` freshness doc, keyed `(base_time, time)` / `time`. The Mongo sources map
+this schema to canonical parameters, so a collector-side schema change silently breaks them.
+Mitigations to settle at the `02-0130` align: pinned integration fixtures (sampled real documents)
+as the contract test, a schema version marker in the collector if cheap, and a documented ownership
+statement (collector owns the schema; meteoscape adapts). The station network's obs `raw` payload
+preserves replayability; forecast documents carry no raw, so forecast decode fidelity is bounded by
+the collector's own parsing. The station network's *endpoint* is out of meteoscape's scope
+permanently: if meteoscape ever takes over the collector's server edge, that integration arrives as
+an **embedder-owned plug-in provider** through the plugin seam
+([#26](#26-provider--calculator-plugin-scaffolding)), never an in-tree provider.
 
 ## 12. Curvilinear domains
 

@@ -4,11 +4,23 @@ This document describes Meteoscape as a product, not only as an architecture. It
 captures the target audience, differentiated product surface, competitor edges,
 gaps, and a staged roadmap from v1 to a possible hosted cloud competitor.
 
+## Purpose and sequencing authority
+
+Meteoscape's primary purpose (recorded at the 2026-08-08 align) is to unify its author's
+weather-handling experience — from consumer, research, and mission-critical projects — into one
+framework. Generality is therefore the deliverable, and the guarded risk is not overengineering but
+**single-instance abstraction lock-in**: an abstraction settled with only one concrete shape
+pressing on it. The phases below are a **sketch of plausible product directions — a menu, not
+demand-driven commitments or sequential gates**. Execution sequencing belongs to the
+[delivery status](./tickets/README.md) under the **shape-diversity rule**: each milestone should
+press a genuinely new source, store, or calculator shape through the algebra, rather than deepening
+an already-exercised path.
+
 The architecture contract lives in [`architecture.md`](./architecture.md). The
 concrete v1 build scope lives in [`v1-requirements.md`](./v1-requirements.md).
-This document should guide sequencing and product judgment. It deliberately does
+This document guides product judgment. It deliberately does
 not track implementation progress; current capability and delivery order live in
-the [v1 delivery status](./tickets/README.md).
+the [delivery status](./tickets/README.md).
 
 ## Product thesis
 
@@ -327,15 +339,16 @@ Explicit non-goals:
 
 ### Priority candidate after v1: local-station validation and bias correction
 
-The first thing to weigh against Phase 2, not a late-roadmap item. It draws the
-station source from Phase 2 and verification from Phase 6, scoped to a **single**
-station rather than a network:
+**Scheduled 2026-08-08** as the head of release 02 — the Mongo obs source (`02-0130`), the
+forecast-run archive source (`02-0134`), and the correction calculator (`02-0140`); see the
+[delivery status](./tickets/README.md). It draws the station source from Phase 2 and verification
+from Phase 6:
 
-- Ingest one local station as an observation source.
-- Compare served forecasts against that station's observations over time.
-- Report per-source, per-parameter bias at that location.
-- Later, and only if the measured bias proves stable: correct the forecast for
-  that station.
+- Project the operator's Collector database (station registry + hourly observations) as an
+  observation source.
+- Compare archived forecasts against those observations over time.
+- Report per-source, per-parameter bias per location.
+- Later, and only if the measured bias proves stable: correct the forecast for a station.
 
 Why it ranks this high:
 
@@ -346,9 +359,25 @@ Why it ranks this high:
 - Validation ships value on its own; bias correction is a strictly later step,
   since correcting an unmeasured bias is unfalsifiable.
 
-Open before it can be scheduled: whether past forecasts can be retrieved from
-providers' historical-forecast archives, or whether Meteoscape must first
-accumulate its own forecast history. That answer sets the lead time on the step.
+The lead-time question this section used to carry ("can past forecasts be retrieved, or must
+history be accumulated first?") is **answered**: the operator's Collector has been accumulating
+multi-provider forecasts (issue-slot keyed) and observations continuously, so the pairing data
+already exists and grows without Meteoscape doing anything.
+
+**Division of labor with the first embedder.** Meteoscape serves *data products*: normalized live
+forecasts, observation series, forecast-run archives, and — staged — bias statistics and corrected
+parameters with synthetic provenance. The embedding application owns *decisions and presentation*:
+domain thresholds and decision logic, charts, page UI, and alert delivery. It also owns its
+*deployment-specific source integrations* — a regional station network's endpoint is an
+embedder-authored plug-in provider through the plugin seam
+([#26](./concerns.md#26-provider--calculator-plugin-scaffolding)), never an in-tree Meteoscape
+provider. Bias statistics start
+on the operator's side (the operator's existing analysis flow is the parity reference the
+correction calculator's first slice validates against, scoped to the deployment's
+decision-relevant parameters — temperature and humidity first) and
+**eventually become a Meteoscape product** — the framework's skill-scoring seam, not a
+per-deployment script.
+
 
 ### Phase 2: Operational Substrate
 
@@ -539,7 +568,7 @@ Proof:
 - Self-host packaging and operational guidance must remain part of the
   operational-substrate proof.
 
-The [v1 delivery status](./tickets/README.md) records which of these obligations
+The [delivery status](./tickets/README.md) records which of these obligations
 are implemented or assigned to active tickets.
 
 ### Go-to-market gaps
