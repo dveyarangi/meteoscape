@@ -139,7 +139,10 @@ They are useful for:
 
 ## TODO Comments
 
-A TODO must name a concrete missing action.
+
+Always mark the temporary code, that will be dissolved/changed by some future work, with TODO (temporary) (and add reference to related doc)
+
+Other than that, TODO should name a concrete missing action.
 
 Bad:
 
