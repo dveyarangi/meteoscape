@@ -156,11 +156,14 @@ representations a leaf sees today:
 - **`GridDomain`** — a fully enumerable request; the leaf answers co-domained on it.
 - **`SelectionDomain`** over `SelectableAxis = RegularAxis | VantageAxis | SnappedAxis` — the
   request-side representation, structurally `Separable`, never enumerable. A **`SnappedAxis`** carries
-  bounds only; the resolver's own grid supplies anchor and step (ADR-0002).
+  bounds only — or none: the boundless member is **`ANY`**, axis-generic, and `ground` answers it
+  with the producer's axis whole; the resolver's own grid supplies anchor and step (ADR-0002).
 
 **⚠ pending — 006.** Architecture describes a third shape — **store-shaped** Selections from the leaf's
-Source, `ANY` on the axes its storage unit spans wholly, answered **multi-domain**. It does not exist:
-`ANY` appears nowhere in `src`, and [`Reservoir.project`](../../src/meteoscape/nodes/reservoir.py) is a
+Source, `ANY` on the axes its storage unit spans wholly, answered **multi-domain**. The *vocabulary*
+landed at [0115.0010](../tickets/done/01-0115.0010-any-boundless-member.md) (the boundless member and
+`ground`'s whole-axis arm exist in `src`), but nothing in-tree authors it yet:
+[`Reservoir.project`](../../src/meteoscape/nodes/reservoir.py) is a
 bare pass-through, so today a leaf receives the **edge's** request verbatim.
 [006](../tickets/01-0115-retentive-store-freshness.md) is where that changes, and it moves a boundary:
 

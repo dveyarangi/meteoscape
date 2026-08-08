@@ -163,16 +163,18 @@ classDiagram
   base of the request **`VantageAxis`** (which only overrides `matches`); a span has no `RegularAxis`
   form (it is not `(anchor, step, count)`, so no `step = inf`/`nan`). A **continuous** axis carries only
   its bound — a plain `ContinuousAxis` (X/Y bounds) or a clock-anchored `RollingAxis` (`valid_time` window) —
-  a `FootprintDomain`'s X/Y and time axes, and the **base of the request `SnappedAxis`** (which likewise
-  only overrides `matches`): the request-side aperture types are one family, cell-shaped and
-  span-shaped, not two unrelated mintings. Curvilinear domains satisfy the base interface without being
+  a `FootprintDomain`'s X/Y and time axes. The request **`SnappedAxis`** stands alone on `Axis` with
+  *optional* temporal bounds (`None` is the boundless `ANY`) and intersective `matches` — the
+  span-shaped dual of the cell-shaped `VantageAxis`, so the request-side aperture types are one
+  family, not two unrelated mintings. Curvilinear domains satisfy the base interface without being
   separable.
 
   **"Only a regular axis can be snapped-to" is a consequence, not a rule the surface enforces.** It is
   what `clip` hands back that decides: an axis is snappable-to when restricting it leaves **cells**, and
   the one verb that needs cells checks (`ground`, below). Nothing in the axis surface forbids a snapped
-  X/Y — what leaves it unserved is narrower and lives in the request type, that a `SnappedAxis` carries
-  temporal bounds and so never meets a spatial axis at all.
+  X/Y — what leaves a *bounded* one unserved is narrower and lives in the request type, that its bounds
+  are temporal and so never meet a spatial axis at all; the *boundless* member (`ANY`) is axis-generic
+  and takes the answering axis whole.
 
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could

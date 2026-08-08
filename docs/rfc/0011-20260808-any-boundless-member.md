@@ -1,6 +1,6 @@
 # RFC 0011 · 2026-08-08 · `ANY` as the boundless snapped member — implementation plan
 
-Implementation plan for [`ANY` as the boundless snapped member](../tickets/01-0115.0010-any-boundless-member.md)
+Implementation plan for [`ANY` as the boundless snapped member](../tickets/done/01-0115.0010-any-boundless-member.md)
 (slice 1 of the [retentive store](../tickets/01-0115-retentive-store-freshness.md), whose align
 record carries the *why*). This plan is the single way to build it.
 
@@ -43,9 +43,10 @@ one index-space policy. `manifold/domain.py` only; no live caller changes behavi
    ```python
    @dataclass(frozen=True)
    class SnappedAxis(Axis):
-       """Bounds-only request axis; `interval=None` is the boundless form (`ANY`) — the axis is
-       left entirely to the producer. The resolver's grid supplies anchor and step (ADR-0002)."""
-       interval: Interval[datetime] | None
+       """Bounds-only request axis; without bounds (the default) it is the boundless form (`ANY`) —
+       the axis is left entirely to the producer. The resolver's grid supplies anchor and step
+       (ADR-0002)."""
+       interval: Interval[datetime] | None = None
 
        @property
        def extent(self) -> Interval:

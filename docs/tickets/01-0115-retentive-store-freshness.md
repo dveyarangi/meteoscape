@@ -22,7 +22,7 @@
   request-shaped (flattened) units first — the exact per-fetch flatten ADR-0006 rejects — and then
   rework them; one undivided ticket (~750–1000 raw lines) fails the size rule this split was made
   under:
-  1. [`ANY` as the boundless snapped member](./01-0115.0010-any-boundless-member.md)
+  1. [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) — **Done 2026-08-08**
   2. [Multi-domain carrier and the timeline rework](./01-0115.0020-multidomain-carrier-timeline.md)
   3. [The retentive timeline Store](./01-0115.0030-timeline-store.md)
   4. [The Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md)
