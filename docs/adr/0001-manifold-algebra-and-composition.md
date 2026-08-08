@@ -39,6 +39,11 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   - therefore an `ANY`-bearing Selection over **several parameters** may be answered **multi-domain**
     (temperature at 2 m *beside* wind at 10 m). That is not a co-domain violation: co-domain binds the
     **exchange record** (one `Coverage`), never a fetch — and the partition here was **asked for**.
+    What carries it is a **`CoverageSet`**: a Manifold holding those records, with **no `Domain` of its
+    own** — which is precisely why closure needs no exception here. It is not a `Coverage` and cannot
+    pretend to be one; a caller wanting one **projects it onto enumerable cells**, and that projection
+    is the fold. Each parameter it carries sits on exactly one record, so the geometry a parameter
+    arrived on stays answerable per parameter until something asks for them together.
 
   This is what lets a Source fetch **once** and still retain native geometry. Without it, a
   co-domained question forces a flattened answer and the native cells are destroyed before the store

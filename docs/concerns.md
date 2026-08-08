@@ -488,13 +488,16 @@ identity and the priority-first band walk), [ADR-0002](./adr/0002-data-model.md)
 field). Provider `exact` and native-coarse-as-distinct-origin remain with
 [#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
-**Related limitation, recorded 2026-08-02:** a leaf cannot serve, in one call, two parameters whose
-declared reaches **differ on a snapped axis** — `agreed_geometry` refuses it, because one `project`
-answers with one geometry on every bounded axis (ADR-0001) and the licence for a multi-domain answer
-is 006's `ANY`. A vendor offering 16 days of temperature but 5 of precipitation therefore declines
-a mixed snapped request with `capability-mismatch`. Correct under closure, and it dissolves at
-[006](./tickets/01-0115-retentive-store-freshness.md); it is the per-parameter cousin of this concern's
-per-offering question → [edge/provider.md](./edge/provider.md).
+**Related limitation, recorded 2026-08-02, narrowed 2026-08-08:** a leaf cannot serve, in one call, two
+parameters whose declared reaches **differ on a *bounded* snapped axis** — `agreed_geometry` refuses it,
+because one `project` answers with one geometry on every bounded axis (ADR-0001). A vendor offering 16
+days of temperature but 5 of precipitation therefore declines a mixed snapped request with
+`capability-mismatch`. **This does not dissolve.** The licence for a multi-domain answer is
+**boundlessness**, not the store: an ask that leaves the axis open (the retentive store's refill shape,
+landed at [0115.0020](./tickets/done/01-0115.0020-multidomain-carrier-timeline.md)) licenses the difference,
+while an ask that *states* bounds is still answered identically on them or not at all. So what 006
+supplies is a second kind of ask, not a repair of this one — and this stays the per-parameter cousin of
+this concern's per-offering question → [edge/provider.md](./edge/provider.md).
 
 **The leaf side is unbuilt too, recorded 2026-08-03.** A second offering is not only an algebra
 question: the v1 leaf is **not offering-parameterized**. Three per-offering facts sit as module

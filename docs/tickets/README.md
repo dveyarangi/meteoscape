@@ -2,13 +2,14 @@
 
 **Last updated:** 2026-08-08
 
-**Current stage:** [006 — retentive store](./01-0115-retentive-store-freshness.md) slice 1,
-[`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md), has landed, and
-so has [per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md).
-Next is slice 2, the
-[multi-domain carrier and timeline rework](./01-0115.0020-multidomain-carrier-timeline.md); then
-slices 3–4, [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), and only then
-another Provider.
+**Current stage:** [006 — retentive store](./01-0115-retentive-store-freshness.md) slices 1 and 2 have
+landed — [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) and the
+[multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) — as
+has [per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md).
+Next is slice 3, the [retentive timeline Store](./01-0115.0030-timeline-store.md), which is the first
+of the four to change what a caller observes: slice 2's wider answers are inert until a store exists to
+hold them. Then slice 4, [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), and
+only then another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -77,7 +78,7 @@ queue position, because it still has to be done in order.
 | 0113 | [Per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md) | Maint | Done | — | `GranularCapability` is the own-geometry form for independently shaped parameters; Providers, multi-domain carriers, and stores advertise through it. Geometry's identity/prose cleanup remains [#46](../concerns.md#46-composition-failure-attribution-is-paid-inside-geometry), triggered by a regional provider or curvilinear domain. |
 | 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready (split) | core canonical parameters | Decision record and union of criteria; delivered by the four subtickets below (align completed 2026-08-08). |
 | 0115.0010 | [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) | — | Done | core canonical parameters | Boundless snapped member, `ground`'s open arm, shared `clip` tolerance. No behavior change. |
-| 0115.0020 | [Multi-domain carrier and timeline rework](./01-0115.0020-multidomain-carrier-timeline.md) | — | Ready | `ANY` boundless member, per-parameter materialized capability | Carrier minted; `agreed_geometry` licenses open-axis difference; both eager folds retired; natural fetch unit. No behavior change. |
+| 0115.0020 | [Multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) | — | Done | `ANY` boundless member, per-parameter materialized capability | `CoverageSet` minted; `clip` takes optional bounds; `agreed_geometry` licenses open-axis difference under a request-derived licence; both eager folds retired; natural fetch unit. No behavior change — the widening is inert until slice 3's store holds the surplus. |
 | 0115.0030 | [Retentive timeline Store](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + unit-granular store with covers-or-refetch-whole; unit-tested, unwired. |
 | 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive timeline store | Retention live in both positions; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
@@ -218,12 +219,15 @@ resolution.
   capability-based routing.
 - [006](./01-0115-retentive-store-freshness.md): align completed 2026-08-08 — refill scope (ask
   narrow, answer natural, store absorbs), the partial-warm edge (covers-or-refetch-whole), `ANY` as
-  the boundless snapped member, the group-returning fold, and the #22/#23 deferrals are all
+  the boundless snapped member, and the #22/#23 deferrals are all
   recorded in the ticket; narrow-answering providers moved to
   [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence) (decided
-  at 011). Still ticket-owned: the fold/carrier **naming checkpoint** (fires at
-  [0115.0020](./01-0115.0020-multidomain-carrier-timeline.md)) and `assimilate`'s concrete shapes
-  (revisited at [0115.0030](./01-0115.0030-timeline-store.md)).
+  at 011). The fold/carrier **naming checkpoint closed** at
+  [0115.0020](./done/01-0115.0020-multidomain-carrier-timeline.md) — `agreed_geometry` and
+  `CoverageSet`, and the align's group-returning fold was **rejected** there: the differing
+  resolutions had no reader, so the fold keeps its single return and the carrier is built from the
+  records. Still ticket-owned: `assimilate`'s concrete shapes (revisited at
+  [0115.0030](./01-0115.0030-timeline-store.md)).
 - [m3](./done/01-0080-provider-parity-checks.md) (done): *building* scheduled and changed-provider
   automation remains deliberate follow-on work, recorded in the ticket's follow-on section. What
   **enforces** parity coverage and **routes** its selection is now

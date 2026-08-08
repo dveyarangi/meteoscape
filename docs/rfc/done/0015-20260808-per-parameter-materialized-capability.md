@@ -17,7 +17,7 @@ a Provider declaration and its docstring closes the door on the other use outrig
 ```
 
 A carrier or a Store reading that concludes, correctly, that this form is not for it — which is why
-[RFC 0012 d.3](../0012-20260808-multidomain-carrier-timeline.md) and
+[RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md) and
 [RFC 0013 d.6](../0013-20260808-timeline-store.md) each deferred the form's name and shape rather than
 just constructing one. Making the class honest *is* the deliverable.
 
@@ -41,7 +41,7 @@ just constructing one. Making the class honest *is* the deliverable.
    *existing* covariant narrowing likewise has no consumer — it is pinned solely by its own
    `assert_type` test ([test_capability.py:148](../../../tests/deterministic/manifold/test_capability.py)).
 2. **Neither future consumer reads a narrow reach back, either.** The carrier holds its capability as
-   the protocol (`_capability: Capability`, [RFC 0012 d.3](../0012-20260808-multidomain-carrier-timeline.md));
+   the protocol (`_capability: Capability`, [RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md));
    the `Reservoir` reads the store's `report`, not its capability's reach
    ([RFC 0013 d.5–d.6](../0013-20260808-timeline-store.md)).
 3. **Enumerability is already guaranteed upstream of both.** The carrier's entries come from
@@ -225,7 +225,7 @@ has a red phase — the suite is green throughout, which is the point of a renam
    | [ADR-0002:65](../../adr/0002-data-model.md) | The field **inside** the node: `Map~ParameterId, (ParameterDef, Domain)~ footprints` → `reaches` |
    | [ADR-0004:255](../../adr/0004-producer-resolution-and-capability.md) | **Name only** — "whose `FootprintCapability` advertises the network's aggregate hull" |
    | [ADR-0004:55](../../adr/0004-producer-resolution-and-capability.md) | **Not a name swap.** It reads "a general leaf (**a `Provider`'s declaration**)" — the exact framing this ticket exists to retire. Reword to name both uses, as the class docstring does |
-   | [RFC 0012 d.3](../0012-20260808-multidomain-carrier-timeline.md) | Replace "the per-parameter materialized form landed by … which owns its name and shape" with the landed name |
+   | [RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md) | Replace "the per-parameter materialized form landed by … which owns its name and shape" with the landed name |
    | [RFC 0013 d.6](../0013-20260808-timeline-store.md) | Same: its capability paragraph names `GranularCapability` outright |
    | [glossary](../../glossary.md), *Footprint* | Re-read, **left as written** (decision 1) |
 
@@ -242,7 +242,7 @@ has a red phase — the suite is green throughout, which is the point of a renam
 ## Out of scope / follow-ups
 
 - **The carrier and store constructing the form** — theirs, at
-  [0115.0020](../../tickets/01-0115.0020-multidomain-carrier-timeline.md) and
+  [0115.0020](../../tickets/done/01-0115.0020-multidomain-carrier-timeline.md) and
   [0115.0030](../../tickets/01-0115.0030-timeline-store.md). This slice lands the form unwired to them.
 - **A type-level enumerable narrowing on this form** — rejected here for want of a consumer
   (decision 2). **Trigger to revisit:** the first caller that reads

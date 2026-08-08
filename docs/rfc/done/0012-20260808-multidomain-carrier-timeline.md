@@ -1,8 +1,8 @@
 # RFC 0012 · 2026-08-08 · Multi-domain carrier and the timeline rework — implementation plan
 
-Implementation plan for [multi-domain carrier and the timeline rework](../tickets/01-0115.0020-multidomain-carrier-timeline.md)
-(slice 2 of the [retentive store](../tickets/01-0115-retentive-store-freshness.md)). Closes the
-[provider edge record](../edge/provider.md)'s fold/carrier **naming checkpoint** — the names are
+Implementation plan for [multi-domain carrier and the timeline rework](../../tickets/done/01-0115.0020-multidomain-carrier-timeline.md)
+(slice 2 of the [retentive store](../../tickets/01-0115-retentive-store-freshness.md)). Closes the
+[provider edge record](../../edge/provider.md)'s fold/carrier **naming checkpoint** — the names are
 decided here, not deferred further.
 
 **Scope in one line:** `clip` without bounds (which is what makes a boundless ask resolvable at all),
@@ -14,22 +14,22 @@ all bounded paths byte-identical.
 
 | Boundary | Owner | What this does to it |
 |---|---|---|
-| `Axis.clip` (`manifold/domain.py`, `manifold/cadence.py`) | [ADR-0002](../adr/0002-data-model.md) | Takes `Interval \| None`; **no bounds = the axis entire**. One clock read on a `RollingAxis`. |
-| `ground` | ADR-0002 / [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Loses its boundless arm — one `clip` call serves both snapped forms. |
+| `Axis.clip` (`manifold/domain.py`, `manifold/cadence.py`) | [ADR-0002](../../adr/0002-data-model.md) | Takes `Interval \| None`; **no bounds = the axis entire**. One clock read on a `RollingAxis`. |
+| `ground` | ADR-0002 / [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md) | Loses its boundless arm — one `clip` call serves both snapped forms. |
 | `agreed_geometry` (`manifold/domain.py`) | ADR-0001 / ADR-0002 | Keeps its name and single return; takes the `request: Domain` it resolves and derives its own licence (`open_axes`), under which differing resolutions validate instead of raising. Law unchanged on bounded axes. |
-| Carrier | ADR-0001 (closure), [ADR-0007](../adr/0007-capability-carries-its-domain.md) (capability) | **`CoverageSet`** minted beside `CoverageRecord` (`manifold/coverage.py`): a `Manifold` over records on differing native domains. |
-| `TimelineProvider.project` (`nodes/providers/timeline.py`) | [edge/provider.md](../edge/provider.md) | Boundless asks: all taps engaged (natural fetch unit), no parameter crop, `CoverageSet` answer. Bounded asks: exactly today's path. One pre-fetch decline replaces both unserved-parameter guards. |
+| Carrier | ADR-0001 (closure), [ADR-0007](../../adr/0007-capability-carries-its-domain.md) (capability) | **`CoverageSet`** minted beside `CoverageRecord` (`manifold/coverage.py`): a `Manifold` over records on differing native domains. |
+| `TimelineProvider.project` (`nodes/providers/timeline.py`) | [edge/provider.md](../../edge/provider.md) | Boundless asks: all taps engaged (natural fetch unit), no parameter crop, `CoverageSet` answer. Bounded asks: exactly today's path. One pre-fetch decline replaces both unserved-parameter guards. |
 | ADR-0001 answer discipline | ADR-0001 | Amended at landing: *an answer may be wider than the ask on the parameter facet, never narrower; the natural fetch unit is the leaf's own.* |
 | Edge (`mcp_app.py`), Arbiter, Calculators, Reservoir | — | **Untouched** — nothing in-tree authors a boundless member yet. |
 
 ## Facts that shape the implementation (verified 2026-08-08)
 
 1. **`RollingAxis` is not an `EnumerableAxis`** — a footprint's T becomes cells only inside `clip`
-   ([cadence.py:48](../../src/meteoscape/manifold/cadence.py)). The landed boundless arm
-   ([domain.py:626](../../src/meteoscape/manifold/domain.py)) demands an already-enumerable answering
+   ([cadence.py:48](../../../src/meteoscape/manifold/cadence.py)). The landed boundless arm
+   ([domain.py:626](../../../src/meteoscape/manifold/domain.py)) demands an already-enumerable answering
    axis, so **an open T declines against every provider footprint** — the pre-fetch fold's own input.
    The landed test grounds a boundless member against a *delivered* `GridDomain`
-   ([test_domain.py:369](../../tests/deterministic/manifold/test_domain.py)), which is why the gap is
+   ([test_domain.py:369](../../../tests/deterministic/manifold/test_domain.py)), which is why the gap is
    invisible today. Decision 1 is what makes the ticket's first criterion reachable.
 2. `agreed_geometry` has exactly two call sites, both in `timeline.py` (`_resolve` pre-fetch over
    footprints, `_answered_geometry` post-fetch over records) — the fold change touches nothing else.
@@ -41,9 +41,9 @@ all bounded paths byte-identical.
    `selection.parameters`); the Z fold is `_assemble`. `_as_delivered` reads `records[0]` **twice** —
    for the provenance plane *and* for the T lattice.
 5. The MCP serializer emits a block per parameter the Coverage **carries**
-   ([mcp_app.py:236](../../src/meteoscape/api/mcp_app.py)), and nothing between leaf and wire narrows
+   ([mcp_app.py:236](../../../src/meteoscape/api/mcp_app.py)), and nothing between leaf and wire narrows
    a single-winner answer (the `Reservoir` is a pass-through;
-   [arbiter.py:167](../../src/meteoscape/nodes/arbiter.py) returns the sole winner's Coverage
+   [arbiter.py:167](../../../src/meteoscape/nodes/arbiter.py) returns the sole winner's Coverage
    verbatim). An unconditionally wide answer would put `wind_u`/`wind_v` — inputs the edge keeps out
    of its exposure — on the wire.
 6. `TapTable.engaged_by` narrows taps; `variables` dedups vendor vars. Engaging the full table is
@@ -118,7 +118,7 @@ all bounded paths byte-identical.
    `[single] = ...` destructures at every call site were noise). Separability is the precondition
    of comparing *differing* members, never of publishing agreeing ones: duplicates fold on whole
    equality alone, so an exact non-separable request — which grounds by identity against every
-   footprint ([#12](../concerns.md#12-curvilinear-domains)'s target role) — folds without exposing
+   footprint ([#12](../../concerns.md#12-curvilinear-domains)'s target role) — folds without exposing
    axes; only distinct members must expose them to confine their difference to the open set, and a
    distinct member without axes raises.
 
@@ -160,7 +160,7 @@ all bounded paths byte-identical.
    a construction error, not a served answer.
 
    `capability` is a **`GranularCapability`**
-   ([RFC 0015](./done/0015-20260808-per-parameter-materialized-capability.md)). One entry per parameter —
+   ([RFC 0015](./0015-20260808-per-parameter-materialized-capability.md)). One entry per parameter —
    `GranularCapability(reaches={pid: (record.capability.parameters[pid], record.domain) for record
    in records for pid in record.ranges})` — whence `reach(pid)` answers the owning record's
    enumerable domain and `parameters` is the disjoint union. The timeline store (slice 3)
@@ -202,7 +202,7 @@ all bounded paths byte-identical.
      Manifold-conventionally with `CapabilityMismatch`; a `Shortfall` from an under-covering record
      propagates, and the *timeline wrapper* translates it at its boundary (decision 4). The generic
      type never encodes vendor-fault knowledge it cannot have. (A bare `Shortfall` escaping a
-     `project` is the interim state concern [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)
+     `project` is the interim state concern [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback)
      dissolves by padding that tail.)
 
    **The Z relabel is the carrier's, and it smears deliberately.** Cropping a native record onto the
@@ -210,7 +210,7 @@ all bounded paths byte-identical.
    It is honest only because admission gated each parameter against its own native Z footprint before
    the leaf was reached. The composed path's version is different and stays the `Reservoir`'s: a
    source Reservoir *selects* per parameter the record whose Z cell matches the handed vantage
-   ([RFC 0014 d.2](./0014-20260808-reservoir-retention-pipeline.md)). Two relabels, two positions,
+   ([RFC 0014 d.2](../0014-20260808-reservoir-retention-pipeline.md)). Two relabels, two positions,
    neither derived from the other.
 
    `_assemble`, `_as_delivered`, and `_cropped` are deleted with their tests ported here; `timeline.py`
@@ -297,7 +297,7 @@ all bounded paths byte-identical.
 6. **Three sentences land in the architecture docs with this slice** (stage 5), each decided at this
    RFC's align: ADR-0001's answer discipline (the licence is first exercised here); ADR-0002's
    `clip`-without-bounds reading and its fold paragraph; the glossary's `Clip` entry. The
-   [pipeline slice](../tickets/01-0115.0040-reservoir-retention-pipeline.md) carries only the
+   [pipeline slice](../../tickets/01-0115.0040-reservoir-retention-pipeline.md) carries only the
    remaining doc syncs.
 7. **One existing fixture is corrected rather than preserved** (decided at stage 3, the one exception
    to *bounded paths byte-identical*). With `_as_delivered` gone, each record is cropped by `resample`
@@ -344,12 +344,12 @@ observable behavior → minimal implementation at a time per `/tdd`.
 ## Out of scope / follow-ups
 
 - `CoverageSet.of` — the one-record normalization — lands with its only caller, the pipeline
-  ([RFC 0014](./0014-20260808-reservoir-retention-pipeline.md) d.1); the store slice's tests
+  ([RFC 0014](../0014-20260808-reservoir-retention-pipeline.md) d.1); the store slice's tests
   construct groups directly.
 - No in-tree author of boundless members until `quantize`
-  ([RFC 0013](./0013-20260808-timeline-store.md)); `CoverageSet` reaches no store until the
-  [pipeline slice](../tickets/01-0115.0040-reservoir-retention-pipeline.md).
+  ([RFC 0013](../0013-20260808-timeline-store.md)); `CoverageSet` reaches no store until the
+  [pipeline slice](../../tickets/01-0115.0040-reservoir-retention-pipeline.md).
 - How `CoverageSet` flows through Arbiter/Calculator on the best-view path is the pipeline slice's
   question, flagged in RFC 0014 — nothing here presumes an answer.
 - Padding a short tail as `present=False`, which retires both the `Shortfall` raise and the
-  wrapper's translation of it → [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
+  wrapper's translation of it → [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback).

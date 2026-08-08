@@ -17,7 +17,7 @@ unit definitions; the e2e re-fetch assertion flips.
 | `Weaver` (`nodes/weaver.py`) | [ADR-0005](../adr/0005-build-time-composition.md) | Passes the position's `deferred` axes to `StoreFactory.create` (Weaver owns *where*; the factory owns *what*). |
 | Arbiter winner agreement (`nodes/arbiter.py`) | [ADR-0004](../adr/0004-producer-resolution-and-capability.md), [edge/provider.md](../edge/provider.md) | **Untouched** — priority assembly's whole-request equality check stays its own (decision 3). |
 | MCP / e2e behavior | [edge/mcp.md](../edge/mcp.md) | Repeat requests stop re-fetching; the wire shape is unchanged (serve crops). The e2e `route.call_count` assertions flip from 4 to 2-then-cached. |
-| Landing docs | edge/provider.md, ADR-0006 | The pending-006 block flips to current state; ADR-0001's sentence landed at [RFC 0012](./0012-20260808-multidomain-carrier-timeline.md) — only the remaining syncs here. |
+| Landing docs | edge/provider.md, ADR-0006 | The pending-006 block flips to current state; ADR-0001's sentence landed at [RFC 0012](./done/0012-20260808-multidomain-carrier-timeline.md) — only the remaining syncs here. |
 
 ## Facts that shape the implementation (verified 2026-08-08)
 

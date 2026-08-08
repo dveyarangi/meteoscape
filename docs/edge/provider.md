@@ -254,7 +254,7 @@ by a caller.
 *Names, settled here 2026-08-08:* the fold is **`agreed_geometry`**, the carrier is **`CoverageSet`**,
 and `ANY` is the **boundless snapped member** (`interval=None`) — so `SelectableAxis` gains no new
 kind and the licence keys on boundlessness inside the fold
-([RFC 0012](../rfc/0012-20260808-multidomain-carrier-timeline.md)).
+([RFC 0012](../rfc/done/0012-20260808-multidomain-carrier-timeline.md)).
 
 **Two call sites, and what each grounds against.** The wrapper calls `ground` once before the vendor
 call and once after — never in between, and never anywhere else. Both ends are plural, so both fold:

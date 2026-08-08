@@ -16,7 +16,7 @@ one index-space policy. `manifold/domain.py` only; no live caller changes behavi
 | `ground` | ADR-0002 / [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Third per-axis arm: boundless member → answering axis whole. Pinned/bounded arms byte-identical. |
 | `RegularAxis.clip` | ADR-0002 | Gains `LATTICE_TOLERANCE` in its floor/ceil, still one branch-free expression. |
 | `LATTICE_TOLERANCE` / `sub_lattice_offset` | ADR-0002, [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) | The constant is redefined **index-space (dimensionless)**; `sub_lattice_offset`'s float arm converts to the same form. One policy, one constant. |
-| `agreed_geometry`, all nodes, edges | — | **Untouched** — the open-axis licence arrives with the carrier ([RFC 0012](./0012-20260808-multidomain-carrier-timeline.md)), which owns both call sites. |
+| `agreed_geometry`, all nodes, edges | — | **Untouched** — the open-axis licence arrives with the carrier ([RFC 0012](./done/0012-20260808-multidomain-carrier-timeline.md)), which owns both call sites. |
 
 ## Facts that shape the implementation (verified 2026-08-08)
 
@@ -127,7 +127,7 @@ to-tickets' machine-enforced-constraint form, not a behavior test.
 
 ## Out of scope / follow-ups
 
-- The group-returning fold, the carrier, and every node/edge touch → [RFC 0012](./0012-20260808-multidomain-carrier-timeline.md).
+- The group-returning fold, the carrier, and every node/edge touch → [RFC 0012](./done/0012-20260808-multidomain-carrier-timeline.md).
 - `quantize` (the first in-tree author of a boundless member) → RFC 0013.
 - One-sided bounds stay unrepresentable; their author is 011/004 (parent ticket, *Request
   vocabulary*).

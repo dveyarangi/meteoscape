@@ -16,7 +16,7 @@ edge, or Probe changes.
 | `CadenceDef` / `RollingAxis` (`manifold/cadence.py`) | [ADR-0003 §cadence](../../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence) | The one widening: `window_quantum: timedelta \| None = None`; `valid_time` branches on it. `anchor`, `expiration`, `RollingAxis` untouched. ADR-0003 amended at landing (stage 4). |
 | Open-Meteo declaration (`nodes/providers/open_meteo.py`) | [edge/provider.md](../../edge/provider.md) | `CADENCE` declares the probed truth: `window_quantum=24 h`, `max_lead=383 h`; `cadence`/`publication_latency` stay 1 h / 1 h. |
 | Narration (`api/mcp_app.py`, `_horizon_sentence`) | [edge/mcp.md](../../edge/mcp.md) | One formula change: whole-days **floor** replaces the `% 24 == 0` branch. No other edge change. |
-| Provenance / freshness | ADR-0003 | **Untouched** — `issue_time = anchor(now)`, `expiration = A + Δ + L` keep reading the run clock ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) lines 217–219 are the only consumers; verified 2026-08-06). |
+| Provenance / freshness | ADR-0003 | **Untouched** — `issue_time = anchor(now)`, `expiration = A + Δ + L` keep reading the run clock ([timeline.py](../../../src/meteoscape/nodes/providers/timeline.py) lines 217–219 are the only consumers; verified 2026-08-06). |
 | Admission / `ground` / `clip` | ADR-0002/0004 | **Untouched** — they read `extent`/`valid_time`; the truthful window flows through existing code. |
 | Probe seam | [edge/provider.md](../../edge/provider.md) | **Untouched** — the Probe stays clock-free; the fix is precisely *not* a vendor-face clamp. |
 
@@ -29,7 +29,7 @@ edge, or Probe changes.
    last hour → 200.
 2. **`CadenceDef` consumers are exactly three**: `valid_time` (the footprint window — the thing
    being fixed), `anchor` (provenance `issue_time`), `expiration` (freshness) —
-   [timeline.py:217–219](../../src/meteoscape/nodes/providers/timeline.py) and
+   [timeline.py:217–219](../../../src/meteoscape/nodes/providers/timeline.py) and
    `RollingAxis.extent`. Nothing else reads it, so anchoring the window on its own clock cannot
    perturb run identity or freshness.
 3. **`RollingAxis.clip` materializes `(upper − lower) // step + 1` ticks from `window.lower`.**
@@ -37,7 +37,7 @@ edge, or Probe changes.
    days. This is why `max_lead` becomes **383 h**, not 16 d: `max_lead` is the window's *inclusive
    upper offset* (the last servable lead). Subtracting a step inside `valid_time` instead would
    put series-step knowledge into `CadenceDef`, which deliberately does not own the step
-   ([RFC 0009](./done/0009-20260725-m4-snapped-t-request-mode.md) decision 8).
+   ([RFC 0009](./0009-20260725-m4-snapped-t-request-mode.md) decision 8).
 4. **The leaf tests read the window dynamically** (`CADENCE.valid_time(STOPPED.now())` — e.g. the
    straddle test) or use interior bounds, so they survive the declaration change; only their
    prose comments name `11:00` / `[11:00, +16d]` and get swept. The **e2e absolute pins** are the
