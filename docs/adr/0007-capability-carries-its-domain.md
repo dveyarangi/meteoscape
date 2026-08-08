@@ -48,8 +48,8 @@ The member is vestigial on none of them:
 
 | Form | Whose | `reach(parameter)` |
 |---|---|---|
-| `FootprintCapability` | a Provider leaf | the declared footprint |
-| `EnumerableCapability` | a materialized Coverage | its grid |
+| `GranularCapability` | a Provider leaf, a multi-domain carrier, or a retentive `Store` | that parameter's own `Domain` — declared footprint or held record |
+| `EnumerableCapability` | a materialized Coverage | its grid (narrowed to `EnumerableDomain` in the type) |
 | `UnionCapability` | an Arbiter | the dominating producer's domain |
 | `DerivedCapability` | a Calculator | the domain contained in all inputs' |
 
@@ -61,9 +61,14 @@ Two contract details ride on the table. **`parameters` is the sole membership au
 publish — which is why a scoped composite derives its parameter set from the domains it composed,
 never from its whole-producer members. For an unserved parameter `reach` raises a plain `KeyError`:
 asking is a caller error, not a composition failure. And **`EnumerableCapability.reach` narrows
-covariantly to `EnumerableDomain`** — the materialized form's reach *is* its grid, so
-"materialized ⇒ enumerable reach" is stated in the type, where the materialized-provider
-discriminator ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)) can rest on it.
+covariantly to `EnumerableDomain`** — the co-domained form's reach *is* its grid, so
+"materialized ⇒ enumerable reach" is stated in the type **for that form**. It is deliberately *not*
+claimed of the per-parameter `GranularCapability`: its materialized use (a multi-domain carrier, a
+retentive `Store`) publishes enumerable domains as a fact of construction, and no caller reads a
+reach back at the narrower type. The materialized-**provider** discriminator
+([ADR-0006](./0006-materialization-granularity-and-store-shape.md)) rests on the *class*
+`EnumerableCapability`, never on a reach type — a parameterized form could not carry it at all,
+since parameterization is erased at runtime.
 
 **Composites hold their members keyed by `ProducerKey`.** Without that identity, a composition that
 cannot resolve could report only *that* it failed, not *which* producers conflict on *which* axis — and

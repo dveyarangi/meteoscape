@@ -60,9 +60,10 @@ classDiagram
     class Capability {
         Map~ParameterId, ParameterDef~ parameters
         serves(ParameterId, Domain) bool
+        reach(ParameterId) Domain
     }
-    class FootprintCapability {
-        Map~ParameterId, (ParameterDef, Domain)~ footprints
+    class GranularCapability {
+        Map~ParameterId, (ParameterDef, Domain)~ reaches
     }
     class ParameterData {
         float[] values
@@ -94,7 +95,7 @@ classDiagram
     Coverage o-- EnumerableDomain : carries (re-projectable)
     Coverage o-- Capability : descriptor block (materialized: ParameterDef x Domain)
     Capability o-- ParameterDef : one per parameter (keyed by id)
-    Capability <|.. FootprintCapability : leaf (Domain private to serves)
+    Capability <|.. GranularCapability : independently shaped parameter reaches
     ParameterDef o-- Quantity : identity root (entails extent_scaling, scale)
     Coverage o-- ParameterData : one per parameter (keyed by id)
     Coverage o-- ProvenanceField : provenance plane, parameter × point (ADR-0003)

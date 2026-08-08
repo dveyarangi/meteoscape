@@ -1139,3 +1139,50 @@ capability form or a manifest-declared mode, not a flag threaded into one member
 
 **Trigger to revisit:** the first calculator whose kernel is not pointwise-total (partial-input blend,
 temporal extrapolator, subregion-valid downscaler). No v1 driver.
+
+## 46. Composition-failure attribution is paid inside geometry
+
+**Kind:** deferred cleanup (layering) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md),
+[#12](#12-curvilinear-domains), [#36](#36-unserved-and-uncomparable-are-indistinguishable)
+
+[ADR-0007](./adr/0007-capability-carries-its-domain.md) requires a build-time `CompositionError` to
+identify conflicting producers and axes. The current implementation satisfies that operator-facing
+contract by pushing identity and prose into geometry helpers:
+
+- `split_extents(left_key: object, …) -> str` and `first_incomparable(Sequence[tuple[object,
+  Separable]])` accept opaque keys and render prose inside `manifold/domain.py`. They also compute the
+  incomparable pair twice: once to find it and again to describe its axes.
+- Parallel `_require_separable` and `_names` helpers repeat the same structure in
+  `nodes/arbiter.py` and `manifold/capability.py`, differing mainly in which identity the message names.
+- `UnionCapability.members` retains `ProducerKey`s that nothing reads. Arbiter composition authors any
+  failure before constructing the capability; only `DerivedCapability` needs identity internally
+  because it performs its fold in `__post_init__`.
+
+**Why this waits.** Neither failure path is reachable in a current profile. Incomparability needs a
+regional footprint that shears against a global one; current providers are global, and the expected
+regional/global nesting is described in
+[ADR-0007](./adr/0007-capability-carries-its-domain.md#why-per-axis-folding-is-invalid). The separability
+guard waits on a curvilinear domain ([#12](#12-curvilinear-domains)). The real failing configuration
+should decide which diagnostic is more useful.
+
+**Candidate resolutions** — both replace `UnionCapability.members` with an unkeyed collection:
+
+- **Return a keyless fact.** The geometry fold reports candidate positions and per-axis dominance;
+  one shared caller-side renderer adds producer or calculator labels. This preserves the current
+  pairwise diagnostic while computing it once.
+- **Subtract the pairwise witness.** Drop "which pair, which axis": report that no candidate dominates
+  and list every candidate's per-axis extents. This deletes both helpers and avoids a new fact type,
+  but weakens the diagnostic when many candidates compete and requires amending ADR-0007.
+
+Until then, ADR-0007's keyed-member statement describes the current structure; its attribution
+rationale is the part this concern leaves open. Code and ADR must change together when it resolves.
+
+**Not a resolution:** merging `UnionCapability` into the per-parameter form. Its `serves` delegates to
+members (`any(m.serves(…))`) rather than reading its own composed reach, which is what keeps the
+resampler-reachability and probed-availability seams open; ADR-0007 lists deriving `serves` from
+`reach` as a rejected alternative. The two forms are geometrically equivalent only while `serves` is
+pure geometry everywhere.
+
+**Trigger to revisit:** the first configuration that can actually fail composition — a regional
+provider whose footprint shears against a global's, or the first curvilinear domain. Decide the
+message shape then, against the real case.

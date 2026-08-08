@@ -52,9 +52,9 @@ same shape. The abstraction these are shapes of is the
   and the `reconciler` are **policy**, not Capability.
 
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
-  - **`FootprintCapability`** — a general leaf (a `Provider`'s declaration): per-parameter covered
-    `Domain` footprint — the operand of that parameter's `serves` predicate and the Domain its `reach`
-    publishes (→ [ADR-0007](./0007-capability-carries-its-domain.md)).
+  - **`GranularCapability`** — own geometry per parameter, used by Provider declarations and
+    materialized multi-domain holders.
+    → [ADR-0007: every capability form has a domain](./0007-capability-carries-its-domain.md#every-form-has-a-domain).
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
     enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it
     (not a second copy).
@@ -252,7 +252,7 @@ same shape. The abstraction these are shapes of is the
   ([#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)).
 
 - **A point-observation network is one provider, not one-per-station.** A station *network* (or a vendor
-  analysis surface) is a **single** `Provider` whose `FootprintCapability` advertises the network's
+  analysis surface) is a **single** `Provider` whose `GranularCapability` advertises the network's
   **aggregate hull** — a continuous `FootprintDomain` ([ADR-0002](./0002-data-model.md)), so the plain
   `matches` gate admits any interior request with **no `intersect` dependency** — and whose `project`
   runs the scattered→lattice interpolation **inside the leaf**. Interpolating one network's own stations
