@@ -35,6 +35,10 @@ Core architecture docs must not reference sessions, tickets or RFCs. One excepti
 concern's `→ queued as <ticket-slug>` marker in `concerns.md` is delivery routing, not
 architecture — keep it.
 
+Move sessions over week old into `docs/sessions/history/YYYY-MM` folder
+
+Make there are no links to sessions anywhere, between sessions themselves or from other documentation. So we would never need to update the session links. Sessions can point outward to other docs.
+
 **Workflow.** Scan → inventory **Safe** / **Needs you** → apply safe items
 (obvious dupes, non-load-bearing evolution, link normalization) → pause on
 ambiguous homes, cross-layer moves, large deletions, or contradictions →

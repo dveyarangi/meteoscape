@@ -1,1 +1,3 @@
 - Prefer using edit or replace tools for updating files, refrain from using python, sed, etc.
+- When explaining, use code shapes or diagrams instead of arch-speak, where it is more demonstrative.
+- When reading docs, always check the doc type README.md
