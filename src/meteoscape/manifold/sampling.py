@@ -32,8 +32,10 @@ class Shortfall(ValueError):
     overlap is well-defined and the missing tail is countable, which is what lets a caller diagnose a
     producer that delivered less than it declared.
 
-    **Raising is interim scaffolding**; `missing` is the durable part, because the answer to a shortfall
-    is to pad that tail as `present=False` rather than to fail (concern #30).
+    **TODO (temporary):** raising at all is scaffolding. `missing` is the durable part, because the
+    answer to a shortfall is to pad that tail as `present=False` rather than to fail — which retires
+    this class's raise and every translation of it
+    ([#30](../../../docs/concerns.md#30-response-membership-under-runtime-degraded-fallback)).
     """
 
     def __init__(self, axis: AxisName, missing: int) -> None:

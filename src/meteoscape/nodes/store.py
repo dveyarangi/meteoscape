@@ -27,8 +27,11 @@ class Store(Manifold, Writable, Protocol):
 class StubStore:
     """Non-retentive weave-time placeholder for the planned retentive Store.
 
-    Exists so `Reservoir` can be constructed. `assimilate` is a no-op; `project` / `capability` raise
-    until a retentive store replaces this.
+    Exists so `Reservoir` can be constructed. `assimilate` is a no-op; `project` / `capability` raise.
+
+    **TODO (temporary):** the whole class, and the factory below, are replaced by the retentive store
+    ([006](../../../docs/tickets/01-0115-retentive-store-freshness.md)). Nothing may come to depend on
+    a store that accepts writes and answers nothing.
     """
 
     async def project(self, selection: Selection) -> Manifold:
