@@ -44,8 +44,12 @@ beside `CoverageRecord`), and a timeline `project` that answers **open asks** wi
    `frozenset(n for n in AXIS_ORDER if isinstance(d.axes[n], SnappedAxis) and d.axes[n].interval is None)`
    for a `SelectionDomain`, else empty — a small `open_axes(domain)` helper beside `ground`.
 2. **The carrier: `CoverageGroup`, beside `CoverageRecord` in `manifold/coverage.py`.** It also
-   mints `CoverageGroup.of(answer)` — identity on a group, a one-record wrap on a single Coverage —
-   the normalization the `Reservoir` pipeline applies before `assimilate` (RFC 0013 d.4).
+   mints `CoverageGroup.of(answer: CoverageRecord | CoverageGroup) -> CoverageGroup` — identity on
+   a group, a one-record wrap on a record — the normalization the `Reservoir` pipeline applies
+   before `assimilate` (RFC 0013 d.4). The narrow parameter type is deliberate and total for its
+   one consumer: the root's child is an Arbiter, and `Arbiter._assemble` returns `CoverageRecord`
+   ([arbiter.py:174](../../src/meteoscape/nodes/arbiter.py)); a lazy non-record `Coverage` has no
+   business being assimilated (sampling happens at the leaf, ADR-0001).
 
    ```python
    @dataclass(frozen=True)
@@ -73,12 +77,25 @@ beside `CoverageRecord`), and a timeline `project` that answers **open asks** wi
    `open = open_axes(selection.domain)`:
    - `open` empty → today's path, unchanged end to end: engaged taps, single agreed geometry
      (destructured 1-tuple), `resample` crop, parameter crop. Closure intact.
-   - `open` non-empty → **natural fetch unit**: the full tap table is engaged, the answer keeps
-     every fetched parameter (no crop), records grouped by
-     `agreed_geometries((ground(selection.domain, r.domain) for r in records), open)` →
-     `CoverageGroup` with one record per agreed geometry. The pre-fetch fold runs with the same
-     `open` (footprints differing on Z under an open Z are the licensed case; the fetch window
-     reads T from any member — they agree on T by the fold's own law).
+   - `open` non-empty → **natural fetch unit**: the full tap table is engaged and the answer keeps
+     every fetched parameter (no crop). The existing no-served-parameters guard still runs against
+     the *requested* set first (`selection.parameters ∩ taps.parameters ≠ ∅`, today's
+     `engaged_by`-empty check) — a request this leaf serves nothing of declines **pre-fetch**, per
+     the edge record's decline-costs-no-vendor-call invariant; engaging the full table widens the
+     fetch, never admission. The pre-fetch fold runs with the same `open`; footprints
+     differing on Z under an open Z are the licensed case. **The fetch window may be read from any
+     member of the pre-fetch tuple — not because the fold demands T agreement (an open T is exempt
+     from its law) but because the shape guarantees it**: `TimelineProvider` takes one `CadenceDef`
+     per instance ([timeline.py:68](../../src/meteoscape/nodes/providers/timeline.py)), so every
+     per-parameter footprint carries the *same* T axis and grounds identically, open or bounded. A
+     future shape with per-parameter cadences loses that guarantee and must fold its own window —
+     the comment at the read must say so.
+     Post-fetch, `agreed_geometries((ground(selection.domain, r.domain) for r in records), open)`
+     **validates** the records (bounded axes agree) rather than reorganizing them — `by_level()`
+     already yields one record per native domain, so the `CoverageGroup` is the records as-is, and
+     the fold's tuple is their geometry listing. An open member is never *exact*, so a short
+     delivery grounds shorter and is honest (the `Shortfall` fault path belongs to enumerable asks
+     only, unchanged).
    This is not a mode branch in the forbidden sense: the leaf still writes no snap arithmetic and
    no request-shape gate; it reads one derived fact (`open`) the algebra defines.
 4. **Naming checkpoint closed:** `agreed_geometries` (the `agreed_` stem survives; the plural is
