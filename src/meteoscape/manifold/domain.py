@@ -173,12 +173,20 @@ class RegularAxis(EnumerableAxis):
 
     def clip(self, bounds: Interval) -> RegularAxis | None:
         # One expression for both coordinate kinds: subtracting coordinates gives a step-like
-        # quantity, and dividing by the step gives a plain float either way (concern #23).
+        # quantity, and dividing by the step gives a plain float either way (concern #23). The
+        # tolerance rides that dimensionless quotient, so a bound float-noise off a cell edge
+        # clips into the containing cell.
         low = (bounds.lower - self.anchor) / self.step  # type: ignore[operator]
         # A cellular tick owns the span that follows it, so a bound inside a cell keeps that cell;
         # an instant tick is kept only when the bounds reach the tick itself.
-        first = max(0, floor(low) if self.cellular else ceil(low))
-        last = min(self.count - 1, floor((bounds.upper - self.anchor) / self.step))  # type: ignore[operator]
+        first = max(
+            0,
+            floor(low + LATTICE_TOLERANCE) if self.cellular else ceil(low - LATTICE_TOLERANCE),
+        )
+        last = min(
+            self.count - 1,
+            floor((bounds.upper - self.anchor) / self.step + LATTICE_TOLERANCE),  # type: ignore[operator]
+        )
         if first > last:
             return None
         return RegularAxis(
@@ -250,8 +258,7 @@ class ContinuousAxis(Axis):
 
     The unmarked, static continuous case; the clock-anchored `valid_time` specialization (`RollingAxis`)
     lives with the cadence it reads (`cadence.py`), keeping this module pure geometry. Z footprints use
-    `RegularAxis` (point) or `IntervalAxis` (column), not this type. Also the base of the request
-    `SnappedAxis` (which only overrides `matches`).
+    `RegularAxis` (point) or `IntervalAxis` (column), not this type.
     """
 
     name: AxisName
@@ -268,19 +275,25 @@ class ContinuousAxis(Axis):
 
 
 @dataclass(frozen=True)
-class SnappedAxis(ContinuousAxis):
-    """Bounds-only request axis: the resolver's grid supplies anchor and step (ADR-0002).
+class SnappedAxis(Axis):
+    """Bounds-only request axis; without bounds (the default) it is the boundless form (`ANY`) —
+    the axis is left entirely to the producer. The resolver's grid supplies anchor and step
+    (ADR-0002).
 
-    `ContinuousAxis` with intersective `matches` — the span-shaped dual of `VantageAxis`.
-    Temporal-only: the narrowed `interval` makes a float-coordinate snapped axis a type error.
+    Intersective `matches` — the span-shaped dual of `VantageAxis`. Bounds are temporal-only
+    (`Interval[datetime]`), so a *bounded* float-coordinate member is a type error; the boundless
+    member is axis-generic (sits on Z too).
     """
 
-    interval: Interval[datetime]
+    name: AxisName
+    interval: Interval[datetime] | None = None
 
     def __post_init__(self) -> None:
-        # tz-awareness is invisible to the type system; ordering is a value rule
+        if self.interval is None:
+            return
+        # Bound kind and tz-awareness are invisible to the type system; ordering is a value rule.
         for edge in (self.interval.lower, self.interval.upper):
-            if edge.tzinfo is None:
+            if not isinstance(edge, datetime) or edge.tzinfo is None:
                 raise ValueError(
                     f"SnappedAxis bounds must be timezone-aware datetimes, got {edge!r}"
                 )
@@ -289,15 +302,29 @@ class SnappedAxis(ContinuousAxis):
                 f"SnappedAxis lower bound {self.interval.lower} exceeds upper {self.interval.upper}"
             )
 
-    def matches(self, declared: Axis) -> bool:
-        return self.interval.intersects(declared.extent)  # type: ignore[arg-type]
+    @property
+    def extent(self) -> Interval:
+        if self.interval is None:
+            raise ValueError(f"open {self.name.value} member has no extent")
+        return self.interval
 
-    # `clip` is inherited: a snapped axis is never *asked* for a part of itself — it is the bounds
-    # another axis is clipped to (`ground`).
+    def matches(self, declared: Axis) -> bool:
+        return self.interval is None or self.interval.intersects(declared.extent)  # type: ignore[arg-type]
+
+    def clip(self, bounds: Interval) -> Axis | None:
+        # A snapped axis is the bounds another axis is clipped to; it is never asked for a part
+        # of itself. Kept total for the `Axis` contract:
+        if self.interval is None:
+            return self
+        overlap = self.interval.intersection(bounds)  # type: ignore[arg-type]
+        return None if overlap is None else SnappedAxis(self.name, overlap)
 
 
 LATTICE_TOLERANCE = 1e-9
-"""Absolute spatial tolerance (degrees) for float-noise alignment — not a snapping radius."""
+"""Index-space (dimensionless) tolerance for float-noise alignment — a fraction of one step, not a
+snapping radius. The one policy for every lattice-alignment read (`RegularAxis.clip`,
+`sub_lattice_offset`): riding the already-dimensionless coordinate/step quotient keeps it
+coordinate-kind-generic (≤ 3.6 µs on an hourly lattice — inert, `timedelta` division is exact)."""
 
 AXIS_ORDER: tuple[AxisName, ...] = (AxisName.X, AxisName.Y, AxisName.Z, AxisName.T)
 """Canonical nesting order: X → Y → Z → T, T fastest-varying (row-major)."""
@@ -355,19 +382,11 @@ def sub_lattice_offset(outer: RegularAxis, inner: RegularAxis) -> int | None:
             return None
         offset = int(quot)
     else:
-        if (
-            not isinstance(delta, float)
-            or not isinstance(step, float)
-            or not isinstance(outer.anchor, float)
-            or not isinstance(inner.anchor, float)
-        ):
+        if not isinstance(delta, float) or not isinstance(step, float):
             return None
-        raw = delta / step
-        offset = round(raw)
-        if offset < 0:
-            return None
-        aligned = outer.anchor + step * offset
-        if abs(inner.anchor - aligned) > LATTICE_TOLERANCE:
+        quotient = delta / step
+        offset = round(quotient)
+        if offset < 0 or abs(quotient - offset) > LATTICE_TOLERANCE:
             return None
     return offset
 
@@ -604,6 +623,12 @@ def ground(request: Domain, against: Domain) -> EnumerableDomain:
             continue
         if answering is None:
             raise ValueError(f"a snapped {name.value} grounds only against separable geometry")
+        if member.interval is None:  # ANY — take the answering axis whole
+            whole = answering.axis(name)
+            if not isinstance(whole, EnumerableAxis):
+                raise ValueError(f"an open {name.value} needs cells; the answering axis is a span")
+            axes[name] = whole
+            continue
         part = answering.axis(name).clip(member.interval)
         if part is None:
             raise ValueError(f"no {name.value} within the requested bounds")
@@ -621,7 +646,7 @@ def agreed_geometry(grounded: Iterable[EnumerableDomain]) -> EnumerableDomain:
 
     One `project` answers with one geometry (ADR-0001), so several declared footprints, or several
     native records, may only differ on an axis the request left entirely to the producer — which is
-    `ANY`, and does not exist yet.
+    `ANY`, and which nothing in-tree authors yet.
     """
     agreed: EnumerableDomain | None = None
     for resolution in grounded:

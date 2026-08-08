@@ -70,7 +70,7 @@ def test_interval_of_different_coordinate_kinds_never_meets() -> None:
     snapped_x = SnappedAxis(AxisName.X, time)
     declared_x = ContinuousAxis(AxisName.X, space)
     assert snapped_x.matches(declared_x) is False
-    assert declared_x.clip(snapped_x.interval) is None
+    assert declared_x.clip(time) is None
 
 
 def test_interval_axis_single_cell() -> None:
@@ -190,8 +190,48 @@ def test_snapped_axis_is_not_enumerable() -> None:
         AxisName.T,
         Interval(datetime(2026, 7, 11, 12, tzinfo=UTC), datetime(2026, 7, 12, tzinfo=UTC)),
     )
-    assert isinstance(axis, ContinuousAxis)
+    assert isinstance(axis, Axis)
     assert not isinstance(axis, EnumerableAxis)
+    # Standalone, not a `ContinuousAxis`: its bounds may be absent, a span's never are.
+    assert not isinstance(axis, ContinuousAxis)
+
+
+def test_boundless_snapped_member_is_accepted_on_any_axis() -> None:
+    """`ANY` leaves the axis entirely to the producer — boundless is axis-generic (sits on Z too),
+    and boundless is the default: a member without bounds is the open one."""
+    for name in AxisName:
+        member = SnappedAxis(name)
+        assert member.interval is None
+
+
+def test_bounded_spatial_snapped_member_is_rejected() -> None:
+    """Temporal narrowing bites only when bounds are present — float bounds never construct."""
+    with pytest.raises(ValueError, match="datetime"):
+        SnappedAxis(AxisName.X, Interval(0.0, 1.0))  # type: ignore[arg-type]
+
+
+def test_open_member_matches_every_declared_axis() -> None:
+    open_z = SnappedAxis(AxisName.Z)
+    assert open_z.matches(ContinuousAxis(AxisName.Z, Interval(0.0, 10.0))) is True
+    assert open_z.matches(RegularAxis(AxisName.Z, 2.0, 1.0, 1, False)) is True
+    assert open_z.matches(IntervalAxis(AxisName.Z, Interval(0.0, 12_000.0))) is True
+
+    open_t = SnappedAxis(AxisName.T)
+    rolling = RollingAxis(
+        AxisName.T,
+        CadenceDef(timedelta(hours=1), timedelta(0), timedelta(days=7)),
+        STOPPED,
+        timedelta(hours=1),
+    )
+    assert open_t.matches(rolling) is True
+
+
+def test_open_member_has_no_extent_and_clips_to_itself() -> None:
+    open_z = SnappedAxis(AxisName.Z)
+    with pytest.raises(ValueError, match="open z member has no extent"):
+        _ = open_z.extent
+    # `clip` stays total for the `Axis` contract: nothing bounds the boundless.
+    assert open_z.clip(Interval(0.0, 1.0)) is open_z
 
 
 def test_regular_axis_clip_keeps_the_lattice_and_moves_the_edges() -> None:
@@ -240,6 +280,38 @@ def test_regular_axis_clip_is_coordinate_generic() -> None:
     degrees = RegularAxis(AxisName.X, 0.0, 1.0, 5, False)  # 0.0 … 4.0
     assert degrees.clip(Interval(1.0, 3.0)) == RegularAxis(AxisName.X, 1.0, 1.0, 3, False)
     assert degrees.clip(Interval(10.0, 20.0)) is None
+
+
+def test_regular_axis_clip_absorbs_float_noise_at_a_cell_edge() -> None:
+    """A bound float-noise off a cell edge clips into the containing cell.
+
+    `0.3 / 0.1 == 2.9999999999999996`: a raw floor lands one cell early; the shared index-space
+    tolerance (`LATTICE_TOLERANCE`) pulls it onto the edge it means.
+    """
+    cells = RegularAxis(AxisName.X, 0.0, 0.1, 5, cellular=True)  # 0.0 … 0.4
+    assert cells.clip(Interval(0.3, 0.4)) == RegularAxis(
+        AxisName.X, 0.0 + 3 * 0.1, 0.1, 2, cellular=True
+    )
+
+    # The instant kind reads the same edge: an upper bound at a tick keeps that tick.
+    instants = RegularAxis(AxisName.X, 0.0, 0.1, 5, cellular=False)
+    assert instants.clip(Interval(0.0, 0.3)) == RegularAxis(AxisName.X, 0.0, 0.1, 4, cellular=False)
+
+
+def test_one_boundary_tolerance_policy() -> None:
+    """Guard: one tolerance constant, referenced by both alignment reads — a second diverging
+    constant fails here (RFC 0011)."""
+    import inspect
+    import re
+
+    from meteoscape.manifold import domain as domain_module
+
+    constants = re.findall(
+        r"^_?\w*TOLERANCE\w*\s*=", inspect.getsource(domain_module), flags=re.MULTILINE
+    )
+    assert constants == ["LATTICE_TOLERANCE ="]
+    assert "LATTICE_TOLERANCE" in inspect.getsource(RegularAxis.clip)
+    assert "LATTICE_TOLERANCE" in inspect.getsource(sub_lattice_offset)
 
 
 def test_interval_axis_clip_is_whole_or_nothing() -> None:
@@ -292,6 +364,51 @@ def test_ground_passes_pins_and_takes_the_clipped_lattice() -> None:
     assert grounded.axis(AxisName.T) == RegularAxis(
         AxisName.T, noon + timedelta(hours=1), timedelta(hours=1), 2, True
     )
+
+
+def test_ground_answers_an_open_member_with_the_answering_axis_whole() -> None:
+    """`ANY` — the producer answers at its own native cells, however far they reach (T and Z)."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: SnappedAxis(AxisName.Z),
+            AxisName.T: SnappedAxis(AxisName.T),
+        }
+    )
+    assert footprint_domain(STOPPED).matches(request) is True  # open members admit at admission
+    timeline = RegularAxis(AxisName.T, noon, timedelta(hours=1), 6, True)
+    delivered = _delivered(timeline)
+
+    grounded = ground(request, delivered)
+    assert isinstance(grounded, GridDomain)
+    assert grounded.axis(AxisName.T) is timeline
+    assert grounded.axis(AxisName.Z) is delivered.axis(AxisName.Z)
+    assert grounded.axis(AxisName.X) is request.axis(AxisName.X)
+
+
+def test_ground_declines_an_open_member_against_a_declared_span() -> None:
+    """Cells are still ground's requirement: `ANY` against a span declines like a bounded member."""
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    request = SelectionDomain(
+        axes={
+            AxisName.X: RegularAxis(AxisName.X, 13.41, 1.0, 1, False),
+            AxisName.Y: RegularAxis(AxisName.Y, 52.52, 1.0, 1, False),
+            AxisName.Z: VantageAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: SnappedAxis(AxisName.T),
+        }
+    )
+    span_t = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 10.0)),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(noon, noon + timedelta(days=7))),
+        }
+    )
+    with pytest.raises(ValueError, match="an open t needs cells"):
+        ground(request, span_t)
 
 
 def test_ground_declines_when_nothing_survives_the_clip() -> None:
