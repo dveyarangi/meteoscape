@@ -28,15 +28,18 @@ from ..manifold.coverage import CoverageRecord
 from ..manifold.data import ParameterData
 from ..manifold.domain import (
     Domain,
-    Separable,
-    as_separable,
     contains_extents,
     first_incomparable,
     split_extents,
 )
 from ..manifold.provenance import PerParameter, Provenance
 from ..parameters import ParameterDef, ParameterId
-from .composition import CalculatorRegistry, CompositionError, SourceRegistry
+from .composition import (
+    CalculatorRegistry,
+    CompositionError,
+    SourceRegistry,
+    require_separable,
+)
 
 
 @dataclass(frozen=True)
@@ -92,7 +95,13 @@ class PriorityReconciler:
         if len(candidates) == 1:
             return candidates[0][1]
 
-        checked = [(key, _require_separable(parameter, key, domain)) for key, domain in candidates]
+        checked = [
+            (
+                key,
+                require_separable(domain, rule=f"reach composition for {parameter}", declarer=key),
+            )
+            for key, domain in candidates
+        ]
         for index, (_key, domain) in enumerate(checked):
             if all(contains_extents(domain, other) for _k, other in checked):
                 return candidates[index][1]
@@ -209,22 +218,6 @@ class Arbiter:
         """The eagerly-composed `UnionCapability`, one stored object across accesses. Typed to the
         algebra (`Capability`), not the composite it happens to construct."""
         return self._capability
-
-
-def _require_separable(parameter: ParameterId, key: ProducerKey, domain: Domain) -> Separable:
-    """Separability is dominance's precondition; raise here with the operator-facing message.
-
-    `as_separable` returns `None` rather than raising (`manifold/` cannot import `CompositionError`),
-    so this caller supplies the text — naming the parameter and the producer that declared geometry the
-    `grid` rule cannot compare (ADR-0007, concern #12).
-    """
-    separable = as_separable(domain)
-    if separable is None:
-        raise CompositionError(
-            f"reach composition for {parameter} requires separable geometry; {key} declares "
-            f"{type(domain).__name__}, which exposes no axes"
-        )
-    return separable
 
 
 def _reaches(

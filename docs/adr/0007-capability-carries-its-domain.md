@@ -91,6 +91,10 @@ deliberate: the alternative leaves a future `tile` reconciler silently composing
 narrating a wrong envelope with **no signal**. Silent incorrectness is worse than an interface that may
 need reshaping.
 
+The Calculator's fold is its node's for the same reason: `Calculator` composes contained-in-all over
+its inputs' reaches at construction and hands the result to the `DerivedCapability` that carries it —
+capability forms carry composed reaches; the rules live with the composing nodes.
+
 This **narrows [#33](../concerns.md#33-reconciler-owns-domain-composition)** rather than killing
 it: two independently-configured slots that had to be paired coherently become one member that moves
 with its reconciler.
@@ -175,12 +179,11 @@ without it a future reader will re-propose the fold.
 ## Consequences
 
 - **A misconfigured profile fails at build** with a `CompositionError` naming the conflicting producers
-  and the axis. Composition is eager at capability construction, so this is structural rather than a
-  separate validation pass. `CompositionError` itself lives in `errors.py` as a Tier-0 leaf (not in
-  `nodes/`): each composing layer must be the **sole author** of its own error — the reconciler naming
-  the parameter, `DerivedCapability` in `manifold/` naming its calculator — and a `nodes/`-owned error
-  would force `manifold/` to raise something generic for `Calculator` to translate, splitting one error
-  across two authors.
+  and the axis. Composition is eager at construction, so this is structural rather than a separate
+  validation pass. Each composition rule is the **sole author** of its own error — the reconciler names
+  the parameter and producers, the `Calculator` node its calculator and inputs — so no rule raises
+  something generic for another layer to translate. `CompositionError` itself lives in `errors.py` as
+  a Tier-0 leaf.
 - **`Provider.footprints` is removed.** It existed only so a build-time reader could see geometry the
   `Capability` interpreted privately; the capability now publishes it.
 - **The standalone reach resolver and its rule are removed**, and one of

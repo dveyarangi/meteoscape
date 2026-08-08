@@ -7,31 +7,24 @@ Manifold's Reach). `parameters` is the sole membership authority: `p in paramete
 answers (ADR-0007).
 
 The forms below mirror the Manifold algebra (a leaf declares, a composite derives), so capability
-composes bottom-up like `project` - unioning parameter sets, AND/OR-ing the predicate, and folding the
-per-parameter reach (dominance up a union, contained-in-all through a Calculator). A composed Reach is
-always some producer's own `Domain`, never a synthesised one, so a clock-anchored `RollingAxis` stays
-live. The composition and matching rules are in ADR-0004 / ADR-0007; the resampler-reachability step
-inside `serves` and *probed* real availability stay deferred seams.
+composes bottom-up like `project` - unioning parameter sets, AND/OR-ing the predicate, and carrying
+the per-parameter reach its composing node folded (the reconciler's dominance up a union, the
+`Calculator` node's contained-in-all). A composed Reach is always some producer's own `Domain`, never
+a synthesised one, so a clock-anchored `RollingAxis` stays live; the rules and their
+`CompositionError`s live with the composing nodes, these forms carry results. The composition and
+matching rules are in ADR-0004 / ADR-0007; the resampler-reachability step inside `serves` and
+*probed* real availability stay deferred seams.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from ..errors import CompositionError
-from ..identity import CalculatorKey, ProducerKey
+from ..identity import ProducerKey
 from ..parameters import ParameterDef, ParameterId
-from .domain import (
-    Domain,
-    EnumerableDomain,
-    Separable,
-    as_separable,
-    contains_extents,
-    first_incomparable,
-    split_extents,
-)
+from .domain import Domain, EnumerableDomain
 
 
 @runtime_checkable
@@ -58,8 +51,13 @@ class GranularCapability:
     """An own-geometry capability with one independently shaped `Domain` per parameter.
 
     Providers use it for declared footprints; multi-domain carriers and retentive stores use it for
-    held records. Reaches stay typed as general `Domain`s because only `EnumerableCapability`
-    guarantees one shared enumerable grid (ADR-0007).
+    held records. Granular **in parameter only** - ADR-0006's unit granularity is finer (parameter
+    *and* cells); the shared word names the same co-domained-vs-per-parameter axis, not the same
+    partition.
+
+    Reaches stay typed as general `Domain`s because no caller consumes a narrower type: a carrier's
+    happen to be enumerable, but only `EnumerableCapability` *states* enumerability, where its own
+    single grid backs the claim (ADR-0007).
     """
 
     reaches: Mapping[ParameterId, tuple[ParameterDef, Domain]]
@@ -93,7 +91,8 @@ class EnumerableCapability:
         return parameter in self.parameters and self.domain.matches(requested)
 
     def reach(self, parameter: ParameterId) -> EnumerableDomain:
-        # This form's shared grid lets the return type preserve enumerability for callers.
+        # One shared grid, so the return type can state enumerability - a claim about this form,
+        # not a narrowing any caller consumes today (ADR-0007).
         if parameter not in self.parameters:
             raise KeyError(f"{parameter!r} is not served")
         return self.domain
@@ -140,25 +139,18 @@ class UnionCapability:
 
 @dataclass(frozen=True)
 class DerivedCapability:
-    """A `Calculator`'s induced capability: serves each co-produced parameter iff *all* inputs are
-    servable through the scoped resolver (its input Arbiter's capability).
+    """A `Calculator`'s capability: serves each co-produced parameter iff *all* inputs are servable
+    through the scoped resolver (its input Arbiter's capability).
 
-    Every co-produced parameter shares one reach - the domain contained in all inputs' reaches, since a
-    Calculator serves exactly where every input does. It is composed **eagerly at construction**, so a
-    profile whose inputs shear (nest neither way) fails the build here, not at request.
-
-    Carries its `CalculatorKey` because its fold runs in `__post_init__` and must identify the
-    calculator in composition failures (ADR-0007).
+    Every co-produced parameter shares one reach - `domain`, composed by the `Calculator` node
+    (contained-in-all over its inputs' reaches, eager at construction). This form carries the
+    composed result; the fold and its `CompositionError` are the node's (ADR-0007).
     """
 
-    key: CalculatorKey
     parameters: Mapping[ParameterId, ParameterDef]
     inputs: frozenset[ParameterId]
     upstream: Capability
-    _reach: Domain = field(init=False, repr=False, compare=False)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "_reach", _contained_in_all(self.key, self.inputs, self.upstream))
+    domain: Domain
 
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
         return parameter in self.parameters and all(
@@ -168,50 +160,4 @@ class DerivedCapability:
     def reach(self, parameter: ParameterId) -> Domain:
         if parameter not in self.parameters:
             raise KeyError(f"{parameter!r} is not served")
-        return self._reach
-
-
-def _contained_in_all(
-    calculator: CalculatorKey, inputs: frozenset[ParameterId], upstream: Capability
-) -> Domain:
-    """The input reach contained in every other - a Calculator serves exactly where all inputs do.
-
-    The reconciler's dominance fold inverted (the minimum, not the maximum); it returns an input's own
-    `Domain`, never a synthesized one, so a `RollingAxis` stays live. Sheared inputs (nesting neither
-    way) or a non-separable multi-input set raise a build-time `CompositionError` naming the calculator
-    and its inputs - the sole author of that message (ADR-0007).
-    """
-    candidates = [(i, upstream.reach(i)) for i in inputs]
-    if not candidates:
-        raise CompositionError(f"calculator {calculator} has no inputs to resolve reach from")
-    if len(candidates) == 1:
-        return candidates[0][1]
-
-    checked = [(key, _require_separable(calculator, key, domain)) for key, domain in candidates]
-    for index, (_key, domain) in enumerate(checked):
-        if all(contains_extents(other, domain) for _k, other in checked):
-            return candidates[index][1]
-
-    witness = first_incomparable(checked)
-    # Containment is transitive: no minimum ⇒ some pair nests neither way.
-    assert witness is not None
-    (left_key, left), (right_key, right) = witness
-    raise CompositionError(
-        f"sheared calculator input reaches for {calculator}: "
-        f"{split_extents(left_key, left, right_key, right)}; inputs {_names(candidates)}"
-    )
-
-
-def _require_separable(calculator: CalculatorKey, key: ParameterId, domain: Domain) -> Separable:
-    """Separability is the precondition of comparing per axis; author the message with the input."""
-    separable = as_separable(domain)
-    if separable is None:
-        raise CompositionError(
-            f"calculator {calculator} reach requires separable geometry; input {key} declares "
-            f"{type(domain).__name__}, which exposes no axes"
-        )
-    return separable
-
-
-def _names(candidates: list[tuple[ParameterId, Domain]]) -> list[str]:
-    return [str(key) for key, _ in candidates]
+        return self.domain

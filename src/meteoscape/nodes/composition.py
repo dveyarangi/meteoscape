@@ -20,9 +20,10 @@ from dataclasses import dataclass
 
 from ..clock import Clock
 from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
-from ..errors import CompositionError  # re-exported from `errors` (also raised in `manifold/`)
+from ..errors import CompositionError  # re-exported from `errors`, the Tier-0 leaf that owns it
 from ..identity import CalculatorKey, SourceKey
 from ..manifold.capability import EnumerableCapability
+from ..manifold.domain import Domain, Separable, as_separable
 from ..parameters import ParameterDef, ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
@@ -220,3 +221,18 @@ def validate_calculators(profile: ProfileDef) -> None:
 
     for key in calculators:
         ensure(key)
+
+
+def require_separable(domain: Domain, *, rule: str, declarer: object) -> Separable:
+    """Narrow a composition rule's operand to `Separable`, or raise the build-time error.
+
+    Separability is the precondition of comparing per axis (ADR-0007); the caller names itself and
+    the party that declared the geometry, this authors the shared sentence.
+    """
+    separable = as_separable(domain)
+    if separable is None:
+        raise CompositionError(
+            f"{rule} requires separable geometry; {declarer} declares "
+            f"{type(domain).__name__}, which exposes no axes"
+        )
+    return separable

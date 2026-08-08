@@ -490,8 +490,8 @@ field). Provider `exact` and native-coarse-as-distinct-origin remain with
 
 **Related limitation, recorded 2026-08-02:** a leaf cannot serve, in one call, two parameters whose
 declared reaches **differ on a snapped axis** — `agreed_geometry` refuses it, because one `project`
-answers with one geometry (ADR-0001) and the licence for a multi-domain answer is 006's `ANY`, which
-does not exist yet. A vendor offering 16 days of temperature but 5 of precipitation therefore declines
+answers with one geometry on every bounded axis (ADR-0001) and the licence for a multi-domain answer
+is 006's `ANY`. A vendor offering 16 days of temperature but 5 of precipitation therefore declines
 a mixed snapped request with `capability-mismatch`. Correct under closure, and it dissolves at
 [006](./tickets/01-0115-retentive-store-freshness.md); it is the per-parameter cousin of this concern's
 per-offering question → [edge/provider.md](./edge/provider.md).
@@ -1152,11 +1152,11 @@ contract by pushing identity and prose into geometry helpers:
 - `split_extents(left_key: object, …) -> str` and `first_incomparable(Sequence[tuple[object,
   Separable]])` accept opaque keys and render prose inside `manifold/domain.py`. They also compute the
   incomparable pair twice: once to find it and again to describe its axes.
-- Parallel `_require_separable` and `_names` helpers repeat the same structure in
-  `nodes/arbiter.py` and `manifold/capability.py`, differing mainly in which identity the message names.
-- `UnionCapability.members` retains `ProducerKey`s that nothing reads. Arbiter composition authors any
-  failure before constructing the capability; only `DerivedCapability` needs identity internally
-  because it performs its fold in `__post_init__`.
+- The shared `require_separable` (`nodes/composition.py`) authors one sentence skeleton with
+  caller-supplied identities; parallel `_names` one-liners remain in `nodes/arbiter.py` and
+  `nodes/calculator.py`.
+- `UnionCapability.members` retains `ProducerKey`s that nothing reads. Both composition folds author
+  any failure before constructing their capability, so neither carrier needs identity.
 
 **Why this waits.** Neither failure path is reachable in a current profile. Incomparability needs a
 regional footprint that shears against a global one; current providers are global, and the expected

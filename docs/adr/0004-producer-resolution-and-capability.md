@@ -53,7 +53,10 @@ same shape. The abstraction these are shapes of is the
 
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
   - **`GranularCapability`** — own geometry per parameter, used by Provider declarations and
-    materialized multi-domain holders.
+    materialized multi-domain holders. *Granular* is **per parameter only**:
+    [ADR-0006](./0006-materialization-granularity-and-store-shape.md)'s unit granularity is finer
+    (parameter *and* cells), so the shared word names the same co-domained-vs-per-parameter axis,
+    not the same partition.
     → [ADR-0007: every capability form has a domain](./0007-capability-carries-its-domain.md#every-form-has-a-domain).
   - **`EnumerableCapability`** — the materialized, co-domained leaf a `Coverage` exposes; its one
     enumerable `domain` **is** the Coverage's positional grid, so the Coverage's `domain` derives from it

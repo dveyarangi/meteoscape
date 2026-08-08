@@ -8,8 +8,7 @@ from typing import assert_type
 import pytest
 
 from fakes import STOPPED, footprint_domain, point_timeline_domain
-from meteoscape.errors import CompositionError
-from meteoscape.identity import CalculatorKey, SourceKey
+from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef
 from meteoscape.manifold.capability import (
     DerivedCapability,
@@ -19,12 +18,9 @@ from meteoscape.manifold.capability import (
 )
 from meteoscape.manifold.domain import (
     AxisName,
-    ContinuousAxis,
     Domain,
     EnumerableDomain,
-    FootprintDomain,
     GridDomain,
-    Interval,
     RegularAxis,
 )
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
@@ -83,7 +79,6 @@ def test_capability_family_serves() -> None:
     assert PRECIPITATION in union.parameters
 
     derived = DerivedCapability(
-        key=CalculatorKey("wind", "default"),
         parameters={
             WIND_SPEED: table.get(WIND_SPEED),
             WIND_DIRECTION: table.get(WIND_DIRECTION),
@@ -95,6 +90,7 @@ def test_capability_family_serves() -> None:
                 WIND_V: (table.get(WIND_V), footprint),
             }
         ),
+        domain=footprint,
     )
     assert derived.serves(WIND_SPEED, inside) is True
     assert derived.serves(WIND_DIRECTION, inside) is True
@@ -159,62 +155,23 @@ def test_granular_capability_reach_returns_a_lone_non_separable_unchanged() -> N
     assert leaf.reach(AIR_TEMPERATURE) is curvilinear
 
 
-# ---- DerivedCapability.reach: contained-in-all over inputs, eager at construction (ADR-0007) -----
-
-_T0 = datetime(2026, 7, 11, 12, tzinfo=UTC)
-_GLOBAL_X = Interval(-180.0, 180.0)
+# ---- DerivedCapability: a carrier — reach is the domain its Calculator composed (ADR-0007) ------
 
 
-def _fp(*, x: Interval[float] = _GLOBAL_X, days: int) -> FootprintDomain:
-    return FootprintDomain(
-        axes={
-            AxisName.X: ContinuousAxis(AxisName.X, x),
-            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
-            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
-            AxisName.T: ContinuousAxis(AxisName.T, Interval(_T0, _T0 + timedelta(days=days))),
-        }
-    )
-
-
-def _wind_upstream(u: FootprintDomain, v: FootprintDomain) -> GranularCapability:
+def test_derived_capability_carries_the_composed_domain() -> None:
     table = StaticParameterTable.core()
-    return GranularCapability(
-        reaches={WIND_U: (table.get(WIND_U), u), WIND_V: (table.get(WIND_V), v)}
-    )
-
-
-def _derived(upstream: GranularCapability) -> DerivedCapability:
-    return DerivedCapability(
-        key=CalculatorKey("wind", "default"),
-        parameters={WIND_SPEED: StaticParameterTable.core().get(WIND_SPEED)},
+    footprint = footprint_domain(STOPPED, cadence=_cadence())
+    derived = DerivedCapability(
+        parameters={WIND_SPEED: table.get(WIND_SPEED)},
         inputs=frozenset({WIND_U, WIND_V}),
-        upstream=upstream,
+        upstream=GranularCapability(
+            reaches={
+                WIND_U: (table.get(WIND_U), footprint),
+                WIND_V: (table.get(WIND_V), footprint),
+            }
+        ),
+        domain=footprint,
     )
-
-
-def test_derived_capability_reach_is_the_input_contained_in_all() -> None:
-    small = _fp(days=10)
-    large = _fp(days=16)
-    derived = _derived(_wind_upstream(small, large))
-    assert derived.reach(WIND_SPEED) is small
-
-
-def test_derived_capability_reach_equal_extent_tie_returns_an_input() -> None:
-    """v1's derived wind hits this on every parameter: `wind_u` / `wind_v` are distinct objects with
-    equal extents, so any may be returned (ADR-0007)."""
-    u = _fp(days=10)
-    v = _fp(days=10)
-    assert u is not v
-    reach = _derived(_wind_upstream(u, v)).reach(WIND_SPEED)
-    assert reach is u or reach is v
-
-
-def test_derived_capability_sheared_inputs_raise_naming_the_calculator_and_inputs() -> None:
-    globe = _fp(x=Interval(-180.0, 180.0), days=10)
-    europe = _fp(x=Interval(-10.0, 40.0), days=16)
-    with pytest.raises(CompositionError) as exc:
-        _derived(_wind_upstream(globe, europe))
-    message = str(exc.value)
-    assert "shear" in message
-    assert "wind:default" in message  # Identifies the calculator an operator must fix.
-    assert "wind_u" in message and "wind_v" in message
+    assert derived.reach(WIND_SPEED) is footprint
+    with pytest.raises(KeyError):
+        derived.reach(AIR_TEMPERATURE)
