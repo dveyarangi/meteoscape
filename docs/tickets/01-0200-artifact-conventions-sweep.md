@@ -48,7 +48,7 @@ transient-with-`done/` / append-only) are the other axes.
    Two findings from the align that this ticket's remaining scope should carry:
    - **The letter suffix meant two different things.** `002b`/`002c` were descendants of a *live*
      parent; `003a`/`003b` were fragments of a *dissolved* one. Same syntax, different relation.
-   - **A split does not imply a child.** Both real splits in this project (Visual Crossing out of
+   - **A split does not imply a child.** Both real splits in this project (the second provider out of
      second-provider fallback, snapped request mode out of request shaping) produced a
      *prerequisite* of the parent — which must sort *before* it, so it cannot nest. Nesting
      expresses "extends or fixes an already-positioned parent", not "carved out of work that

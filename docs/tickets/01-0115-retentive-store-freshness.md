@@ -3,7 +3,7 @@
 **Legacy id:** 006
 
 - **Status:** Ready — align completed 2026-08-08; everything below is current state. Moved ahead of
-  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) on 2026-08-05 (003c's
+  [011 — TWC provider](./01-0120-twc-provider.md) on 2026-08-05 (003c's
   re-stage align): retention is the *mechanism* that collapses the mixed-request double fetch,
   whose divergence [003c](./done/01-0110-request-shaping.md) accepts for exactly one ticket on the
   strength of this ordering.
@@ -69,7 +69,7 @@ bounded and open are one member kind differing only in bounds. The temporal narr
 when bounds are present (a bounded spatial snapped member stays a type error; a boundless member is
 axis-generic and sits on Z). One-sided open bounds are **unrepresentable by construction**
 (`Interval` requires both edges) until the "from X onward" form's own author
-([011](./01-0120-visual-crossing-provider.md) / [004](./01-0150-second-provider-fallback.md))
+([011](./01-0120-twc-provider.md) / [004](./01-0150-second-provider-fallback.md))
 changes the field type. An open member has no `extent` (clear error; no live caller reads a request
 member's extent) and `matches` everything. The MCP edge **keeps its omitted-`end` flip** — that
 flip *is* the fold of per-parameter reach ends into one shared answer window

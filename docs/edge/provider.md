@@ -85,7 +85,7 @@ is one no existing shape covers, a wrapper too.
   `test_secret_ref_reaches_build` / `test_dangling_secret_ref_raises`; Open-Meteo's `build` already
   receives `secret_value` and discards it as keyless. What no **shipped manifest** yet does is
   *declare* a slot (`secret=None` today), which
-  [011](../tickets/01-0120-visual-crossing-provider.md) is the first to change.
+  [011](../tickets/01-0120-twc-provider.md) is the first to change.
   `expand` — one manifest yielding several Providers — is likewise **unexercised**
   (`test_expand_name_none_not_implemented`); under the split it raises an unanswered question, several
   Probes behind one wrapper or several wrappers, which interacts with
@@ -190,7 +190,7 @@ bare pass-through, so today a leaf receives the **edge's** request verbatim.
 with a lattice-bearing axis wherever it can resolve a snapped member — and the request is resolved
 against that declaration. Which shapes a leaf serves is therefore a **consequence of what it declares**,
 never a hand-written gate; that is what lets a second Provider
-([011](../tickets/01-0120-visual-crossing-provider.md)) be a declaration rather than a re-derivation of the
+([011](../tickets/01-0120-twc-provider.md)) be a declaration rather than a re-derivation of the
 mode.
 
 ### Resolution — how a request becomes an answer geometry
@@ -566,11 +566,11 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
 
 ## Roadmap
 
-1. **A second Provider** — the first real test of *declaration, not gate*: **Visual Crossing** ships a
-   `TimelineProbe`, not a leaf (its Timeline API is the same point-plus-series shape, so no wrapper),
+1. **A second Provider** — the first real test of *declaration, not gate*: **TWC** ships a
+   `TimelineProbe`, not a leaf (its hourly forecast API is the same point-plus-series shape, so no wrapper),
    inheriting snapped resolution by declaring its own geometry. Also the first shipped manifest to
    declare a `SecretSlot` and, likely, the first exercise of the non-self-reporting units path —
-   [011](../tickets/01-0120-visual-crossing-provider.md). The **fallback behaviour** it enables is a
+   [011](../tickets/01-0120-twc-provider.md). The **fallback behaviour** it enables is a
    separate ticket, [004](../tickets/01-0150-second-provider-fallback.md), and lands at the
    [MCP edge](./mcp.md).
 2. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and

@@ -5,7 +5,7 @@
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
 - **Trigger:** First real multi-vendor unit spread, expected in
-  [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed 2026-08-02: the unit
+  [011 — TWC provider](./01-0120-twc-provider.md) (repointed 2026-08-02: the unit
   spread arrives with the *vendor*, not with 004's fallback behaviour)
 - **Outcome:** Shared verified native-to-canonical conversion edges.
 
@@ -25,8 +25,8 @@ quality signal, not silent).
 wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./done/01-0030-core-5-parameters.md). This ticket
 is only the shared catalogue those inline factors graduate into.
 
-**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely Visual Crossing at
-[ticket 011](./01-0120-visual-crossing-provider.md) (metric tier serves km/h wind). Build then, against
+**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely TWC at
+[ticket 011](./01-0120-twc-provider.md) (metric units serve km/h wind). Build then, against
 the real case.
 
 ## Acceptance criteria

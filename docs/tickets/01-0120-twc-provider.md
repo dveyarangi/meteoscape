@@ -1,4 +1,4 @@
-# Visual Crossing provider
+# TWC provider
 
 **Legacy id:** 011
 
@@ -10,8 +10,17 @@
 - **Blocks:** [004 — Second-provider fallback](./01-0150-second-provider-fallback.md) (needs a real second
   producer to fall back *to*), [008 — Config, secrets, degradation](./01-0180-config-secrets-degrade.md)
   (needs a shipped manifest that actually declares a secret)
-- **Outcome:** Visual Crossing shipped as the second producer — a `TimelineProbe`, a manifest declaring
-  the first real `SecretSlot`, its live parity check — and TWC gone from the codebase.
+- **Outcome:** TWC shipped as the second producer — a `TimelineProbe`, a manifest declaring
+  the first real `SecretSlot`, its live parity check.
+
+> **Provider identity history.** Planned as TWC from the start; swapped to Visual Crossing at the
+> 2026-08-02 align because TWC access was unverified and any keyed provider satisfies the secrets
+> seam; **reverted to TWC at the 2026-08-08 align** — TWC access is now verified in production use,
+> dissolving the swap's premise, and TWC is the vendor the first real deployment runs, so its parity
+> evidence matters. The code ([`config.py`](../../src/meteoscape/config.py)) kept the `twc` names
+> throughout — the Visual Crossing sweep never started, so reverting deletes work rather than redoing
+> it. Visual Crossing remains a future-plugin candidate (generous free tier — the reproducible choice
+> for outside adopters) in [product-roadmap](../product-roadmap.md).
 
 ## Parent PRD
 
@@ -32,8 +41,8 @@ this ticket is where we find out.
 
 ## What to build
 
-**1. The Probe.** `VisualCrossingProbe` implementing `TimelineProbe` — one query builder, one envelope
-parse, a tap table, and a `CadenceDef`. Visual Crossing's Timeline API is point-plus-series, the **same
+**1. The Probe.** `TwcProbe` implementing `TimelineProbe` — one query builder, one envelope
+parse, a tap table, and a `CadenceDef`. TWC's hourly forecast endpoint is point-plus-series, the **same
 shape as Open-Meteo**, so this adds **no wrapper**. It must contain no algebra: no `ground`, no
 `agreed_geometry`, no crop, no provenance stamping, no `Clock`, no `Coverage` construction — those are
 `TimelineProvider`'s, and reaching for them is the [edge record](../edge/provider.md)'s
@@ -42,19 +51,12 @@ import-direction violation.
 **2. Manifest and catalogue registration.** `ProviderManifest` with `secret=SecretSlot(...)` — the
 first shipped manifest to declare one — registered in `PROVIDER_CATALOG`.
 
-**3. The TWC → Visual Crossing sweep.** TWC is baked into code and tests, not just prose:
-
-- [`config.py`](../../src/meteoscape/config.py) — the `twc_api_key` field, the
-  `OfferingDef(impl="twc", …, secret_ref="twc_api_key")` in `offerings()`, the `secrets()` mapping, and
-  the module docstring ("Open-Meteo primary, TWC fallback").
-- `tests/deterministic/test_config.py` — `test_twc_key_adds_fallback_offering` and
-  `test_open_meteo_and_twc_together` pin those exact names.
-- Prose was swept 2026-08-02 (v1-requirements, 008, 010, delivery status, 004). **Verify, don't
-  assume:** re-grep `docs/` and `src/`; architecture, module-layout, glossary, concerns, and the edge
-  records carried no TWC reference at the sweep and should still carry none. `docs/sessions/` and
-  `docs/tickets/done/` stay as written — they are history. TWC remains a legitimate *future* plugin in
-  [product-roadmap](../product-roadmap.md); this removes it as the *planned second provider*, not as a
-  candidate.
+**3. Code is already named for TWC.** [`config.py`](../../src/meteoscape/config.py) carries
+`twc_api_key`, the `OfferingDef(impl="twc", …, secret_ref="twc_api_key")`, and the "Open-Meteo
+primary, TWC fallback" docstring, with `test_config.py` pinning those names — all stay. Prose was
+swept back to TWC at the 2026-08-08 align; **verify, don't assume:** re-grep `docs/` for stray
+`Visual Crossing` references outside `sessions/`, `tickets/done/`, `rfc/done/`, and
+product-roadmap's plugin menu (history stays as written).
 
 **4. Closes a live trap.** `impl="twc"` is not in `PROVIDER_CATALOG`, so an operator setting the key
 today emits an offering the binder cannot resolve and gets a boot `CompositionError: unknown impl` —
@@ -62,11 +64,12 @@ not a fallback provider, and not graceful degrade. Registering a real impl behin
 a test should pin key-present composition succeeding.
 
 **5. Its parity check** — reader, live test, deterministic `parse_reference` coverage, per the
-[edge record](../edge/provider.md)'s contribution bundle.
+[edge record](../edge/provider.md)'s contribution bundle. The live check runs under an
+operator-supplied key; no key or evidence artifact may expose the secret.
 
 ## Acceptance criteria
 
-- [ ] `VisualCrossingProbe` serves the canonical parameters it declares, exercised through
+- [ ] `TwcProbe` serves the canonical parameters it declares, exercised through
       `TimelineProvider` with a **mocked transport** in the deterministic suite.
 - [ ] **The Probe adds no wrapper and no algebra.** Snapped resolution, unit conversion, `decode`, Z
       grouping, and the crop all arrive by declaration. If any must be written here, m4's abstraction
@@ -80,16 +83,16 @@ a test should pin key-present composition succeeding.
 - [ ] **Key-present composition succeeds** — the `unknown impl` trap is closed and pinned by a test.
 - [ ] Key-absent still degrades gracefully: the server starts and serves on Open-Meteo alone
       ([008](./01-0180-config-secrets-degrade.md) owns the wider config story).
-- [ ] **Unit self-reporting is declared honestly.** Visual Crossing takes a `unitGroup` request
-      parameter; confirm whether its payload reports per-field units. If it does not, the Probe
+- [ ] **Unit self-reporting is declared honestly.** TWC selects units via a request parameter
+      (`units`); confirm whether its payload reports per-field units. If it does not, the Probe
       declares that it does **not** self-report and the record's consequence applies — canonical units
       become **parity-verified only** for this provider
       ([#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)). Echoing the declared units
       back would be a fabricated confirmation.
-- [ ] No `TWC` / `twc` identifier remains in `src/` or `tests/`; `docs/` carries it only in
-      `sessions/`, `tickets/done/`, and product-roadmap's future-plugin menu.
-- [ ] Visual Crossing ships and passes its live parity check
-      (`uv run pytest tests/parity -k visual_crossing`), with the reference reader importing no
+- [ ] No `Visual Crossing` reference remains in `src/`, `tests/`, or live `docs/` (history and the
+      product-roadmap plugin menu excepted).
+- [ ] TWC ships and passes its live parity check
+      (`uv run pytest tests/parity -k twc`), with the reference reader importing no
       Meteoscape code (existing guard covers it with no registration).
 
 ## User stories addressed

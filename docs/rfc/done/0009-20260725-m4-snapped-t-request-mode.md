@@ -167,7 +167,7 @@ forms.
    `ground` keeps what the answering axis clips to when that
    has cells and declines when it does not (decisions 6–7), so *"this leaf resolves a snapped T and
    nothing else"* is a **consequence of the declaration**, not a hand-written gate. No shape-inspecting
-   helper exists, and [011](../../tickets/01-0120-visual-crossing-provider.md)'s second provider inherits
+   helper exists, and [011](../../tickets/01-0120-twc-provider.md)'s second provider inherits
    the behaviour by declaring its own geometry.
    Two things this drops on purpose: the *non-snapped-T-inside-a-`SelectionDomain`* rejection (it was
    never unservable — an all-enumerable `SelectionDomain` is an exact request wearing the
@@ -589,7 +589,7 @@ which is the stage's real proof.
 
 `agreed_geometry` is **not** in this file: it lives in `manifold/domain.py` beside `ground`
 (decision 10). The law it enforces is not provider-specific — it binds any producer folding several
-native records into one answer, [011](../../tickets/01-0120-visual-crossing-provider.md)'s second provider
+native records into one answer, [011](../../tickets/01-0120-twc-provider.md)'s second provider
 included — and [006](../../tickets/01-0115-retentive-store-freshness.md) *lifts* it on `ANY` axes, so the law
 and its exception belong to one module. The leaf imports it and translates its `ValueError`.
 

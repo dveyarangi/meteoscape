@@ -3,7 +3,7 @@
 **Legacy id:** 008
 
 - **Status:** Partial
-- **Depends on:** [011 — Visual Crossing provider](./01-0120-visual-crossing-provider.md) (repointed
+- **Depends on:** [011 — TWC provider](./01-0120-twc-provider.md) (repointed
   2026-08-02: what this ticket needs is a shipped manifest that *declares* a secret, which 011 lands —
   not 004's fallback behaviour)
 - **Outcome:** Complete key-present/key-absent provider construction behavior.
@@ -16,12 +16,12 @@
 
 Introduce the single typed config (Pydantic Settings) as pure data and wire it through
 `SourceBinder`. `Settings` projects a `ProfileConfig` carrying: the enabled **`OfferingDef`s** (explicit
-offering names), provider secrets (the Visual Crossing API key, via `secret_ref` into the injected secrets map),
+offering names), provider secrets (the TWC API key, via `secret_ref` into the injected secrets map),
 per-`SourceKey` `Arbiter` priority, and cache / grid config (store spatial step, hourly time step,
 retention interval). Secrets are **injected at construction**, never read from globals.
 `SourceBinder.build(defs, secrets, clock, parameters)` instantiates only the enabled/configured
-providers into the `SourceRegistry` the `Weaver` consumes via `ProfileDef`. A **missing Visual Crossing key →
-graceful degrade**: `Settings` never emits the Visual Crossing `OfferingDef`, so the server starts and serves with
+providers into the `SourceRegistry` the `Weaver` consumes via `ProfileDef`. A **missing TWC key →
+graceful degrade**: `Settings` never emits the TWC `OfferingDef`, so the server starts and serves with
 Open-Meteo alone. Degrade is enablement policy owned by `Settings`; the **binder is strict** — a def
 that reaches it either binds or startup fails (`CompositionError`).
 
@@ -41,8 +41,8 @@ rate-limit policy stays the **deferred null Gateway seam**
 
 - [ ] One typed config object holds the enabled `OfferingDef`s, secrets, per-`SourceKey` `Arbiter`
       priority, and cache / grid config.
-- [ ] The Visual Crossing key is injected via config at construction; no secret is read from globals or hardcoded.
-- [ ] With the Visual Crossing key absent, the server starts and serves on Open-Meteo alone (graceful degrade, no
+- [ ] The TWC key is injected via config at construction; no secret is read from globals or hardcoded.
+- [ ] With the TWC key absent, the server starts and serves on Open-Meteo alone (graceful degrade, no
       fail-fast).
 - [ ] `SourceBinder` instantiates only configured providers into the `SourceRegistry`; `server.py`
       stays a thin composition root (catalogues + `Settings` → `ProfileConfig` → binders →
