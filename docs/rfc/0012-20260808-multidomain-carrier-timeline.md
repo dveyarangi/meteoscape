@@ -64,7 +64,11 @@ beside `CoverageRecord`), and a timeline `project` that answers **open asks** wi
            # (store.assimilate reads .records; closure callers fold) need nothing else.
        @property
        def capability(self) -> Capability:
-           # per-parameter reach read from the owning record (ADR-0007 shape), parameters = union.
+           # FootprintCapability reused — no new capability kind:
+           # footprints = {pid: (record.capability.parameters[pid], record.domain)
+           #               for record in records for pid in record.ranges}
+           # (its Domain slot is general, so an enumerable record domain qualifies; reach(pid)
+           # answers the owning record's domain, parameters is the disjoint union.)
    ```
 
    **Invariant (constructor-checked): the records' parameter sets are disjoint** — a parameter
@@ -72,7 +76,25 @@ beside `CoverageRecord`), and a timeline `project` that answers **open asks** wi
    Z). "The owning record" and the capability union are only well-defined because of it; a
    violating group is a construction error, not a served answer.
 
-   `_assemble` moves here (with its tests); `timeline.py` keeps no fold.
+   `_assemble` moves here (with its tests); `timeline.py` keeps no fold. Three pins on the move,
+   found by reading what `_as_delivered`/`_cropped` actually do:
+
+   - **One fold home, both modes**: bounded and open asks alike end in
+     `CoverageGroup(records).project(Selection(domain=grounded_answer, parameters=...))` — the
+     bounded path's fold-then-crop (`_as_delivered` + `_cropped`, equality short-circuit included)
+     becomes this `project`'s implementation, and "eager at fetch" dies as a *call-ordering* fact.
+   - **Fault reclassification stays in the wrapper** (the edge record already assigns it the
+     `ValueError → CapabilityMismatch` role; this extends the same principle): `CoverageGroup.project`
+     declines Manifold-conventionally — an unserved parameter is `CapabilityMismatch`, an ask past
+     the held records propagates `Shortfall` — and the *timeline wrapper* keeps today's leaf
+     classifications at its boundary: answer-covers-request → `RuntimeFailure` "assemble missing
+     parameter(s)"; `Shortfall` → `RuntimeFailure` "delivered less than it declared". Leaf behavior
+     stays byte-identical; the generic type never encodes vendor-fault knowledge it cannot have.
+   - **The provenance plane is built from the owning records, never `records[0]` smeared over all**
+     (the current line-285 shortcut is sound only single-fetch and does not survive the move): when
+     every record carries one *equal* plane, `project` keeps it — the one-fetch `Uniform` case,
+     pinned by `test_open_meteo.py`'s `isinstance(coverage.provenance, Uniform)` — otherwise the
+     plane is `PerParameter` from each parameter's owning record `summary`.
 3. **Timeline `project` branches once, on the ask's openness — not on request *mode*.** With
    `open = open_axes(selection.domain)`:
    - `open` empty → today's path, unchanged end to end: engaged taps, single agreed geometry
@@ -113,14 +135,18 @@ observable behavior → minimal implementation at a time per `/tdd`.
 1. **Fold** — red: group semantics (bounded-axis disagreement raises; open-axis difference groups;
    duplicates fold; 1-tuple for closed asks). Green: rename + `open` parameter + tuple return;
    both call sites destructure the 1-tuple (behavior unchanged — every existing timeline test
-   stays green).
+   stays green). The rename sweeps every *name* citation: the provider edge record's invariant
+   validator (`test_agreed_geometry_folds_resolutions_that_agree`) and ADR-0002's fold paragraph.
 2. **Carrier** — red: `CoverageGroup.project` under an enumerable Selection reproduces the folded
    answer (port the `_assemble` tests); capability parameters/reach. Green: mint the class, move
    `_assemble`.
 3. **Open-ask answering** — red: direct provider tests — boundless Z/T ask → one vendor fetch,
    records keyed by native Z; parameter-subset ask with open axes → whole offering in the answer;
    bounded asks byte-identical (full suite). Green: the `project` branch of decision 3.
-4. **Docs** — ADR-0001 sentence, edge-record checkpoint closure, carrier glossary entry.
+4. **Docs** — ADR-0001 sentence, edge-record checkpoint closure, carrier glossary entry; re-read
+   the edge record's "which fold can actually fire" paragraph against the landed shape (the
+   post-fetch fold's *raising* arm stays structurally unfirable on bounded axes — one stamped
+   lattice — while open axes now license differences rather than fire it).
 
 ## Out of scope / follow-ups
 
