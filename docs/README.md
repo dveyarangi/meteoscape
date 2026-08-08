@@ -24,3 +24,8 @@ targets and requirements; dated session, completed-ticket, and resolved-RFC reco
 An RFC plans one ticket's implementation and records the decisions taken to get there; once its ticket
 is closed it moves to [`rfc/done`](./rfc/done) and is kept as written. Durable contracts it settled
 belong in the [architecture](./architecture.md) / [ADRs](./adr), not in the RFC.
+
+[`dreams/`](./dreams) is deliberately outside the table: it owns no fact. Each dream takes one knot
+this documentation states precisely and follows its *shape* into unrelated domains, looking for the
+principle underneath. Dreams record no decision and are not maintained against the code; where a
+dream and a document above disagree, the document is right.
