@@ -1,4 +1,4 @@
-# v1 delivery status
+# Delivery status
 
 **Last updated:** 2026-08-08
 
@@ -9,7 +9,7 @@ the ticket is split into four subtickets, starting with
 [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md) before another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
-comes next** in the v1 build. The [product roadmap](../product-roadmap.md) owns product direction,
+comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md) owns product direction,
 [v1 requirements](../v1-requirements.md) own the release contract, the
 [architecture](../architecture.md) and [ADRs](../adr) own design decisions, and individual tickets own
 implementation detail and acceptance criteria.
@@ -34,7 +34,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Capability | Status | Current behavior |
 |---|---|---|
 | MCP `forecast_hourly` | Available | Registered and callable: latitude/longitude, optional parameter subset, and free `start`/`end` windows; omitted bounds default to now → the profile's live reach. |
-| Python embedding surface | Planned | No supported facade yet; internal composition is deliberately not public API. The [embedding ticket](./01-0192-supported-python-embedding.md)'s own align selects the contract. |
+| Python embedding surface | Planned | No supported facade yet; internal composition is deliberately not public API. The [embedding ticket](./01-0125-supported-python-embedding.md)'s own align selects the contract. |
 | Open-Meteo forecast | Available | Fetches all six provider-served canonical parameters. |
 | Parameter selection | Partial | Accepts optional subsets of the six exposed product parameters. |
 | Provenance and freshness metadata | Available | Returned parameters include source and expiration metadata. |
@@ -47,7 +47,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Planned | Stores are non-retentive placeholders. |
 | Off-grid homogenization | Planned | Nearest-neighbor read-back remains. |
-| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **Visual Crossing** (chosen 2026-08-02, replacing TWC). |
+| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **TWC** (reverted 2026-08-08 — the 2026-08-02 Visual Crossing swap rested on TWC access being unverified, which no longer holds). |
 
 ## Delivery map
 
@@ -78,13 +78,16 @@ queue position, because it still has to be done in order.
 | 0115.0030 | [Retentive timeline Store](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + unit-granular store with covers-or-refetch-whole; unit-tested, unwired. |
 | 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive timeline store | Retention live in both positions; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
-| 0120 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) | — | Ready | snapped request mode, provider parity checks | Visual Crossing `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check, and the TWC sweep out of `config.py` / `test_config.py`. Split from second-provider fallback on 2026-08-02. |
-| 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, Visual Crossing provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
-| 0160 | [Unit-conversion catalogue](./01-0160-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by Visual Crossing provider | Shared verified native-to-canonical conversion edges. |
+| 0120 | [TWC provider](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check. Split from second-provider fallback on 2026-08-02; reverted to TWC from Visual Crossing on 2026-08-08. |
+| 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — (former v1-tail gates dissolved 2026-08-08; see ticket) | Supported headless package boundary with public failures; ships early under live-equivalence — capability grows as later tickets land. |
+| 02-0130 | [Mongo obs source](./02-0130-mongo-obs-source.md) | — | Planned (own align precedes) | embedding surface (its consumer's construction path) | First private source: read-only projection over the operator's collector MongoDB — station registry + hourly observations; first non-HTTP transport; past-facing capability; settles [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)'s mitigations. |
+| 02-0134 | [Mongo forecast-run archive source](./02-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Run-keyed (`base_time`) forecast archive over the collector's common schema; per-provider origins (`ibm`, `tomorrow`, `visualcrossing`) — likely first exercise of manifest `expand`; cross-run semantics stay at [#9](../concerns.md#9-cross-run-combination). |
+| 02-0140 | [Correction calculator](./02-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | First cross-source, cross-time calculator: per-source, per-parameter bias report over paired forecast/obs history; correction only after bias proves stable. |
+| 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, TWC provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
+| 0160 | [Unit-conversion catalogue](./01-0160-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by TWC provider | Shared verified native-to-canonical conversion edges. |
 | 0170 | [Per-parameter selection](./01-0170-per-parameter-selection.md) | — | Planned | second-provider fallback | One response assembled from different winning providers by parameter. |
-| 0180 | [Config and graceful degrade](./01-0180-config-secrets-degrade.md) | — | Partial | Visual Crossing provider | Complete key-present/key-absent provider construction behavior. |
+| 0180 | [Config and graceful degrade](./01-0180-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction behavior. |
 | 0190 | [Errors and partial success](./01-0190-error-taxonomy-partial-success.md) | — | Partial | provider nodata mask, request shaping, second-provider fallback | Per-parameter absence reasons and capable-but-faulting partial results. |
-| 0192 | [Supported Python embedding surface](./01-0192-supported-python-embedding.md) | — | Planned (own align precedes) | off-grid homogenization, per-parameter selection, config and graceful degrade, errors and partial success | Supported headless package boundary with public failures and MCP-equivalent v1 semantics. |
 | 0195 | [Minimal resolution logging](./01-0195-minimal-resolution-logging.md) | — | Planned (own align precedes) | retentive store, second-provider fallback, per-parameter selection, errors and partial success | Structured producer-selection, fall-through, and Store hit/refill evidence; no data-product change. |
 | 0200 | [Artifact conventions sweep](./01-0200-artifact-conventions-sweep.md) | Maint | Planned (own align precedes) | edge records | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), skills slimmed to reference it. |
 
@@ -95,10 +98,20 @@ A ticket's filename is `RR-NNNN-slug.md` — release, position, name:
 ```
 docs/tickets/01-0115-retentive-store-freshness.md
               │  │    └── slug — what the ticket is. Never changes. Cite tickets by this.
-              │  └─────── position in the queue. Changes when priority changes.
-              └────────── release (01 = v1). Bounds the sequence so numbers stay short.
+              │  └─────── position in the queue — global across releases. Changes when priority changes.
+              └────────── release (01 = v1). Names the contract the ticket serves.
 ```
 
+- **A release is a contract-closure milestone, not a chronological gate.** Execution interleaves
+  across open releases in one queue (the delivery map's order); a release closes when its contract's
+  criteria are all met, regardless of what landed around it — release-02 tickets may land before v1
+  closes. Release 02 (the shape-diversity workstream: archive source, correction calculators, new
+  source shapes) opened at the 2026-08-08 align; its requirements doc is deliberately deferred until
+  its first shapes land and teach us what the contract should say.
+- **Positions are one global line across releases** (2026-08-08). A ticket's position orders it
+  against *every* open ticket, not only its own release's — `02-0130` executes between `01-0120` and
+  `01-0150`. The release prefix names the contract; the folder therefore groups by release and is
+  ordered only within one, and the delivery map is the cross-release order.
 - **Positions step by 10** — `0010`, `0020`, `0030`.
 - **To insert between two tickets, split the difference**: between `0010` and `0020` is `0015`;
   between `0010` and `0015` is `0012`; then `00105`. This never runs out and never renumbers
@@ -137,7 +150,7 @@ that date cite them, and are left as written.
 | 008 | [config and graceful degrade](./01-0180-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./01-0190-error-taxonomy-partial-success.md) |
 | 010 | [unit-conversion catalogue](./01-0160-unit-conversion-edge.md) |
-| 011 | [Visual Crossing provider](./01-0120-visual-crossing-provider.md) |
+| 011 | [TWC provider](./01-0120-twc-provider.md) — Visual Crossing 2026-08-02 → 2026-08-08, TWC before and after |
 | m1 | [type contract hygiene](./done/01-0050-type-contract-hygiene.md) |
 | m2 | [dissolve node-`Countable`](./done/01-0070-dissolve-node-countable.md) |
 | m3 | [provider parity checks](./done/01-0080-provider-parity-checks.md) |
@@ -147,8 +160,8 @@ that date cite them, and are left as written.
 
 ## Recommended execution order
 
-The **order** is the `#` column of the [delivery map](#delivery-map) — that table is canonical, and
-the folder listing mirrors it. This section keeps only the *reasoning* behind that ordering, and
+The **order** is the `#` column of the [delivery map](#delivery-map) — that table is canonical; the
+folder listing mirrors it within each release. This section keeps only the *reasoning* behind that ordering, and
 uses legacy ids because it predates the 2026-08-02 renumbering.
 
 1. ~~**002c**~~ — **landed**: the live contract violation (vendor nulls reaching the wire as `NaN`) is
@@ -166,14 +179,22 @@ uses legacy ids because it predates the 2026-08-02 renumbering.
 8. **006, then 007** — retention collapses the mixed-request double fetch; off-grid homogenization
    immediately completes the storing `Reservoir` by sampling its private lattice back onto the exact
    requested point. No new Provider lands between those two halves of the retention path.
-9. Ship **011** (the Visual Crossing Probe — the first test of m4's shape/vendor split), introducing
-   **010** when its unit spread creates the real case; then **004** for the fallback behaviour that
-   second producer enables.
-10. Close the v1 multi-provider surface with **005**, **008**, and **009**.
-11. Finish the Phase-1 surface with the [supported Python embedding
-    surface](./01-0192-supported-python-embedding.md) and [minimal resolution
+9. Ship **011** (the TWC Probe — the first test of m4's shape/vendor split), introducing
+   **010** when its unit spread creates the real case.
+10. *(2026-08-08 align, reordered)* The [supported Python embedding
+    surface](./01-0125-supported-python-embedding.md) **moves up** — the first real embedder arrives
+    with the release-02 work, so the facade ships early under the live-equivalence rule and no
+    longer waits for the v1 tail.
+11. **Release 02 head**: the Mongo obs source (`02-0130`), the forecast-run archive source
+    (`02-0134`), then the correction calculator (`02-0140`) — the shape-diversity work the
+    2026-08-08 align pulled forward, split by shape (obs vs run archive); tickets minted after
+    that align.
+12. Close the v1 contract with **004**, **005**, **008**, **009**, and [minimal resolution
     logging](./01-0195-minimal-resolution-logging.md); the artifact-conventions maintenance sweep
     remains last.
+13. Release 02 resumes one-shape-per-milestone: the provider plugin seam
+    ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding) — live station endpoints are
+    embedder-authored plug-ins, not in-tree providers), local grid file, FTP transport.
 
 This ordering clears the known contract violation, establishes independent Provider conformance,
 then prioritizes real retention and request shaping before provider fallback and per-parameter
@@ -181,7 +202,7 @@ resolution.
 
 ## Decisions still owned by tickets
 
-- [Supported Python embedding surface](./01-0192-supported-python-embedding.md): its own align selects
+- [Supported Python embedding surface](./01-0125-supported-python-embedding.md): its own align selects
   the facade/lifecycle, public failure contract, request ergonomics, and `0.x` compatibility policy
   still open at concerns #39/#40; this queue pass deliberately selects none of them.
 - [Minimal resolution logging](./01-0195-minimal-resolution-logging.md): its own align selects the

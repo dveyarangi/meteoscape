@@ -2,6 +2,14 @@
 
 - **Status:** Planned — its own embedding-edge align precedes implementation; this ticket assigns
   the Phase-1 delivery without preselecting the facade.
+- **Moved up 2026-08-08 (align):** the first real embedder arrives with the release-02 work (the
+  operator's application embeds meteoscape rather than running the MCP server), so this surface no
+  longer waits for the v1 tail. Consequence: the equivalence rule changes from "MCP-equivalent **v1**
+  semantics" (ship only when everything exposed is done) to **"equivalent to whatever is live"** —
+  the facade ships early and its capability grows as tickets land, exactly as the MCP surface already
+  does. The former dependency chain (off-grid homogenization, per-parameter selection, config,
+  errors) is thereby dissolved as a *gate*; those tickets now merely widen what both surfaces serve.
+  The ticket's own align (#39/#40) still precedes implementation.
 - **Outcome:** A documented, supported Python package boundary resolves the same v1 forecast product
   as MCP without starting a protocol server, with expected failures exposed through public API.
 
