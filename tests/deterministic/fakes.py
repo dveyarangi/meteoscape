@@ -9,7 +9,7 @@ from meteoscape.clock import Clock, StoppedClock
 from meteoscape.config import StoreSpec
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
-from meteoscape.manifold.capability import Capability, EnumerableCapability, FootprintCapability
+from meteoscape.manifold.capability import Capability, EnumerableCapability, GranularCapability
 from meteoscape.manifold.core import Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
@@ -113,9 +113,9 @@ def _footprint(clock: Clock, cadence: CadenceDef | None = None) -> FootprintDoma
     return footprint_domain(clock, cadence=cadence)
 
 
-def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> FootprintCapability:
+def air_temperature_capability(clock: Clock, parameters: ParameterTable) -> GranularCapability:
     definition = parameters.get(AIR_TEMPERATURE)
-    return FootprintCapability(footprints={definition.id: (definition, _footprint(clock))})
+    return GranularCapability(reaches={definition.id: (definition, _footprint(clock))})
 
 
 def footprint_capability(
@@ -124,9 +124,9 @@ def footprint_capability(
     pids: frozenset[ParameterId],
     *,
     cadence: CadenceDef | None = None,
-) -> FootprintCapability:
+) -> GranularCapability:
     footprint = _footprint(clock, cadence)
-    return FootprintCapability(footprints={pid: (parameters.get(pid), footprint) for pid in pids})
+    return GranularCapability(reaches={pid: (parameters.get(pid), footprint) for pid in pids})
 
 
 class FakeProvider(Provider):

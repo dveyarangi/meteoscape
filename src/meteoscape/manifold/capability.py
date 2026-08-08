@@ -54,27 +54,27 @@ class Capability(Protocol):
 
 
 @dataclass(frozen=True)
-class FootprintCapability:
-    """General leaf (a `Provider`'s declaration): per-parameter covered `Domain` footprint.
+class GranularCapability:
+    """An own-geometry capability with one independently shaped `Domain` per parameter.
 
-    Each footprint is both the operand of that parameter's `serves` predicate and the `Domain` its
-    `reach` returns. It is a general `Domain` (separable or curvilinear); only the materialized
-    `EnumerableCapability` narrows its reach to an `EnumerableDomain`.
+    Providers use it for declared footprints; multi-domain carriers and retentive stores use it for
+    held records. Reaches stay typed as general `Domain`s because only `EnumerableCapability`
+    guarantees one shared enumerable grid (ADR-0007).
     """
 
-    footprints: Mapping[ParameterId, tuple[ParameterDef, Domain]]
+    reaches: Mapping[ParameterId, tuple[ParameterDef, Domain]]
 
     @property
     def parameters(self) -> Mapping[ParameterId, ParameterDef]:
-        return {pid: definition for pid, (definition, _) in self.footprints.items()}
+        return {pid: definition for pid, (definition, _) in self.reaches.items()}
 
     def serves(self, parameter: ParameterId, requested: Domain) -> bool:
-        entry = self.footprints.get(parameter)
+        entry = self.reaches.get(parameter)
         # v1: geometric matches. Resampler-reachability (via the ParameterDef) is a seam (ADR-0004).
         return entry is not None and entry[1].matches(requested)
 
     def reach(self, parameter: ParameterId) -> Domain:
-        entry = self.footprints.get(parameter)
+        entry = self.reaches.get(parameter)
         if entry is None:
             raise KeyError(f"{parameter!r} is not served")
         return entry[1]
@@ -93,8 +93,7 @@ class EnumerableCapability:
         return parameter in self.parameters and self.domain.matches(requested)
 
     def reach(self, parameter: ParameterId) -> EnumerableDomain:
-        # Narrows covariantly to EnumerableDomain: this form's one reach *is* enumerable, so the
-        # type states "materialized ⇒ enumerable reach" rather than leaving it a runtime fact.
+        # This form's shared grid lets the return type preserve enumerability for callers.
         if parameter not in self.parameters:
             raise KeyError(f"{parameter!r} is not served")
         return self.domain
@@ -108,13 +107,18 @@ class UnionCapability:
 
     `domains` is both the composed per-parameter reach and the **membership authority** - `parameters`
     reads its keys, so a scoped Arbiter declares exactly what it composed, never a member's out-of-scope
-    parameter. Members are keyed by `ProducerKey` for provenance and error attribution.
+    parameter.
+
+    `serves` delegates to the members rather than reading `domains`: that is what leaves a member free
+    to tighten below its declared geometry, so this never collapses into the per-parameter form
+    (ADR-0007 rejects deriving `serves` from `reach`).
 
     Construction precondition: `domains.keys()` is a subset of the members' combined parameters - the
     Arbiter satisfies it by composing `domains` *from* the members it holds; hand-built instances must
     honour it.
     """
 
+    # TODO: Replace the unused keys with a collection; see concern #46.
     members: Mapping[ProducerKey, Capability]
     domains: Mapping[ParameterId, Domain]
 
@@ -143,8 +147,8 @@ class DerivedCapability:
     Calculator serves exactly where every input does. It is composed **eagerly at construction**, so a
     profile whose inputs shear (nest neither way) fails the build here, not at request.
 
-    Carries its `CalculatorKey` so that a sheared-inputs failure names the calculator an operator must
-    fix - the mirror of a composite carrying its members' `ProducerKey`s (ADR-0007).
+    Carries its `CalculatorKey` because its fold runs in `__post_init__` and must identify the
+    calculator in composition failures (ADR-0007).
     """
 
     key: CalculatorKey

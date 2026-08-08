@@ -9,7 +9,7 @@ import pytest
 from fakes import point_timeline_domain
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import CalculatorKey, SourceKey
-from meteoscape.manifold.capability import EnumerableCapability, FootprintCapability
+from meteoscape.manifold.capability import EnumerableCapability, GranularCapability
 from meteoscape.manifold.core import Manifold, Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.data import ParameterData
@@ -52,8 +52,8 @@ class _FixedResolver:
                 ),
             }
         )
-        return FootprintCapability(
-            footprints={
+        return GranularCapability(
+            reaches={
                 WIND_U: (table.get(WIND_U), footprint),
                 WIND_V: (table.get(WIND_V), footprint),
             }

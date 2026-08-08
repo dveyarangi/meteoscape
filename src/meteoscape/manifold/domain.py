@@ -412,6 +412,7 @@ def contains_extents(outer: Separable, inner: Separable) -> bool:
     )
 
 
+# TODO: Move operator attribution out of geometry; see concern #46.
 def split_extents(left_key: object, left: Separable, right_key: object, right: Separable) -> str:
     """Why two Domains fail to nest, **both directions** — the split is the incomparability.
 

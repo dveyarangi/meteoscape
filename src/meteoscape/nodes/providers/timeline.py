@@ -21,7 +21,7 @@ from ...clock import Clock
 from ...errors import CapabilityMismatch, RuntimeFailure
 from ...identity import SourceKey
 from ...manifold.cadence import CadenceDef, RollingAxis
-from ...manifold.capability import EnumerableCapability, FootprintCapability
+from ...manifold.capability import EnumerableCapability, GranularCapability
 from ...manifold.core import Coverage, Manifold, Selection
 from ...manifold.coverage import CoverageRecord
 from ...manifold.data import ParameterData
@@ -89,7 +89,7 @@ class TimelineProvider(Provider):
             longitudes=longitudes,
             latitudes=latitudes,
         )
-        self._capability = FootprintCapability(footprints=self._footprints)
+        self._capability = GranularCapability(reaches=self._footprints)
 
     async def project(self, selection: Selection) -> Manifold:
         engaged = self._taps.engaged_by(selection.parameters)
@@ -107,7 +107,7 @@ class TimelineProvider(Provider):
         return self._assemble(records, selection)
 
     @property
-    def capability(self) -> FootprintCapability:
+    def capability(self) -> GranularCapability:
         return self._capability
 
     @property

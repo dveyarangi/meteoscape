@@ -216,7 +216,7 @@ def _require_separable(parameter: ParameterId, key: ProducerKey, domain: Domain)
 
     `as_separable` returns `None` rather than raising (`manifold/` cannot import `CompositionError`),
     so this caller supplies the text — naming the parameter and the producer that declared geometry the
-    `grid` rule cannot compare (ADR-0007, [#12](../concerns.md)).
+    `grid` rule cannot compare (ADR-0007, concern #12).
     """
     separable = as_separable(domain)
     if separable is None:

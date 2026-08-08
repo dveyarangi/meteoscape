@@ -14,7 +14,7 @@ from meteoscape.manifold.cadence import CadenceDef
 from meteoscape.manifold.capability import (
     DerivedCapability,
     EnumerableCapability,
-    FootprintCapability,
+    GranularCapability,
     UnionCapability,
 )
 from meteoscape.manifold.domain import (
@@ -60,7 +60,7 @@ def test_capability_family_serves() -> None:
     footprint = footprint_domain(STOPPED, cadence=cadence)
     temp = table.get(AIR_TEMPERATURE)
     precip = table.get(PRECIPITATION)
-    leaf = FootprintCapability(footprints={AIR_TEMPERATURE: (temp, footprint)})
+    leaf = GranularCapability(reaches={AIR_TEMPERATURE: (temp, footprint)})
 
     inside = _point(datetime(2026, 7, 11, 14, tzinfo=UTC))
     outside = _point(datetime(2026, 7, 11, 20, tzinfo=UTC))
@@ -89,8 +89,8 @@ def test_capability_family_serves() -> None:
             WIND_DIRECTION: table.get(WIND_DIRECTION),
         },
         inputs=frozenset({WIND_U, WIND_V}),
-        upstream=FootprintCapability(
-            footprints={
+        upstream=GranularCapability(
+            reaches={
                 WIND_U: (table.get(WIND_U), footprint),
                 WIND_V: (table.get(WIND_V), footprint),
             }
@@ -124,12 +124,10 @@ def _cadence() -> CadenceDef:
     )
 
 
-def test_footprint_capability_reach_returns_the_declared_footprint() -> None:
+def test_granular_capability_reach_returns_the_declared_footprint() -> None:
     table = StaticParameterTable.core()
     footprint = footprint_domain(STOPPED, cadence=_cadence())
-    leaf = FootprintCapability(
-        footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
-    )
+    leaf = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)})
 
     assert leaf.reach(AIR_TEMPERATURE) is footprint
     with pytest.raises(KeyError):
@@ -145,22 +143,18 @@ def test_enumerable_capability_reach_narrows_to_enumerable_domain() -> None:
     )
 
     reach = leaf.reach(AIR_TEMPERATURE)
-    assert_type(
-        reach, EnumerableDomain
-    )  # the materialized form narrows in the type, not just value
+    # The shared grid is part of this capability form's type contract, not only its runtime value.
+    assert_type(reach, EnumerableDomain)
     assert reach is domain
     with pytest.raises(KeyError):
         leaf.reach(PRECIPITATION)
 
 
-def test_footprint_capability_reach_returns_a_lone_non_separable_unchanged() -> None:
-    """reach is a plain lookup: a single non-separable footprint is served as-is — the ex-build-time
-    reach pass rejected it, but a leaf now just publishes what it declares (ADR-0007, defect 3)."""
+def test_granular_capability_reach_returns_a_lone_non_separable_unchanged() -> None:
+    """A lone non-separable reach is published unchanged because nothing must be compared."""
     table = StaticParameterTable.core()
     curvilinear = _NonSeparable()
-    leaf = FootprintCapability(
-        footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), curvilinear)}
-    )
+    leaf = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), curvilinear)})
 
     assert leaf.reach(AIR_TEMPERATURE) is curvilinear
 
@@ -182,14 +176,14 @@ def _fp(*, x: Interval[float] = _GLOBAL_X, days: int) -> FootprintDomain:
     )
 
 
-def _wind_upstream(u: FootprintDomain, v: FootprintDomain) -> FootprintCapability:
+def _wind_upstream(u: FootprintDomain, v: FootprintDomain) -> GranularCapability:
     table = StaticParameterTable.core()
-    return FootprintCapability(
-        footprints={WIND_U: (table.get(WIND_U), u), WIND_V: (table.get(WIND_V), v)}
+    return GranularCapability(
+        reaches={WIND_U: (table.get(WIND_U), u), WIND_V: (table.get(WIND_V), v)}
     )
 
 
-def _derived(upstream: FootprintCapability) -> DerivedCapability:
+def _derived(upstream: GranularCapability) -> DerivedCapability:
     return DerivedCapability(
         key=CalculatorKey("wind", "default"),
         parameters={WIND_SPEED: StaticParameterTable.core().get(WIND_SPEED)},
@@ -222,5 +216,5 @@ def test_derived_capability_sheared_inputs_raise_naming_the_calculator_and_input
         _derived(_wind_upstream(globe, europe))
     message = str(exc.value)
     assert "shear" in message
-    assert "wind:default" in message  # the calculator an operator must fix (defect 2)
+    assert "wind:default" in message  # Identifies the calculator an operator must fix.
     assert "wind_u" in message and "wind_v" in message

@@ -10,7 +10,7 @@ import pytest
 from fakes import SAMPLE_STORE, STOPPED, FakeProvider, core_parameters, fake_catalog
 from meteoscape.config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
-from meteoscape.manifold.capability import FootprintCapability
+from meteoscape.manifold.capability import GranularCapability
 from meteoscape.manifold.core import Coverage
 from meteoscape.manifold.data import ParameterData
 from meteoscape.manifold.domain import (
@@ -342,7 +342,7 @@ def _source(dataset: str, pids: frozenset[ParameterId]) -> tuple[SourceKey, Regi
     """A source serving `pids` — `validate_calculators` reads only which parameters are served."""
     key = SourceKey(provider="test", dataset=dataset)
     table = core_parameters()
-    capability = FootprintCapability(footprints={pid: (table.get(pid), _global()) for pid in pids})
+    capability = GranularCapability(reaches={pid: (table.get(pid), _global()) for pid in pids})
     return key, RegisteredSource(
         provider=FakeProvider(source_key=key, capability=capability),
         priority=0,

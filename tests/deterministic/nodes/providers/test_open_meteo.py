@@ -452,7 +452,7 @@ def test_capability_declares_six_native_z_facts() -> None:
     assert len(TAPS) == 6
 
     # The Capability advertises geometry as bare `Domain` — the leaf's own type is narrower.
-    footprints = provider.capability.footprints
+    footprints = provider.capability.reaches
 
     def _native_z(pid: ParameterId) -> Axis:
         domain = footprints[pid][1]
@@ -471,7 +471,7 @@ def test_capability_reach_exposes_leaf_domains() -> None:
     """`capability.reach(pid)` is the leaf's own declared Domain — same object, live rolling T."""
     provider = _provider(_CapturingTransport({}))
     capability = provider.capability
-    declared = {pid: domain for pid, (_, domain) in capability.footprints.items()}
+    declared = {pid: domain for pid, (_, domain) in capability.reaches.items()}
     for pid in capability.parameters:
         reach = capability.reach(pid)
         assert reach is declared[pid]

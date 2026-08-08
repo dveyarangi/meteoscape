@@ -24,7 +24,7 @@ from meteoscape.config import ArbiterPolicy, OfferingDef
 from meteoscape.errors import CapabilityMismatch
 from meteoscape.identity import ProducerKey, SourceKey
 from meteoscape.manifold.cadence import CadenceDef
-from meteoscape.manifold.capability import FootprintCapability
+from meteoscape.manifold.capability import GranularCapability
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.domain import (
@@ -252,15 +252,15 @@ async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     precip_cov = _coverage(PRECIPITATION, origin_key=SourceKey("b", "default"))
     temp_provider = RecordingProvider(
         source_key=SourceKey("a", "default"),
-        capability=FootprintCapability(
-            footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
+        capability=GranularCapability(
+            reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
         ),
         coverage=temp_cov,
     )
     precip_provider = RecordingProvider(
         source_key=SourceKey("b", "default"),
-        capability=FootprintCapability(
-            footprints={PRECIPITATION: (table.get(PRECIPITATION), footprint)}
+        capability=GranularCapability(
+            reaches={PRECIPITATION: (table.get(PRECIPITATION), footprint)}
         ),
         coverage=precip_cov,
     )
@@ -296,7 +296,7 @@ async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     assert precip_provider.calls[0].parameters == frozenset({PRECIPITATION})
 
 
-# --- compose_domains: the reconciler's domain composition (Stage 2, ADR-0007) ---
+# --- compose_domains: the reconciler's domain composition (ADR-0007) ---
 
 _T0 = datetime(2026, 7, 11, 12, tzinfo=UTC)
 
@@ -370,7 +370,7 @@ def test_compose_domains_equal_extent_tie_returns_one_input() -> None:
     [{}, {SourceKey("test", "short"): 0, SourceKey("test", "long"): 9}],
 )
 def test_compose_domains_ignores_priority(priority: Mapping[ProducerKey, int]) -> None:
-    """Dominance is geometric — the widest wins whatever priority says (004 shape)."""
+    """Dominance is geometric, so the widest reach wins regardless of selection priority."""
     short = _global(days=10)
     long = _global(days=16)
     result = PriorityReconciler(priority=priority).compose_domains(
@@ -407,7 +407,7 @@ def test_compose_domains_rejects_non_separable_multi_candidate() -> None:
 
 
 def test_compose_domains_lone_non_separable_returned_unchanged() -> None:
-    """Defect 3: a single curvilinear candidate compares against nothing, so it builds."""
+    """A single curvilinear candidate compares against nothing, so it builds."""
     swath = _NonSeparable()
     assert _reconciler().compose_domains(AIR_TEMPERATURE, [(_pkey("swath"), swath)]) is swath
 
@@ -417,7 +417,7 @@ def test_compose_domains_empty_raises() -> None:
         _reconciler().compose_domains(AIR_TEMPERATURE, [])
 
 
-# --- Stage 3: the Arbiter composes reach eagerly at construction (ADR-0007) ---
+# --- The Arbiter composes reach eagerly at construction (ADR-0007) ---
 
 
 class _AdvancingClock:
@@ -433,9 +433,7 @@ class _AdvancingClock:
 def _footprint_leaf(key: SourceKey, domain: FootprintDomain) -> Producer:
     """A single-parameter (AIR_TEMPERATURE) footprint producer behind a Reservoir."""
     table = core_parameters()
-    capability = FootprintCapability(
-        footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)}
-    )
+    capability = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)})
     provider = FakeProvider(source_key=key, capability=capability)
     return Producer(node=Reservoir(StoreFactory().create(SAMPLE_STORE), provider), key=key)
 
@@ -500,22 +498,20 @@ def test_reservoir_forwards_child_reach_unchanged() -> None:
     """The root is `Reservoir(store, Arbiter)`; forwarding the child's reach carries the root's."""
     domain = _global(days=10)
     table = core_parameters()
-    capability = FootprintCapability(
-        footprints={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)}
-    )
+    capability = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)})
     provider = FakeProvider(source_key=SourceKey("src", "default"), capability=capability)
     reservoir = Reservoir(StoreFactory().create(SAMPLE_STORE), provider)
     assert reservoir.capability.reach(AIR_TEMPERATURE) is domain
 
 
-# --- Stage 4: a scoped Arbiter declares exactly its scope (ADR-0007 defect 1) ---
+# --- A scoped Arbiter declares exactly its scope (ADR-0007) ---
 
 
 def _multi_producer(key: SourceKey, footprints: Mapping[ParameterId, FootprintDomain]) -> Producer:
     """A producer serving several parameters, each on its own footprint."""
     table = core_parameters()
-    capability = FootprintCapability(
-        footprints={pid: (table.get(pid), dom) for pid, dom in footprints.items()}
+    capability = GranularCapability(
+        reaches={pid: (table.get(pid), dom) for pid, dom in footprints.items()}
     )
     provider = FakeProvider(source_key=key, capability=capability)
     return Producer(node=Reservoir(StoreFactory().create(SAMPLE_STORE), provider), key=key)
@@ -548,6 +544,6 @@ def test_scoped_arbiter_declares_exactly_its_scope() -> None:
 
 
 def test_unscoped_arbiter_over_declares_and_shears_on_incomparable() -> None:
-    """The defect scope fixes: unscoped, the same Arbiter composes PRECIPITATION too and shears."""
+    """Without a scope, the same Arbiter also composes the incomparable precipitation reaches."""
     with pytest.raises(CompositionError, match="precipitation"):
         Arbiter(_europe_vs_americas(), PriorityReconciler(priority={}))
