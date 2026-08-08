@@ -152,7 +152,8 @@ classDiagram
   algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
   **separable** representation exposes — its per-axis `Axis`. An **`Axis` mirrors `Domain`**: its
   universal surface is a span (`extent`), request-driven admission (`matches`), and **restriction to
-  bounds** (`clip`), and **enumeration is the `EnumerableAxis` refinement** — a lazy
+  bounds** (`clip`, whose bounds are **optional**: asking with none asks for the axis entire), and
+  **enumeration is the `EnumerableAxis` refinement** — a lazy
   `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
   `RegularAxis` generates its cells from `(anchor, step, count)` and stays snappable; an explicit one
   stores them. Whether a `RegularAxis` generates **bounded** cells (each spanning one step,
@@ -177,6 +178,12 @@ classDiagram
   are temporal and so never meet a spatial axis at all; the *boundless* member (`ANY`) is axis-generic
   and takes the answering axis whole.
 
+  **Taking the whole is `clip` with no bounds, which is why it is not a second operation.** Each axis
+  kind already knows what *all of me* means, and only it does: a lattice hands back itself, a span its
+  span, a clock-relative window the live window it materialises against its clock. Callers therefore
+  never branch on boundlessness, and an axis that must read a clock or build cells to answer does it
+  exactly once, inside the one call.
+
 - **Mode is the Domain's shape, not a separate field** — `region` / `snapped` / `exact` are *which kind
   of Domain* you built, so **`Selection = Domain + parameters`** (no redundant `mode` field that could
   disagree with the Domain):
@@ -197,7 +204,9 @@ classDiagram
 
   **`ground(request, against) -> EnumerableDomain`** is the resolution verb — ADR-0001's
   shape-correspondence as one operation: pinned members pass through by identity, a snapped member
-  takes what the answering axis `clip`s itself to, and `ValueError` when a member cannot resolve (*why*
+  takes what the answering axis `clip`s itself to — bounded or boundless alike, since the bounds it
+  passes may be absent, so `ANY` needs no arm of its own here — and `ValueError` when a member cannot
+  resolve (*why*
   it matters is the caller's knowledge, not this layer's). It is a **function, not a `Domain` method**,
   because being a *request* is a property of some representations only — a footprint is what requests
   ground *against* — while callers hold a base `Domain` and must not branch on representation to learn
@@ -214,13 +223,15 @@ classDiagram
   because `GridDomain` is the only enumerable representation minted; a second one arrives with the
   callers that must read it structurally.
 
-  **A fold beside it: `agreed_geometry`.** One `project` answers with **one** geometry (ADR-0001), so
-  folding several resolutions — a producer's per-parameter footprints, or the native records one fetch
-  yields — either returns the geometry they agree on or raises. The rule binds every producer that
-  folds records; its one licence to differ is an axis the request left entirely to the producer
-  (`ANY` — the boundless snapped member), where the fold returns the grouped resolutions instead of
-  raising; a fully-bounded request's group is a degenerate single. Rule and exception stay in one
-  module.
+  **A fold beside it: `agreed_geometry`.** One `project` answers with **one** geometry on every
+  pinned or snapped axis (ADR-0001), so folding several resolutions — a producer's per-parameter
+  footprints, or the native records one fetch yields — returns the geometry they agree on or raises
+  naming the disagreeing axis. The rule binds every producer that folds records; its one licence to
+  differ is an axis the request left entirely to the producer (`ANY` — the boundless snapped
+  member), where resolutions may keep their own cells: the fold validates that difference and
+  returns the first resolution, authoritative on every bounded axis (records carry their own
+  domains, so nothing consumes the differing members as a value). Rule and exception stay in one
+  module, and the licence is derived from the request itself, never stated by a caller.
 
 - **One regular descriptor unifies snapped / declared-grid / exact.** A regular lattice is
   `{anchor, step, extent}`; its members differ in which parts are fixed — a **Snapped** request fixes

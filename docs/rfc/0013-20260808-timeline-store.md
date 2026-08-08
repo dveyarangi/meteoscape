@@ -14,7 +14,7 @@ Nothing wired — the `Reservoir` stays pass-through.
 |---|---|---|
 | `quantize` (`manifold/domain.py`, beside `ground`) | [ADR-0002 §grid alignment](../adr/0002-data-model.md), [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | Minted: the enclosing per-axis fold. Zero new index arithmetic ([#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) stands down). |
 | `Store` protocol / `StubStore` (`nodes/store.py`) | ADR-0006, [ADR-0005](../adr/0005-build-time-composition.md) | `TimelineStore` minted; `StoreFactory.create` honors `StoreSpec`; `StubStore` remains until the pipeline slice unwires it. |
-| `Writable.assimilate` (`manifold/core.py`) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageGroup)` — the store consumes the natural answer and slices inside. |
+| `Writable.assimilate` (`manifold/core.py`) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageSet)` — the store consumes the natural answer and slices inside. |
 | Store lattice privacy | ADR-0006 | Guard test: no module outside `store.py` constructs a unit `Selection` or imports the lattice/unit types. |
 
 ## Facts that shape the implementation (verified 2026-08-08)
@@ -83,14 +83,15 @@ Nothing wired — the `Reservoir` stays pass-through.
 
    The unit's window *is* `domain.axis(T).extent` — no second window field to drift. Both types are
    `store.py`-private (the lattice-privacy guard covers them).
-4. **`assimilate(answer: CoverageGroup)`** — the `Writable` signature narrows to the natural
+4. **`assimilate(answer: CoverageSet)`** — the `Writable` signature narrows to the natural
    answer. For each record, for each parameter: `x/y` indices come from snapping the record's
    point onto the store grid via `grid.clip(Interval(p, p))` (the same containing-cell math as
    `quantize` — no parallel arithmetic), `z_key` from the record's Z cell; the unit is **replaced
    whole** — insert-or-overwrite, never merged. The store's contract is **one type**: a
    single-Coverage answer (the root's child, an Arbiter, answers single-domain) is normalized by
-   the *caller* into a one-record group — `CoverageGroup.of(answer)`, a classmethod minted with the
-   carrier — before `assimilate`; the store never branches on answer shape.
+   the *caller* into a one-record group — `CoverageSet.of(answer)`, a classmethod minted with its
+   caller ([RFC 0014](./0014-20260808-reservoir-retention-pipeline.md) d.1) — before `assimilate`;
+   the store never branches on answer shape. This slice's tests construct groups directly.
 5. **The report is covers-or-refetch-whole made mechanical.**
 
    ```python
@@ -110,9 +111,10 @@ Nothing wired — the `Reservoir` stays pass-through.
    parameter), and its T extent ⊇ `over[p]`. Anything less → `None` → the parameter joins the
    refill set. No partial serve state exists — a unit is servable or refetched-whole, which is
    what makes a `valid_time` splice unrepresentable.
-6. **`capability` = what it holds**: per-parameter reach assembled from qualifying units' domains
-   (ADR-0007 shape); empty store → empty parameters (the `Reservoir`, next slice, treats that as
-   all-miss — no special case here).
+6. **`capability` = what it holds**: a **`GranularCapability`**
+   ([RFC 0015](./done/0015-20260808-per-parameter-materialized-capability.md)), its `reaches` assembled
+   from qualifying units' domains; empty store → empty parameters (the `Reservoir`, next slice,
+   treats that as all-miss — no special case here).
 7. **Retention housekeeping**: on every `assimilate` and `report`, drop units whose
    `provenance.fetched_at + retention_interval < now`. Eviction only removes — it never affects
    what `report` would qualify (an evictable unit is stale-beyond-retention and would fail the
@@ -141,7 +143,7 @@ to-tickets' machine-enforced-constraint form, not behavior tests.
 
 1. **quantize** — red: timeline-unit asks (ANY T/Z, pinned containing X/Y), inverted grid-style
    unit, outside-lattice decline, boundary point reuses `clip`'s tolerance. Green: the fold.
-2. **assimilate + capability** — red: a `CoverageGroup` lands as units keyed by native Z and grid
+2. **assimilate + capability** — red: a `CoverageSet` lands as units keyed by native Z and grid
    cell; re-assimilation replaces whole units; capability reflects holdings. Green: store core.
 3. **report** — red: fresh serve / stale refetch (mocked expirations), covers vs extension vs
    disjoint, no-splice invariant (post-refetch single window). Green: the gate.

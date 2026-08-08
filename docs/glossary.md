@@ -43,7 +43,7 @@ A request-only bounds-only axis: it states where an answer starts and stops and 
 _Avoid_: Window axis, open axis, soft axis
 
 **Clip**:
-The restriction of an Axis to stated bounds — the part of itself the axis says those bounds ask for, or nothing when they do not meet. Returns whatever the restriction leaves (a span stays a span, a lattice a lattice at its own phase, a clock-relative window materialises first); whether that has Cells is Ground's question, not this one. → [ADR-0002](./adr/0002-data-model.md)
+The restriction of an Axis to bounds — the part of itself the axis says those bounds ask for, or nothing when they do not meet. Bounds are optional: asking with none asks for the axis entire, so boundlessness is answered by the axis rather than branched on by callers. Returns whatever the restriction leaves (a span stays a span, a lattice a lattice at its own phase, a clock-relative window materialises first); whether that has Cells is Ground's question, not this one. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Snap (the request mode), clamp, trim, crop (the value-side operation on a Coverage)
 
 **Lattice**:
@@ -94,6 +94,10 @@ _Avoid_: Coverage, Parameter
 **CoverageRecord**:
 The canonical materialized form of Coverage, independent of Domain shape. → [architecture.md](./architecture.md#canonical-data-model)
 _Avoid_: Timeline, Grid, Tensor, DataBlock
+
+**CoverageSet**:
+The multi-domain answer: the CoverageRecords one projection yielded, kept on the differing native cells a request's boundless axes licensed. A Manifold with no Domain of its own — projecting it onto enumerable cells crops each record against its own geometry and merges them into a single Coverage — and every Parameter it carries lives on exactly one record. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
+_Avoid_: CoverageGroup, multi-Coverage, bundle, collection
 
 **Timeline**:
 A Coverage Domain shape that varies only along valid time at a fixed location. → [architecture.md](./architecture.md#canonical-data-model)

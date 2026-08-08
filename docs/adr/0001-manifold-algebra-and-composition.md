@@ -44,6 +44,17 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   co-domained question forces a flattened answer and the native cells are destroyed before the store
   can key units by them.
 
+- **The answer discipline on the parameter facet: an answer may be wider than the ask there, never
+  narrower.** Shape-correspondence binds geometry; the parameter set is bound in one direction only — a
+  successful projection omits nothing it was asked for, and may carry more. What it may carry is the
+  producer's **natural fetch unit**: the whole of what one trip to it inherently returns, an economy
+  fact of that producer and not a policy anyone above it sets — a leaf billed per variable answers
+  narrow and is equally correct
+  ([#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)). This is
+  the `ANY` arm above read on the parameter facet: *where the ask left the shape to you, answer at your
+  own.* So a caller must not read the answer's parameter set as an echo of its request; it consumes
+  what it asked for and lets the rest ride, and whatever exposes an answer outward narrows explicitly.
+
 - **`capability` — the dual of `project`.** Alongside `project`, every Manifold exposes a `capability`:
   `project` *consumes* a `Selection`; `capability` *advertises* which Selections are servable
   (`serves(parameter, requested)` + the served `parameters`). It is a **base-`Manifold` member on every

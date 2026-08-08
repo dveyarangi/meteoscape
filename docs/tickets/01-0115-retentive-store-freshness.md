@@ -89,14 +89,14 @@ Z, so units land keyed by **native** cells from a **single** vendor fetch. (A fu
 would force the flatten and destroy the cells; per-parameter-group asks would multiply vendor
 traffic for data one call returns.)
 
-**The carrier, and the fold that returns it.** This ticket mints the multi-domain carrier: a
-`Manifold` grouping single-domain Coverages, whose own `project` folds onto a fully enumerable
-Selection — the retirement home of `_assemble`, which is how closure is preserved.
-`agreed_geometry` **always returns a group**: its law (records must agree on every *bounded* axis)
-is permanent; the licence to differ keys on **boundless** members; a fully-bounded request's group
-is a degenerate single, unwrapped at both call sites (both in the timeline wrapper this ticket
-rewrites). Fold and carrier names are settled at implementation — the singular `_geometry` dies
-with the group return.
+**The carrier, and the fold beside it.** This ticket mints the multi-domain carrier: a `Manifold`
+grouping single-domain Coverages, whose own `project` folds onto a fully enumerable Selection — the
+retirement home of `_assemble`, which is how closure is preserved. `agreed_geometry`'s law (records
+must agree on every *bounded* axis) is permanent; the licence to differ keys on **boundless**
+members, which the fold validates while keeping its single return — records carry their own
+domains and the carrier is built from them, so the differing resolutions have no reader. Fold and
+carrier names are settled at implementation (both call sites are in the timeline wrapper this
+ticket rewrites).
 
 **Retire the eager folds — both facets.** `open_meteo.project`'s eager Z flatten (`_assemble`
 applied at fetch) and the parameter crop at answer assembly (`_as_delivered` keeping only

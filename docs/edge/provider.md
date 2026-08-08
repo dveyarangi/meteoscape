@@ -188,6 +188,13 @@ bare pass-through, so today a leaf receives the **edge's** request verbatim.
   mixed-request double fetch; a leaf that answers narrow (per-variable billing) re-accepts that
   divergence for its own parameters as a declared economy choice —
   [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence).
+  **Today there is no such declaration**: the whole tap table *is* the fetch unit, written once in the
+  shape wrapper, so it binds every timeline vendor rather than each one's own economy. That is not a
+  deferral with a date — it is **unwitnessed**. This wrapper has been pressed by exactly one vendor,
+  and from inside it nothing distinguishes "one call lists every variable" as a fact of the *shape*
+  from a cast of Open-Meteo's. The second Provider is what tells them apart, which is why #43 is
+  decided at [011](../tickets/01-0120-twc-provider.md) and mints the per-offering declaration there
+  if it is one.
 
 **A leaf does not inspect request shape.** It **declares its geometry** — per-parameter footprints,
 with a lattice-bearing axis wherever it can resolve a snapped member — and the request is resolved
@@ -236,62 +243,77 @@ Three properties an author depends on:
 over several grounded resolutions either returns the geometry they agree on or raises. It lives beside
 `ground`, not in any leaf — the law binds every producer that folds records.
 
-**It narrows at 006; it does not go away.** The rule that axes the request **pins or snaps** must
-ground identically is permanent. What 006 adds is the exception: an axis left **`ANY`** is the one
-licence for records to differ, so the fold stops returning a single geometry and starts returning the
-**multi-domain carrier** — deliberately not minted now, because *"when `ANY` lands, the carrier arrives
-with the axis that justifies it"* ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)
-decision 10). Rule and exception stay in one module by design.
+**The rule has exactly one exception, and the fold still answers once.** That axes the request **pins
+or snaps** must ground identically is permanent. An axis left **`ANY`** is the sole licence for
+resolutions to differ: the fold validates that difference and returns the geometry authoritative on
+every bounded axis, which is all any caller reads. It does **not** return the differing members,
+because nothing consumes them as a value — records carry their own domains, and the **multi-domain
+carrier** is built from the records themselves. The licence is derived from the request, never asserted
+by a caller.
 
-*Naming checkpoint at 006:* `agreed_` names the operation and survives; the singular `_geometry` is
-what the carrier puts in question. Deliberately not pre-renamed — the carrier's own name is the input
-that decision needs, and 006 touches every call site anyway. *006's align decided the return shape
-(2026-08-08): the fold **always returns a group** — degenerate single on fully-bounded requests
-(both call sites unwrap), the multi-domain grouping where open axes let records keep their own
-cells. `ANY` itself is the **boundless snapped member** (`interval=None`), so `SelectableAxis`
-gains no new kind and the divergence licence keys on boundlessness inside the fold. Names confirmed
-2026-08-08, closing this checkpoint: the fold is **`agreed_geometries`** (the `agreed_` stem
-survives; the plural is the group) and the carrier is **`CoverageGroup`** —
-[RFC 0012](../rfc/0012-20260808-multidomain-carrier-timeline.md) implements them.*
+*Names, settled here 2026-08-08:* the fold is **`agreed_geometry`**, the carrier is **`CoverageSet`**,
+and `ANY` is the **boundless snapped member** (`interval=None`) — so `SelectableAxis` gains no new
+kind and the licence keys on boundlessness inside the fold
+([RFC 0012](../rfc/0012-20260808-multidomain-carrier-timeline.md)).
 
 **Two call sites, and what each grounds against.** The wrapper calls `ground` once before the vendor
 call and once after — never in between, and never anywhere else. Both ends are plural, so both fold:
 
 ```python
 async def project(self, selection: Selection) -> Manifold:
-    taps   = self._taps.engaged_by(selection.parameters)                            # what this asks of me
-    wanted = agreed_geometry(ground(selection.domain, fp) for fp in footprints(taps))  # …against what I declare
-    lon, lat, window = point_of(wanted), window_of(wanted)
+    if not selection.parameters or selection.parameters - self._taps.parameters:
+        raise CapabilityMismatch(...)                                               # settled before the wire
+    boundless = open_axes(selection.domain)                                         # what the ask left to me
+    taps   = self._taps if boundless else self._taps.engaged_by(selection.parameters)
+    wanted = agreed_geometry((ground(selection.domain, fp) for fp in footprints(taps)),
+                             request=selection.domain)                              # …against what I declare
+    (lon, lat), window = point_of(wanted), window_of(wanted)
 
     delivery = await self._probe.retrieve(longitude=lon, latitude=lat, over=window,
                                           variables=taps.variables)
 
     records = interpret(delivery, taps, at=(lon, lat), stamped=self._stamp())       # units, decode, Z groups
-    answer  = agreed_geometry(ground(selection.domain, r.domain) for r in records)  # …against what arrived
-    return crop_onto(records, answer, selection.parameters)
+    answer  = agreed_geometry((ground(selection.domain, r.domain) for r in records),
+                              request=selection.domain)                             # …against what arrived
+    group   = CoverageSet(records)
+    return group if boundless else await group.project(Selection(answer, selection.parameters))
 ```
 
+**The parameter facet declines exactly once, and before the wire:** an ask naming nothing this leaf
+serves, or naming something it does not, is `CapabilityMismatch` with no fetch attempted. That is what
+leaves the carrier's own unheld-parameter arm unreachable from here, so no guard downstream repeats it.
+
+**The last line is the whole of the answer discipline.** With no open axis the answer is cropped to
+exactly what was asked. With one, the crop is skipped on **both** facets at once — native cells stay
+(Z per record) and the **whole fetch unit** rides along — because a crop to the request's geometry and
+a crop to its parameter set are the same eager fold on two facets, and the boundless axis licenses
+both. What returns is then the carrier, not a `Coverage`: a caller must not assume a single `domain`.
+
 Pre-fetch the fold runs over the leaf's **per-parameter footprints** (they differ in Z); post-fetch over
-the **native records** (grouped by Z). Neither fires on Z — a request that pins or apertures Z grounds
-it by identity, so every footprint yields the same answer geometry.
+the **native records** (grouped by Z). Neither *raises* on Z: a request that pins or apertures Z grounds
+it by identity, so every footprint yields the same answer geometry, while one that leaves Z open makes
+them differ deliberately and the fold validates the licence instead.
 
 **Be precise about which fold can actually fire, because the two are not symmetric.** The *pre-fetch*
 fold is live: a leaf declaring **different reaches per parameter** grounds its footprints to different
-answers, which is the limitation stated below. The *post-fetch* fold is a **law statement, structurally
-unfirable in this shape** — one delivery yields one tick lattice, stamped onto every record, and Z
-grounds by identity, so the records cannot disagree. It is kept because the law binds every producer
-that folds records, including a future shape that derives a lattice **per record**; it is not kept as a
-runtime guard, and no test can pin it through `project`. In particular it does **not** catch a vendor
+answers, which is the limitation stated below. The *post-fetch* fold's **raising** arm is a law
+statement, **structurally unfirable in this shape** — one delivery yields one tick lattice, stamped
+onto every record, and on a bounded axis Z grounds by identity, so the records cannot disagree there.
+Its **validating** arm is live and exercised: it runs on every ask that leaves an axis open, which is
+how the differing native Z cells reach the carrier. The raising arm is kept because the law binds every
+producer that folds records, including a future shape that derives a lattice **per record**; it is not
+kept as a runtime guard, and no test can pin it through `project`. In particular it does **not** catch a vendor
 answering the two fetches of one request differently: those are two separate `project` calls, and the
 `RuntimeFailure` that catches them is the **Arbiter's** closed-projection check (see the invariant on
 per-winner projection, and `test_snapped_winner_domains_that_diverge_fail_the_whole_request`).
 
 **That second case is a real limitation, so state it rather than let it be discovered:** a leaf **cannot
-serve, in one call, two parameters whose declared reaches differ on a snapped axis.** A vendor offering
-16 days of temperature but 5 of precipitation refuses a mixed snapped request with
-`CapabilityMismatch` rather than answering multi-domain. That is correct under closure — the licence for
-a multi-domain answer is `ANY`, which does not exist yet — and it dissolves at
-[006](../tickets/01-0115-retentive-store-freshness.md). Live driver:
+serve, in one call, two parameters whose declared reaches differ on a **bounded** snapped axis.** A
+vendor offering 16 days of temperature but 5 of precipitation refuses a mixed snapped request with
+`CapabilityMismatch` rather than answering multi-domain. That is correct under closure: the licence for
+a multi-domain answer is **boundlessness**, so bounds a requester states are answered identically or
+not at all. An ask that leaves the axis open — the retentive store's refill shape — licenses the
+difference instead; what stays refused is specifically a request that *states* the bounds. Live driver:
 [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
 
 **The tick lattice is derived, never taken on the Probe's word.** `interpret` builds it from the
@@ -382,6 +404,26 @@ crop-ability gap.
   [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) pads that tail as
   `present=False`, the count is what padding consumes and the failure goes away.
 
+**Which Z the answer may land on, and what that relabel claims.** The crop treats the two Z request
+shapes differently, and the difference is a promise, not an implementation accident:
+
+```
+native 2 m point  →  vantage [0,10]   identity crop: one cell onto one cell — relabels
+native 2 m point  →  pinned  10 m     lattice-to-lattice: no aligned offset — refused
+```
+
+A **vantage** cell is an aperture, so landing a native level in it is the fact→product step and it is
+honest exactly because admission already gated that parameter against its own native footprint. A
+**pinned** Z names a coordinate the caller owns, so a record measured elsewhere cannot answer it and
+the alignment read declines rather than mis-indexing. Before the carrier, a mixed-parameter ask
+pinning Z was answered by stacking every record on the first one's cells, which silently reported 10 m
+wind at a 2 m pin; each parameter now crops against its **own** record.
+
+What the relabel claims is an **∃-claim** — *measured somewhere in `[0,10]`* — never a ∀-claim about
+every level in it. So the label may not later be narrowed by plain inclusion: `[0,5]` does not follow
+from `[0,10]`, because the sample may have sat at eight metres. Same rule, second site: the store's
+version of it is [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows).
+
 ### Outcomes
 
 The leaf raises from the shared taxonomy
@@ -397,6 +439,18 @@ The leaf raises from the shared taxonomy
   Probe was not asked for, array-length disagreement, and a delivery **falling short of an exact
   request's own coordinates**. **Never** a request the leaf merely cannot serve.
 - **`BadRequest`** is not a leaf's to raise — it belongs to the surface that parsed the caller's input.
+
+**A fourth outcome exists and is deliberately outside the taxonomy: the engine's own assert.** The
+sampler raises `NotImplementedError` for a crop index arithmetic cannot express — off-phase, or a
+different step. It reads like a leak and is not one: it means **`serves` admitted a request `project`
+cannot answer**, so it is an internal assert that admission over-promised, and
+[#21](../concerns.md#21-serves-extent-vs-project-crop-ability) closes it *inside `serves`* rather than
+by translating it here. The translation is what must not happen — folding it into
+`CapabilityMismatch` would say *"nothing here serves that"* about data the leaf is holding, collapsing
+a fact about the **looker** into a fact about the **world**. Those two refusals are the ones
+[#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable) exists to keep apart, and the
+distinction is only recoverable at the moment of refusal. So: never caught, never re-categorised, and
+never pinned by a test as expected refusal behaviour.
 
 ### Vendor-face obligations
 
@@ -581,8 +635,8 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
    [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted); no owning ticket.
 3. **Store-shaped asks** — the Source stops passing requests through, the leaf answers multi-domain on
    `ANY`, the fact→product relabeling moves to the Reservoir's read-back, and `agreed_geometry`
-   narrows: its rule holds on pinned and snapped axes, its exception opens on `ANY`, it returns the
-   multi-domain carrier minted there, and its singular name is revisited against that carrier —
+   narrows: its rule holds on pinned and snapped axes, its exception opens on `ANY` (validated in
+   the fold; the carrier minted there is built from the records) —
    [006](../tickets/01-0115-retentive-store-freshness.md).
 4. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
    than a Probe ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) names it a deferred
