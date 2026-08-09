@@ -47,10 +47,13 @@ plane. The capability/matching half is
   per parameter family) and **private** — consumed by `quantize`, the holdings read, and read-back;
   never exposed as a node `domain`. Implementations vary by substrate and persistence behind this one
   write/read face: the store's whole public surface is the Manifold contract + `Writable` +
-  `quantize`. Its `project` is the **holdings query** — the held units at the asked cells, each
-  record carrying its own domain and provenance; asked-but-unheld parameters are **omitted** and an
-  empty answer is normal (a cold store is a state, not an error — the Arbiter's omission precedent,
-  not a `Coverage`'s raise). The contract is **clockless and freshness-blind**: provenance
+  `quantize`. Its `project` is the **holdings query**, total over raw asks — the store translates
+  the ask onto its private boxes internally, and the held units come back as records carrying
+  their own domains and provenance; asked-but-unheld parameters are **omitted** and an empty
+  answer is normal (a cold store is a state, not an error — the Arbiter's omission precedent, not
+  a `Coverage`'s raise). `quantize`'s one public job is authoring the **refill fetch-order**: the
+  ask handed to the child must say `ANY` on the axes a box spans (that ask shape is what licenses
+  the native multi-domain answer, above), and only the store knows its boxes. The contract is **clockless and freshness-blind**: provenance
   (`expiration` included) travels as data, and what *fresh* means is the reader's policy — the live
   `Reservoir` gates on it, an archive reader serves deliberately stale history through the same
   face (2026-08-09). Its `capability` **narrates holdings**: honest parameter membership, and a

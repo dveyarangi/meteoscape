@@ -39,16 +39,17 @@ Replace the stub `Store` with the real **retentive in-memory `Store`** — a `Wr
 **unit-granular** (units `(parameter, per-axis cells, window)`; `assimilate` splits a native answer
 into units), wired into **both** positions (each `Source` and the best view). `project` runs the
 `Reservoir` pipeline (*amended 2026-08-09: the store-side report verb dissolved — the store's own
-`project` is the holdings query, and the gate is `Reservoir` policy over what it returns*):
-`quantize` the request onto the store shape, **load holdings** (`store.project` — held units at the
-asked cells with their domains and provenance; unheld parameters omitted, empty answer normal),
-gate as policy — a parameter refills when **absent**, **expired** (`expiration > now` off the
-record's provenance `summary` against the `Reservoir`'s injected clock — no `is_current` operation
-exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), or **not covering** the
-required window — **refill the missing/stale parameters** from the child in **one** call
-(`child.project(store_shape)`), `assimilate` (whole units replaced atomically), reload, then
-read-back: relabel matched native cells onto the handed shape and crop to the request (the
-fact→product boundary).
+`project` is the holdings query over raw asks, and the gate is `Reservoir` policy over what it
+returns*): **load holdings** (`store.project` on the raw request — the store translates onto its
+boxes internally; held units return with their domains and provenance; unheld parameters omitted,
+empty answer normal), gate as policy — a parameter refills when **absent**, **expired**
+(`expiration > now` off the record's provenance `summary` against the `Reservoir`'s injected
+clock — no `is_current` operation exists,
+[ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), or **not covering** the required
+window — **refill the missing/stale parameters** from the child in **one** call
+(`child.project(store.quantize(request))` — the store-authored fetch-order, `quantize`'s only
+public use), `assimilate` (whole units replaced atomically), reload, then read-back: relabel
+matched native cells onto the handed shape and crop to the request (the fact→product boundary).
 
 **`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)) —
 the same per-axis fold, enclosing where `ground` clips, delegating to `Axis.clip`: a latticed axis

@@ -4,9 +4,10 @@ Implementation plan for [the Reservoir retention pipeline](../tickets/01-0115.00
 (slice 4 of the [retentive store](../tickets/01-0115-retentive-store-freshness.md)). Retention goes
 live; the only slice that changes observable behavior.
 
-**Scope in one line:** `Reservoir.project` becomes the quantize → report → refill → assimilate →
-read-back pipeline; the Weaver wires retentive stores into both positions with position-derived
-unit definitions; the e2e re-fetch assertion flips.
+**Scope in one line:** `Reservoir.project` becomes the load → gate → refill (store-authored
+fetch-order) → assimilate → reload → read-back pipeline, with the `Reservoir` gaining its
+injected `Clock`; the stores are already wired (slice 3, inert) — this slice makes them serve;
+the e2e re-fetch assertion flips.
 
 ## Boundaries involved
 
@@ -37,6 +38,32 @@ unit definitions; the e2e re-fetch assertion flips.
    on-grid identity crop, and the `0.0001°` default step. This slice's X/Y read-back is the
    **containing-cell relabel** — same containment math as `quantize`, no new arithmetic — and is
    temporary by design.
+5. **At a boundless-asked position the covers check runs against the child's *current* live
+   window** (`reach`'s `RollingAxis` reads the clock), so a held unit stops covering when the
+   window rolls past its stored end — a correct whole-unit refetch, not a defect.
+   [0112](../tickets/done/01-0112-day-anchored-availability-window.md)'s day-anchoring is what
+   keeps the window identical across a day, so same-day repeats serve tripless (the parent
+   ticket's load-bearing-anchor note, mechanized here).
+6. **Concurrency posture, named rather than lucky**: two concurrent requests can both miss and
+   both refill — an accepted double fetch, not corruption, because `assimilate` replaces whole
+   units atomically (last writer wins, single-origin preserved) and serving reads post-warm
+   holdings. No locking or request coalescing in v1; a coalescing seam, if throughput ever wants
+   one, is `Metronome`'s within-tick note ([clock.py](../../src/meteoscape/clock.py)), not the
+   store's.
+
+## The seam with RFC 0013 — what this pipeline assumes of the store
+
+Each row is a promise the pipeline leans on; if [RFC 0013](./0013-20260808-timeline-store.md)
+moves, this table says what breaks here.
+
+| The pipeline assumes | Promised at |
+|---|---|
+| `project` is total over raw asks — translation internal, unheld omitted, empty `CoverageSet` normal, stale included | 0013 d.5 |
+| A tick is a **fixed point** of `quantize`, so the fetch-order a parent hands down re-quantizes cleanly at the child position | 0013 d.1, fact 6 |
+| An identity-axis member matches units by **value equality** on `z_key` — vantage-keyed root units answer only their own vantage (#25's residue) | 0013 d.5 |
+| `assimilate` replaces **whole units**; a spliced `valid_time` is unrepresentable | 0013 d.4 |
+| The gate reads the **returned holdings'** capability (per-ask exact), never `store.capability` (narration only, [#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach)) | 0013 d.7 |
+| `quantize` authors the fetch-order, and its `ANY` axes are what license the child's native multi-domain answer | 0013 d.9, [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) |
 
 ## Design decisions
 
@@ -46,25 +73,34 @@ unit definitions; the e2e re-fetch assertion flips.
    ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md))*:
 
    ```python
-   shape = self.store.quantize(selection.domain)                    # lattices stay store-private
-   held = await self.store.project(Selection(shape, selection.parameters))
-                                                                    # CoverageSet: held units at the
-                                                                    # asked cells, stale included,
-                                                                    # unheld omitted, empty normal
-   over = {p: t_bounds(selection.domain) ∩ t_extent(self.source.capability.reach(p))
+   held = await self.store.project(selection)                       # RAW ask — the store translates
+                                                                    # onto its boxes internally;
+                                                                    # stale included, unheld omitted,
+                                                                    # empty normal (RFC 0013 d.5)
+   over = {p: required_window(selection.domain, self.source.capability.reach(p))
            for p in selection.parameters}                           # required coverage — only this
-                                                                    # node holds both halves
+                                                                    # node holds both halves.
+                                                                    # bounded T   → bounds ∩ reach;
+                                                                    # boundless T → the child's whole
+                                                                    #   live window (an open member
+                                                                    #   has no extent to intersect —
+                                                                    #   the source position's case,
+                                                                    #   its ask being a fetch-order)
    missing = frozenset(
        p for p in selection.parameters
        if p not in held.capability.parameters                       # absent
        or held.capability.reach(p) T-extent ⊉ over[p]               # not covering → refetch whole
-       or provenance summary(p).expiration <= self._clock.now()     # expired (Reservoir's clock)
-   )
+       or record_of(held, p).provenance.summary(p)                  # owning record by iterating
+              .expiration <= self._clock.now()                      #   held.records (public field);
+   )                                                                # expired (Reservoir's clock)
    if missing:
+       shape = self.store.quantize(selection.domain)                # the fetch-order — quantize's
+                                                                    # ONLY public use; lattices
+                                                                    # stay store-private
        answer = await self.source.project(Selection(domain=shape, parameters=missing))
        await self.store.assimilate(CoverageSet.of(answer))          # normalize: an Arbiter child
                                                                     # answers single-domain
-       held = await self.store.project(Selection(shape, selection.parameters))
+       held = await self.store.project(selection)
    return self._read_back(held, selection)                          # serve everything post-warm
    ```
 
@@ -116,8 +152,8 @@ observable behavior → minimal implementation at a time per `/tdd`.
    (a request whose Z differs reuses native units); whole-unit refetch end-to-end. Green: pipeline
    + read-back wired at each Source; e2e re-fetch assertion flips here.
 2. **Root position** — red: the cold mixed request (one fetch, store-served calculator inputs,
-   one `issue_time`); vantage-keyed root units (#25 residue pinned as a test). Green: root wiring
-   with `deferred={T}`.
+   one `issue_time`); vantage-keyed root units (#25 residue pinned as a test). Green: the root
+   pipeline live (its store, `deferred={T}`, is already wired since slice 3).
 3. **Landing** — retention-interval e2e (never serves stale; bounds memory only); docs: the
    provider edge record's pending-006 block flips to current state, ADR-0006's flatten rejection
    marked live, delivery README rows. (The per-position unit-definition architecture landed in
