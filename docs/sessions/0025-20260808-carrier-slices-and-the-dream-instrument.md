@@ -38,7 +38,7 @@ skill was written and immediately earned its keep.
   on boundlessness with both eager folds retired. 261 tests green, `pyright` clean.
 - **The [`dream`](../../.agents/skills/dream/SKILL.md) skill was written and used twice** — the first
   dream was discarded, the second kept
-  ([вывеска, меню и расписка](../dreams/20260809-vyveska-menyu-i-raspiska.md)) — and
+  ([невод, полка и метка «где-то»](../dreams/20260809-nevod-polka-i-metka-gde-to.md)) — and
   [`/improve-comments`](../../.agents/skills/improve-comments/SKILL.md) gained a `TODO (temporary)`
   convention, applied to its two live instances (`Shortfall`'s raise, `StubStore`).
   [`/conclude`](../../.agents/skills/conclude/SKILL.md) was widened to a day spanning chats and
@@ -80,7 +80,7 @@ skill was written and immediately earned its keep.
   never re-categorised, never pinned by a test as expected refusal →
   [edge/provider.md §Outcomes](../edge/provider.md#outcomes), owned by #21 / #36.
 - **Pinned Z and vantage Z are different promises**, and a vantage relabel is an ∃-claim never a
-  ∀-claim — same rule as [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows), second
+  ∀-claim — same rule as [#25](../concerns.md#25-root-store-holding-reuse-across-vantage-windows), second
   site → [edge/provider.md §Response](../edge/provider.md#response--what-a-leaf-returns).
 - **The natural fetch unit is unwitnessed, not deferred** — a wrapper constant binding every timeline
   vendor; 011 is the witness → [edge/provider.md §Request](../edge/provider.md#request--what-a-leaf-may-be-handed),
@@ -116,7 +116,7 @@ Queue: [delivery README](../tickets/README.md).
 - Closing the admit-then-cannot-crop gap inside `serves` → [#21](../concerns.md#21-serves-extent-vs-project-crop-ability);
   the reason code that would make the two refusals distinguishable to an operator →
   [#36](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable), [#14](../concerns.md#14-resolution-trace-and-observability).
-- Reuse of an ∃-labelled vantage unit for a narrower window → [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows).
+- Reuse of an ∃-labelled vantage unit for a narrower window → [#25](../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
 
 **Deliberately *not* filed**, so no later reader hunts for a home: `CoverageSet.project`'s
 empty-parameter precondition is docstring-stated and unchecked — the posture
@@ -174,7 +174,7 @@ Closed before the day ended: `/sync-arch` resumed and finished, the slice closed
 limitation" repaired — the mixed-bounds refusal does **not** dissolve at 006, because the licence is
 boundlessness rather than the store, so what 006 supplies is a second kind of ask.
 
-1. **Next implementation action: slice 3**, [retentive timeline Store](../tickets/01-0115.0030-timeline-store.md)
+1. **Next implementation action: slice 3**, [retentive timeline Store](../tickets/done/01-0115.0030-timeline-store.md)
    with [RFC 0013](../rfc/done/0013-20260808-timeline-store.md), where `assimilate`'s concrete shapes are
    revisited. It is the first slice a caller can observe, because slice 2's widening is inert until a
    store holds the surplus.

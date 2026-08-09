@@ -73,7 +73,7 @@ one deliberate behaviour change.
 
 - **Implement [003b](../../../tickets/done/01-0060-capability-domain.md)** — all questions closed, doc set
   consistent, no code touched this session.
-- **Then [m2](../../../tickets/done/01-0070-dissolve-node-countable.md) before [006](../../../tickets/01-0115-retentive-store-freshness.md)** —
+- **Then [m2](../../../tickets/done/01-0070-dissolve-node-countable.md) before [006](../../../tickets/done/01-0115-retentive-store-freshness.md)** —
   006 assumes the storeless/private-lattice shape m2 delivers.
 - The 0015 continuation items not addressed here remain: 003c after 003b (with the relative-horizon
   decision), and the unpushed commit backlog.

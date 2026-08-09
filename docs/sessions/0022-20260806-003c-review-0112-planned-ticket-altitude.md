@@ -48,7 +48,7 @@ the skills.
   parity guard must stay able to catch mis-declarations → 0112 ticket §Why.
 - **The open-ended request member is designed at the retentive-store align, together with `ANY`**
   (the edge's omitted-`end` flip and narration-as-floor decided there) → RFC 0010 stage 4 routes
-  it onto [01-0115](../tickets/01-0115-retentive-store-freshness.md) at 0112's landing.
+  it onto [01-0115](../tickets/done/01-0115-retentive-store-freshness.md) at 0112's landing.
 - **Ticket criteria hold the behavior altitude; an RFC always implements a ticket** →
   [`to-tickets` skill](../../.agents/skills/to-tickets/SKILL.md) (the rule),
   [`plan-impl` skill](../../.agents/skills/plan-impl/SKILL.md) (no ticketless RFCs).
@@ -67,7 +67,7 @@ All owned elsewhere; none live only here:
   landing per RFC 0010 stage 4).
 - **Refill scope, partial-warm verification, #42 narrowing, open-ended member** — the
   retentive-store align's agenda →
-  [01-0115](../tickets/01-0115-retentive-store-freshness.md), RFC 0010 stage 4.
+  [01-0115](../tickets/done/01-0115-retentive-store-freshness.md), RFC 0010 stage 4.
 
 ## Continuation
 
