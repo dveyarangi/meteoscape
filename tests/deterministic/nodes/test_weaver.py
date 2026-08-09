@@ -19,6 +19,7 @@ from fakes import (
 from meteoscape.config import ArbiterPolicy, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
 from meteoscape.manifold.core import Selection
+from meteoscape.manifold.domain import AxisName
 from meteoscape.nodes.arbiter import Arbiter
 from meteoscape.nodes.calculator import Calculator
 from meteoscape.nodes.calculators.wind import wind_from_uv
@@ -108,8 +109,8 @@ def test_single_source_weaves_capability_and_stores() -> None:
     assert AIR_TEMPERATURE in root.capability.parameters
     assert len(stores.calls) == 2
     source_store = next(iter(profile.sources.sources.values())).store
-    assert stores.calls[0] is source_store
-    assert stores.calls[1] is profile.root_store
+    assert stores.calls[0] == (source_store, frozenset({AxisName.T, AxisName.Z}))
+    assert stores.calls[1] == (profile.root_store, frozenset({AxisName.T}))
     assert isinstance(root.source, Arbiter)
     assert len(root.source.producers) == 1
     assert root.source.producers[0].key in profile.sources.sources
@@ -129,7 +130,7 @@ def test_materialized_source_weaves_storeless() -> None:
     entry = next(iter(profile.sources.sources.values()))
     producer = next(p for p in root.source.producers if p.key in profile.sources.sources)
     assert producer.node is entry.provider  # the provider itself, unwrapped
-    assert stores.calls == [profile.root_store]  # only the best-view store; none for the source
+    assert stores.calls == [(profile.root_store, frozenset({AxisName.T}))]
     assert AIR_TEMPERATURE in root.capability.parameters
 
 

@@ -66,7 +66,7 @@ def test_default_settings_compose_open_meteo() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         STOPPED,
-        StoreFactory(),
+        StoreFactory(STOPPED),
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
     assert WIND_SPEED in gateway.best_view.capability.parameters
@@ -83,7 +83,7 @@ def test_default_compose_and_forecast_hourly_registered() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(),
+        StoreFactory(clock),
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
 

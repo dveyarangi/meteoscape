@@ -60,7 +60,7 @@ def _bind(*offerings: OfferingDef, catalog=None):
 
 
 def _producers(registry: SourceRegistry) -> list[Producer]:
-    stores = StoreFactory()
+    stores = StoreFactory(STOPPED)
     return [
         Producer(node=wire_source(reg, stores), key=key) for key, reg in registry.sources.items()
     ]
@@ -435,7 +435,13 @@ def _footprint_leaf(key: SourceKey, domain: FootprintDomain) -> Producer:
     table = core_parameters()
     capability = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)})
     provider = FakeProvider(source_key=key, capability=capability)
-    return Producer(node=Reservoir(StoreFactory().create(SAMPLE_STORE), provider), key=key)
+    return Producer(
+        node=Reservoir(
+            StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})),
+            provider,
+        ),
+        key=key,
+    )
 
 
 def test_arbiter_publishes_the_dominating_reach() -> None:
@@ -500,7 +506,9 @@ def test_reservoir_forwards_child_reach_unchanged() -> None:
     table = core_parameters()
     capability = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)})
     provider = FakeProvider(source_key=SourceKey("src", "default"), capability=capability)
-    reservoir = Reservoir(StoreFactory().create(SAMPLE_STORE), provider)
+    reservoir = Reservoir(
+        StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})), provider
+    )
     assert reservoir.capability.reach(AIR_TEMPERATURE) is domain
 
 
@@ -514,7 +522,13 @@ def _multi_producer(key: SourceKey, footprints: Mapping[ParameterId, FootprintDo
         reaches={pid: (table.get(pid), dom) for pid, dom in footprints.items()}
     )
     provider = FakeProvider(source_key=key, capability=capability)
-    return Producer(node=Reservoir(StoreFactory().create(SAMPLE_STORE), provider), key=key)
+    return Producer(
+        node=Reservoir(
+            StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})),
+            provider,
+        ),
+        key=key,
+    )
 
 
 def _europe_vs_americas() -> list[Producer]:

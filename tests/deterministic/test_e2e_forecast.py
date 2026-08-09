@@ -45,7 +45,7 @@ def _compose_default(clock: Clock):
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(),
+        StoreFactory(clock),
     )
 
 
@@ -92,7 +92,7 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         _CLOCK,
-        StoreFactory(),
+        StoreFactory(_CLOCK),
     )
     app = build_mcp_app(gateway, _CLOCK)
 
@@ -108,8 +108,8 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         first = await client.call_tool("forecast_hourly", request)
         second = await client.call_tool("forecast_hourly", request)
 
-    # StubStore has no retention: each request performs one source fetch plus one wind u/v fetch.
-    # A retentive Store will make the second request reuse both.
+    # MemoryStore is wired inert: the pass-through Reservoir never reads it, so each request
+    # still performs one source fetch plus one wind u/v fetch. Slice 4 (RFC 0014) flips this.
     assert route.call_count == 4
 
     payload = first.data

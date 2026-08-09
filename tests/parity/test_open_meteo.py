@@ -58,7 +58,7 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(),
+        StoreFactory(clock),
     )
     app = build_mcp_app(gateway, clock)
     async with Client(app) as client:

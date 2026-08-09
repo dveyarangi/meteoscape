@@ -1,9 +1,11 @@
 """The Manifold algebra and its materialized leaf.
 
-`project` is the single closed, read-only operation; `Countable` and `Writable` are optional facets,
-never a type hierarchy. The `Coverage` *contract* lives here (its realizations live in `coverage.py`)
-because `Writable` consumes it and `Coverage <: Manifold` - co-locating it with the algebra keeps the
-dependency acyclic. Everything here is an interface bar the `Selection` value type.
+`project` is the single closed, read-only operation; `Countable` is an optional facet, never a type
+hierarchy. The `Writable` facet lives with its sole realization (`nodes/store.py`), keeping this
+module read-only (ADR-0001). The `Coverage` *contract* lives here (its realizations live in
+`coverage.py`): `Coverage <: Manifold`, and the realizations import this module — co-locating the
+contract with the algebra is what keeps that dependency acyclic. Everything here is an interface bar
+the `Selection` value type.
 
 See architecture.md ("Core concepts") and ADR-0001.
 """
@@ -66,13 +68,6 @@ class Countable(Protocol):
 
     @property
     def domain(self) -> EnumerableDomain: ...
-
-
-@runtime_checkable
-class Writable(Protocol):
-    """Facet: the materialization boundary - sample a view onto the node grid and store it."""
-
-    async def assimilate(self, coverage: Coverage) -> None: ...
 
 
 @runtime_checkable

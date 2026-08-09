@@ -199,14 +199,15 @@ def coverage_record(
 
 
 class RecordingStoreFactory(StoreFactory):
-    """Records each `create` call; delegates allocation to `StoreFactory`."""
+    """Records each `create` call (spec + deferred); delegates allocation to `StoreFactory`."""
 
-    def __init__(self) -> None:
-        self.calls: list[StoreSpec] = []
+    def __init__(self, clock: Clock = STOPPED) -> None:
+        super().__init__(clock)
+        self.calls: list[tuple[StoreSpec, frozenset[AxisName]]] = []
 
-    def create(self, spec: StoreSpec) -> Store:
-        self.calls.append(spec)
-        return super().create(spec)
+    def create(self, spec: StoreSpec, deferred: frozenset[AxisName]) -> Store:
+        self.calls.append((spec, deferred))
+        return super().create(spec, deferred)
 
 
 def fake_catalog(

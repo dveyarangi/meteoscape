@@ -13,12 +13,20 @@ from collections.abc import Sequence
 
 from ..identity import CalculatorKey
 from ..manifold.core import Manifold
+from ..manifold.domain import AxisName
 from ..parameters import ParameterId
 from .arbiter import Arbiter, Producer, Reconciler, build_reconciler
 from .calculator import Calculator
 from .composition import CompositionError, ProfileDef, RegisteredSource, validate_calculators
 from .reservoir import Reservoir
 from .store import StoreFactory
+
+# Deferral is position-bounded, producer-decided (ADR-0006). _PRODUCT_DEFERRED is position-forced:
+# a product-shaped child's native cells are gone by relabel, so only T can span a box.
+# _SOURCE_DEFERRED is the point-timeline *shape's* fact — v1's only stored source shape — parked
+# here until a second shape moves it into the provider manifest beside taps and cadence.
+_SOURCE_DEFERRED = frozenset({AxisName.T, AxisName.Z})
+_PRODUCT_DEFERRED = frozenset({AxisName.T})
 
 
 def wire_source(registered: RegisteredSource, stores: StoreFactory) -> Manifold:
@@ -30,7 +38,7 @@ def wire_source(registered: RegisteredSource, stores: StoreFactory) -> Manifold:
     """
     if registered.store is None:
         return registered.provider
-    return Reservoir(stores.create(registered.store), registered.provider)
+    return Reservoir(stores.create(registered.store, _SOURCE_DEFERRED), registered.provider)
 
 
 class Weaver:
@@ -52,7 +60,7 @@ class Weaver:
         reconciler = build_reconciler(profile.arbiter, profile.sources, profile.calculators)
         calc_producers = self._weave_calculators(profile, source_producers, reconciler)
         return Reservoir(
-            self.stores.create(profile.root_store),
+            self.stores.create(profile.root_store, _PRODUCT_DEFERRED),
             Arbiter([*source_producers, *calc_producers], reconciler),
         )
 
@@ -93,7 +101,9 @@ class Weaver:
             scoped = Arbiter(producers_for(reg.inputs), reconciler, scope=reg.inputs)
             calc = Calculator(key, reg.outputs, reg.inputs, reg.manifest.fn, scoped)
             node: Manifold = (
-                Reservoir(self.stores.create(profile.root_store), calc) if reg.stored else calc
+                Reservoir(self.stores.create(profile.root_store, _PRODUCT_DEFERRED), calc)
+                if reg.stored
+                else calc
             )
             producer = Producer(node=node, key=key)
             visiting.discard(key)

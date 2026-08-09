@@ -65,7 +65,7 @@ def main() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(),
+        StoreFactory(clock),
     )
     app = build_mcp_app(gateway, clock)
     app.run()
