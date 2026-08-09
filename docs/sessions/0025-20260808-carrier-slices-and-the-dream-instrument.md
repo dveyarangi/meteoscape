@@ -178,7 +178,7 @@ boundlessness rather than the store, so what 006 supplies is a second kind of as
    with [RFC 0013](../rfc/0013-20260808-timeline-store.md), where `assimilate`'s concrete shapes are
    revisited. It is the first slice a caller can observe, because slice 2's widening is inert until a
    store holds the surplus.
-2. **[RFC 0011](../rfc/0011-20260808-any-boundless-member.md) never moved to `rfc/done`** when
+2. **[RFC 0011](../rfc/done/0011-20260808-any-boundless-member.md) never moved to `rfc/done`** when
    0115.0010 closed on 08-08, and should. Archiving a document silently breaks every relative link in
    it and every link to it — closing this slice broke about twenty, all now repaired, along with the
    depth drift the 08-06 and 08-08 archivings had already left behind. Every relative link under
