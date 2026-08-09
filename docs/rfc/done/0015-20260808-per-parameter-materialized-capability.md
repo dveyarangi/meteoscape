@@ -243,7 +243,7 @@ has a red phase — the suite is green throughout, which is the point of a renam
 
 - **The carrier and store constructing the form** — theirs, at
   [0115.0020](../../tickets/done/01-0115.0020-multidomain-carrier-timeline.md) and
-  [0115.0030](../../tickets/01-0115.0030-timeline-store.md). This slice lands the form unwired to them.
+  [0115.0030](../../tickets/done/01-0115.0030-timeline-store.md). This slice lands the form unwired to them.
 - **A type-level enumerable narrowing on this form** — rejected here for want of a consumer
   (decision 2). **Trigger to revisit:** the first caller that reads
   `carrier_or_store.capability.reach(p)` and needs the result *typed* enumerable rather than merely

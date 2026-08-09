@@ -120,7 +120,7 @@ deterministic gate.
    - **Run-boundary race: retry the whole comparison once, composing a fresh root per attempt** —
      a vendor model run publishing between the two fetches produces a legitimate mismatch; twice in
      a row is improbable enough that the second failure is real. The fresh root is load-bearing,
-     not hygiene: once [006](../../tickets/01-0115-retentive-store-freshness.md) lands retention, a retry
+     not hygiene: once [006](../../tickets/done/01-0115-retentive-store-freshness.md) lands retention, a retry
      through the *same* gateway would serve the cached first-run values against a re-fetched new
      run and could never clear the boundary — a guaranteed false alert in exactly the case retry
      exists for. `compose()` is cheap; each attempt builds its own. Run pinning /

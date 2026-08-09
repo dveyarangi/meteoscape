@@ -247,14 +247,14 @@ classDiagram
 - **Grid alignment is per storing node and per axis, and splits into two opposite-extent steps.** A
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
   declared lattice resolves to the **containing cell** and is emitted as that cell's **tick**, a
-  pinned point (2026-08-09). **The coalescing lives in the unit key, not in the ask**: nearby points
-  share a tick and therefore one unit, which is the enclosure that matters, while the ask itself
+  pinned point (2026-08-09). **The coalescing lives in the Holding key, not in the ask**: nearby points
+  share a tick and therefore one Holding, which is the enclosure that matters, while the ask itself
   stays a point — a span-shaped member would claim a point-measured value holds across the whole
   cell (an ∃ relabeled as ∀) and would graze the neighbouring cell every time a downstream store
   re-quantized it, since a cell's closed upper edge is its neighbour's tick. A tick is therefore a
   **fixed point** of `quantize`, which is what lets a fetch-order travel hop to hop unchanged. An
-  axis the unit defers to the producer takes **`ANY`** (T and Z in the timeline
-  store — see the `ANY` bullet below), its native cell entering the unit key from the *answer*; an
+  axis the Holding defers to the producer takes **`ANY`** (T and Z in the timeline
+  store — see the `ANY` bullet below), its native cell entering the Holding key from the *answer*; an
   axis with neither role **passes through identity**
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). At
   **read** the `Reservoir` **homogenizes** the stored cells back onto the requested `Domain` — extent
@@ -264,7 +264,7 @@ classDiagram
   **shape-correspondence** — the answer mirrors the question — not a blanket co-domain guarantee.)*
   Resolving to the caller's exact output is the
   **read-back, not the `Store`'s job**; the two steps move in **opposite directions** — quantize
-  widens (to the whole unit on deferred axes, to the containing cell's identity on latticed ones),
+  widens (to the whole Holding on deferred axes, to the containing cell's identity on latticed ones),
   read-back crops back to the request. The per-axis snap is `quantize`'s internal
   mechanism (no standalone operation): a snapped axis adopts the grid's anchor and step within its
   bounds (the `valid_time` case), a **concrete coordinate lands in the cell containing it** (the
@@ -272,7 +272,7 @@ classDiagram
   `issue_time` is not requested, so it is never snapped. A Snapped request is resolved
   by **whichever node resolves** — a storing node's `quantize`, or a storeless leaf onto its private
   vendor lattice; a store **refill** Selection is a `SelectionDomain` — quantized pinned cells on
-  latticed axes, `ANY` where the unit defers to the producer — never enumerable (`ANY` has no
+  latticed axes, `ANY` where the Holding defers to the producer — never enumerable (`ANY` has no
   coordinate list). Store lattices are
   **private to the `Store`** and **emergent per node**; there is no global lattice config and no
   public node `domain`.
@@ -318,15 +318,15 @@ classDiagram
   whose bounds may be absent, "answer this axis at your own native
   cells." It is the **limit of `quantize`'s widening** — where a declared lattice coalesces a point
   onto its containing cell, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
-  is derived from the store's assimilable unit, not from the axis**: an axis is `ANY` exactly when the
-  unit spans it entirely or defers its native cell to the producer. A timeline store (unit = one
+  is derived from the store's assimilable Holding, not from the axis**: an axis is `ANY` exactly when the
+  Holding spans it entirely or defers its native cell to the producer. A timeline store (Holding = one
   parameter's whole timeline at a spatial cell)
   asks `ANY` on `T` and `Z` with `X/Y` quantized to pinned cells — that is the **Source**-position
   store; the **best-view** store (and a stored Calculator's) defers only `T`, its child answering
-  product-shaped views, so the request's vantage Z passes identity into the unit key
-  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md), the fact→product boundary); a grid store (unit = one parameter's whole field at a
+  product-shaped views, so the request's vantage Z passes identity into the Holding key
+  ([ADR-0006](./0006-materialization-granularity-and-store-shape.md), the fact→product boundary); a grid store (Holding = one parameter's whole field at a
   time step) inverts it. So nothing here is vertical- or timeline-specific — the Source stays generic
-  and only the unit definition varies. Read-back is unchanged: the stored extent encloses the request
+  and only the Holding definition varies. Read-back is unchanged: the stored extent encloses the request
   on every axis, and homogenization crops or relabels each axis back independently.
 
 - **Request Z carries the mode as an axis kind: `VantageAxis` = vantage, `RegularAxis` cell = exact.**
@@ -388,7 +388,7 @@ classDiagram
   as an interval, colliding with a `Cell`'s `bounds`. `capability` / `ranges` / `provenance` share one
   parameter key set. Co-domain is an invariant of this **exchange record** only — a producer's fetch
   materializes into one record **per set of parameters sharing a native Domain**, and stores retain
-  per-parameter units ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
+  per-parameter Holdings ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
 
 - **`ParameterData` is pure numbers `(values, present)`; every descriptor is id-entailed.** The slice
   does **not** restate its own `ParameterId` (the `ranges` map key) and carries **no** descriptors at
@@ -437,7 +437,10 @@ classDiagram
   `bounds` by convention (centre, or an edge for period-ending accumulations), never by definition. It
   generalizes to all axes uniformly (a spatial cell is the product of per-axis intervals). Cells live on
   the **`Separable` facet**, not the base `Domain` (non-separable per-cell bounds are the deferred
-  curvilinear case). So the statistic / integration window for `values[i]` — an extensive parameter's **extent** — is
+  curvilinear case). Separability and *having cells* are two questions, and the operations that
+  address a coordinate need both: a domain can decompose per axis yet still carry an axis with no
+  cells (a declared span), which is why resolution and read-back ask for the **cell-bearing**
+  narrowing — separable *and* enumerable on every axis — rather than assuming one implies the other. So the statistic / integration window for `values[i]` — an extensive parameter's **extent** — is
   the shared `valid_time` axis cell's `bounds`, stated **once** on the Domain, read by every parameter.
 
 - **Provenance is a Coverage-level plane, owned by [ADR-0003](./0003-provenance-and-origin.md).** Not a

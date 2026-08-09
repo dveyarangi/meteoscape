@@ -34,7 +34,7 @@ bare `Producer`; the provider-exact lattice channel closes and `StoreFactory.cre
    declaration channel is the catalogue's **`OfferingSpec.store`** (a `StoreSpec` authored beside the
    manifest by whoever knows the vendor grid), overridable per profile by `OfferingDef.store` —
    **already built** (`composition.py`: `offering.store if ... else spec.store`). No new config
-   surface. The lattice *representation* is [006](../../tickets/01-0115-retentive-store-freshness.md)'s
+   surface. The lattice *representation* is [006](../../tickets/done/01-0115-retentive-store-freshness.md)'s
    decision; the enumerable-but-unholdable residual (cloud ARCO) stays with the ticket's open
    question 2 / [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 2. **The `SourceBinder` invariant is loud in both directions.** A configured store on a materialized

@@ -2,15 +2,10 @@
 
 **Last updated:** 2026-08-09
 
-**Current stage:** [006 — retentive store](./01-0115-retentive-store-freshness.md) slices 1 and 2 have
-landed — [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) and the
-[multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) — as
-has [per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md).
-Next is slice 3, the [retentive Store (`MemoryStore`)](./01-0115.0030-timeline-store.md) (RFC 0013
-amended at its 2026-08-09 align: the store's face is Manifold + `Writable` + `quantize`; the
-serve gate moved to slice 4 as `Reservoir` policy): slice 2's wider answers are inert until a store
-exists to hold them. Then slice 4, [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), and
-only then another Provider.
+**Current stage:** [006 — retentive store](./done/01-0115-retentive-store-freshness.md) is **delivered**
+([0115.0010](./done/01-0115.0010-any-boundless-member.md)–[0115.0040](./done/01-0115.0040-reservoir-retention-pipeline.md)).
+Next is [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), then another
+Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -49,7 +44,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
 | Second provider and fallback | Planned | Only Open-Meteo is configured. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
-| Retentive cache/freshness | Planned | Stores are non-retentive placeholders. |
+| Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. |
 | Off-grid homogenization | Planned | Nearest-neighbor read-back remains. |
 | Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **TWC** (reverted 2026-08-08 — the 2026-08-02 Visual Crossing swap rested on TWC access being unverified, which no longer holds). |
 
@@ -77,11 +72,11 @@ queue position, because it still has to be done in order.
 | 0110 | [Request shaping](./done/01-0110-request-shaping.md) | — | Done | snapped request mode, profile reach, capability domain | Free `start`/`end` windows (datetimes only) riding the Snapped-T mode, plus reach narration; an omitted `end` defaults to the profile's live reach end. |
 | 0112 | [Day-anchored availability window](./done/01-0112-day-anchored-availability-window.md) | — | Done | request shaping | `CadenceDef.window_quantum`: the availability window anchors to the vendor's calendar quantum; Open-Meteo declares its probed day-quantized truth; the 003c parity probe passes at any hour. |
 | 0113 | [Per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md) | Maint | Done | — | `GranularCapability` is the own-geometry form for independently shaped parameters; Providers, multi-domain carriers, and stores advertise through it. Geometry's identity/prose cleanup remains [#46](../concerns.md#46-composition-failure-attribution-is-paid-inside-geometry), triggered by a regional provider or curvilinear domain. |
-| 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready (split) | core canonical parameters | Decision record and union of criteria; delivered by the four subtickets below (align completed 2026-08-08). |
+| 0115 | [Retentive store](./done/01-0115-retentive-store-freshness.md) | — | Done (split) | core canonical parameters | Decision record and union of criteria; delivered by the four subtickets below. |
 | 0115.0010 | [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) | — | Done | core canonical parameters | Boundless snapped member, `ground`'s open arm, shared `clip` tolerance. No behavior change. |
-| 0115.0020 | [Multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) | — | Done | `ANY` boundless member, per-parameter materialized capability | `CoverageSet` minted; `clip` takes optional bounds; `agreed_geometry` licenses open-axis difference under a request-derived licence; both eager folds retired; natural fetch unit. No behavior change — the widening is inert until slice 3's store holds the surplus. |
-| 0115.0030 | [Retentive Store (`MemoryStore`)](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; unit-tested, wired inert (`StubStore` gone; the pass-through `Reservoir` never touches it). |
-| 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive store leaf | Retention live in both positions; the serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
+| 0115.0020 | [Multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) | — | Done | `ANY` boundless member, per-parameter materialized capability | `CoverageSet` minted; `clip` takes optional bounds; `agreed_geometry` licenses open-axis difference under a request-derived licence; both eager folds retired; natural fetch unit. |
+| 0115.0030 | [Retentive Store (`MemoryStore`)](./done/01-0115.0030-timeline-store.md) | — | Done | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; wired inert until slice 4. |
+| 0115.0040 | [Reservoir retention pipeline](./done/01-0115.0040-reservoir-retention-pipeline.md) | — | Done | retentive store leaf | Retention live in both positions; serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
 | 0120 | [TWC provider](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check. Split from second-provider fallback on 2026-08-02; reverted to TWC from Visual Crossing on 2026-08-08. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — (former v1-tail gates dissolved 2026-08-08; see ticket) | Supported headless package boundary with public failures; ships early under live-equivalence — capability grows as later tickets land. |
@@ -101,7 +96,7 @@ queue position, because it still has to be done in order.
 A ticket's filename is `RR-NNNN-slug.md` — release, position, name:
 
 ```
-docs/tickets/01-0115-retentive-store-freshness.md
+docs/tickets/done/01-0115-retentive-store-freshness.md
               │  │    └── slug — what the ticket is. Never changes. Cite tickets by this.
               │  └─────── position in the queue — global across releases. Changes when priority changes.
               └────────── release (01 = v1). Names the contract the ticket serves.
@@ -150,7 +145,7 @@ that date cite them, and are left as written.
 | 003c | [request shaping](./done/01-0110-request-shaping.md) |
 | 004 | [second-provider fallback](./01-0150-second-provider-fallback.md) |
 | 005 | [per-parameter selection](./01-0170-per-parameter-selection.md) |
-| 006 | [retentive store](./01-0115-retentive-store-freshness.md) |
+| 006 | [retentive store](./done/01-0115-retentive-store-freshness.md) |
 | 007 | [off-grid homogenization](./01-0117-off-grid-homogenization.md) |
 | 008 | [config and graceful degrade](./01-0180-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./01-0190-error-taxonomy-partial-success.md) |
@@ -218,7 +213,7 @@ resolution.
   discriminator → [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - [005](./01-0170-per-parameter-selection.md): choose the single-provider parameter used to demonstrate
   capability-based routing.
-- [006](./01-0115-retentive-store-freshness.md): align completed 2026-08-08 — refill scope (ask
+- [006](./done/01-0115-retentive-store-freshness.md): align completed 2026-08-08 — refill scope (ask
   narrow, answer natural, store absorbs), the partial-warm edge (covers-or-refetch-whole), `ANY` as
   the boundless snapped member, and the #22/#23 deferrals are all
   recorded in the ticket; narrow-answering providers moved to
@@ -228,7 +223,7 @@ resolution.
   `CoverageSet`, and the align's group-returning fold was **rejected** there: the differing
   resolutions had no reader, so the fold keeps its single return and the carrier is built from the
   records. Still ticket-owned: `assimilate`'s concrete shapes (revisited at
-  [0115.0030](./01-0115.0030-timeline-store.md)).
+  [0115.0030](./done/01-0115.0030-timeline-store.md)).
 - [m3](./done/01-0080-provider-parity-checks.md) (done): *building* scheduled and changed-provider
   automation remains deliberate follow-on work, recorded in the ticket's follow-on section. What
   **enforces** parity coverage and **routes** its selection is now

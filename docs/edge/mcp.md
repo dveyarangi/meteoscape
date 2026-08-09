@@ -102,12 +102,18 @@ request).
   `valid_time` — never a fault ([edge/provider.md](./provider.md)) — *validated by:*
   [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
   (`test_short_vendor_delivery_is_disclosed_not_failed`).
+- **A repeat of the same request inside the freshness window returns the same values without an
+  upstream trip, and never returns stale ones**: retention serves from the Store while
+  `provenance.exp` is in the future and refetches once it passes, so `exp` is the caller's
+  usable staleness bound rather than a hint. Callers may cache to it and poll no faster —
+  *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
+  (`test_forecast_hourly_e2e_and_refetch`, `test_expired_holdings_refetch_and_never_serve_stale`).
 
 ## Concerns
 
 - [#5 — Read-time homogenization fidelity](../concerns.md#5-read-time-homogenization-fidelity)
   — off-grid values are nearest-neighbor read-back today; fidelity at the requested point is
-  bounded by this until 007 (Roadmap 3).
+  bounded by this until 007 (Roadmap 1).
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — wire units are fixed
   per parameter; the lossless-vs-degrading conversion quality signal surfaces here when the
   catalogue grows (010).
@@ -117,10 +123,10 @@ request).
   narrated horizon is one number for the whole globe (a `min` fold over the served menu); the
   per-location truth is the deferred capabilities-introspection tool.
 - [#30 — Response membership under degraded fallback](../concerns.md#30-response-membership-under-runtime-degraded-fallback)
-  — membership semantics at this edge shift when fallback lands (Roadmap 4).
+  — membership semantics at this edge shift when fallback lands (Roadmap 2).
 - [#36 — Unserved and uncomparable are indistinguishable](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
   — the edge-local reading of silent omission: the caller cannot tell why a parameter is
-  absent, and today neither can the engine (Roadmap 6).
+  absent, and today neither can the engine (Roadmap 4).
 - [#14 — Resolution trace](../concerns.md#14-resolution-trace-and-observability) — Phase 1's
   contract-neutral structured logs are assigned to [minimal resolution
   logging](../tickets/01-0195-minimal-resolution-logging.md); the richer trace sidecar remains
@@ -128,17 +134,12 @@ request).
 
 ## Roadmap
 
-1. ~~Free `start`/`end` request windows — out-of-range asks yield the servable part, with reach
-   narration~~ — **landed 2026-08-06**
-   ([003c](../tickets/done/01-0110-request-shaping.md)).
-2. Fresh reuse — repeat asks answered from retained data —
-   [006](../tickets/01-0115-retentive-store-freshness.md).
-3. Off-grid fidelity — nearest-neighbor read-back from the Store lattice, reported at the exact
+1. Off-grid fidelity — nearest-neighbor read-back from the Store lattice, reported at the exact
    requested point —
    [007](../tickets/01-0117-off-grid-homogenization.md).
-4. Provider fallback — upstream faults stop failing the whole request —
+2. Provider fallback — upstream faults stop failing the whole request —
    [004](../tickets/01-0150-second-provider-fallback.md).
-5. Per-parameter assembly — one response, different winning sources per parameter —
+3. Per-parameter assembly — one response, different winning sources per parameter —
    [005](../tickets/01-0170-per-parameter-selection.md).
-6. Absence reasons and partial success under fault —
+4. Absence reasons and partial success under fault —
    [009](../tickets/01-0190-error-taxonomy-partial-success.md).

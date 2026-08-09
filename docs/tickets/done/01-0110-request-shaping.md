@@ -163,7 +163,7 @@ contract, Time axis).
       rare-and-loud, for exactly one ticket.** No mitigation is built — window-freezing and
       domain-folding stay rejected on [RFC 0009](../../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)
       decision 11's grounds, and retention is the mechanism, not a workaround:
-      [006](../01-0115-retentive-store-freshness.md) follows this ticket directly in the queue
+      [006](./01-0115-retentive-store-freshness.md) follows this ticket directly in the queue
       (reordered at the same align) and collapses the second fetch **on the warm path** (a
       fully-fresh repeat is served with no provider call). The residue — a cold store still issues
       two disjoint-parameter fetches, since neither today's engaged-tap fetch nor 006's
@@ -181,7 +181,7 @@ contract, Time axis).
       whose choice the rest inherit.~~ **The call, recorded at the 2026-08-05 re-stage align: the
       split stays.** The edge authors a `SelectionDomain` and `ground` remains a function — the
       second in-tree request author that would make narrowing load-bearing
-      ([006](../01-0115-retentive-store-freshness.md)'s refill) does not exist yet, and the
+      ([006](./01-0115-retentive-store-freshness.md)'s refill) does not exist yet, and the
       narrowing's costs (widening `SelectableAxis`, restating `resample`'s target, pre-deciding the
       refill representation) all remain as #42 lists them. Narrowing re-arises at 006 with its
       author in hand; this criterion is satisfied by the edge migration matching the recorded call.

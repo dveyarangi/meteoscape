@@ -348,7 +348,7 @@ forms.
    architecture does not have (the `Clock` is a build-time dependency, ADR-0003) and still would not
    cover vendor-length divergence; *folding winner domains to a common lattice* is a per-cell
    reconciler ([#28](../../concerns.md), out of scope by the ticket). The exposure is real but starts
-   at **003c** (m4 is product-invisible), and [006](../../tickets/01-0115-retentive-store-freshness.md)'s
+   at **003c** (m4 is product-invisible), and [006](../../tickets/done/01-0115-retentive-store-freshness.md)'s
    retention collapses the second fetch — so the owner is 003c's landing, recorded there and at
    [#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 12. **The leaf splits into a shape wrapper and a vendor `Probe` (decided at the 2026-08-02 align;
@@ -590,7 +590,7 @@ which is the stage's real proof.
 `agreed_geometry` is **not** in this file: it lives in `manifold/domain.py` beside `ground`
 (decision 10). The law it enforces is not provider-specific — it binds any producer folding several
 native records into one answer, [011](../../tickets/01-0120-twc-provider.md)'s second provider
-included — and [006](../../tickets/01-0115-retentive-store-freshness.md) *lifts* it on `ANY` axes, so the law
+included — and [006](../../tickets/done/01-0115-retentive-store-freshness.md) *lifts* it on `ANY` axes, so the law
 and its exception belong to one module. The leaf imports it and translates its `ValueError`.
 
 ### `tests/deterministic/fakes.py`
@@ -754,7 +754,7 @@ uv run pytest` green.
    [ADR-0004](../../adr/0004-producer-resolution-and-capability.md) admission language becomes
    mode-dependent (containment for enumerable, intersection for snapped);
    [#13](../../concerns.md#13-candidate-admission-containment-vs-intersection) records the scoped v1
-   position. [006](../../tickets/01-0115-retentive-store-freshness.md)'s open store-lattice question closes
+   position. [006](../../tickets/done/01-0115-retentive-store-freshness.md)'s open store-lattice question closes
    on `Axis.clip`, and its `quantize` is restated as `ground`'s store-side sibling.
    [architecture §Request modes](../../architecture.md#request-modes)'s Z bullet carries the same
    *"only a regular axis can be snapped-to"* clause and takes the same restatement: snapped Z stays

@@ -3,9 +3,7 @@
 - **Status:** Normative
 
 The seam record for the **Provider** surface: the boundary where Meteoscape meets an external weather
-producer, and where the code that crosses it is authored. Established 2026-08-02 from the live leaf,
-its tests, the parity harness, and [RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md);
-it supersedes the former provider-authoring guide, whose durable content moved here.
+producer, and where the code that crosses it is authored.
 
 **This edge points inward.** At [mcp](./mcp.md) and [embedding](./embedding.md) an outside caller
 consumes Meteoscape; here Meteoscape consumes an outside producer, and the contract's consumer is the
@@ -14,11 +12,6 @@ consumes Meteoscape; here Meteoscape consumes an outside producer, and the contr
 vendor's HTTP API — with no contract of its own; what is stable there is Meteoscape's demand that the
 leaf absorb the vendor's variability, which is why the **parity check** is one of this record's
 validators rather than a separate surface — and for one promise below, the *only* one.
-
-**Normative as of [m4](../tickets/done/01-0100-snapped-t-request-mode.md)**, which routed the leaf through the
-algebra (`Axis.clip` / `ground` / `agreed_geometry`) and split it into a shape wrapper and a vendor
-`Probe`. One promise below remains **⚠ unguarded** — that a new Provider ships with its parity check —
-and it is [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)'s.
 
 ## Contract
 
@@ -83,9 +76,8 @@ is one no existing shape covers, a wrapper too.
   **The seam is built and guarded, not prospective** — resolution, injection, and the dangling-ref
   failure are live in [composition.py](../../src/meteoscape/nodes/composition.py) and *validated by:*
   `test_secret_ref_reaches_build` / `test_dangling_secret_ref_raises`; Open-Meteo's `build` already
-  receives `secret_value` and discards it as keyless. What no **shipped manifest** yet does is
-  *declare* a slot (`secret=None` today), which
-  [011](../tickets/01-0120-twc-provider.md) is the first to change.
+  receives `secret_value` and discards it as keyless. No shipped manifest yet declares a slot
+  (`secret=None` today).
   `expand` — one manifest yielding several Providers — is likewise **unexercised**
   (`test_expand_name_none_not_implemented`); under the split it raises an unanswered question, several
   Probes behind one wrapper or several wrappers, which interacts with
@@ -120,8 +112,7 @@ misclassification the wrapper exists to delete; one that never sees a `Clock` **
 provenance wrong; one that never constructs a `Coverage` cannot mis-assemble one. Guardable the same
 way reader independence is — an import-direction test — and listed as such below.
 
-Beyond code, a contribution includes **its evidence**, in three pieces
-([m3](../tickets/done/01-0080-provider-parity-checks.md)):
+The shipped Provider's **evidence** has three pieces:
 
 - **Reference reader** — `tests/parity/readers/<provider>.py`: fetches and parses the vendor's public
   response, converts to canonical units *independently*, returns a `ReferenceTimeline` plus raw
@@ -159,49 +150,33 @@ representations a leaf sees today:
   bounds only — or none: the boundless member is **`ANY`**, axis-generic, and `ground` answers it
   with the producer's axis whole; the resolver's own grid supplies anchor and step (ADR-0002).
 
-**⚠ pending — 006.** Architecture describes a third shape — **store-shaped** Selections from the leaf's
-Source, `ANY` on the axes its storage unit spans wholly, answered **multi-domain**. The *vocabulary*
-landed at [0115.0010](../tickets/done/01-0115.0010-any-boundless-member.md) (the boundless member and
-`ground`'s whole-axis arm exist in `src`), but nothing in-tree authors it yet:
-[`Reservoir.project`](../../src/meteoscape/nodes/reservoir.py) is a
-bare pass-through, so today a leaf receives the **edge's** request verbatim.
-[006](../tickets/01-0115-retentive-store-freshness.md) is where that changes, and it moves a boundary:
+**Store-shaped asks.** The Source `Reservoir` asks the leaf with `ANY` on the axes its Holding spans
+wholly (timeline: T and Z), so the leaf answers multi-domain in its native geometry. A cold request
+fetches the provider's whole live window; later requests inside that fresh window read retained
+Holdings. Read-back crops the served answer.
 
-- Today the leaf performs the **fact→product** relabeling itself: native Z cells (2 m, 10 m, surface,
-  column) are dropped onto the request's single Z aperture by the identity grounding described under
-  [Resolution](#resolution--how-a-request-becomes-an-answer-geometry). Native Z survives in the native
-  records, never in the answer.
-- Post-006 the Source asks store-shaped with `ANY` on T and Z, the leaf answers **multi-domain** with
-  native Z intact, and the **Reservoir's read-back** does the relabeling. `ground` gains its third
-  per-axis mode there (take the answering axis whole), and it is the one case where
-  `agreed_geometry`'s single-answer law is deliberately **lifted on that axis** (never wholesale —
-  pinned and snapped axes must still agree) — records differing on an axis the request left entirely to
-  the producer are exactly what `ANY` licenses.
-- Consequence worth stating plainly: **the leaf's co-domained answer path becomes transitional in the
-  composed graph.** Closure still requires it for any direct or enumerable ask, but the shipped wiring
-  stops exercising it once the Reservoir stores.
-- **The same move happens on the parameter facet (006 align, 2026-08-07): the answer is licensed to
-  carry the leaf's natural fetch unit** — wider than the ask's parameter set, never narrower. The
-  crop to `selection.parameters` at answer assembly retires together with the eager Z flatten (they
-  are the same eager fold on different facets); the store absorbs the whole answer and the serve
-  crops. Open-Meteo's natural unit is its whole offering, which is what collapses the cold
+- The **Reservoir's read-back** does the fact→product relabel: native Z cells (2 m, 10 m, surface,
+  column) are rewritten onto the request's vantage; values and provenance untouched. The
+  **`TODO (temporary)`** seam is owned by
+  [0117](../tickets/01-0117-off-grid-homogenization.md). `agreed_geometry`'s single-answer law is
+  deliberately **lifted on axes the request left `ANY`** — records differing there are exactly what
+  boundlessness licenses.
+- **The leaf's co-domained answer path is transitional in the composed graph.** Closure still
+  requires it for any direct or enumerable ask, but the shipped wiring exercises the boundless
+  branch at the Source.
+- **The answer may carry the leaf's natural fetch unit** — wider than the ask's parameter set,
+  never narrower. Open-Meteo's natural unit is its whole offering, which collapses the cold
   mixed-request double fetch; a leaf that answers narrow (per-variable billing) re-accepts that
-  divergence for its own parameters as a declared economy choice —
-  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence).
-  **Today there is no such declaration**: the whole tap table *is* the fetch unit, written once in the
-  shape wrapper, so it binds every timeline vendor rather than each one's own economy. That is not a
-  deferral with a date — it is **unwitnessed**. This wrapper has been pressed by exactly one vendor,
-  and from inside it nothing distinguishes "one call lists every variable" as a fact of the *shape*
-  from a cast of Open-Meteo's. The second Provider is what tells them apart, which is why #43 is
-  decided at [011](../tickets/01-0120-twc-provider.md) and mints the per-offering declaration there
-  if it is one.
+  divergence for its own parameters —
+  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence). Today the
+  whole tap table is the fetch unit, written once in the shape wrapper; a second Provider will test
+  whether that economy fact belongs per offering.
 
 **A leaf does not inspect request shape.** It **declares its geometry** — per-parameter footprints,
 with a lattice-bearing axis wherever it can resolve a snapped member — and the request is resolved
 against that declaration. Which shapes a leaf serves is therefore a **consequence of what it declares**,
-never a hand-written gate; that is what lets a second Provider
-([011](../tickets/01-0120-twc-provider.md)) be a declaration rather than a re-derivation of the
-mode.
+  never a hand-written gate. A second Provider of this shape therefore contributes declarations,
+  not another mode implementation.
 
 ### Resolution — how a request becomes an answer geometry
 
@@ -251,10 +226,9 @@ because nothing consumes them as a value — records carry their own domains, an
 carrier** is built from the records themselves. The licence is derived from the request, never asserted
 by a caller.
 
-*Names, settled here 2026-08-08:* the fold is **`agreed_geometry`**, the carrier is **`CoverageSet`**,
-and `ANY` is the **boundless snapped member** (`interval=None`) — so `SelectableAxis` gains no new
-kind and the licence keys on boundlessness inside the fold
-([RFC 0012](../rfc/done/0012-20260808-multidomain-carrier-timeline.md)).
+The fold is **`agreed_geometry`**, the carrier is **`CoverageSet`**, and `ANY` is the **boundless
+snapped member** (`interval=None`). `SelectableAxis` gains no new kind; the licence keys on
+boundlessness inside the fold.
 
 **Two call sites, and what each grounds against.** The wrapper calls `ground` once before the vendor
 call and once after — never in between, and never anywhere else. Both ends are plural, so both fold:
@@ -305,7 +279,8 @@ producer that folds records, including a future shape that derives a lattice **p
 kept as a runtime guard, and no test can pin it through `project`. In particular it does **not** catch a vendor
 answering the two fetches of one request differently: those are two separate `project` calls, and the
 `RuntimeFailure` that catches them is the **Arbiter's** closed-projection check (see the invariant on
-per-winner projection, and `test_snapped_winner_domains_that_diverge_fail_the_whole_request`).
+per-winner projection, and `test_winner_domains_that_differ_fail_the_whole_request` in
+[test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py)).
 
 **That second case is a real limitation, so state it rather than let it be discovered:** a leaf **cannot
 serve, in one call, two parameters whose declared reaches differ on a **bounded** snapped axis.** A
@@ -422,7 +397,7 @@ wind at a 2 m pin; each parameter now crops against its **own** record.
 What the relabel claims is an **∃-claim** — *measured somewhere in `[0,10]`* — never a ∀-claim about
 every level in it. So the label may not later be narrowed by plain inclusion: `[0,5]` does not follow
 from `[0,10]`, because the sample may have sat at eight metres. Same rule, second site: the store's
-version of it is [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows).
+version of it is [#25](../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
 
 ### Outcomes
 
@@ -480,22 +455,20 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   the root — *validated by:* `test_single_source_weaves_capability_and_stores` in
   [test_weaver.py](../../tests/deterministic/nodes/test_weaver.py),
   [Reservoir.capability](../../src/meteoscape/nodes/reservoir.py).
-- **A leaf is projected once per *winner*, not once per request.** One request mixing direct and derived
-  parameters resolves through two winners — the Provider and a Calculator's scoped Arbiter — and issues
-  **two independent vendor fetches**, with two independent clock reads. An author must not assume
-  single-fetch-per-request — *validated by:* `test_forecast_hourly_e2e_and_refetch` in
-  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py) (`route.call_count == 4` for
-  two requests).
-  **Under a snapped request that turns into an exposure**, because each winner derives its T from its
-  own fetch: a vendor answering the two calls differently leaves two answers on two geometries, and the
-  Arbiter's closed-projection check fails the **whole request** with `RuntimeFailure`. Deliberately
-  unhandled — no fold reconciles winner domains — so a leaf author must not try to compensate for it
-  leaf-side; it is owned at [003c](../tickets/done/01-0110-request-shaping.md)'s landing and dissolves for
-  the common case when [006](../tickets/01-0115-retentive-store-freshness.md)'s retention collapses the
-  second fetch — a dissolution that is a **per-provider property** (it rests on the leaf answering its
-  natural fetch unit;
-  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)).
-  *Validated by:* `test_snapped_winner_domains_that_diverge_fail_the_whole_request`.
+- **A leaf is projected once per *winner*, not once per request** — but **how often that reaches the
+  vendor is retention's business, not the leaf's.** A request mixing direct and derived Parameters
+  resolves through two winners, but Open-Meteo's natural fetch unit warms the shared Source: a cold
+  mixed request costs one vendor trip and a warm repeat none. A narrow-answering Provider may instead
+  cost one trip per winner
+  ([#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)).
+  *Validated by:* `test_forecast_hourly_e2e_and_refetch` (`route.call_count == 1` across two
+  requests) and `test_snapped_mixed_request_shares_one_vendor_geometry` in
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py).
+  If separate winner fetches deliver different T geometries, the Arbiter's closed-projection check
+  fails the whole request with `RuntimeFailure`; the leaf must not compensate for that fold-level
+  invariant. *Validated by:*
+  `test_winner_domains_that_differ_fail_the_whole_request` in
+  [test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py).
 
 ### What every leaf must uphold
 
@@ -583,10 +556,6 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   *validated by:* `ParitySpec` declarations in
   [test_open_meteo.py](../../tests/parity/test_open_meteo.py),
   [test_parity_comparison.py](../../tests/deterministic/test_parity_comparison.py).
-- **A new Provider is not complete without its parity check** — **⚠ unguarded**: nothing connects an
-  `impl_id` in `PROVIDER_CATALOG` to the existence of `tests/parity/test_<impl>.py`
-  ([#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)).
-
 ## Concerns
 
 - [#26 — Provider / calculator plugin scaffolding](../concerns.md#26-provider--calculator-plugin-scaffolding)
@@ -598,8 +567,8 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   table, no fetch-time provenance) and would earn its own record if it ever needs one — it is
   deliberately absent here, not overlooked.
 - [#41 — Parity evidence is unenforced and unrouted](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)
-  — the edge-local reading: this record's strongest promises are validated by a check nothing requires,
-  routes, or measures. Owner of this record's one remaining **⚠ unguarded** marker.
+  — parity is strong evidence for the shipped Provider, but nothing yet requires or routes a parity
+  check when a new manifest is added. The enforcement rule remains Roadmap, not a live invariant.
 - [#23 — Spatial vs temporal `RegularAxis` types](../concerns.md#23-spatial-vs-temporal-regularaxis-types)
   — **inverts the embedding reading.** There the split must stay *invisible* to request authors; here it
   is visible and wanted, because it is what turns coordinate-kind `isinstance` checks into static ones.
@@ -633,13 +602,8 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
 2. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
    selection that does not depend on branch names —
    [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted); no owning ticket.
-3. **Store-shaped asks** — the Source stops passing requests through, the leaf answers multi-domain on
-   `ANY`, the fact→product relabeling moves to the Reservoir's read-back, and `agreed_geometry`
-   narrows: its rule holds on pinned and snapped axes, its exception opens on `ANY` (validated in
-   the fold; the carrier minted there is built from the records) —
-   [006](../tickets/01-0115-retentive-store-freshness.md).
-4. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
+3. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
    than a Probe ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) names it a deferred
    seam); no owning ticket.
-5. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
+4. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
    [#26](../concerns.md#26-provider--calculator-plugin-scaffolding); no owning ticket.

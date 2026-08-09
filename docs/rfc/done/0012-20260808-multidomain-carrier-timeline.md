@@ -1,7 +1,7 @@
 # RFC 0012 · 2026-08-08 · Multi-domain carrier and the timeline rework — implementation plan
 
 Implementation plan for [multi-domain carrier and the timeline rework](../../tickets/done/01-0115.0020-multidomain-carrier-timeline.md)
-(slice 2 of the [retentive store](../../tickets/01-0115-retentive-store-freshness.md)). Closes the
+(slice 2 of the [retentive store](../../tickets/done/01-0115-retentive-store-freshness.md)). Closes the
 [provider edge record](../../edge/provider.md)'s fold/carrier **naming checkpoint** — the names are
 decided here, not deferred further.
 
@@ -210,7 +210,7 @@ all bounded paths byte-identical.
    It is honest only because admission gated each parameter against its own native Z footprint before
    the leaf was reached. The composed path's version is different and stays the `Reservoir`'s: a
    source Reservoir *selects* per parameter the record whose Z cell matches the handed vantage
-   ([RFC 0014 d.2](../0014-20260808-reservoir-retention-pipeline.md)). Two relabels, two positions,
+   ([RFC 0014 d.2](./0014-20260808-reservoir-retention-pipeline.md)). Two relabels, two positions,
    neither derived from the other.
 
    `_assemble`, `_as_delivered`, and `_cropped` are deleted with their tests ported here; `timeline.py`
@@ -297,7 +297,7 @@ all bounded paths byte-identical.
 6. **Three sentences land in the architecture docs with this slice** (stage 5), each decided at this
    RFC's align: ADR-0001's answer discipline (the licence is first exercised here); ADR-0002's
    `clip`-without-bounds reading and its fold paragraph; the glossary's `Clip` entry. The
-   [pipeline slice](../../tickets/01-0115.0040-reservoir-retention-pipeline.md) carries only the
+   [pipeline slice](../../tickets/done/01-0115.0040-reservoir-retention-pipeline.md) carries only the
    remaining doc syncs.
 7. **One existing fixture is corrected rather than preserved** (decided at stage 3, the one exception
    to *bounded paths byte-identical*). With `_as_delivered` gone, each record is cropped by `resample`
@@ -344,11 +344,11 @@ observable behavior → minimal implementation at a time per `/tdd`.
 ## Out of scope / follow-ups
 
 - `CoverageSet.of` — the one-record normalization — lands with its only caller, the pipeline
-  ([RFC 0014](../0014-20260808-reservoir-retention-pipeline.md) d.1); the store slice's tests
+  ([RFC 0014](./0014-20260808-reservoir-retention-pipeline.md) d.1); the store slice's tests
   construct groups directly.
 - No in-tree author of boundless members until `quantize`
   ([RFC 0013](./0013-20260808-timeline-store.md)); `CoverageSet` reaches no store until the
-  [pipeline slice](../../tickets/01-0115.0040-reservoir-retention-pipeline.md).
+  [pipeline slice](../../tickets/done/01-0115.0040-reservoir-retention-pipeline.md).
 - How `CoverageSet` flows through Arbiter/Calculator on the best-view path is the pipeline slice's
   question, flagged in RFC 0014 — nothing here presumes an answer.
 - Padding a short tail as `present=False`, which retires both the `Shortfall` raise and the

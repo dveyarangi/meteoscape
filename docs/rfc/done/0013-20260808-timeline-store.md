@@ -1,7 +1,7 @@
 # RFC 0013 · 2026-08-08, amended 2026-08-09 · The retentive Store (`MemoryStore`) — implementation plan
 
-Implementation plan for [the retentive Store](../tickets/01-0115.0030-timeline-store.md)
-(slice 3 of the [retentive store](../tickets/01-0115-retentive-store-freshness.md)). Resolves the
+Implementation plan for [the retentive Store](../../tickets/done/01-0115.0030-timeline-store.md)
+(slice 3 of the [retentive store](../../tickets/done/01-0115-retentive-store-freshness.md)). Resolves the
 `assimilate` concrete shapes the align left tentative — this RFC is their durable home.
 
 *Amended 2026-08-09 at the slice's own align:* the store-side `report` verb dissolved — the
@@ -24,12 +24,12 @@ pass-through, so no behavior changes.
 
 | Boundary | Owner | What this does to it |
 |---|---|---|
-| `quantize` (`nodes/store.py` — a `MemoryStore` method) | [ADR-0002 §grid alignment](../adr/0002-data-model.md), [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | Minted: the enclosing per-axis fold — `ground`'s sibling in *shape* only. One party (the request against the store's own unit definition), so it lives on the store; `domain.py` gains no lattice-taking export. Zero new index arithmetic ([#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) stands down). |
-| `Store` protocol / `StubStore` (`nodes/store.py`) | ADR-0006, [ADR-0005](../adr/0005-build-time-composition.md) | `MemoryStore` minted and wired **inert** — the pass-through `Reservoir` never touches its store, so "not yet serving" stays literally true; `StoreFactory.create(spec, deferred)` rebuilt; **`StubStore` deleted**, its `TODO (temporary)` retiring here. |
-| `Weaver` / `wire_source` (`nodes/weaver.py`), factory construction (`server.py`) | [ADR-0005](../adr/0005-build-time-composition.md) | The three `create` call sites pass their position-derived `deferred`; the factory is constructed with the injected `Clock`. Mechanical — no graph-shape change. |
-| `Writable.assimilate` (`nodes/store.py`; moved out of `manifold/core.py` at stage 2, 2026-08-09) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageSet)` — the store consumes the natural answer and slices inside. The facet moves beside its sole realization: the `Store` is the only `Writable`, ADR-0006 names the facet as store face, and the move keeps `core.py` read-only with a one-directional import graph (no `TYPE_CHECKING` laundering of `coverage.py`'s name into the algebra). |
+| `quantize` (`nodes/store.py` — a `MemoryStore` method) | [ADR-0002 §grid alignment](../../adr/0002-data-model.md), [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) | Minted: the enclosing per-axis fold — `ground`'s sibling in *shape* only. One party (the request against the store's own unit definition), so it lives on the store; `domain.py` gains no lattice-taking export. Zero new index arithmetic ([#22](../../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) stands down). |
+| `Store` protocol / `StubStore` (`nodes/store.py`) | ADR-0006, [ADR-0005](../../adr/0005-build-time-composition.md) | `MemoryStore` minted and wired **inert** — the pass-through `Reservoir` never touches its store, so "not yet serving" stays literally true; `StoreFactory.create(spec, deferred)` rebuilt; **`StubStore` deleted**, its `TODO (temporary)` retiring here. |
+| `Weaver` / `wire_source` (`nodes/weaver.py`), factory construction (`server.py`) | [ADR-0005](../../adr/0005-build-time-composition.md) | The three `create` call sites pass their position-derived `deferred`; the factory is constructed with the injected `Clock`. Mechanical — no graph-shape change. |
+| `Writable.assimilate` (`nodes/store.py`; moved out of `manifold/core.py` at stage 2, 2026-08-09) | [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageSet)` — the store consumes the natural answer and slices inside. The facet moves beside its sole realization: the `Store` is the only `Writable`, ADR-0006 names the facet as store face, and the move keeps `core.py` read-only with a one-directional import graph (no `TYPE_CHECKING` laundering of `coverage.py`'s name into the algebra). |
 | Store `project` semantics | ADR-0006 (amended 2026-08-09) | The holdings query, total over raw asks (translation onto the boxes is internal): stale included, unheld omitted, empty answer normal. |
-| Store `capability` | [ADR-0007](../adr/0007-capability-carries-its-domain.md), [#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach) | Holdings narration — `GranularCapability`, latest-assimilated unit per parameter. |
+| Store `capability` | [ADR-0007](../../adr/0007-capability-carries-its-domain.md), [#47](../../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach) | Holdings narration — `GranularCapability`, latest-assimilated unit per parameter. |
 | Store lattice privacy | ADR-0006 | Guard test: no module outside `store.py` references its private unit or lattice types; no lattice type appears in any public signature. |
 
 ## Facts that shape the implementation (verified 2026-08-09)
@@ -46,12 +46,12 @@ pass-through, so no behavior changes.
    and `expiration`; per-parameter staleness divergence is mock-only (parent, *Refill scope*).
 5. **`reach` on a store has no algebraic caller.** The algebra reads `reach` in exactly two places,
    both on producers — the Arbiter's `compose_domains` over its members
-   ([arbiter.py](../../src/meteoscape/nodes/arbiter.py)) and a Calculator's contained-in-all over
+   ([arbiter.py](../../../src/meteoscape/nodes/arbiter.py)) and a Calculator's contained-in-all over
    its resolver — plus the MCP edge's narration of the root; a store is never an Arbiter member,
    and the `Reservoir` forwards its *child's* capability upward. This is what makes decision 7's
    narration semantics safe.
 6. `CoverageSet` refuses a parameter living on two records
-   ([coverage.py](../../src/meteoscape/manifold/coverage.py) `__post_init__`). Quantized members
+   ([coverage.py](../../../src/meteoscape/manifold/coverage.py) `__post_init__`). Quantized members
    are emitted as **ticks, not fat cells** (decision 1), so **a point ask stays a point through
    every hop**: on the identical lattices v1 configures (source and root both `0.0001°`), a tick
    re-quantizes to itself — a fixed point — and even a coarser downstream lattice maps a point to
@@ -170,7 +170,7 @@ pass-through, so no behavior changes.
    a genuinely span-shaped ask (a grid consumer whose member carries several ticks), and a source
    declaring one parameter at two Z cells under an `ANY`-Z ask (then the answer becomes per-cell
    projection or a carrier extension — the `Reservoir`'s side, not the store's).
-7. **`capability` narrates holdings** ([#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach),
+7. **`capability` narrates holdings** ([#47](../../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach),
    this align): a `GranularCapability` — honest parameter membership; per-parameter reach = the
    **latest-assimilated** unit's domain, defined as the held unit with the newest
    `provenance.fetched_at` (ties break arbitrarily but stably; recomputed on read, so eviction
@@ -199,7 +199,7 @@ pass-through, so no behavior changes.
     constructible (pass 4; a store deriving its own grids from `spatial_step` would hardcode the
     spatial roles the genericity criterion forbids).
     `deferred: frozenset[AxisName]` is **position-bounded, producer-decided**
-    ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) as amended
+    ([ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md) as amended
     2026-08-09; the Weaver owns *where*): `{T}` at the root and the stored-Calculator site is
     position-forced (product-shaped children — native cells are gone by relabel below), while
     the source set is the **provider shape's** fact — v1's one shape (point timeline) yields
@@ -207,8 +207,8 @@ pass-through, so no behavior changes.
     second shape moves the value into the provider manifest; this signature doesn't change). The
     three `create` call sites pass it in this slice —
     `{T, Z}` at `wire_source`, `{T}` at the root and at the stored-Calculator site
-    ([weaver.py:96](../../src/meteoscape/nodes/weaver.py) — whose spec binding stays
-    [#27](../concerns.md#27-stored-calculator-store-binding)'s open question, untouched here). The
+    ([weaver.py:96](../../../src/meteoscape/nodes/weaver.py) — whose spec binding stays
+    [#27](../../concerns.md#27-stored-calculator-store-binding)'s open question, untouched here). The
     factory takes the injected `Clock` at construction (ADR-0005; `server.py` supplies the one it
     already builds). Where `Z` is not deferred, the request's vantage cell passes identity through
     `quantize` and becomes the unit's `z_key`. **`StubStore` is deleted** along with its
@@ -216,10 +216,10 @@ pass-through, so no behavior changes.
     `Reservoir.project` never reads or writes — "unit-tested, wired inert", and slice 4 then
     touches only the `Reservoir` and tests. **Known test ripple** (pass 4, so nothing surprises
     the implementer): `StubStore`'s direct construction in
-    [test_core.py](../../tests/deterministic/manifold/test_core.py) switches to `MemoryStore`;
-    the `create` call sites in [test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py)
+    [test_core.py](../../../tests/deterministic/manifold/test_core.py) switches to `MemoryStore`;
+    the `create` call sites in [test_arbiter.py](../../../tests/deterministic/nodes/test_arbiter.py)
     and the e2e fixture gain a `deferred` argument; `RecordingStoreFactory`
-    ([fakes.py](../../tests/deterministic/fakes.py)) records it — becoming the natural weaver
+    ([fakes.py](../../../tests/deterministic/fakes.py)) records it — becoming the natural weaver
     assertion that each position derives its own `deferred`.
 
 ## Stages (each green)
@@ -252,8 +252,8 @@ to-tickets' machine-enforced-constraint form, not behavior tests.
 - The `Reservoir` pipeline — the serve-vs-refetch gate (freshness against the `Reservoir`'s
   clock, covers-or-refetch-whole), refill, `CoverageSet.of`, read-back →
   [RFC 0014](./0014-20260808-reservoir-retention-pipeline.md).
-- Nearest-neighbor read-back at exact off-grid points → [007](../tickets/01-0117-off-grid-homogenization.md).
-- Cross-window unit reuse → [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows).
-- A plural-reach holdings advertisement → [#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach),
+- Nearest-neighbor read-back at exact off-grid points → [007](../../tickets/01-0117-off-grid-homogenization.md).
+- Cross-window unit reuse → [#25](../../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
+- A plural-reach holdings advertisement → [#47](../../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach),
   revisited at the first real reader (0195 observability, or #44's persisting/archive substrate —
   deliberately late release 02 or after).

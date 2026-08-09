@@ -1,7 +1,7 @@
 # RFC 0011 · 2026-08-08 · `ANY` as the boundless snapped member — implementation plan
 
 Implementation plan for [`ANY` as the boundless snapped member](../../tickets/done/01-0115.0010-any-boundless-member.md)
-(slice 1 of the [retentive store](../../tickets/01-0115-retentive-store-freshness.md), whose align
+(slice 1 of the [retentive store](../../tickets/done/01-0115-retentive-store-freshness.md), whose align
 record carries the *why*). This plan is the single way to build it.
 
 **Scope in one line:** `SnappedAxis` becomes a standalone axis with optional bounds (`None` = `ANY`),

@@ -36,7 +36,7 @@ the wider concern. It must not alter `Coverage`, `ParameterData`, or MCP respons
 
 ## Blocked by
 
-- [Retentive store](./01-0115-retentive-store-freshness.md) — creates the hit/refill behavior to
+- [Retentive store](./done/01-0115-retentive-store-freshness.md) — creates the hit/refill behavior to
   observe.
 - [Second-provider fallback](./01-0150-second-provider-fallback.md) — creates candidate fall-through.
 - [Per-parameter selection](./01-0170-per-parameter-selection.md) — creates multi-winner resolution.

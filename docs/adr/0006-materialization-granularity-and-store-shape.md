@@ -30,25 +30,24 @@ plane. The capability/matching half is
 
 - **The partition reaches the store because the question asks `ANY`.** A Source asks its
   Provider **once** — asking per parameter group would multiply vendor fetches for data one call
-  returns — with `ANY` on the axes its unit spans wholly. By shape-correspondence
+  returns — with `ANY` on the axes its Holding spans wholly. By shape-correspondence
   ([ADR-0001](./0001-manifold-algebra-and-composition.md)) that answer is legitimately
   **multi-domain**: temperature at 2 m beside wind at 10 m. This is what preserves native geometry
   through the boundary; a fully-enumerable question would force a flattened answer and destroy the
-  native cells before the store could key units by them. The **store** slices that answer per
+  native cells before the store could key Holdings by them. The **store** slices that answer per
   parameter, because only it holds both
-  halves of each unit `Selection` — `X/Y`+`T` from its private lattice, the native cell from the
-  answer. `assimilate` therefore consumes **the answer** and samples the units it retains, rather than
-  being handed one pre-sliced record by a caller that would have to know the store's lattice. The exact
-  slicing API remains provisional until a retentive Store implements this contract.
+  halves of each Holding `Selection` — `X/Y`+`T` from its private lattice, the native cell from the
+  answer. `assimilate` therefore consumes **the answer** and samples the Holdings it retains, rather
+  than being handed one pre-sliced record by a caller that would have to know the store's lattice.
 
-- **The store is unit-granular, never co-domained.** A `Store` holds **per-parameter units**
+- **The store is Holding-granular, never co-domained.** A `Store` holds **per-parameter Holdings**
   (`(parameter, per-axis cells, window)`); `assimilate` consumes the producer's answer and samples it
-  into units, replacing each atomically. Its lattices are **per axis** (and, where native cadences differ,
+  into Holdings, replacing each atomically. Its lattices are **per axis** (and, where native cadences differ,
   per parameter family) and **private** — consumed by `quantize`, the holdings read, and read-back;
   never exposed as a node `domain`. Implementations vary by substrate and persistence behind this one
   write/read face: the store's whole public surface is the Manifold contract + `Writable` +
   `quantize`. Its `project` is the **holdings query**, total over raw asks — the store translates
-  the ask onto its private boxes internally, and the held units come back as records carrying
+  the ask onto its private boxes internally, and the Holdings come back as records carrying
   their own domains and provenance; asked-but-unheld parameters are **omitted** and an empty
   answer is normal (a cold store is a state, not an error — the Arbiter's omission precedent, not
   a `Coverage`'s raise). `quantize`'s one public job is authoring the **refill fetch-order**: the
@@ -56,26 +55,25 @@ plane. The capability/matching half is
   the native multi-domain answer, above), and only the store knows its boxes. The contract is **clockless and freshness-blind**: provenance
   (`expiration` included) travels as data, and what *fresh* means is the reader's policy — the live
   `Reservoir` gates on it, an archive reader serves deliberately stale history through the same
-  face (2026-08-09). A substrate may still read a clock for its **own housekeeping** (the in-memory
+  face. A substrate may still read a clock for its **own housekeeping** (the in-memory
   store evicts past `retention_interval`); that is a property of the substrate, not of the contract,
   which is why an archive substrate takes no clock at all. Its `capability` **narrates holdings**: honest parameter membership, and a
-  per-parameter reach that truncates plural holdings to the latest-assimilated unit's geometry —
+  per-parameter reach that truncates plural holdings to the latest-assimilated Holding's geometry —
   safe because `reach` is composition-and-narration over *producers* and a store is never composed
   ([#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach)).
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
-  unit spans the axis wholly.** Each axis with a declared lattice resolves to its **containing cell**
-  and is emitted as that cell's **tick** — a pinned point, never the cell's span (2026-08-09): the
-  coalescing that makes a unit shared lives in the **key**, while the ask stays a point, because a
+  Holding spans the axis wholly.** Each axis with a declared lattice resolves to its **containing cell**
+  and is emitted as that cell's **tick** — a pinned point, never the cell's span: the
+  coalescing that makes a Holding shared lives in the **key**, while the ask stays a point, because a
   span member would relabel a point-measured value as valid across the cell and would graze the
   neighbouring cell at the next store hop (a tick, by contrast, is a fixed point of the fold). An
   axis **without** a declared lattice **passes through unchanged**,
-  its cell becoming part of the unit key (the **best-view** store's Z — product units keyed by the
-  request's vantage cell); an axis the unit spans **entirely**, or whose native cell only the answer
+  its cell becoming part of the Holding key (the **best-view** store's Z — product Holdings keyed by the
+  request's vantage cell); an axis the Holding spans **entirely**, or whose native cell only the answer
   can supply (a **Source** store's Z), is asked as **`ANY`** — the same widening carried to its limit,
   answered at the producer's native extent ([ADR-0002](./0002-data-model.md)). **Which axes a store
-  defers is bounded by position and decided by the producer's declared geometry** (2026-08-09 —
-  replacing the earlier "position-derived" phrasing, which over-claimed): above the fact→product
+  defers is bounded by position and decided by the producer's declared geometry**: above the fact→product
   boundary below — the best-view store, and a stored Calculator's, whose child likewise answers
   product-shaped views — only T is deferrable, because native cells are gone by relabel before an
   answer arrives there. At a **Source**, deferral is a fact of the provider's **shape**: the
@@ -86,21 +84,21 @@ plane. The capability/matching half is
   "Quantize preserves Z semantics" is thus by construction.
 
 - **The fact→product boundary sits at the Source's read-back.** One vertical fact travels:
-  Tap declaration → capability admission (`serves`) → native record Domain → Source-store unit key →
+  Tap declaration → capability admission (`serves`) → native record Domain → Source-store Holding key →
   read-back match. The **single relabel** (native cells → the request's Z cell, value-passthrough for
   a sample inside the window or a statistic cell containing it) happens in the Source's read-back —
   **below the Arbiter**, forced structurally: the Arbiter's per-parameter assembly is positional and
   can only fold answers already conformable on one Domain. Above the boundary everything is
-  **product**: the best-view store holds units keyed by the *request's* cells (answers, not facts);
-  a different Z question misses there and falls through to the Sources, where native units answer by
-  re-matching. Unit reuse across differing vantage windows is
-  [concern #25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows).
+  **product**: the best-view store holds Holdings keyed by the *request's* cells (answers, not facts);
+  a different Z question misses there and falls through to the Sources, where native Holdings answer by
+  re-matching. Holding reuse across differing vantage windows is
+  [concern #25](../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
 
 - **One cell-matching arithmetic, three consumers.** *"Does a Z cell at hand answer the requested
   Z?"* (membership for a point cell, inclusion for a span — the quantifier rule,
   [ADR-0004](./0004-producer-resolution-and-capability.md)) is cell-level geometry, not
   capability-private: capability admission checks **declared** cells, the store's holdings read
-  checks **held unit** cells, read-back selects the cells that feed the request. One helper, hidden
+  checks **held Holding** cells, read-back selects the cells that feed the request. One helper, hidden
   behind `matches` / the store's `project` — no second public verb.
 
 - **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
@@ -120,12 +118,12 @@ plane. The capability/matching half is
 
 ## Why
 
-- **Losslessness where it matters:** a stored unit carries the geometry it was measured on. Flattened
+- **Losslessness where it matters:** a stored Holding carries the geometry it was measured on. Flattened
   records would need `SourceKey` → the then-active Tap table to recover heights — version-fragile against
   tap changes and useless for cross-provider reconciliation or verification.
 - **The Arbiter stays a pure fold:** admission on footprint, reads on the handed shape, positional
   assembly. Geometry work lives only in nodes that own data.
-- **Store heterogeneity without contract leaks:** with the lattice private and units per-parameter,
+- **Store heterogeneity without contract leaks:** with the lattice private and Holdings per-parameter,
   stores may differ by substrate, persistence, and lattice structure behind one face; the
   single-`EnumerableDomain` node facet was the only thing forcing them to look alike.
 - **Each Reservoir level does one downward reshape (quantize before asking — so `assimilate` is an
@@ -134,7 +132,8 @@ plane. The capability/matching half is
 ## Considered options
 
 - **Flatten per fetch** (one Coverage, shared Z tick; heights only in the Tap table). Rejected: lossy
-  on the data plane (above); the store cannot answer availability honestly.
+  on the data plane (above); the store cannot answer availability honestly. Native multi-domain
+  answers instead land in the store and read-back relabels them.
 - **Per-parameter Domains inside one Coverage.** Rejected (again): breaks closed projection,
   positional `ParameterData`, and every composite — the standing decline holds.
 - **Multi-level sparse Z axis** (union of heights, `present` masks off-level). Rejected: waste;

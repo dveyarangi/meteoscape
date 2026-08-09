@@ -214,7 +214,7 @@ The request mode that fixes only an axis's bounds; the resolver's grid supplies 
 _Avoid_: Soft window, clamped window, bounded-ANY
 
 **ANY**:
-The boundless form of the Snapped member — a request member that leaves one axis entirely to the producer: the answer keeps the producer's native cells on that axis and may group records that differ there. Not a separate axis kind; Snapped and ANY are one member kind differing only in whether bounds are present. A one-sided open bound is the same family's deferred "from X onward" form. → [006](./tickets/01-0115-retentive-store-freshness.md), [architecture.md](./architecture.md#request-modes)
+The boundless form of the Snapped member — a request member that leaves one axis entirely to the producer: the answer keeps the producer's native cells on that axis and may group records that differ there. Not a separate axis kind; Snapped and ANY are one member kind differing only in whether bounds are present. A one-sided open bound is the same family's deferred "from X onward" form. → [architecture.md](./architecture.md#request-modes), [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Wildcard, unbounded, whole-axis
 
 **Canonical lattice**:
@@ -225,15 +225,15 @@ Resolving a request against a node's declared or delivered geometry into the ans
 _Avoid_: Resolve (the Gateway's verb), realize, instantiate; **above_ground** / ground level (the Vertical reference sense — unrelated)
 
 **Quantize**:
-The Store's translation of a request into the fetch-order that fills its atomically storable units: `ANY` where a unit spans the axis wholly, the containing cell's tick where a Lattice is declared, identity elsewhere. Ground's store-side sibling (Ground restricts to the request, Quantize encloses it) and the Store's own method, since its context is the Store's private unit definition. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+The Store's translation of a request into the fetch-order that fills its atomically storable Holdings: `ANY` where a Holding spans the axis wholly, the containing cell's tick where a Lattice is declared, identity elsewhere. Ground's store-side sibling (Ground restricts to the request, Quantize encloses it) and the Store's own method, since its context is the Store's private Holding definition. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Snap, align, round
 
 **Refill**:
-The Reservoir's fetch-on-miss: when a requested unit is missing or stale, one projection of the child over the quantized store shape, whose answer is assimilated before serving. The ask names the missing parameters; the answer may carry the child's natural fetch unit. → [006](./tickets/01-0115-retentive-store-freshness.md)
+The Reservoir's fetch-on-miss: when a requested Holding is missing or stale, one projection of the child over the quantized store shape, whose answer is assimilated before serving. The ask names the missing parameters; the answer may carry the child's natural fetch unit. → [architecture.md](./architecture.md#reservoir)
 _Avoid_: Cache fill, fetch-through, backfill, revalidation
 
 **Natural fetch unit**:
-What one trip to a producer inherently carries — the Provider's own economy fact. An answer may be wider than the ask's parameter set by carrying it, never narrower. → [006](./tickets/01-0115-retentive-store-freshness.md), [#43](./concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)
+What one trip to a producer inherently carries — the Provider's own economy fact. An answer may be wider than the ask's parameter set by carrying it, never narrower. → [architecture.md](./architecture.md#provider-leaf-manifold), [#43](./concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)
 _Avoid_: Whole offering (one producer's particular natural unit, not the concept)
 
 **Envelope**:
@@ -364,8 +364,12 @@ The Manifold facet that accepts a producer's natural answer for holding (`assimi
 _Avoid_: Materialized, Scratchboard, ManifoldCache
 
 **Store**:
-The Writable substrate owned by a Reservoir, holding independently replaceable per-Parameter units on private lattices. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+The Writable substrate owned by a Reservoir, holding independently replaceable per-Parameter Holdings on private lattices. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Cache, buffer, vault, pool
+
+**Holding / Holdings**:
+A **Holding** is the Store's atomically replaceable, single-origin grain for one Parameter over its stored cells and window. **Holdings** are the records a Store's `project` returns for an ask; freshness remains the reader's policy. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Unit (taken by physical units — Canonical unit — and too generic besides), entry, row, chunk, tile, cache line, hits
 
 **Reservoir**:
 A retention composite formed from a Store and one child Manifold. → [architecture.md](./architecture.md#reservoir)
@@ -384,7 +388,7 @@ What a Manifold declares it can serve: its Parameters, the Domain it serves each
 _Avoid_: Coverage, clause
 
 **Footprint**:
-One producer's declared spatial, vertical, and valid-time span — a leaf's own Reach, and the unit composition works from. Interpreted by `serves`. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+One producer's declared spatial, vertical, and valid-time span — a leaf's own Reach, interpreted by `serves`. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Coverage, grid
 
 **Reach**:

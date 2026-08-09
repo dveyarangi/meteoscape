@@ -2,12 +2,12 @@
 
 **Legacy id:** 006
 
-- **Status:** Ready — align completed 2026-08-08; everything below is current state. Moved ahead of
-  [011 — TWC provider](./01-0120-twc-provider.md) on 2026-08-05 (003c's
+- **Status:** Done — 2026-08-09 (all four slices landed). Moved ahead of
+  [011 — TWC provider](../01-0120-twc-provider.md) on 2026-08-05 (003c's
   re-stage align): retention is the *mechanism* that collapses the mixed-request double fetch,
-  whose divergence [003c](./done/01-0110-request-shaping.md) accepts for exactly one ticket on the
+  whose divergence [003c](./01-0110-request-shaping.md) accepts for exactly one ticket on the
   strength of this ordering.
-- **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
+- **Depends on:** [002 — Core canonical parameters](./01-0030-core-5-parameters.md)
 - **Outcome:** Fresh reuse, refill, and single-origin whole-unit replacement.
 - **Split 2026-08-08 into four subtickets** (historical ticket sizes ran 40–230 code lines; this one
   projected ~750–1000 raw). This ticket remains the **decision record** and the union of acceptance
@@ -22,10 +22,10 @@
   request-shaped (flattened) units first — the exact per-fetch flatten ADR-0006 rejects — and then
   rework them; one undivided ticket (~750–1000 raw lines) fails the size rule this split was made
   under:
-  1. [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) — **Done 2026-08-08**
-  2. [Multi-domain carrier and the timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md)
-  3. [The retentive timeline Store](./01-0115.0030-timeline-store.md)
-  4. [The Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md)
+  1. [`ANY` as the boundless snapped member](./01-0115.0010-any-boundless-member.md) — **Done**
+  2. [Multi-domain carrier and the timeline rework](./01-0115.0020-multidomain-carrier-timeline.md) — **Done**
+  3. [The retentive timeline Store](./01-0115.0030-timeline-store.md) — **Done**
+  4. [The Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) — **Done**
 
 ## Parent PRD
 
@@ -35,7 +35,7 @@
 
 Replace the stub `Store` with the real **retentive in-memory `Store`** — a `Writable` Manifold with
 **private per-axis lattices** (spatial from `StoreSpec`; T inherited from answers; no public
-`domain` — [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)),
+`domain` — [ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md)),
 **unit-granular** (units `(parameter, per-axis cells, window)`; `assimilate` splits a native answer
 into units), wired into **both** positions (each `Source` and the best view). `project` runs the
 `Reservoir` pipeline (*amended 2026-08-09: the store-side report verb dissolved — the store's own
@@ -44,24 +44,24 @@ returns*): **load holdings** (`store.project` on the raw request — the store t
 boxes internally; held units return with their domains and provenance; unheld parameters omitted,
 empty answer normal), gate as policy — a parameter refills when **absent**, **expired**
 (`expiration <= now` off the record's provenance `summary` against the `Reservoir`'s injected
-clock — fresh while `expiration > now`, [ADR-0003](../adr/0003-provenance-and-origin.md); no
-`is_current` operation exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), or — *where the request bounds T; a
+clock — fresh while `expiration > now`, [ADR-0003](../../adr/0003-provenance-and-origin.md); no
+`is_current` operation exists, [ADR-0001](../../adr/0001-manifold-algebra-and-composition.md)), or — *where the request bounds T; a
 boundless ask has no extent to cover, so freshness alone governs* — **not covering** the required
 window — **refill the missing/stale parameters** from the child in **one** call
 (`child.project(store.quantize(request))` — the store-authored fetch-order, `quantize`'s only
 public use), `assimilate` (whole units replaced atomically), reload, then read-back: relabel
 matched native cells onto the handed shape and crop to the request (the fact→product boundary).
 
-**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)) —
+**`quantize` is `ground`'s store-side sibling** ([RFC 0009](../../rfc/done/0009-20260725-m4-snapped-t-request-mode.md)) —
 the same per-axis fold, enclosing where `ground` clips, delegating to `Axis.clip`: a latticed axis
 (X/Y) resolves to the pinned **containing cells** (`clip` with a degenerate interval — a cellular
 tick owns the span that follows it); an axis the unit defers to the producer (T and Z here) takes
 **`ANY`**; anything else passes identity. **Which axes are `ANY` derives from the unit definition,
 not hardcoded** — a grid store inverts it (X/Y whole, T celled) — so the `Reservoir` stays generic.
 Read the request-side verb before writing this one to keep the siblings from diverging. `quantize`
-writes **zero new index arithmetic**, so [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split)'s
+writes **zero new index arithmetic**, so [#22](../../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split)'s
 `lattice.py` carve stands down (if raw index math appears after all, carve on the spot — pure
-refactor) and [#23](../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s type split stays
+refactor) and [#23](../../concerns.md#23-spatial-vs-temporal-regularaxis-types)'s type split stays
 deferred. What **is** 006's: the spatial snap is the first live float-lattice snap, so
 `RegularAxis.clip` gains the float boundary tolerance — applied in **index space** (fraction of a
 step), keeping `clip` one branch-free expression for both coordinate kinds — reconciled with
@@ -74,18 +74,18 @@ bounded and open are one member kind differing only in bounds. The temporal narr
 when bounds are present (a bounded spatial snapped member stays a type error; a boundless member is
 axis-generic and sits on Z). One-sided open bounds are **unrepresentable by construction**
 (`Interval` requires both edges) until the "from X onward" form's own author
-([011](./01-0120-twc-provider.md) / [004](./01-0150-second-provider-fallback.md))
+([011](../01-0120-twc-provider.md) / [004](../01-0150-second-provider-fallback.md))
 changes the field type. An open member has no `extent` (clear error; no live caller reads a request
 member's extent) and `matches` everything. The MCP edge **keeps its omitted-`end` flip** — that
 flip *is* the fold of per-parameter reach ends into one shared answer window
-([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s one-shape rule) —
+([#30](../../concerns.md#30-response-membership-under-runtime-degraded-fallback)'s one-shape rule) —
 and narration is untouched: the `Reservoir` forwards capability unchanged, so the horizon sentence
 and the reach read stay honest under retention.
 
 **Refill authors a `SelectionDomain`** — pinned X/Y cells plus boundless T/Z members; it cannot be
 enumerable (`ANY` has no coordinate list). No request-side narrowing lands here; after this ticket
 both in-tree request authors speak `SelectionDomain` and
-[#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)'s remaining
+[#42](../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)'s remaining
 trigger is #39's request-composition helper.
 
 **Native geometry survives the fetch.** `quantize`'s `ANY` on T/Z makes the Provider answer
@@ -119,7 +119,7 @@ this lands). Open-Meteo's natural unit is its whole offering — the same single
 `Selection` hits the store: 003c's accepted divergence dissolves as a **leaf property**, with no
 `Reservoir` knob and no config. A narrow-answering (per-variable-billed) provider re-accepts the
 divergence for its own parameters as its economy choice →
-[#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence), decided
+[#43](../../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence), decided
 at the first billed provider (011). Single-cadence consequence: a source's units age together (one
 `CadenceDef` ⇒ one fetch time, one expiration per trip), so per-parameter staleness divergence
 never occurs live for Open-Meteo; the freshness check stays per-unit and generic (a future source
@@ -135,7 +135,7 @@ parameter to the same grounded request window, so two T ranges in one response i
 Accepted cost: a disjoint-window request discards still-fresh data (requests slide forward with the
 clock; the vendor cannot serve the past; splicing is the mixed-run risk this rule kills —
 cross-vantage-window reuse stays parked at
-[#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows)). 0112's day-anchoring is
+[#25](../../concerns.md#25-root-store-holding-reuse-across-vantage-windows)). 0112's day-anchoring is
 load-bearing for fresh reuse: a same-day full-horizon repeat grounds to the identical day-anchored
 window and serves with no trip.
 
@@ -148,7 +148,7 @@ A separate **configurable retention interval** bounds memory (housekeeping only;
 never serves stale entries — LRU declined). The store-lattice representation stays the `Store`'s
 own business: its retention grid answers `Axis.clip` by materializing from the retention window at
 the clock, the way `RollingAxis` does — no new axis kind
-([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md)). See
+([ADR-0006](../../adr/0006-materialization-granularity-and-store-shape.md)). See
 `docs/v1-requirements.md` (v1 invariants, Config & secrets) and `docs/architecture.md` (Reservoir,
 Store).
 
@@ -156,28 +156,28 @@ The e2e's second-call **re-fetch assertion** (documenting no-retention, session 
 
 ## Acceptance criteria
 
-- [ ] The retentive in-memory `Store` is wired into both positions (Source + best view) with its
+- [x] The retentive in-memory `Store` is wired into both positions (Source + best view) with its
       private per-axis lattices (identity on Z; unit keys carry the Z cell).
-- [ ] `quantize` asks **`ANY`** on the axes the unit spans wholly (v1 timeline store: `T` and `Z`),
+- [x] `quantize` asks **`ANY`** on the axes the unit spans wholly (v1 timeline store: `T` and `Z`),
       and the Provider answers **multi-domain** — units land keyed by **native** Z (2 m, 10 m,
       surface, `[0,TOA]`), not by the request's Z, from a **single** vendor fetch.
-- [ ] `assimilate` consumes the answer and slices it per parameter inside the store; no other node
+- [x] `assimilate` consumes the answer and slices it per parameter inside the store; no other node
       constructs a unit `Selection` or otherwise learns the store's lattice.
-- [ ] `open_meteo.project` no longer flattens eagerly; a request whose Z differs from a prior one
+- [x] `open_meteo.project` no longer flattens eagerly; a request whose Z differs from a prior one
       **reuses** the stored native units rather than refetching.
-- [ ] A fully-fresh repeat request is served with **no** provider call.
-- [ ] Per-unit freshness is honored: a parameter with unexpired provenance serves with no trip while
+- [x] A fully-fresh repeat request is served with **no** provider call.
+- [x] Per-unit freshness is honored: a parameter with unexpired provenance serves with no trip while
       an expired one triggers refill (differing expirations **mocked** — a single-cadence source's
       units age together, so the live path never manufactures this state).
-- [ ] A stone-cold mixed request (direct parameters + calculator inputs) issues **one** vendor
+- [x] A stone-cold mixed request (direct parameters + calculator inputs) issues **one** vendor
       fetch: the answer carries the provider's natural fetch unit (whole offering for Open-Meteo),
       the store absorbs it, and the Calculator's input `Selection` is served from the store —
       same `issue_time` across all assembled parameters.
-- [ ] A temporal miss or window-extension refetches the **whole unit** single-origin
+- [x] A temporal miss or window-extension refetches the **whole unit** single-origin
       (covers-or-refetch-whole: no `valid_time` splice, old window discarded, the refetched unit
       lands the provider's full live timeline).
-- [ ] The retention interval is configurable and only bounds memory (never serves stale).
-- [ ] Unit + mocked-transport integration tests cover fresh-serve, per-parameter refill (mocked
+- [x] The retention interval is configurable and only bounds memory (never serves stale).
+- [x] Unit + mocked-transport integration tests cover fresh-serve, per-parameter refill (mocked
       expirations), and whole-unit single-origin refetch.
 
 ## User stories addressed

@@ -50,7 +50,7 @@ edge, or Probe changes.
    is *guaranteed* true: `window.upper − run-anchor ≥ 15 d 1 h` at every hour for the day-anchored
    window, and exactly 7 d for the run-anchored fakes. The ≤ 23 h understatement is the accepted
    trade (user-accepted 2026-08-06; the exact sentence becomes narration's business again at the
-   open-ended flip, owned by the [retentive-store ticket](../../tickets/01-0115-retentive-store-freshness.md)'s
+   open-ended flip, owned by the [retentive-store ticket](../../tickets/done/01-0115-retentive-store-freshness.md)'s
    align).
 7. **The default request under the e2e noon clock serves 372 ticks**: bounds
    `[Jul 11 12:00, reach end Jul 26 23:00]` on the hourly lattice — `24·16 − 12 = 372` (the
@@ -147,7 +147,7 @@ uv run pytest` green.
    window-quantum form and the two-clocks sentence; [#18](../../concerns.md#18-clock-anchored-footprint-fidelity)
    — "the numbers, not the shape" corrected, the probe record (both edges), residue restated
    (archive lower edge; real availability signal → `ideas.md`);
-   [retentive-store ticket](../../tickets/01-0115-retentive-store-freshness.md) — the open-ended
+   [retentive-store ticket](../../tickets/done/01-0115-retentive-store-freshness.md) — the open-ended
    member agenda item (one-sided open + `ANY` designed together; the edge's omitted-`end` flip
    and the narration sentence decided there); [delivery status](../../tickets/README.md) — 0112 row
    → Done, current-stage note (the 003c landing's probe re-armed and passing);

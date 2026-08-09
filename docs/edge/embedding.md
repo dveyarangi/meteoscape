@@ -22,8 +22,10 @@ open decision.
 
 - The package root exports only `SourceKey` and `main`.
 - The only usable composition path is `server.compose(profile, providers, calculators, secrets,
-  clock, stores) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, a secrets map, a
-  `Clock`, and a `StoreFactory`; requests then run `Gateway.resolve(Selection) → Coverage`.
+  clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, a secrets map, and a
+  `Clock` (the `StoreFactory` is built from that clock inside, so one clock is structural —
+  [ADR-0005](../adr/0005-build-time-composition.md)); requests then run
+  `Gateway.resolve(Selection) → Coverage`.
   Every name in that sentence is an internal type an embedder must import from internal modules.
 
 **Open** (all at #39): the smallest stable facade and lifecycle; whether construction is
@@ -83,9 +85,8 @@ contract before implementation. They are the expected shape of the work, not com
    [0125](../tickets/01-0125-supported-python-embedding.md), with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 3. Request-composition ergonomics — [0125](../tickets/01-0125-supported-python-embedding.md) makes
-   `SelectionDomain` / mode builders embedder vocabulary; they ride
-   [m4](../tickets/done/01-0100-snapped-t-request-mode.md) and
-   [003c](../tickets/done/01-0110-request-shaping.md). Whether those builders are merely
+   `SelectionDomain` / mode builders embedder vocabulary
+   ([request modes](../architecture.md#request-modes)). Whether those builders are merely
    **shape-safe** (unservable shapes unrepresentable, no capability read) or **capability-aware**
    (validated against a live `Capability`, therefore advisory) is
    [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge).

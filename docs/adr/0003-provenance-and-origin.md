@@ -145,12 +145,13 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
   `priority` / `tile` reconciler stays `Uniform` / `PerParameter`.
 - A synthetic `ParameterData` re-derives whenever any parent expires (`min` expiration); incremental
   recompute is an unmodeled optimization ([#11](../concerns.md#11-incremental-synthetic-recompute)).
-- A `Reservoir` only ever **spatially fuses its own cache** (cached ∪ freshly-fetched **same-run** units)
+- A `Reservoir` only ever **spatially fuses its own Holdings** (retained ∪ freshly fetched,
+  **same-run**)
   and stays **`Uniform`** / atomic-equivalent: identity is the **run (`issue_time`)**, not the fetch
   moment, so same-run multi-fetch is one origin, not a synthetic blend. It never fuses **along
-  `valid_time`**: `assimilate` replaces **whole units**, a unit's window is **single-origin**, and
+  `valid_time`**: `assimilate` replaces **whole Holdings**, a Holding's window is **single-origin**, and
   combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
-  coexist in a unit (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
+  coexist in one Holding (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
   read-back homogenization ([#5](../concerns.md#5-read-time-homogenization-fidelity), freshness via
   the cadence above); kernel sophistication remains a separate decision.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`

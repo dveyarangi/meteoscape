@@ -77,7 +77,7 @@ flowchart TD
   C -->|yes| N["storeless — store=None; a configured store is a CompositionError"]
   C -->|no| G["store = StoreSpec (OfferingDef override, else catalogue OfferingSpec; missing is a CompositionError)"]
   N --> S["RegisteredSource → bare Producer at weave"]
-  G --> S2["RegisteredSource → Reservoir(StoreFactory.create(StoreSpec), provider)"]
+  G --> S2["RegisteredSource → Reservoir(store, provider, clock)"]
 ```
 
 Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) — a separate *instance*, never the same singleton as a Source store. `OfferingSpec.default_lattice` (a prebuilt `EnumerableDomain`) is excluded; a `StoreSpec` is the only store-provisioning input ([ADR-0006](./0006-materialization-granularity-and-store-shape.md) closed the provider-lattice channel), and a prebuilt domain on the catalogue would reopen it.
@@ -109,17 +109,21 @@ Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) �
 - **`ProfileDef` holds two registries + profile knobs.** `SourceRegistry` + `CalculatorRegistry` +
   root-store + arbiter. Both sides are build products; neither side still carries raw catalogue declarations.
   The composition root assembles `ProfileDef`; the binders do not.
-- **Weaver owns graph construction only.** `Weaver(stores: StoreFactory).weave(ProfileDef)`
-  allocates source and profile-root Stores via `stores.create(lattice | None)`, builds each source node
-  (`Reservoir(store, Provider)`) and each calculator node (memoized per output group, each with a scoped
-  Arbiter), and **wraps both kinds as `Producer{node, key}`** — one uniform candidate list. It constructs
-  the **`Reconciler`** via `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)` (which
+- **Weaver owns graph construction only.** `Weaver(stores: StoreFactory, clock: Clock).weave(ProfileDef)`
+  allocates source and profile-root Stores via `stores.create(spec, deferred)`, builds each source node
+  (`wire_source` → `Reservoir(store, Provider, clock)`) and each calculator node (memoized per output
+  group, each with a scoped Arbiter; a stored Calculator wraps `Reservoir(store, calc, clock)`), and
+  **wraps both kinds as `Producer{node, key}`** — one uniform candidate list. It constructs the
+  **`Reconciler`** via `build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry)` (which
   flattens both registries' `priority` recipe fields into the reconciler's `ProducerKey → int` lookup) and
-  builds `Arbiter(producers, reconciler)` under the best-view `Reservoir`. It does not hold a catalogue,
-  resolve `fn_id`, or **interpret** `priority` — it *invokes the reconciler factory* and orders nothing;
-  ranking is the reconciler ([ADR-0004](./0004-producer-resolution-and-capability.md)). The two binders /
-  registries stay distinct (different construction inputs); the Weaver is where both converge into
-  `Producer`s. Runtime nodes hold fixed children and perform no catalogue lookup.
+  builds `Arbiter(producers, reconciler)` under the best-view `Reservoir(store, arbiter, clock)`. The
+  `Clock` is build-time injection, and **one instance by construction**: `compose` takes the clock and
+  builds the `StoreFactory` from it. Each `Reservoir`
+  clocks its freshness gate; the store stays clockless on its contract face. It does not
+  hold a catalogue, resolve `fn_id`, or **interpret** `priority` — it *invokes the reconciler factory*
+  and orders nothing; ranking is the reconciler ([ADR-0004](./0004-producer-resolution-and-capability.md)).
+  The two binders / registries stay distinct (different construction inputs); the Weaver is where both
+  converge into `Producer`s. Runtime nodes hold fixed children and perform no catalogue lookup.
   **`CompositionError`** is the build-time failure category (binders + unsupported Arbiter policy);
   it is distinct from the request-path taxonomy in `errors.py`.
 - **Catalogue is an architectural role, not a directory rule.** The `parameters` leaf holds only
@@ -146,7 +150,7 @@ Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) �
   position*. Live stores would make `ProfileDef` single-use (weave-twice would share retention state),
   and a stored Calculator's store can only be weave-allocated (the node it wraps is built inside
   `weave`), which would split allocation into two models. The Weaver allocates every store via an
-  injected `StoreFactory` (`create(EnumerableDomain | StoreSpec | None) → Store`); the Weaver
+  injected `StoreFactory` (`create(StoreSpec, deferred axes) → Store`); the Weaver
   owns **where** stores exist, never **what** a store is.
 - **`ProfileDef` carrying `CalculatorDef`s beside a live `SourceRegistry`.** Mixes declarations with
   build products; calculator catalogue resolution then hides inside Weaver.

@@ -30,7 +30,7 @@ Two queued slices need that empty cell filled, and both currently defer its name
 multi-domain carrier ([0115.0020](./01-0115.0020-multidomain-carrier-timeline.md)) publishes one entry
 per parameter drawn from its records' native domains ([RFC 0012
 d.3](../../rfc/done/0012-20260808-multidomain-carrier-timeline.md)); the retentive timeline store
-([0115.0030](../01-0115.0030-timeline-store.md)) assembles the same shape from its qualifying units'
+([0115.0030](./01-0115.0030-timeline-store.md)) assembles the same shape from its qualifying units'
 domains ([RFC 0013 d.6](../../rfc/done/0013-20260808-timeline-store.md)). Both publish exactly
 `parameter → (ParameterDef, EnumerableDomain)`.
 
@@ -78,5 +78,5 @@ None — could start immediately.
 
 No parent — conversation-born maintenance, delivering no product capability. It unblocked the
 [multi-domain carrier](./01-0115.0020-multidomain-carrier-timeline.md) and the
-[retentive timeline store](../01-0115.0030-timeline-store.md), which advertise through the form it
+[retentive timeline store](./01-0115.0030-timeline-store.md), which advertise through the form it
 landed.

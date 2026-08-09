@@ -54,7 +54,7 @@ same shape. The abstraction these are shapes of is the
 - **The family composes bottom-up like `project`** — leaves declare, composites derive:
   - **`GranularCapability`** — own geometry per parameter, used by Provider declarations and
     materialized multi-domain holders. *Granular* is **per parameter only**:
-    [ADR-0006](./0006-materialization-granularity-and-store-shape.md)'s unit granularity is finer
+    [ADR-0006](./0006-materialization-granularity-and-store-shape.md)'s Holding granularity is finer
     (parameter *and* cells), so the shared word names the same co-domained-vs-per-parameter axis,
     not the same partition.
     → [ADR-0007: every capability form has a domain](./0007-capability-carries-its-domain.md#every-form-has-a-domain).
@@ -151,7 +151,7 @@ same shape. The abstraction these are shapes of is the
   (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)). The `matches` arithmetic is
   **cell-level geometry behind `matches` / the store's holdings read — not a second public verb** — and is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
-  per-unit availability report (held cells), and read-back cell selection
+  per-Holding availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
   Producers declare native cells; interpretation belongs in the request's aperture and the kernel.
 
@@ -345,17 +345,17 @@ same shape. The abstraction these are shapes of is the
       # parameters its Calculator never consumes (ADR-0007).
       input_arb = Arbiter(producers_for(inputs), reconciler, scope=inputs)
       calc      = Calculator(key, outputs, inputs, fn, input_arb)  # key: sheared-inputs error attribution (ADR-0007)
-      node      = Reservoir(store, calc) if stored else calc
+      node      = Reservoir(store, calc, clock) if stored else calc
       producer  = Producer(node, key)
       visiting.remove(key); memo[key] = producer; return producer
 
   top       = Arbiter(source_producers + calc_producers, reconciler)  # one uniform candidate list
-  best_view = Reservoir(store, top)
+  best_view = Reservoir(store, top, clock)
   ```
 
 - **Sources and Calculators unify as `Producer`s — the candidate the Arbiter selects over.** A
   **`Producer`** is a **neutral ranked candidate**: `{ node: Manifold, key: ProducerKey }` — a live
-  `Reservoir(store, Provider)` (a Source) or a `Calculator` (maybe `Reservoir`-wrapped), paired with an
+  `Reservoir(store, Provider, clock)` (a Source) or a `Calculator` (maybe `Reservoir`-wrapped), paired with an
   identity (`ProducerKey = SourceKey | CalculatorKey`, keyed on the producing method/offering — never the
   output — so two calculators serving one output by different methods are **distinct competing producers**,
   identical to two providers competing for a parameter; keys →

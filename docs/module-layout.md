@@ -48,11 +48,11 @@ src/meteoscape/
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry
 #   CalculatorBinder(CalculatorCatalog).build(defs, parameters) → CalculatorRegistry  # keyed by CalculatorKey; resolves output ParameterDefs
 #   validate_calculators(ProfileDef) → None  # raises CompositionError; weave's first step / precondition (owns the cycle guard)
-#   Weaver(stores: StoreFactory).weave(ProfileDef) → Manifold  # best-view root; concretely Reservoir(store, Arbiter), promised as the algebra (ADR-0005)
+#   Weaver(stores: StoreFactory, clock: Clock).weave(ProfileDef) → Manifold  # best-view root; concretely Reservoir(store, Arbiter, clock), promised as the algebra (ADR-0005)
 #   Capability.reach(ParameterId) → Domain  # a Manifold's Reach; composites compose it, raising if unresolvable (ADR-0007)
 #   build_reconciler(ArbiterPolicy, SourceRegistry, CalculatorRegistry) → Reconciler  # holds priority[ProducerKey]
 #   Arbiter(producers, reconciler, scope=None)  # producers = Producer{node, key}; reconciler owns priority AND domain composition; scope = the parameters this Arbiter resolves (a Calculator's inputs at a scoped one)
-#   compose(profile, providers, calculators, secrets, clock, stores) → Gateway
+#   compose(profile, providers, calculators, secrets, clock) → Gateway  # builds StoreFactory(clock): one clock, structurally
 # tests/deterministic/ mirrors src; provider tests mock the HTTP transport; `testpaths` makes it
 # the default `uv run pytest` scope. tests/parity/ holds the live opt-in Provider parity checks
 # (`uv run pytest tests/parity`): comparison.py engine + readers/ (import-clean reference readers)

@@ -57,7 +57,7 @@ narration formula) is [RFC 0010](../../rfc/done/0010-20260806-day-anchored-avail
       identity + freshness; shelf clock: availability window);
       [#18](../../concerns.md#18-clock-anchored-footprint-fidelity) is corrected with the probe
       record and its residue (archive-depth lower edge, real availability signal);
-      the [retentive-store ticket](../01-0115-retentive-store-freshness.md) gains the
+      the [retentive-store ticket](./01-0115-retentive-store-freshness.md) gains the
       **open-ended request member** align-agenda item (one-sided open bounds designed together
       with `ANY`; the MCP edge's omitted-`end` flip and floor-narration-as-sentence decided
       there).

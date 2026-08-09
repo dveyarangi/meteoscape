@@ -26,6 +26,10 @@ surface. The ticket's opening align settles the decisions still owned by
 [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge): the smallest stable facade
 and lifecycle, construction and shipped-manifest experience, request-composition ergonomics, public
 result and failure types, embedded ↔ protocol compatibility, and the `0.x` compatibility policy.
+The failure half opens from #39's **class inventory** (2026-08-09): *capability*, *composition*,
+*unbuilt*, and *invariant break* are four different things sharing two wire categories — an engine
+invariant break must not reach a product surface wearing a producer's fault. The leak sites carry
+`TODO(#39)` markers in `sampling.py`, `gateway.py`, `arbiter.py`, and `errors.py`.
 No existing internal type becomes public merely because it participates in today's composition path.
 
 Then ship that contract end to end. An embedding host resolves the woven best-view profile without

@@ -5,7 +5,7 @@
 - **Status:** Planned — queued immediately after the retentive Store and before another Provider:
   once retention quantizes a request onto a private spatial lattice, read-back onto the exact
   requested point completes the storing `Reservoir`'s public projection behavior.
-- **Depends on:** [006 — Retentive store](./01-0115-retentive-store-freshness.md)
+- **Depends on:** [006 — Retentive store](./done/01-0115-retentive-store-freshness.md)
 - **Outcome:** Nearest-neighbor read-back onto the requested point.
 
 ## Parent PRD

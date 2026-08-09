@@ -21,8 +21,8 @@ This is a first-class product surface, not documentation for internal imports. N
 type, construction pattern, or relationship to protocol adapters is selected by this decision.
 
 **Open — facade shape:** the package root currently exports only `SourceKey` and `main`, while the
-usable `server.compose(...)` requires `ProfileConfig`, both plugin catalogues, a secrets map, `Clock`,
-and `StoreFactory`. Decide the smallest stable facade and lifecycle, including whether construction
+usable `server.compose(...)` requires `ProfileConfig`, both plugin catalogues, a secrets map, and a
+`Clock`; it constructs the clock-sharing `StoreFactory` internally. Decide the smallest stable facade and lifecycle, including whether construction
 is directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
 `Selection`, `Coverage`, or higher-level alternatives become public; and what, if any, boundary is
 shared with server adapters. These are options under investigation, not implied commitments.
@@ -39,6 +39,27 @@ does not inherit from `MeteoscapeError`; request-path failures do; and invariant
 escape as ordinary exceptions (for example `Gateway.resolve` raising `TypeError` when a served root
 does not return a Coverage). Define the public exception hierarchy, phase boundaries, actionable
 context, and which internal failures are deliberately *not* caught.
+
+**Four classes share two wire categories.** *"Unbuilt" is not the same thing as a runtime bug, a
+composition error, or a capability error*, and the surface cannot tell them apart:
+
+| Class | Means | Today |
+|---|---|---|
+| **Capability** | no producer declares this | `CapabilityMismatch` → wire ✓ |
+| **Composition** | misconfigured profile, refused at build | `CompositionError`, outside `MeteoscapeError`; never reaches a request ✓ (hierarchy anomaly above) |
+| **Unbuilt** | the engine has no path for these inputs *yet* | `NotImplementedError` — **uncategorized on the request path**: `sampling.py`'s off-phase/non-identical-step crop, continuous selection, non-`GridDomain` lattice, and `PerPoint` provenance re-index |
+| **Invariant break** | an engine bug; neither request nor producer is at fault | `RuntimeFailure` at the Arbiter's closed-projection check (**miscategorized** — its own docstring says *a producer could not produce*); the `Reservoir`'s admission/read-back emptiness, grounding, child-answer, refill-landing, Holding-ownership, and geometry-shape guards; `Gateway.resolve`'s `TypeError` (uncategorized); and a population of bare `assert`s across arbiter / calculator / reservoir / store / timeline |
+
+**The rule this points at:** an engine invariant break must not reach a product surface wearing a
+*producer's* fault. `runtime-failure` should retract to what its docstring already claims — upstream
+faults — while *unbuilt* and *invariant break* surface as their own honest category (both are
+"ours, not yours", and they differ in whether a retry or a release fixes them). Deliberately **not**
+decided here: whether that is one class or two, where it sits in the hierarchy, and which internal
+failures stay uncaught by design. The architecture's
+[failure taxonomy](./architecture.md#failure-nodata-and-availability) reads today as if
+`runtime-failure` covers all of it; widening *that* sentence would bless the conflation, so it waits
+on this decision too. [#21](#21-serves-extent-vs-project-crop-ability) owns one of the leaks and is
+where the sampler's case is already called *"not even a clean mismatch"*.
 
 **Open — compatibility:** define what import paths and behavior are supported during `0.x`, how
 deprecations work, and what observable consistency is required between embedded and protocol use
@@ -115,7 +136,7 @@ site should be classified into the Arm 1 table as it lands.**
 
 **Mechanism resolved (required by v1):** every `Reservoir` `quantize`s a request for retention and
 **homogenizes** the stored cells onto the requested `Domain` at read, so `project(sel)` honours
-`sel.domain` — the pipeline, single-origin units, and same-run fusion live in
+`sel.domain` — the pipeline, single-origin Holdings, and same-run fusion live in
 [ADR-0001 §materialization](./adr/0001-manifold-algebra-and-composition.md),
 [ADR-0003](./adr/0003-provenance-and-origin.md), and [architecture §Reservoir](./architecture.md#reservoir).
 On-grid reads degenerate to a **lossless crop**; the open question is the off-grid kernel.
@@ -148,7 +169,9 @@ ADR-0004 defines `serves` as *whether a valid non-lossy resampler path exists* f
 `Domain.matches` is only the **geometric half**. The implementation seam under concern is a mismatch:
 `EnumerableCapability.serves` (and leaf footprints) admit by **extent containment**, while
 `Coverage.project` / the sampling engine only
-perform an **aligned identical-step crop** — off-phase or non-identical-step selections that still sit
+perform an **aligned identical-step crop** (its uncategorized `NotImplementedError` is one of the
+leaks inventoried at [#39](#39-python-embedding-surface-and-public-failures) — *unbuilt* is its own
+failure class, not a producer fault) — off-phase or non-identical-step selections that still sit
 inside the span are admitted, then fail at `project` with `NotImplementedError` instead of a clean
 admission miss (`capability-mismatch` / Arbiter fall-through).
 
@@ -174,14 +197,22 @@ Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) i
 `sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
 geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry *and* lattice math, or
 a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
-pure refactor, no contract change. Not blocking; do not split preemptively.
-**Count as of [m4](./tickets/done/01-0100-snapped-t-request-mode.md) (2026-08-02):** `RegularAxis.clip` adds a
-second site of index arithmetic in `domain.py` beside `sub_lattice_offset`, so 006's `quantize` is the
-third and should re-read this entry before writing its own.
-**006 re-read (2026-08-08 align): the trigger does not fire.** `quantize` as resolved writes no new
-arithmetic — T/Z are `ANY`, and the spatial snap delegates to `Axis.clip` with a degenerate interval
-— so the site count stays two. No carve; escape hatch stands (if implementation ends up writing raw
-index math, carve on the spot — pure refactor).
+pure refactor, no contract change. The trigger has not fired: `sub_lattice_offset` and
+`RegularAxis.clip` are the two index-arithmetic sites, while `quantize` delegates its spatial snap to
+`Axis.clip` and writes none. Do not split preemptively.
+
+**Typed temporal extent reads are a separate repetition.** Three sites write the same four lines —
+`as_separable` → `axis(T).extent` →
+narrow to `datetime` → `# type: ignore[return-value]`: `mcp_app._t_extent` (the reach fold),
+`reservoir._t_extent` (a declared geometry), and `reservoir._request_t_bounds` (snapped bounds or an
+enumerable extent). The copies are honest — each raises its own caller's sentence. What is worth
+deciding rather than drifting: whether the *typed
+coordinate read* belongs beside `as_separable` / `as_enumerable_axes` in `domain.py` as a fourth
+narrowing helper returning `Interval[datetime] | None`, which would also delete three
+`type: ignore`s. This does **not** re-trigger the `lattice.py` carve above — that one counts index
+arithmetic, and this writes none. Marked in code with `TODO(#22)` on `_request_t_bounds`.
+`as_enumerable_axes` states the layering rule: geometry checks are geometry's; the error sentence
+stays the caller's.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
@@ -204,7 +235,7 @@ before it), which this split is one way to state statically. m4's T path never m
 regular / vantage / snapped), so when it lands it must stay **invisible to request authors** — one
 constructor name per kind with coordinate-kind autodetection, or facade builders absorbing it
 ([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape). Expected
-internal toucher: [006](./tickets/01-0115-retentive-store-freshness.md)'s `quantize` — which is also the
+internal toucher: [006](./tickets/done/01-0115-retentive-store-freshness.md)'s `quantize` — which is also the
 third lattice-arithmetic site that would fire
 [#22](#22-lattice-helpers-vs-domain--sampling-module-split), now that `RegularAxis.clip` is the second.
 **006 touched it (2026-08-08 align) and chose reuse over split:** `quantize`'s spatial snap — the
@@ -272,18 +303,22 @@ into ADR-0002, which owns the request vocabulary.
 ## 43. Narrow-answering providers re-open mixed-request run divergence
 
 **Kind:** provider economy seam (no v1 driver — Open-Meteo answers wide) ·
-**Refs:** [006](./tickets/01-0115-retentive-store-freshness.md),
-[011](./tickets/01-0120-twc-provider.md), [Edge — Provider](./edge/provider.md),
-[ADR-0003](./adr/0003-provenance-and-origin.md)
+**Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md),
+[ADR-0003](./adr/0003-provenance-and-origin.md),
+[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
+[Edge — Provider](./edge/provider.md)
 
-006's align (2026-08-07) resolved refill scope as **ask narrow, answer natural**: the `Reservoir`
+Refill scope is **ask narrow, answer natural**: the `Reservoir`
 asks for the missing/stale *requested* parameters; the answer is licensed to carry the provider's
 **natural fetch unit** — wider on the parameter facet, never narrower — and the store absorbs it.
 Open-Meteo's natural unit is its whole offering (one variable-listed call either way), which is what
-dissolves [003c](./tickets/done/01-0110-request-shaping.md)'s cold mixed-request double fetch: the
-first fetch warms `wind_u`/`wind_v`, so the Calculator's second `Selection` hits the store. That
-makes the dissolution a **per-provider property**: a per-variable-billed provider whose natural unit
+dissolves the cold mixed-request double fetch: the first fetch warms `wind_u`/`wind_v`, so the
+Calculator's second `Selection` hits the store. That makes the dissolution a **per-provider
+property**: a per-variable-billed provider whose natural unit
 is exactly-what-was-asked re-accepts the two-fetch run-divergence exposure *for its own parameters*.
+The failure that exposure ends in stays guarded at the fold, where the invariant lives —
+`test_winner_domains_that_differ_fail_the_whole_request` (`test_arbiter.py`), two canned winners on
+disagreeing lattices, no network and no store.
 
 Graded responses, cheapest first — decide at the first billed provider
 ([011](./tickets/01-0120-twc-provider.md)):
@@ -529,23 +564,23 @@ continuous footprint **`step`s**, implement **`Domain.match`** / **`Capability.s
 representative value (→ [ADR-0004](./adr/0004-producer-resolution-and-capability.md)); `match`/`score`
 applies to *offerings* (distinct `SourceKey`s), not to levels within one product.
 
-## 25. Root-store unit reuse across vantage windows
+## 25. Root-store Holding reuse across vantage windows
 
 **Kind:** deferred seam · **Refs:** [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md), [ADR-0002](./adr/0002-data-model.md)
 
-The best-view store holds **product** units keyed by the *request's* Z cell (the vantage window) —
+The best-view store holds **product** Holdings keyed by the *request's* Z cell (the vantage window) —
 answers, not native facts ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)).
 v1 has exactly one edge-authored default window, so the key is stable and reuse is exact-match. When
 custom vantage windows arrive, reuse needs a rule: a layer-unresolved value labeled `[0,10]` is an
 **∃-claim** ("measured somewhere in the layer"), so admitting it for a narrower `[0,5]` request by
 plain inclusion is suspect — unlike a ∀-claim statistic cell. Options when it bites: exact-key only
-(cache misses fall through to the Sources, which re-match native units honestly — correct, just
+(cache misses fall through to the Sources, which re-match native Holdings honestly — correct, just
 colder), or a declared tolerance policy at the edge. No v1 work; the fall-through path is already
 correct.
 
 ## 44. Dedicated live archive Store for throughput
 
-**Kind:** deferred seam (2026-08-08 align) · **Refs:**
+**Kind:** deferred seam · **Refs:**
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [#9](#9-cross-run-combination),
 [Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md)
@@ -555,13 +590,13 @@ collector MongoDB, and meteoscape projects over it read-only ("the framework doe
 persistence, it projects over whatever does"). At some later point throughput will want a
 **dedicated live archive Store** — meteoscape-owned, write-path, retention-managed — as a second
 persistent Store shape beside the in-memory retentive Store. Nothing is designed; when it opens,
-the categorical `issue_time` key (#9) and ADR-0006's unit granularity are the constraints it
+the categorical `issue_time` key (#9) and ADR-0006's Holding granularity are the constraints it
 inherits. Trigger: measured read pressure on the collector DB, or an embedder that needs archive
-writes meteoscape-side. Timing (2026-08-09 align): a meteoscape-side collector role is deliberately
-**late release 02 or after** — release 02's archive reads are served by the operator's collector,
+writes meteoscape-side. A meteoscape-side collector role is deliberately **late release 02 or
+after** — release 02's archive reads are served by the operator's collector,
 so nothing earlier needs this. One contract fact is already settled ahead of it: the `Store`
 contract is **clockless and freshness-blind** (freshness is the reader's policy), so an archive
-store — whose units are valuable *because* they are stale — implements the same face with no
+store — whose Holdings are valuable *because* they are stale — implements the same face with no
 carve-outs.
 
 ## 45. The collector schema is a contract meteoscape depends on but does not own
@@ -932,7 +967,7 @@ re-stage align):** a mixed direct+derived request resolves through two winners a
 fetches whose grounded T lattices can diverge (an hour roll between the fetches, or a vendor length
 change) → loud whole-request `runtime-failure` at the Arbiter's closed-projection check. Accepted
 as rare-and-loud **for exactly one ticket** — retention
-([006](./tickets/01-0115-retentive-store-freshness.md), moved to directly after 003c at the same
+([006](./tickets/done/01-0115-retentive-store-freshness.md), moved to directly after 003c at the same
 align) collapses the warm path, and the cold-store residue (two disjoint-parameter fetches) is
 owned by 006's **refill-scope** decision; the full record is the
 [003c ticket](./tickets/done/01-0110-request-shaping.md)'s divergence criterion. Recorded revisit,
@@ -968,8 +1003,8 @@ and returns its input domain unchanged, so its ranges cannot differ in length fr
   plugin boundary in `Calculator.project`, where the error can name the kernel
   ([ADR-0004](./adr/0004-producer-resolution-and-capability.md) already requires this).
 - **Store read-back** ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). The Store holds
-  *independently replaceable* per-Parameter units, so reassembly joins separately-persisted pieces —
-  a partially-written or stale unit is the first payload that can be the wrong length without a bug
+  *independently replaceable* per-Parameter Holdings, so reassembly joins separately-persisted pieces —
+  a partially-written or stale Holding is the first payload that can be the wrong length without a bug
   in the assembling code. Validate on `CoverageRecord` itself, since the pieces arrive from storage
   rather than a caller.
 
@@ -1110,7 +1145,7 @@ graceful degrade deliberately won't hard-fail on a missing *provider* parameter,
 
 [m2](./tickets/done/01-0070-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
 (archive bundle, climatological normals, static fields) *is* its own store, so it wires **storeless** —
-no `Reservoir(store, provider)` mirroring data that is already local. That removes the node whose
+no `Reservoir(store, provider, clock)` mirroring data that is already local. That removes the node whose
 read-back would have homogenized an off-grid request, and
 [architecture §Reservoir](./architecture.md#reservoir) is explicit that homogenization is **not**
 leaf-only: every producer's answer must honour `sel.domain`.
@@ -1124,7 +1159,7 @@ materialized" discriminator once a provider is enumerable but unholdable (the cl
 **Trigger to revisit:** the first real materialized provider. No v1 driver — no v1 provider is
 materialized; the storeless path exists only in fakes. Deferred to the same trigger: the **Source**
 language — glossary *Source* and [architecture](./architecture.md) (guiding principles, §Source)
-define a Source as `Reservoir(store, Provider)`, which a real storeless producer no longer is; those
+define a Source as `Reservoir(store, Provider, clock)`, which a real storeless producer no longer is; those
 sites widen then, not before.
 
 ## 38. Calculator admittance is fixed pointwise-total
@@ -1150,18 +1185,17 @@ temporal extrapolator, subregion-valid downscaler). No v1 driver.
 
 ## 47. A store's capability narrates; plural holdings truncate to one reach
 
-**Kind:** accepted v1 limitation (2026-08-09 align) · **Refs:**
+**Kind:** accepted v1 limitation · **Refs:**
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [ADR-0007](./adr/0007-capability-carries-its-domain.md),
-[RFC 0013](./rfc/done/0013-20260808-timeline-store.md),
 [#44](#44-dedicated-live-archive-store-for-throughput),
 [minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md)
 
-A live store accumulates units at many spatial cells per parameter (two requests for two cities
+A live store accumulates Holdings at many spatial cells per parameter (two requests for two cities
 warm two cells, one store), but the `Capability` protocol's `reach(p)` returns **one** `Domain`,
 and no capability form carries disjoint multi-cell reaches. v1 accepts the truncation:
 `MemoryStore.capability` is a `GranularCapability` whose per-parameter reach is the
-**latest-assimilated unit's domain** — honest membership, narrated geometry.
+**latest-assimilated Holding's domain** — honest membership, narrated geometry.
 
 This is safe because `reach` is composition-and-narration, never request-path algebra: its only
 algebraic readers fold **producer** capabilities (the Arbiter's `compose_domains` over members, a
@@ -1174,7 +1208,7 @@ archive store, whose holdings are plural by design.
 **Revisit** when the first real multi-reach reader arrives — store hit/refill observability
 ([0195](./tickets/01-0195-minimal-resolution-logging.md)) or the persisting/archive substrate
 (#44). That reader decides whether to mint a plural-reach advertisement form (ADR-0007 amendment)
-or read the unit table through a substrate-side face instead.
+or read the Holding table through a substrate-side face instead.
 
 ## 46. Composition-failure attribution is paid inside geometry
 

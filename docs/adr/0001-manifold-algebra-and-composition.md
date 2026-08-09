@@ -35,7 +35,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   - an axis left **`ANY`** — "whatever you natively have here" — is answered at the producer's own
     cells on that axis. `ANY` is not a new mechanism: it is `quantize`'s **limit case**
     ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)) — the arm that asks for the
-    producer's whole native extent on an axis a unit spans wholly, beside the enclosing **ticks** a
+    producer's whole native extent on an axis a Holding spans wholly, beside the enclosing **ticks** a
     latticed axis emits and identity where the box is keyed by the ask.
   - therefore an `ANY`-bearing Selection over **several parameters** may be answered **multi-domain**
     (temperature at 2 m *beside* wind at 10 m). That is not a co-domain violation: co-domain binds the
@@ -48,7 +48,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 
   This is what lets a Source fetch **once** and still retain native geometry. Without it, a
   co-domained question forces a flattened answer and the native cells are destroyed before the store
-  can key units by them.
+  can key Holdings by them.
 
 - **The answer discipline on the parameter facet: an answer may be wider than the ask there, never
   narrower.** Shape-correspondence binds geometry; the parameter set is bound in one direction only — a
@@ -80,7 +80,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 - **Facets, not subtypes.** Optional behaviour is added by facets (interface segregation), never a
   type hierarchy:
   - **`Writable`** — accepts `assimilate(answer)`: the **materialization boundary** — consume the
-    producer's natural (possibly multi-domain) answer and hold it in whole units
+    producer's natural (possibly multi-domain) answer and hold it in whole Holdings
     ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). The facet lives with its
     sole realization (`nodes/store.py`), keeping the core algebra read-only. Provenance is authored
     **upstream**, never computed here.
@@ -102,14 +102,14 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
 
 - **Materialization = sampling a field onto an enumerable `Domain`** (`project` with an enumerable
   Selection). A storing `Reservoir` asks its child on a **`quantize`d** Selection (its **own store
-  grid**'s enclosing ticks, `ANY` where a unit spans the axis wholly; that grid is a **fidelity
-  floor** — coalescing lives in the unit key, not in the ask) and `assimilate`s the result
-  **a whole unit at a time**, then **homogenizes the store grid onto the requested `Domain` at read** —
+  grid**'s enclosing ticks, `ANY` where a Holding spans the axis wholly; that grid is a **fidelity
+  floor** — coalescing lives in the Holding key, not in the ask) and `assimilate`s the result
+  **a whole Holding at a time**, then **homogenizes the store grid onto the requested `Domain` at read** —
   because `project(sel)` must return a Coverage on **`sel.domain`**. So for a storing node homogenization
   is **intrinsic and two-sided** — write: child→grid; read: grid→request — degenerating to **identity**
   when the request already lands on the grid (a snapped read is a **crop**); a non-storing leaf samples
   its substrate per read straight to the target. **Spatially fusing cached ∪ freshly-fetched same-run
-  units is the same read homogenization.** **Freshness is read-time**, evaluated per read off each
+  Holdings is the same read homogenization.** **Freshness is read-time**, evaluated per read off each
   parameter's provenance `expiration` (the Coverage plane's `summary(parameter)`; the freshness model,
   including synthetic-origin inheritance, is [ADR-0003](./0003-provenance-and-origin.md)); `assimilate` is **pure storage** (never recomputes
   provenance), so the algebra needs no `is_current` operation. The **kernel choice / accuracy bounds** of
@@ -125,7 +125,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   structural axis is **orthogonal** to the *origin* axis (atomic vs synthetic,
   [ADR-0003](./0003-provenance-and-origin.md)). The **`Reservoir` is the one composite that re-grids its
   child**: it projects the child on a **store-shaped** Selection (`store_shape` = the request `quantize`d
-  — the grid's enclosing ticks, `ANY` on axes a unit spans wholly) for retention and **homogenizes back
+  — the grid's enclosing ticks, `ANY` on axes a Holding spans wholly) for retention and **homogenizes back
   onto the request at read** (above) — whereas pass-through composites (the Arbiter, Calculators) keep the **`Domain`
   unchanged** and only rewrite parameters.
 
