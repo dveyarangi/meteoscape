@@ -1153,7 +1153,7 @@ temporal extrapolator, subregion-valid downscaler). No v1 driver.
 **Kind:** accepted v1 limitation (2026-08-09 align) · **Refs:**
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [ADR-0007](./adr/0007-capability-carries-its-domain.md),
-[RFC 0013](./rfc/0013-20260808-timeline-store.md),
+[RFC 0013](./rfc/done/0013-20260808-timeline-store.md),
 [#44](#44-dedicated-live-archive-store-for-throughput),
 [minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md)
 

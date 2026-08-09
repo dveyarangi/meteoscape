@@ -18,7 +18,7 @@ a Provider declaration and its docstring closes the door on the other use outrig
 
 A carrier or a Store reading that concludes, correctly, that this form is not for it — which is why
 [RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md) and
-[RFC 0013 d.6](../0013-20260808-timeline-store.md) each deferred the form's name and shape rather than
+[RFC 0013 d.6](./0013-20260808-timeline-store.md) each deferred the form's name and shape rather than
 just constructing one. Making the class honest *is* the deliverable.
 
 ## Boundaries involved
@@ -43,7 +43,7 @@ just constructing one. Making the class honest *is* the deliverable.
 2. **Neither future consumer reads a narrow reach back, either.** The carrier holds its capability as
    the protocol (`_capability: Capability`, [RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md));
    the `Reservoir` reads the store's `report`, not its capability's reach
-   ([RFC 0013 d.5–d.6](../0013-20260808-timeline-store.md)).
+   ([RFC 0013 d.5–d.6](./0013-20260808-timeline-store.md)).
 3. **Enumerability is already guaranteed upstream of both.** The carrier's entries come from
    `record.domain` — enumerable by the `Coverage` invariant ([core.py:82](../../../src/meteoscape/manifold/core.py))
    — and the store's from its `GridDomain` units. A type parameter would restate a guarantee the
@@ -226,7 +226,7 @@ has a red phase — the suite is green throughout, which is the point of a renam
    | [ADR-0004:255](../../adr/0004-producer-resolution-and-capability.md) | **Name only** — "whose `FootprintCapability` advertises the network's aggregate hull" |
    | [ADR-0004:55](../../adr/0004-producer-resolution-and-capability.md) | **Not a name swap.** It reads "a general leaf (**a `Provider`'s declaration**)" — the exact framing this ticket exists to retire. Reword to name both uses, as the class docstring does |
    | [RFC 0012 d.3](./0012-20260808-multidomain-carrier-timeline.md) | Replace "the per-parameter materialized form landed by … which owns its name and shape" with the landed name |
-   | [RFC 0013 d.6](../0013-20260808-timeline-store.md) | Same: its capability paragraph names `GranularCapability` outright |
+   | [RFC 0013 d.6](./0013-20260808-timeline-store.md) | Same: its capability paragraph names `GranularCapability` outright |
    | [glossary](../../glossary.md), *Footprint* | Re-read, **left as written** (decision 1) |
 
    The last two RFC edits are what make the ticket's "neither consuming slice has grounds to defer

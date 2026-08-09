@@ -175,7 +175,7 @@ limitation" repaired — the mixed-bounds refusal does **not** dissolve at 006, 
 boundlessness rather than the store, so what 006 supplies is a second kind of ask.
 
 1. **Next implementation action: slice 3**, [retentive timeline Store](../tickets/01-0115.0030-timeline-store.md)
-   with [RFC 0013](../rfc/0013-20260808-timeline-store.md), where `assimilate`'s concrete shapes are
+   with [RFC 0013](../rfc/done/0013-20260808-timeline-store.md), where `assimilate`'s concrete shapes are
    revisited. It is the first slice a caller can observe, because slice 2's widening is inert until a
    store holds the surplus.
 2. **[RFC 0011](../rfc/done/0011-20260808-any-boundless-member.md) never moved to `rfc/done`** when

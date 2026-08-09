@@ -347,7 +347,7 @@ observable behavior → minimal implementation at a time per `/tdd`.
   ([RFC 0014](../0014-20260808-reservoir-retention-pipeline.md) d.1); the store slice's tests
   construct groups directly.
 - No in-tree author of boundless members until `quantize`
-  ([RFC 0013](../0013-20260808-timeline-store.md)); `CoverageSet` reaches no store until the
+  ([RFC 0013](./0013-20260808-timeline-store.md)); `CoverageSet` reaches no store until the
   [pipeline slice](../../tickets/01-0115.0040-reservoir-retention-pipeline.md).
 - How `CoverageSet` flows through Arbiter/Calculator on the best-view path is the pipeline slice's
   question, flagged in RFC 0014 — nothing here presumes an answer.

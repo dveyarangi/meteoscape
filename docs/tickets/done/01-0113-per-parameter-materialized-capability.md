@@ -31,7 +31,7 @@ multi-domain carrier ([0115.0020](./01-0115.0020-multidomain-carrier-timeline.md
 per parameter drawn from its records' native domains ([RFC 0012
 d.3](../../rfc/done/0012-20260808-multidomain-carrier-timeline.md)); the retentive timeline store
 ([0115.0030](../01-0115.0030-timeline-store.md)) assembles the same shape from its qualifying units'
-domains ([RFC 0013 d.6](../../rfc/0013-20260808-timeline-store.md)). Both publish exactly
+domains ([RFC 0013 d.6](../../rfc/done/0013-20260808-timeline-store.md)). Both publish exactly
 `parameter → (ParameterDef, EnumerableDomain)`.
 
 Land that form. The **name** is not cosmetic: the glossary's *Footprint* is "one producer's
