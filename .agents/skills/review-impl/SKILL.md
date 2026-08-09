@@ -13,4 +13,8 @@ Look for architectural or responsibility leakage.
 
 If discrepancies or leakages found, describe them in short and suggest ways to amend documentation or/and code. Do not make changes until requested. In case the cause has big blast radius or is significantly ambiguous, /align with user.
 
+Make sure the errors follow error rules.
+
+Apply /improve-comments rules to groom the comments and check that TODO tags are correct.
+
 Apply /plan-impl and /sync-arch skill rules that you think are useful for this task.

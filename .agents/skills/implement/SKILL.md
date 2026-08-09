@@ -17,10 +17,13 @@ The code should read as a story. Make sure the main process appears first in the
 
 In case of temporary code added as intermediate scaffolding that is going to change/go away in future iteration, mark it so in docstrings.
 
-Make sure comments adhere to /improve-comments rules
+Make sure the errors follow error rules.
+
+Make sure comments follow /improve-comments rules
 
 Run typechecking and single tests files regularly, and the full test suite once in the end.
 
-Once done, if relevant, use /review-impl and /sync-arch to review the work.
+Do not move the RFC to Done at the end of your work, it will be done by later skills:
+Once done, if relevant, and unless you need to take a break, use /review-impl and /sync-arch to review the work.
 
 Do not commit your work until requested.

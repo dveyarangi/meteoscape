@@ -139,24 +139,32 @@ They are useful for:
 
 ## TODO Comments
 
+Always mark the temporary code, that will be dissolved/changed by some future work, with TODO (temporary) (and add reference to related doc/concern)
 
-Always mark the temporary code, that will be dissolved/changed by some future work, with TODO (temporary) (and add reference to related doc)
+Keep the marker exact and put ownership after the colon, for example:
+`TODO (temporary): [0117](path) replaces this shim.` Numeric IDs remain document references, not
+part of the TODO syntax.
 
 Other than that, TODO should name a concrete missing action.
 
-Bad:
 
+Bad:
 ```python
 # TODO: clean this horrible mess later
 ```
 
 Good:
-
 ```python
 # TODO: split provider normalization from HTTP retry policy.
 ```
 
 Good TODOs should be actionable, specific, and easy to search.
+
+
+## # @hotpath
+Hotpath comment may appear at method or code block.
+It means that this is important root flow of the program and deserves better comments inside. Do not delete comments inside hotpath blocks, but you can finetune or trim them when overexplaining
+
 
 ## Avoid Comment Apologies
 
@@ -171,7 +179,7 @@ Bad:
 Better:
 
 ```python
-# Provider returns mixed local/UTC timestamps; keep this branch until upstream fixes export format.
+# Provider returns mixed local/UTC timestamps; keep this branch until upstream fixes export format. Concern/doc ref ###
 ```
 
 ## Preferred Comment Targets
