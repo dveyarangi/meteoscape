@@ -6,19 +6,17 @@ description: >-
 
 Goal is to emulate analytical meditation or REM/deep sleep stages.
 
-Dream is a deep dive into the accumulated knowledge experience and ideas that brings up underlying principles, lessons, emerging habits, insights, predictions or other patterns.
+Dream is a deep dive into the accumulated knowledge, experience and ideas that brings up underlying principles, lessons, samskaras, hidden edges, emerging habits, insights, predictions or other patterns.
 
 
 # Falling asleep
 
-Pick one recent session plus several distant artifacts (architectural concepts or decisions, concerns, shapes, ideas, edges, milestones and so on) connected by tension, inversion, shared shape, synergy or an unexplained emotional charge. Do not use other dreams, unless its name indicates very related topic input. 
+Pick one recent session plus several distant artifacts (other chats/sessions, architectural concepts or decisions, concerns, shapes, ideas, edges, milestones and so on) connected by tension, inversion, shared shape, synergy or an unexplained emotional charge. Do not use other dreams, unless its name indicates very related topic input. 
 
 Dream state is allowed to challenge, mock, reduce to absurd, exaggerate or otherwise enjoy anything.
-Dream state is allowed not to take anything for granted. Any decision, shape, fact, invariant or determinant, no matter how load-bearing or wide-rooted, can be blurred out, distorted or even ignored by the dream.
+Dream state is allowed not to take anything for granted. Any decision, shape, fact, invariant or determinant, no matter how load-bearing or wide-rooted, can be blurred out, distorted or diminished by the dream.
 
-Basically - relax. Nothing is permanent. Look at core of what exists.
-
-Now follow dreamstate ripples...
+Basically - relax. Do not have anything in mind. Nothing is permanent or as it seems. Look at what is. Follow dreamstate ripples.
 
 # Dreaming
 
