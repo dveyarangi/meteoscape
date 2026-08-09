@@ -39,6 +39,8 @@ Move sessions over week old into `docs/sessions/history/YYYY-MM` folder
 
 Make there are no links to sessions anywhere, between sessions themselves or from other documentation. So we would never need to update the session links. Sessions can point outward to other docs.
 
+HOWEVER, the README.md of sessions, tickets and rfcs, and all other indexes must be denoised.
+
 **Workflow.** Scan → inventory **Safe** / **Needs you** → apply safe items
 (obvious dupes, non-load-bearing evolution, link normalization) → pause on
 ambiguous homes, cross-layer moves, large deletions, or contradictions →
