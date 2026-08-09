@@ -33,9 +33,10 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
     here, which is what lets one code path serve every mode;
   - a **snapped** axis — bounds only — is answered on the resolver's own lattice within those bounds;
   - an axis left **`ANY`** — "whatever you natively have here" — is answered at the producer's own
-    cells on that axis. `ANY` is not a new mechanism: it is the **limit case of `quantize`'s
-    widening** ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)), the point where
-    "widen outward to whole assimilable units" reaches the producer's whole native extent.
+    cells on that axis. `ANY` is not a new mechanism: it is `quantize`'s **limit case**
+    ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)) — the arm that asks for the
+    producer's whole native extent on an axis a unit spans wholly, beside the enclosing **ticks** a
+    latticed axis emits and identity where the box is keyed by the ask.
   - therefore an `ANY`-bearing Selection over **several parameters** may be answered **multi-domain**
     (temperature at 2 m *beside* wind at 10 m). That is not a co-domain violation: co-domain binds the
     **exchange record** (one `Coverage`), never a fetch — and the partition here was **asked for**.
@@ -100,8 +101,9 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   separate field — the encoding is the [data model](./0002-data-model.md).
 
 - **Materialization = sampling a field onto an enumerable `Domain`** (`project` with an enumerable
-  Selection). A storing `Reservoir` asks its child on a **`quantize`d** Selection (snapped to its **own
-  store grid** + widened to whole units; that grid is a **fidelity floor**) and `assimilate`s the result
+  Selection). A storing `Reservoir` asks its child on a **`quantize`d** Selection (its **own store
+  grid**'s enclosing ticks, `ANY` where a unit spans the axis wholly; that grid is a **fidelity
+  floor** — coalescing lives in the unit key, not in the ask) and `assimilate`s the result
   **a whole unit at a time**, then **homogenizes the store grid onto the requested `Domain` at read** —
   because `project(sel)` must return a Coverage on **`sel.domain`**. So for a storing node homogenization
   is **intrinsic and two-sided** — write: child→grid; read: grid→request — degenerating to **identity**
@@ -123,8 +125,8 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   structural axis is **orthogonal** to the *origin* axis (atomic vs synthetic,
   [ADR-0003](./0003-provenance-and-origin.md)). The **`Reservoir` is the one composite that re-grids its
   child**: it projects the child on a **store-shaped** Selection (`store_shape` = the request `quantize`d
-  — snapped to the grid and widened to whole units) for retention and **homogenizes back onto the request
-  at read** (above) — whereas pass-through composites (the Arbiter, Calculators) keep the **`Domain`
+  — the grid's enclosing ticks, `ANY` on axes a unit spans wholly) for retention and **homogenizes back
+  onto the request at read** (above) — whereas pass-through composites (the Arbiter, Calculators) keep the **`Domain`
   unchanged** and only rewrite parameters.
 
 - **Compose for behaviour; the coverage axis is a reconciler, not a node.** Mint a **new composite only

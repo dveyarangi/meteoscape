@@ -43,9 +43,10 @@ into units), wired into **both** positions (each `Source` and the best view). `p
 returns*): **load holdings** (`store.project` on the raw request — the store translates onto its
 boxes internally; held units return with their domains and provenance; unheld parameters omitted,
 empty answer normal), gate as policy — a parameter refills when **absent**, **expired**
-(`expiration > now` off the record's provenance `summary` against the `Reservoir`'s injected
-clock — no `is_current` operation exists,
-[ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), or **not covering** the required
+(`expiration <= now` off the record's provenance `summary` against the `Reservoir`'s injected
+clock — fresh while `expiration > now`, [ADR-0003](../adr/0003-provenance-and-origin.md); no
+`is_current` operation exists, [ADR-0001](../adr/0001-manifold-algebra-and-composition.md)), or — *where the request bounds T; a
+boundless ask has no extent to cover, so freshness alone governs* — **not covering** the required
 window — **refill the missing/stale parameters** from the child in **one** call
 (`child.project(store.quantize(request))` — the store-authored fetch-order, `quantize`'s only
 public use), `assimilate` (whole units replaced atomically), reload, then read-back: relabel
