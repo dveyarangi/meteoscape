@@ -149,7 +149,7 @@ same shape. The abstraction these are shapes of is the
   native facts, never widened** — a leaf states its sample levels and served statistic cells verbatim;
   consumer tolerance rides the request aperture (edge-authored), engine approximation rides the kernel
   (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)). The `matches` arithmetic is
-  **cell-level geometry behind `matches` / the store report — not a second public verb** — and is the
+  **cell-level geometry behind `matches` / the store's holdings read — not a second public verb** — and is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
   per-unit availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).

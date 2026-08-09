@@ -1,14 +1,15 @@
 # Delivery status
 
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-09
 
 **Current stage:** [006 — retentive store](./01-0115-retentive-store-freshness.md) slices 1 and 2 have
 landed — [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) and the
 [multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) — as
 has [per-parameter materialized capability](./done/01-0113-per-parameter-materialized-capability.md).
-Next is slice 3, the [retentive timeline Store](./01-0115.0030-timeline-store.md), which is the first
-of the four to change what a caller observes: slice 2's wider answers are inert until a store exists to
-hold them. Then slice 4, [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), and
+Next is slice 3, the [retentive Store (`MemoryStore`)](./01-0115.0030-timeline-store.md) (RFC 0013
+amended at its 2026-08-09 align: the store's face is Manifold + `Writable` + `quantize`; the
+serve gate moved to slice 4 as `Reservoir` policy): slice 2's wider answers are inert until a store
+exists to hold them. Then slice 4, [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), and
 only then another Provider.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
@@ -79,8 +80,8 @@ queue position, because it still has to be done in order.
 | 0115 | [Retentive store](./01-0115-retentive-store-freshness.md) | — | Ready (split) | core canonical parameters | Decision record and union of criteria; delivered by the four subtickets below (align completed 2026-08-08). |
 | 0115.0010 | [`ANY` as the boundless snapped member](./done/01-0115.0010-any-boundless-member.md) | — | Done | core canonical parameters | Boundless snapped member, `ground`'s open arm, shared `clip` tolerance. No behavior change. |
 | 0115.0020 | [Multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) | — | Done | `ANY` boundless member, per-parameter materialized capability | `CoverageSet` minted; `clip` takes optional bounds; `agreed_geometry` licenses open-axis difference under a request-derived licence; both eager folds retired; natural fetch unit. No behavior change — the widening is inert until slice 3's store holds the surplus. |
-| 0115.0030 | [Retentive timeline Store](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + unit-granular store with covers-or-refetch-whole; unit-tested, unwired. |
-| 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive timeline store | Retention live in both positions; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
+| 0115.0030 | [Retentive Store (`MemoryStore`)](./01-0115.0030-timeline-store.md) | — | Planned | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; unit-tested, wired inert (`StubStore` gone; the pass-through `Reservoir` never touches it). |
+| 0115.0040 | [Reservoir retention pipeline](./01-0115.0040-reservoir-retention-pipeline.md) | — | Planned | retentive store leaf | Retention live in both positions; the serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
 | 0120 | [TWC provider](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check. Split from second-provider fallback on 2026-08-02; reverted to TWC from Visual Crossing on 2026-08-08. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — (former v1-tail gates dissolved 2026-08-08; see ticket) | Supported headless package boundary with public failures; ships early under live-equivalence — capability grows as later tickets land. |

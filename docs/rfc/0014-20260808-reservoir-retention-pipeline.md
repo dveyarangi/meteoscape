@@ -14,7 +14,7 @@ unit definitions; the e2e re-fetch assertion flips.
 |---|---|---|
 | `Reservoir` (`nodes/reservoir.py`) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md), [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | The pipeline (decision 1). `capability` keeps forwarding the child's unchanged. |
 | Unit definitions per position | [ADR-0006 §fact→product boundary](../adr/0006-materialization-granularity-and-store-shape.md), [ADR-0002](../adr/0002-data-model.md), [#25](../concerns.md#25-root-store-unit-reuse-across-vantage-windows) | **Source store defers `{T, Z}`** (native-cell units); **root store — and a stored Calculator's — defers `{T}`, Z passes identity** into the unit key (product units — #25's recorded residue). Decision 2. The position derivation is landed architecture (ADRs amended 2026-08-08 at the align follow-up); this RFC only mechanizes it as the factory's `deferred` argument. |
-| `Weaver` (`nodes/weaver.py`) | [ADR-0005](../adr/0005-build-time-composition.md) | Passes the position's `deferred` axes to `StoreFactory.create` (Weaver owns *where*; the factory owns *what*). |
+| `Weaver` (`nodes/weaver.py`) | [ADR-0005](../adr/0005-build-time-composition.md) | **Already done at slice 3** (2026-08-09 pass 2): the call sites pass `deferred` and the graph carries inert `MemoryStore`s. This slice adds only the `Reservoir`'s injected `Clock`. |
 | Arbiter winner agreement (`nodes/arbiter.py`) | [ADR-0004](../adr/0004-producer-resolution-and-capability.md), [edge/provider.md](../edge/provider.md) | **Untouched** — priority assembly's whole-request equality check stays its own (decision 3). |
 | MCP / e2e behavior | [edge/mcp.md](../edge/mcp.md) | Repeat requests stop re-fetching; the wire shape is unchanged (serve crops). The e2e `route.call_count` assertions flip from 4 to 2-then-cached. |
 | Landing docs | edge/provider.md, ADR-0006 | The pending-006 block flips to current state; ADR-0001's sentence landed at [RFC 0012](./done/0012-20260808-multidomain-carrier-timeline.md) — only the remaining syncs here. |
@@ -40,19 +40,32 @@ unit definitions; the e2e re-fetch assertion flips.
 
 ## Design decisions
 
-1. **The pipeline** (`Reservoir.project(selection)`):
+1. **The pipeline** (`Reservoir.project(selection)`) — *amended 2026-08-09: the store-side
+   `report` verb dissolved; the store's `project` is the holdings query and the gate is this
+   node's policy over what it returns
+   ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md))*:
 
    ```python
    shape = self.store.quantize(selection.domain)                    # lattices stay store-private
+   held = await self.store.project(Selection(shape, selection.parameters))
+                                                                    # CoverageSet: held units at the
+                                                                    # asked cells, stale included,
+                                                                    # unheld omitted, empty normal
    over = {p: t_bounds(selection.domain) ∩ t_extent(self.source.capability.reach(p))
-           for p in selection.parameters}                           # required coverage (RFC 0013 d.5)
-   held = self.store.report(shape, over)                            # unit | None per parameter
-   missing = frozenset(p for p, unit in held.items() if unit is None)
+           for p in selection.parameters}                           # required coverage — only this
+                                                                    # node holds both halves
+   missing = frozenset(
+       p for p in selection.parameters
+       if p not in held.capability.parameters                       # absent
+       or held.capability.reach(p) T-extent ⊉ over[p]               # not covering → refetch whole
+       or provenance summary(p).expiration <= self._clock.now()     # expired (Reservoir's clock)
+   )
    if missing:
        answer = await self.source.project(Selection(domain=shape, parameters=missing))
-       await self.store.assimilate(CoverageSet.of(answer))        # normalize: an Arbiter child
-                                                                    # answers single-domain (RFC 0013 d.4)
-   return self._read_back(selection)                                # serve everything post-warm
+       await self.store.assimilate(CoverageSet.of(answer))          # normalize: an Arbiter child
+                                                                    # answers single-domain
+       held = await self.store.project(Selection(shape, selection.parameters))
+   return self._read_back(held, selection)                          # serve everything post-warm
    ```
 
    Serving happens **after** assimilation from the store alone — one code path, which is what makes
@@ -82,12 +95,13 @@ unit definitions; the e2e re-fetch assertion flips.
    `compose_domains`). Per-axis relaxation for genuinely divergent multi-source reaches stays
    future work ([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback) /
    [#9](../concerns.md#9-cross-run-combination)); nothing here forecloses it.
-4. **Wiring**: `StoreFactory.create(spec, deferred)` (RFC 0013's factory, position-parameterized);
-   the Weaver passes `{T, Z}` at each Source, `{T}` at the root **and at the stored-Calculator call
-   site** ([weaver.py:96](../../src/meteoscape/nodes/weaver.py) — product-shaped child; its
-   root-spec reuse stays [#27](../concerns.md#27-stored-calculator-store-binding)'s question,
-   untouched). `StubStore` is deleted with its last caller; a materialized source still wires
-   storeless (ADR-0006, untouched).
+4. **Wiring**: landed at slice 3 (2026-08-09 pass 2) — `StoreFactory.create(spec, deferred)`
+   position-parameterized, `StubStore` already deleted, the graph carrying inert `MemoryStore`s.
+   This slice's only construction change: the **`Reservoir` gains an injected `Clock`**
+   (construction-time, ADR-0005) for its freshness gate — the `Store` contract stays clockless
+   (2026-08-09 align). A materialized source still wires storeless (ADR-0006, untouched); the
+   stored-Calculator site's root-spec reuse stays
+   [#27](../concerns.md#27-stored-calculator-store-binding)'s question.
 5. **Behavioral flips are confined to call counts and reuse** — the wire schema, units, provenance
    fields, and error taxonomy are untouched. The e2e re-fetch test becomes the fresh-reuse test
    (two requests → one fetch), and a new e2e pins the cold mixed request: one fetch, calculator

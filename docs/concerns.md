@@ -557,7 +557,12 @@ persistence, it projects over whatever does"). At some later point throughput wi
 persistent Store shape beside the in-memory retentive Store. Nothing is designed; when it opens,
 the categorical `issue_time` key (#9) and ADR-0006's unit granularity are the constraints it
 inherits. Trigger: measured read pressure on the collector DB, or an embedder that needs archive
-writes meteoscape-side.
+writes meteoscape-side. Timing (2026-08-09 align): a meteoscape-side collector role is deliberately
+**late release 02 or after** — release 02's archive reads are served by the operator's collector,
+so nothing earlier needs this. One contract fact is already settled ahead of it: the `Store`
+contract is **clockless and freshness-blind** (freshness is the reader's policy), so an archive
+store — whose units are valuable *because* they are stale — implements the same face with no
+carve-outs.
 
 ## 45. The collector schema is a contract meteoscape depends on but does not own
 
@@ -1142,6 +1147,34 @@ capability form or a manifest-declared mode, not a flag threaded into one member
 
 **Trigger to revisit:** the first calculator whose kernel is not pointwise-total (partial-input blend,
 temporal extrapolator, subregion-valid downscaler). No v1 driver.
+
+## 47. A store's capability narrates; plural holdings truncate to one reach
+
+**Kind:** accepted v1 limitation (2026-08-09 align) · **Refs:**
+[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
+[ADR-0007](./adr/0007-capability-carries-its-domain.md),
+[RFC 0013](./rfc/0013-20260808-timeline-store.md),
+[#44](#44-dedicated-live-archive-store-for-throughput),
+[minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md)
+
+A live store accumulates units at many spatial cells per parameter (two requests for two cities
+warm two cells, one store), but the `Capability` protocol's `reach(p)` returns **one** `Domain`,
+and no capability form carries disjoint multi-cell reaches. v1 accepts the truncation:
+`MemoryStore.capability` is a `GranularCapability` whose per-parameter reach is the
+**latest-assimilated unit's domain** — honest membership, narrated geometry.
+
+This is safe because `reach` is composition-and-narration, never request-path algebra: its only
+algebraic readers fold **producer** capabilities (the Arbiter's `compose_domains` over members, a
+Calculator's contained-in-all over its resolver), and the MCP edge narrates the root's reach — a
+store is never an Arbiter member, and the `Reservoir` forwards its *child's* capability upward.
+The per-ask exact answer lives on `store.project`'s returned `CoverageSet.capability`, where the
+ask pins one cell and plurality cannot arise. A narrating reach with gaps is even natural for an
+archive store, whose holdings are plural by design.
+
+**Revisit** when the first real multi-reach reader arrives — store hit/refill observability
+([0195](./tickets/01-0195-minimal-resolution-logging.md)) or the persisting/archive substrate
+(#44). That reader decides whether to mint a plural-reach advertisement form (ADR-0007 amendment)
+or read the unit table through a substrate-side face instead.
 
 ## 46. Composition-failure attribution is paid inside geometry
 

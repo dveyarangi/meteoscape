@@ -44,9 +44,19 @@ plane. The capability/matching half is
 - **The store is unit-granular, never co-domained.** A `Store` holds **per-parameter units**
   (`(parameter, per-axis cells, window)`); `assimilate` consumes the producer's answer and samples it
   into units, replacing each atomically. Its lattices are **per axis** (and, where native cadences differ,
-  per parameter family) and **private** — consumed by `quantize`, the per-unit report, and read-back;
+  per parameter family) and **private** — consumed by `quantize`, the holdings read, and read-back;
   never exposed as a node `domain`. Implementations vary by substrate and persistence behind this one
-  write/report/read face.
+  write/read face: the store's whole public surface is the Manifold contract + `Writable` +
+  `quantize`. Its `project` is the **holdings query** — the held units at the asked cells, each
+  record carrying its own domain and provenance; asked-but-unheld parameters are **omitted** and an
+  empty answer is normal (a cold store is a state, not an error — the Arbiter's omission precedent,
+  not a `Coverage`'s raise). The contract is **clockless and freshness-blind**: provenance
+  (`expiration` included) travels as data, and what *fresh* means is the reader's policy — the live
+  `Reservoir` gates on it, an archive reader serves deliberately stale history through the same
+  face (2026-08-09). Its `capability` **narrates holdings**: honest parameter membership, and a
+  per-parameter reach that truncates plural holdings to the latest-assimilated unit's geometry —
+  safe because `reach` is composition-and-narration over *producers* and a store is never composed
+  ([#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach)).
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
   unit spans the axis wholly.** Each axis with a declared lattice snaps onto it and widens outward to
@@ -74,9 +84,9 @@ plane. The capability/matching half is
 - **One cell-matching arithmetic, three consumers.** *"Does a Z cell at hand answer the requested
   Z?"* (membership for a point cell, inclusion for a span — the quantifier rule,
   [ADR-0004](./0004-producer-resolution-and-capability.md)) is cell-level geometry, not
-  capability-private: capability admission checks **declared** cells, the store report checks
-  **held unit** cells, read-back selects the cells that feed the request. One helper, hidden behind
-  `matches` / the report — no second public verb.
+  capability-private: capability admission checks **declared** cells, the store's holdings read
+  checks **held unit** cells, read-back selects the cells that feed the request. One helper, hidden
+  behind `matches` / the store's `project` — no second public verb.
 
 - **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
   **capability** (footprint — a Source admits uncached-but-in-footprint requests precisely because

@@ -47,7 +47,7 @@ The restriction of an Axis to bounds — the part of itself the axis says those 
 _Avoid_: Snap (the request mode), clamp, trim, crop (the value-side operation on a Coverage)
 
 **Lattice**:
-A Store's private per-axis retention grid — the quantize, report, and read-back target. Never public: a node exposes no lattice, and the only public Domain is a Coverage's. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+A Store's private per-axis retention grid — the quantize and read-back target. Never public: a node exposes no lattice, and the only public Domain is a Coverage's. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Grid (a Coverage Domain shape), node domain, public lattice
 
 **Admission predicate**:
