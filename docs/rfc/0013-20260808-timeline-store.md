@@ -27,7 +27,7 @@ pass-through, so no behavior changes.
 | `quantize` (`nodes/store.py` — a `MemoryStore` method) | [ADR-0002 §grid alignment](../adr/0002-data-model.md), [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) | Minted: the enclosing per-axis fold — `ground`'s sibling in *shape* only. One party (the request against the store's own unit definition), so it lives on the store; `domain.py` gains no lattice-taking export. Zero new index arithmetic ([#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) stands down). |
 | `Store` protocol / `StubStore` (`nodes/store.py`) | ADR-0006, [ADR-0005](../adr/0005-build-time-composition.md) | `MemoryStore` minted and wired **inert** — the pass-through `Reservoir` never touches its store, so "not yet serving" stays literally true; `StoreFactory.create(spec, deferred)` rebuilt; **`StubStore` deleted**, its `TODO (temporary)` retiring here. |
 | `Weaver` / `wire_source` (`nodes/weaver.py`), factory construction (`server.py`) | [ADR-0005](../adr/0005-build-time-composition.md) | The three `create` call sites pass their position-derived `deferred`; the factory is constructed with the injected `Clock`. Mechanical — no graph-shape change. |
-| `Writable.assimilate` (`manifold/core.py`) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageSet)` — the store consumes the natural answer and slices inside. `coverage.py` imports `core.py`, so the name arrives under `TYPE_CHECKING` (annotations are already lazy via `from __future__ import annotations`); the module docstring's acyclicity note gains the sentence. |
+| `Writable.assimilate` (`nodes/store.py`; moved out of `manifold/core.py` at stage 2, 2026-08-09) | [ADR-0001](../adr/0001-manifold-algebra-and-composition.md) | Signature becomes `assimilate(answer: CoverageSet)` — the store consumes the natural answer and slices inside. The facet moves beside its sole realization: the `Store` is the only `Writable`, ADR-0006 names the facet as store face, and the move keeps `core.py` read-only with a one-directional import graph (no `TYPE_CHECKING` laundering of `coverage.py`'s name into the algebra). |
 | Store `project` semantics | ADR-0006 (amended 2026-08-09) | The holdings query, total over raw asks (translation onto the boxes is internal): stale included, unheld omitted, empty answer normal. |
 | Store `capability` | [ADR-0007](../adr/0007-capability-carries-its-domain.md), [#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach) | Holdings narration — `GranularCapability`, latest-assimilated unit per parameter. |
 | Store lattice privacy | ADR-0006 | Guard test: no module outside `store.py` references its private unit or lattice types; no lattice type appears in any public signature. |
@@ -144,11 +144,10 @@ pass-through, so no behavior changes.
    single-Coverage answer is normalized by the *caller* into a one-record group
    (`CoverageSet.of`, minted with its caller — [RFC 0014](./0014-20260808-reservoir-retention-pipeline.md)
    d.1) before `assimilate`; the store never branches on answer shape. This slice's tests
-   construct groups directly. Retention housekeeping (decision 8) runs here. The protocol
-   narrowing is a **`TYPE_CHECKING` import** of `CoverageSet` in `core.py` — `coverage.py`
-   imports `core.py`, so a module-scope import would cycle; annotations are lazy
-   (`from __future__ import annotations`), and `core.py`'s docstring already narrates its
-   acyclicity layout, which gains this sentence.
+   construct groups directly. Retention housekeeping (decision 8) runs here. The narrowed
+   protocol lives in `nodes/store.py` beside its sole realization (the boundary-table row above,
+   2026-08-09) — `store.py` already imports `coverage.py`, so the signature needs no import
+   gymnastics and `core.py` stays read-only.
 5. **`project` is the holdings query, total over raw asks** (2026-08-09 pass 3 — the earlier
    pre-quantized precondition made the store the only Manifold whose `project` demanded an ask
    prepared by a sibling verb; the call-order coupling and its assert die here). Given any
@@ -199,9 +198,14 @@ pass-through, so no behavior changes.
     *prepared* grids — which is what keeps the store role-agnostic and the inverted instantiation
     constructible (pass 4; a store deriving its own grids from `spatial_step` would hardcode the
     spatial roles the genericity criterion forbids).
-    `deferred: frozenset[AxisName]` is the position-derived unit fact
-    ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md), the fact→product
-    boundary; the Weaver owns *where*): the three `create` call sites pass it in this slice —
+    `deferred: frozenset[AxisName]` is **position-bounded, producer-decided**
+    ([ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) as amended
+    2026-08-09; the Weaver owns *where*): `{T}` at the root and the stored-Calculator site is
+    position-forced (product-shaped children — native cells are gone by relabel below), while
+    the source set is the **provider shape's** fact — v1's one shape (point timeline) yields
+    `{T, Z}`, kept as `wire_source`'s constant with a comment naming the shape as its owner (a
+    second shape moves the value into the provider manifest; this signature doesn't change). The
+    three `create` call sites pass it in this slice —
     `{T, Z}` at `wire_source`, `{T}` at the root and at the stored-Calculator site
     ([weaver.py:96](../../src/meteoscape/nodes/weaver.py) — whose spec binding stays
     [#27](../concerns.md#27-stored-calculator-store-binding)'s open question, untouched here). The

@@ -225,7 +225,7 @@ Resolving a request against a node's declared or delivered geometry into the ans
 _Avoid_: Resolve (the Gateway's verb), realize, instantiate; **above_ground** / ground level (the Vertical reference sense — unrelated)
 
 **Quantize**:
-The Store transformation from a Selection to enclosing, atomically storable units on its Canonical lattice. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+The Store's translation of a request into the fetch-order that fills its atomically storable units: `ANY` where a unit spans the axis wholly, the containing cell's tick where a Lattice is declared, identity elsewhere. Ground's store-side sibling (Ground restricts to the request, Quantize encloses it) and the Store's own method, since its context is the Store's private unit definition. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Snap, align, round
 
 **Refill**:
@@ -360,7 +360,7 @@ The property of a materialized result whose Domain can be enumerated. → [ADR-0
 _Avoid_: Node-Countable, Enumerable, browsable, indexed
 
 **Writable**:
-The Manifold facet that accepts materialized Coverage. → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
+The Manifold facet that accepts a producer's natural answer for holding (`assimilate`). → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
 _Avoid_: Materialized, Scratchboard, ManifoldCache
 
 **Store**:

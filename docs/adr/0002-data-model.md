@@ -246,9 +246,14 @@ classDiagram
   no step to floor with).
 - **Grid alignment is per storing node and per axis, and splits into two opposite-extent steps.** A
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
-  declared lattice snaps onto it **and widens the extent outward to whole assimilable units**, so the
-  retrieval shape **encloses** the request (extent **≥** request; the rounding is the store lattice's
-  own business); an axis the unit defers to the producer takes **`ANY`** (T and Z in the timeline
+  declared lattice resolves to the **containing cell** and is emitted as that cell's **tick**, a
+  pinned point (2026-08-09). **The coalescing lives in the unit key, not in the ask**: nearby points
+  share a tick and therefore one unit, which is the enclosure that matters, while the ask itself
+  stays a point — a span-shaped member would claim a point-measured value holds across the whole
+  cell (an ∃ relabeled as ∀) and would graze the neighbouring cell every time a downstream store
+  re-quantized it, since a cell's closed upper edge is its neighbour's tick. A tick is therefore a
+  **fixed point** of `quantize`, which is what lets a fetch-order travel hop to hop unchanged. An
+  axis the unit defers to the producer takes **`ANY`** (T and Z in the timeline
   store — see the `ANY` bullet below), its native cell entering the unit key from the *answer*; an
   axis with neither role **passes through identity**
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). At
@@ -258,8 +263,9 @@ classDiagram
   load-bearing: an axis left `ANY` is answered at the producer's native cells, and closure is
   **shape-correspondence** — the answer mirrors the question — not a blanket co-domain guarantee.)*
   Resolving to the caller's exact output is the
-  **read-back, not the `Store`'s job**; the two steps move extent in **opposite directions** (quantize
-  widens past the request, read-back crops back to it). The per-axis snap is `quantize`'s internal
+  **read-back, not the `Store`'s job**; the two steps move in **opposite directions** — quantize
+  widens (to the whole unit on deferred axes, to the containing cell's identity on latticed ones),
+  read-back crops back to the request. The per-axis snap is `quantize`'s internal
   mechanism (no standalone operation): a snapped axis adopts the grid's anchor and step within its
   bounds (the `valid_time` case), a **concrete coordinate lands in the cell containing it** (the
   lat/lon case — `clip` with a degenerate interval; a cellular tick owns the span that follows it);
@@ -310,8 +316,8 @@ classDiagram
 
 - **`ANY` is the boundless snapped member, on any axis** — not a separate axis kind: one member kind
   whose bounds may be absent, "answer this axis at your own native
-  cells." It is the **limit of `quantize`'s widening** — where a declared lattice snaps and widens to
-  the next unit boundary, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
+  cells." It is the **limit of `quantize`'s widening** — where a declared lattice coalesces a point
+  onto its containing cell, `ANY` widens to the producer's whole native extent. **Which axes are `ANY`
   is derived from the store's assimilable unit, not from the axis**: an axis is `ANY` exactly when the
   unit spans it entirely or defers its native cell to the producer. A timeline store (unit = one
   parameter's whole timeline at a spatial cell)

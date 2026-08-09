@@ -56,22 +56,34 @@ plane. The capability/matching half is
   the native multi-domain answer, above), and only the store knows its boxes. The contract is **clockless and freshness-blind**: provenance
   (`expiration` included) travels as data, and what *fresh* means is the reader's policy — the live
   `Reservoir` gates on it, an archive reader serves deliberately stale history through the same
-  face (2026-08-09). Its `capability` **narrates holdings**: honest parameter membership, and a
+  face (2026-08-09). A substrate may still read a clock for its **own housekeeping** (the in-memory
+  store evicts past `retention_interval`); that is a property of the substrate, not of the contract,
+  which is why an archive substrate takes no clock at all. Its `capability` **narrates holdings**: honest parameter membership, and a
   per-parameter reach that truncates plural holdings to the latest-assimilated unit's geometry —
   safe because `reach` is composition-and-narration over *producers* and a store is never composed
   ([#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach)).
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
-  unit spans the axis wholly.** Each axis with a declared lattice snaps onto it and widens outward to
-  whole units (extent ≥ request); an axis **without** a declared lattice **passes through unchanged**,
+  unit spans the axis wholly.** Each axis with a declared lattice resolves to its **containing cell**
+  and is emitted as that cell's **tick** — a pinned point, never the cell's span (2026-08-09): the
+  coalescing that makes a unit shared lives in the **key**, while the ask stays a point, because a
+  span member would relabel a point-measured value as valid across the cell and would graze the
+  neighbouring cell at the next store hop (a tick, by contrast, is a fixed point of the fold). An
+  axis **without** a declared lattice **passes through unchanged**,
   its cell becoming part of the unit key (the **best-view** store's Z — product units keyed by the
   request's vantage cell); an axis the unit spans **entirely**, or whose native cell only the answer
   can supply (a **Source** store's Z), is asked as **`ANY`** — the same widening carried to its limit,
   answered at the producer's native extent ([ADR-0002](./0002-data-model.md)). **Which axes a store
-  defers is therefore position-derived** from the fact→product boundary below: a Source store defers
-  T and Z; the best-view store — and a stored Calculator's store, whose child likewise answers
-  product-shaped views — defers only T. A volumetric provider may declare a real Z lattice, making Z snap like any other axis —
-  same rule, no vertical special case. "Quantize preserves Z semantics" is thus by construction.
+  defers is bounded by position and decided by the producer's declared geometry** (2026-08-09 —
+  replacing the earlier "position-derived" phrasing, which over-claimed): above the fact→product
+  boundary below — the best-view store, and a stored Calculator's, whose child likewise answers
+  product-shaped views — only T is deferrable, because native cells are gone by relabel before an
+  answer arrives there. At a **Source**, deferral is a fact of the provider's **shape**: the
+  point-timeline shape yields `{T, Z}` (its heights only the answer can supply), while a
+  volumetric provider declaring a real Z lattice makes Z snap like any other axis — same rule, no
+  vertical special case. v1 ships one shape, so the source set lives as the wiring constant; a
+  second shape moves it into the provider manifest beside taps and cadence.
+  "Quantize preserves Z semantics" is thus by construction.
 
 - **The fact→product boundary sits at the Source's read-back.** One vertical fact travels:
   Tap declaration → capability admission (`serves`) → native record Domain → Source-store unit key →

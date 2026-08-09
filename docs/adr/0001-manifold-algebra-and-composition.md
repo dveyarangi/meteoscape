@@ -74,12 +74,15 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   (sample / select / assemble) but mutates **no orchestration or policy state**. There is **no external
   god-orchestrator** above the algebra that decomposes, ranks, or routes; acquisition and selection are
   **properties of particular shapes**, carried as ordinary `project` logic. The single *declared*
-  mutation, `assimilate(coverage)`, is **not** on the base abstraction — it is the `Writable` facet.
+  mutation, `assimilate(answer)`, is **not** on the base abstraction — it is the `Writable` facet.
 
 - **Facets, not subtypes.** Optional behaviour is added by facets (interface segregation), never a
   type hierarchy:
-  - **`Writable`** — accepts `assimilate(coverage)`: the **materialization boundary** — sample a view
-    onto the node's own grid and store it. Provenance is authored **upstream**, never computed here.
+  - **`Writable`** — accepts `assimilate(answer)`: the **materialization boundary** — consume the
+    producer's natural (possibly multi-domain) answer and hold it in whole units
+    ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)). The facet lives with its
+    sole realization (`nodes/store.py`), keeping the core algebra read-only. Provenance is authored
+    **upstream**, never computed here.
   - A node exposes **no public lattice**: its declared grids (per axis, shaped from the configured
     **`StoreSpec`**) are **private to
     its `Store`** — the `quantize` / retention / read-back target. No provider hands a lattice at
