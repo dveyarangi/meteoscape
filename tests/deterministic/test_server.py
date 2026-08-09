@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from fakes import STOPPED, RecordingStoreFactory, fake_catalog
+from fakes import STOPPED, fake_catalog
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
 from meteoscape.config import (
@@ -19,7 +19,6 @@ from meteoscape.config import (
     StoreSpec,
 )
 from meteoscape.nodes.composition import CompositionError
-from meteoscape.nodes.store import StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
@@ -31,7 +30,7 @@ def test_compose_advertises_enabled_offerings() -> None:
         root_store=StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14)),
         arbiter=ArbiterPolicy(),
     )
-    gateway = compose(profile, fake_catalog(), {}, {}, STOPPED, RecordingStoreFactory())
+    gateway = compose(profile, fake_catalog(), {}, {}, STOPPED)
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
 
 
@@ -54,7 +53,7 @@ def test_compose_rejects_unproducible_calculator_input() -> None:
         arbiter=ArbiterPolicy(),
     )
     with pytest.raises(CompositionError, match=r"wind_u") as exc:
-        compose(profile, fake_catalog(), CALCULATOR_CATALOG, {}, STOPPED, RecordingStoreFactory())
+        compose(profile, fake_catalog(), CALCULATOR_CATALOG, {}, STOPPED)
     assert "wind_uv" in str(exc.value)
 
 
@@ -66,7 +65,6 @@ def test_default_settings_compose_open_meteo() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         STOPPED,
-        StoreFactory(STOPPED),
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
     assert WIND_SPEED in gateway.best_view.capability.parameters
@@ -83,7 +81,6 @@ def test_default_compose_and_forecast_hourly_registered() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(clock),
     )
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
 

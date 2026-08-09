@@ -12,7 +12,6 @@ from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Metronome
 from meteoscape.config import Settings
 from meteoscape.nodes.calculators.wind import CALM_SPEED_FLOOR
-from meteoscape.nodes.store import StoreFactory
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 from parity.comparison import (
     Absolute,
@@ -58,7 +57,6 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(clock),
     )
     app = build_mcp_app(gateway, clock)
     async with Client(app) as client:

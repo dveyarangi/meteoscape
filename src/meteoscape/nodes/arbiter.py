@@ -200,6 +200,10 @@ class Arbiter:
             if domain is None:
                 domain = cov.domain
             elif cov.domain != domain:
+                # TODO(#39): an engine invariant break wearing a producer's category — no producer
+                # faulted here. `RuntimeFailure` is kept because it is the only class that reaches
+                # the wire cleanly; the retraction is concern #39's inventory, 0125's align.
+                # Guarded by `test_winner_domains_that_differ_fail_the_whole_request`.
                 raise RuntimeFailure("closed-projection invariant broken: winner domains differ")
             for pid in params:
                 ranges[pid] = cov.ranges[pid]

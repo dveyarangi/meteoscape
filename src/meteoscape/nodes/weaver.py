@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from ..clock import Clock
 from ..identity import CalculatorKey
 from ..manifold.core import Manifold
 from ..manifold.domain import AxisName
@@ -29,8 +30,8 @@ _SOURCE_DEFERRED = frozenset({AxisName.T, AxisName.Z})
 _PRODUCT_DEFERRED = frozenset({AxisName.T})
 
 
-def wire_source(registered: RegisteredSource, stores: StoreFactory) -> Manifold:
-    """Storeless bare Provider when materialized; else `Reservoir(store, Provider)`.
+def wire_source(registered: RegisteredSource, stores: StoreFactory, clock: Clock) -> Manifold:
+    """Storeless bare Provider when materialized; else `Reservoir(store, Provider, clock)`.
 
     `registered.store is None` *is* the materialized fact (the `SourceBinder`'s invariant), read
     directly — no capability re-check, single authority, no drift between readers. The one home of
@@ -38,12 +39,13 @@ def wire_source(registered: RegisteredSource, stores: StoreFactory) -> Manifold:
     """
     if registered.store is None:
         return registered.provider
-    return Reservoir(stores.create(registered.store, _SOURCE_DEFERRED), registered.provider)
+    return Reservoir(stores.create(registered.store, _SOURCE_DEFERRED), registered.provider, clock)
 
 
 class Weaver:
-    def __init__(self, stores: StoreFactory) -> None:
+    def __init__(self, stores: StoreFactory, clock: Clock) -> None:
         self.stores = stores
+        self._clock = clock
 
     def weave(self, profile: ProfileDef) -> Manifold:
         """Wire source + calculator Producers → top Arbiter → best-view Reservoir.
@@ -62,12 +64,13 @@ class Weaver:
         return Reservoir(
             self.stores.create(profile.root_store, _PRODUCT_DEFERRED),
             Arbiter([*source_producers, *calc_producers], reconciler),
+            self._clock,
         )
 
     def _weave_providers(self, profile: ProfileDef) -> list[Producer]:
         """Wrap each registered Source as `Producer(wire_source(...), SourceKey)`."""
         return [
-            Producer(node=wire_source(registered, self.stores), key=key)
+            Producer(node=wire_source(registered, self.stores, self._clock), key=key)
             for key, registered in profile.sources.sources.items()
         ]
 
@@ -101,7 +104,9 @@ class Weaver:
             scoped = Arbiter(producers_for(reg.inputs), reconciler, scope=reg.inputs)
             calc = Calculator(key, reg.outputs, reg.inputs, reg.manifest.fn, scoped)
             node: Manifold = (
-                Reservoir(self.stores.create(profile.root_store, _PRODUCT_DEFERRED), calc)
+                Reservoir(
+                    self.stores.create(profile.root_store, _PRODUCT_DEFERRED), calc, self._clock
+                )
                 if reg.stored
                 else calc
             )

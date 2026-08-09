@@ -14,12 +14,10 @@ from fakes import snapped_point_domain
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Clock, StoppedClock
 from meteoscape.config import Settings
-from meteoscape.errors import RuntimeFailure
 from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.domain import AxisName, FootprintDomain, GridDomain, RegularAxis
 from meteoscape.nodes.providers.open_meteo import BASE_URL, CADENCE
-from meteoscape.nodes.store import StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
@@ -45,7 +43,6 @@ def _compose_default(clock: Clock):
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(clock),
     )
 
 
@@ -92,7 +89,6 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         _CLOCK,
-        StoreFactory(_CLOCK),
     )
     app = build_mcp_app(gateway, _CLOCK)
 
@@ -108,9 +104,8 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
         first = await client.call_tool("forecast_hourly", request)
         second = await client.call_tool("forecast_hourly", request)
 
-    # MemoryStore is wired inert: the pass-through Reservoir never reads it, so each request
-    # still performs one source fetch plus one wind u/v fetch. Slice 4 (RFC 0014) flips this.
-    assert route.call_count == 4
+    # Retention: one vendor trip warms the whole offering; the repeat serves from store.
+    assert route.call_count == 1
 
     payload = first.data
     assert len(payload["valid_time"]) == _HOURS
@@ -149,6 +144,36 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     assert payload["wind_direction"]["provenance"] == wind["provenance"]
 
     assert second.data["air_temperature"]["values"] == first.data["air_temperature"]["values"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_expired_holdings_refetch_and_never_serve_stale() -> None:
+    """Past cadence expiration the Arbiter path refills — retention only bounds memory.
+
+    Open-Meteo's run at stopped noon expires at 13:00; advancing the shared clock past that
+    forces a second vendor trip. The store may still hold the Holding (14-day retention), but the
+    Reservoir gate refuses to serve it stale.
+    """
+    clock = _AdvancingClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast())
+    )
+    gateway = _compose_default(clock)
+    app = build_mcp_app(gateway, clock)
+    request = {
+        "latitude": 52.52,
+        "longitude": 13.41,
+        "parameters": ["air_temperature"],
+        "start": "2026-07-11T12:00",
+        "end": "2026-07-18T11:00",
+    }
+    async with Client(app) as client:
+        await client.call_tool("forecast_hourly", request)
+        assert route.call_count == 1
+        clock.instant = datetime(2026, 7, 11, 14, 0, tzinfo=UTC)
+        await client.call_tool("forecast_hourly", request)
+    assert route.call_count == 2
 
 
 @pytest.mark.asyncio
@@ -207,11 +232,12 @@ async def test_snapped_selection_resolves_through_the_woven_profile() -> None:
         )
     )
 
-    # Mid-hour bounds floor onto the leaf's own ticks before the vendor is asked anything.
-    assert route.call_count == 2
+    # Under retention the refill asks ANY on T — one vendor trip for the whole live window;
+    # the served answer still crops to the grounded mid-hour bounds.
+    assert route.call_count == 1
     asked = dict(route.calls[0].request.url.params)
-    assert asked["start_hour"] == "2026-07-11T14:00"
-    assert asked["end_hour"] == "2026-07-11T17:00"
+    assert asked["start_hour"] == "2026-07-11T00:00"
+    assert asked["end_hour"] == "2026-07-26T23:00"
 
     assert isinstance(coverage.domain, GridDomain)
     valid_time = coverage.domain.axis(AxisName.T)
@@ -224,34 +250,30 @@ async def test_snapped_selection_resolves_through_the_woven_profile() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_snapped_winner_domains_that_diverge_fail_the_whole_request() -> None:
-    """The divergence a snapped request makes reachable — deliberately unhandled, so pinned loud.
+async def test_snapped_mixed_request_shares_one_vendor_geometry() -> None:
+    """A shared Source's natural fetch unit gives both winners one delivered T geometry.
 
-    Each winner derives its T from its **own** fetch, so a vendor answering the two calls of one
-    request with different reaches leaves two answers on two geometries. No fold reconciles them:
-    the Arbiter's closed-projection check fails the request whole. Bounds run past the shorter
-    response on purpose — bounds inside both would ground identically and hide it.
+    One trip warms every parameter, so both winners ground onto the same delivered lattice.
     """
-    respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
-        side_effect=[
-            httpx.Response(200, json=_canned_forecast(hours=168)),
-            httpx.Response(200, json=_canned_forecast(hours=100)),
-        ]
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=168))
     )
     gateway = _compose_default(_CLOCK)
 
-    with pytest.raises(RuntimeFailure, match="closed-projection invariant broken"):
-        await gateway.resolve(
-            Selection(
-                domain=snapped_point_domain(
-                    start=datetime(2026, 7, 11, 14, 30, tzinfo=UTC),
-                    end=datetime(2026, 7, 18, 11, 10, tzinfo=UTC),
-                    lon=13.41,
-                    lat=52.52,
-                ),
-                parameters=frozenset({AIR_TEMPERATURE, WIND_SPEED}),
-            )
+    coverage = await gateway.resolve(
+        Selection(
+            domain=snapped_point_domain(
+                start=datetime(2026, 7, 11, 14, 30, tzinfo=UTC),
+                end=datetime(2026, 7, 18, 11, 10, tzinfo=UTC),
+                lon=13.41,
+                lat=52.52,
+            ),
+            parameters=frozenset({AIR_TEMPERATURE, WIND_SPEED}),
         )
+    )
+    assert route.call_count == 1
+    assert AIR_TEMPERATURE in coverage.ranges
+    assert WIND_SPEED in coverage.ranges
 
 
 @pytest.mark.asyncio
@@ -321,10 +343,10 @@ async def test_out_of_range_bounds_fetch_exactly_the_clipped_window() -> None:
 async def test_short_vendor_delivery_is_disclosed_not_failed() -> None:
     """A vendor answering fewer ticks than declared is an honest shorter answer, not a fault.
 
-    The same 168-asked/100-delivered pair as the divergence pin above, but direct parameters
-    only — one winner, one fetch — so the shorter delivery exercises disclosure instead of
-    tripping the closed-projection check. The response's `valid_time` is the disclosure: it shows
-    the 100-tick window actually served.
+    A 168-asked/100-delivered pair with direct parameters only — one winner, one fetch — so the
+    shorter delivery exercises disclosure instead of tripping the closed-projection check (whose
+    own guard lives at the fold: `test_winner_domains_that_differ_fail_the_whole_request`). The
+    response's `valid_time` is the disclosure: it shows the 100-tick window actually served.
     """
     respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
         return_value=httpx.Response(200, json=_canned_forecast(hours=100))

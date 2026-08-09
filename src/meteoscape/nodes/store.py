@@ -5,7 +5,7 @@ the in-memory substrate. A store's whole public face is the Manifold contract + 
 `quantize`; its `project` is the holdings query — clockless and freshness-blind, so an archive
 substrate serves deliberately stale history through the same face. The Weaver allocates every store
 via an injected `StoreFactory` — it owns *where* stores exist; the factory owns *what* a store is.
-See architecture.md ("Store"), ADR-0005/0006, and RFC 0013.
+See architecture.md ("Store") and ADR-0005/0006.
 """
 
 from __future__ import annotations
@@ -44,12 +44,12 @@ from ..parameters import ParameterDef, ParameterId
 
 @runtime_checkable
 class Writable(Protocol):
-    """Facet: the materialization boundary - consume a natural answer and hold it in whole units.
+    """Facet: the materialization boundary - consume a natural answer and hold it in whole Holdings.
 
     Lives here rather than in the read-only algebra (`manifold/core.py`) because the `Store` is its
     sole realization and the store's face is where ADR-0006 names it. The signature takes the
-    answer's natural (grouped) shape; a single-record answer is normalized by the caller
-    (`CoverageSet.of`), so an implementation never branches on answer shape (RFC 0013).
+    answer's natural grouped shape; the caller normalizes a single record with `CoverageSet.of`, so
+    an implementation never branches on answer shape.
     """
 
     async def assimilate(self, answer: CoverageSet) -> None: ...
@@ -59,21 +59,23 @@ class Writable(Protocol):
 class Store(Manifold, Writable, Protocol):
     """The substrate a `Reservoir` owns: a Writable Manifold leaf.
 
-    Holds sampled Coverages in whole assimilable units (a unit is replaced atomically, so it carries
+    Holds sampled Coverages in whole assimilable Holdings (a Holding is replaced atomically, so it carries
     one origin); the only `assimilate` target. Its `capability` *narrates* holdings — plural cells
-    per parameter truncate to one reach (#47); the per-ask exact answer is `project`'s. Its
+    per parameter truncate to one reach
+    ([#47](../../../docs/concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach));
+    the per-ask exact answer is `project`'s. Its
     lattices stay private — consumed by `quantize`, the holdings query, and read-back; never exposed
-    as a node `domain`. `quantize` authors the refill fetch-order (ADR-0006 / RFC 0013).
+    as a node `domain`. `quantize` authors the refill fetch-order (ADR-0006).
     """
 
     def quantize(self, request: Domain) -> SelectionDomain: ...
 
 
 @dataclass(frozen=True)
-class _Unit:
+class _Holding:
     """The atom of retention: one parameter's whole holding at one store cell.
 
-    The unit's window *is* `domain.axis(T).extent` — no second window field to drift. Private to
+    The Holding's window *is* `domain.axis(T).extent` — no second window field to drift. Private to
     this module, like the lattices (ADR-0006).
     """
 
@@ -83,20 +85,20 @@ class _Unit:
     provenance: Provenance  # the parameter's summary — origin, fetched_at, expiration
 
 
-type _UnitKey = tuple[ParameterId, int, int, EnumerableAxis]
+type _HoldingKey = tuple[ParameterId, int, int, EnumerableAxis]
 """`(parameter, x_index, y_index, z_key)` — lattice indices of the containing cell plus the record's
-Z axis value object (frozen, hashable, equal across fetches of the same tap). The fixed v1 key shape
-for both wired positions (RFC 0013 decision 3)."""
+Z axis value object (frozen, hashable, equal across fetches of the same tap). One key shape serves
+both wired positions."""
 
 
 class MemoryStore:
-    """The unit-granular in-memory store: what it holds, it holds in whole assimilable units.
+    """The Holding-granular in-memory store: what it holds, it holds in whole assimilable Holdings.
 
-    Substrate-named — the unit fold is shape-generic (`deferred` parameterizes which axes a unit
+    Substrate-named — the Holding fold is shape-generic (`deferred` parameterizes which axes a Holding
     spans wholly), and what distinguishes this store from persisting siblings is its memory backing,
     not its timeline. The lattices arrive *prepared*: the factory owns `StoreSpec` → lattice
     derivation, so no axis role is hardcoded here and a grid-style (T-latticed) instantiation is
-    directly constructible. See ADR-0006 and RFC 0013.
+    directly constructible (ADR-0006).
     """
 
     def __init__(
@@ -110,15 +112,15 @@ class MemoryStore:
         self._deferred = deferred
         self._clock = clock
         self._retention = retention
-        self._units: dict[_UnitKey, _Unit] = {}
+        self._holdings: dict[_HoldingKey, _Holding] = {}
 
     async def project(self, selection: Selection) -> CoverageSet:
         """The holdings query: what I hold at the asked cells, as a `CoverageSet`.
 
         Translates the raw ask onto my boxes via the same `quantize` fold that authors a refill, so
-        a request and its fetch-order select the same units. Asked-but-unheld parameters are omitted;
-        a cold store answers empty; stale units return as data — this face is clockless for
-        freshness (RFC 0013); the clock is eviction-only.
+        a request and its fetch-order select the same Holdings. Asked-but-unheld parameters are omitted;
+        a cold store answers empty; stale Holdings return as data. This face is freshness-blind; the
+        clock is eviction-only.
         """
         self._evict()
         boxes = self.quantize(selection.domain)
@@ -129,11 +131,11 @@ class MemoryStore:
         assert z_member is None or isinstance(z_member, EnumerableAxis)
         records: list[CoverageRecord] = []
         for pid in selection.parameters:
-            matched = self._units_at(pid, x, y, z_member)
-            # One parameter → one unit under a point ask. Plural means a span-shaped ask or a
+            matched = self._holdings_at(pid, x, y, z_member)
+            # One parameter → one Holding under a point ask. Plural means a span-shaped ask or a
             # source declaring one parameter at two Z cells under ANY-Z — the Reservoir's side.
             assert len(matched) <= 1, (
-                f"{pid!r} matched {len(matched)} units under one ask — span-shaped ask or "
+                f"{pid!r} matched {len(matched)} Holdings under one ask — span-shaped ask or "
                 f"multi-Z source under ANY-Z; neither is the store's to project"
             )
             if matched:
@@ -141,11 +143,11 @@ class MemoryStore:
         return CoverageSet(records=tuple(records))
 
     async def assimilate(self, answer: CoverageSet) -> None:
-        """Absorb the natural answer, slicing it per parameter into whole units.
+        """Absorb the natural answer, slicing it per parameter into whole Holdings.
 
-        Only the store holds both halves of a unit's identity — the containing cell from its
+        Only the store holds both halves of a Holding's identity — the containing cell from its
         private lattice, the native Z from the answer — so the slicing happens here, never in the
-        `Reservoir`. A unit is replaced whole (insert-or-overwrite, never merged), so it carries
+        `Reservoir`. A Holding is replaced whole (insert-or-overwrite, never merged), so it carries
         one origin and one window: a spliced `valid_time` is unrepresentable.
         """
         self._evict()
@@ -156,7 +158,7 @@ class MemoryStore:
             y = self._containing_index(AxisName.Y, domain)
             z_key = domain.axis(AxisName.Z)
             for pid, data in record.ranges.items():
-                self._units[(pid, x, y, z_key)] = _Unit(
+                self._holdings[(pid, x, y, z_key)] = _Holding(
                     domain=domain,
                     data=data,
                     definition=record.capability.parameters[pid],
@@ -166,18 +168,18 @@ class MemoryStore:
     @property
     def capability(self) -> Capability:
         """Holdings narration (#47): honest membership; reach truncates plural cells to the
-        latest-assimilated unit's domain. Interim — unused on the request path (the gate reads
+        latest-assimilated Holding's domain. Interim — unused on the request path (the gate reads
         `project`'s returned `CoverageSet.capability`); recomputed on read until a multi-reach
         reader forces a maintained sparse form.
         """
-        latest: dict[ParameterId, _Unit] = {}
-        for unit in self._units.values():
-            held = latest.get(unit.definition.id)
+        latest: dict[ParameterId, _Holding] = {}
+        for holding in self._holdings.values():
+            held = latest.get(holding.definition.id)
             # Strictly-newer replacement: ties keep the first-assimilated — arbitrary but stable.
-            if held is None or unit.provenance.fetched_at > held.provenance.fetched_at:
-                latest[unit.definition.id] = unit
+            if held is None or holding.provenance.fetched_at > held.provenance.fetched_at:
+                latest[holding.definition.id] = holding
         return GranularCapability(
-            reaches={pid: (unit.definition, unit.domain) for pid, unit in latest.items()}
+            reaches={pid: (holding.definition, holding.domain) for pid, holding in latest.items()}
         )
 
     def quantize(self, request: Domain) -> SelectionDomain:
@@ -236,17 +238,17 @@ class MemoryStore:
             indices.add(offset)
         return frozenset(indices)
 
-    def _units_at(
+    def _holdings_at(
         self,
         pid: ParameterId,
         x: frozenset[int] | None,
         y: frozenset[int] | None,
         z_key: EnumerableAxis | None,
-    ) -> list[_Unit]:
-        """Held units of `pid` at the translated boxes — deferred axes constrain nothing."""
+    ) -> list[_Holding]:
+        """What I hold for `pid` at the translated boxes — deferred axes constrain nothing."""
         return [
-            unit
-            for (held_pid, xi, yi, held_z), unit in self._units.items()
+            holding
+            for (held_pid, xi, yi, held_z), holding in self._holdings.items()
             if held_pid == pid
             and (x is None or xi in x)
             and (y is None or yi in y)
@@ -254,26 +256,30 @@ class MemoryStore:
         ]
 
     @staticmethod
-    def _as_record(pid: ParameterId, unit: _Unit) -> CoverageRecord:
-        """One unit as its own record — native domain, provenance intact (stale included)."""
+    def _as_record(pid: ParameterId, holding: _Holding) -> CoverageRecord:
+        """One Holding as its own record — native domain, provenance intact (stale included)."""
         return CoverageRecord(
-            capability=EnumerableCapability(domain=unit.domain, parameters={pid: unit.definition}),
-            ranges={pid: unit.data},
-            provenance=Uniform(unit.provenance),
+            capability=EnumerableCapability(
+                domain=holding.domain, parameters={pid: holding.definition}
+            ),
+            ranges={pid: holding.data},
+            provenance=Uniform(holding.provenance),
         )
 
     def _evict(self) -> None:
-        """Drop units past the retention window — substrate-private; the Store contract stays
-        clockless for freshness. Eviction only removes; it never reshapes surviving units."""
+        """Drop Holdings past the retention window — substrate-private; the Store contract stays
+        clockless for freshness. Eviction only removes; it never reshapes surviving Holdings."""
         cutoff = self._clock.now() - self._retention
-        expired = [key for key, unit in self._units.items() if unit.provenance.fetched_at < cutoff]
+        expired = [
+            key for key, holding in self._holdings.items() if holding.provenance.fetched_at < cutoff
+        ]
         for key in expired:
-            del self._units[key]
+            del self._holdings[key]
 
 
 class StoreFactory:
     """Allocates `MemoryStore`s: interprets `StoreSpec` into prepared lattices, validates the
-    step, and hands each store its position-derived `deferred` axes (ADR-0006 / RFC 0013).
+    step, and passes through the wiring-declared `deferred` axes (ADR-0006).
     """
 
     def __init__(self, clock: Clock) -> None:
@@ -295,8 +301,8 @@ def _global_spatial(name: AxisName, step: float) -> RegularAxis:
     """One cellular whole-globe lattice — cells cover the closed domain; the last may overhang.
 
     The overhang is inert (the MCP edge validates coordinates into range, so +90/+180 land in the
-    last cell). No wraparound in v1: -180 and +180 are distinct cells — the same meridian can cache
-    twice, an accepted waste until a gridded provider makes wraparound real (RFC 0013 d.2).
+    last cell). No wraparound in v1: -180 and +180 are distinct cells, so the same meridian may be
+    held twice.
     """
     anchor, span = (-180.0, 360.0) if name is AxisName.X else (-90.0, 180.0)
     return RegularAxis(name, anchor, step, floor(span / step) + 1, cellular=True)

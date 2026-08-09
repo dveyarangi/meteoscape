@@ -21,7 +21,7 @@ from fakes import (
     snapped_point_domain,
 )
 from meteoscape.config import ArbiterPolicy, OfferingDef
-from meteoscape.errors import CapabilityMismatch
+from meteoscape.errors import CapabilityMismatch, RuntimeFailure
 from meteoscape.identity import ProducerKey, SourceKey
 from meteoscape.manifold.cadence import CadenceDef
 from meteoscape.manifold.capability import GranularCapability
@@ -62,7 +62,8 @@ def _bind(*offerings: OfferingDef, catalog=None):
 def _producers(registry: SourceRegistry) -> list[Producer]:
     stores = StoreFactory(STOPPED)
     return [
-        Producer(node=wire_source(reg, stores), key=key) for key, reg in registry.sources.items()
+        Producer(node=wire_source(reg, stores, STOPPED), key=key)
+        for key, reg in registry.sources.items()
     ]
 
 
@@ -162,7 +163,7 @@ async def test_beyond_footprint_raises_without_projecting() -> None:
     )
     key = provider.source_key
     registry = SourceRegistry(
-        sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
+        sources={key: RegisteredSource(provider=provider, priority=0, store=None)}
     )
     arbiter = _arbiter(registry)
     with pytest.raises(CapabilityMismatch):
@@ -181,7 +182,7 @@ async def test_snapped_selection_admits_by_intersection() -> None:
     )
     key = provider.source_key
     registry = SourceRegistry(
-        sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
+        sources={key: RegisteredSource(provider=provider, priority=0, store=None)}
     )
     arbiter = _arbiter(registry)
 
@@ -223,7 +224,7 @@ async def test_in_footprint_projects_once_with_admitted_params() -> None:
     )
     key = provider.source_key
     registry = SourceRegistry(
-        sources={key: RegisteredSource(provider=provider, priority=0, store=SAMPLE_STORE)}
+        sources={key: RegisteredSource(provider=provider, priority=0, store=None)}
     )
     arbiter = _arbiter(registry)
     selection = _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
@@ -267,10 +268,10 @@ async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     registry = SourceRegistry(
         sources={
             temp_provider.source_key: RegisteredSource(
-                provider=temp_provider, priority=0, store=SAMPLE_STORE
+                provider=temp_provider, priority=0, store=None
             ),
             precip_provider.source_key: RegisteredSource(
-                provider=precip_provider, priority=1, store=SAMPLE_STORE
+                provider=precip_provider, priority=1, store=None
             ),
         }
     )
@@ -294,6 +295,72 @@ async def test_assembles_disjoint_winners_into_per_parameter_coverage() -> None:
     assert len(precip_provider.calls) == 1
     assert temp_provider.calls[0].parameters == frozenset({AIR_TEMPERATURE})
     assert precip_provider.calls[0].parameters == frozenset({PRECIPITATION})
+
+
+@pytest.mark.asyncio
+async def test_winner_domains_that_differ_fail_the_whole_request() -> None:
+    """Closed projection: two winners, two geometries, one loud whole-request `RuntimeFailure`.
+
+    The invariant lives here, at the fold — not in any vendor path. A narrow-answering Provider can
+    project winners separately and expose the disagreement
+    ([#43](../../../docs/concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)),
+    so the guard is kept where it is reachable with no network and no store: two canned winners
+    whose timelines disagree by one tick.
+    """
+    table = core_parameters()
+    footprint = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
+            AxisName.T: ContinuousAxis(
+                AxisName.T,
+                Interval(datetime(2026, 7, 1, tzinfo=UTC), datetime(2026, 8, 1, tzinfo=UTC)),
+            ),
+        }
+    )
+    # Same request, different delivered lengths — the shape a run rolling between two fetches leaves.
+    temp_cov = coverage_record(
+        AIR_TEMPERATURE,
+        domain=point_timeline_domain(hours=1, lon=13.41, lat=52.52),
+        origin_key=SourceKey("a", "default"),
+    )
+    precip_cov = coverage_record(
+        PRECIPITATION,
+        domain=point_timeline_domain(hours=2, lon=13.41, lat=52.52),
+        origin_key=SourceKey("b", "default"),
+    )
+    registry = SourceRegistry(
+        sources={
+            SourceKey("a", "default"): RegisteredSource(
+                provider=RecordingProvider(
+                    source_key=SourceKey("a", "default"),
+                    capability=GranularCapability(
+                        reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)}
+                    ),
+                    coverage=temp_cov,
+                ),
+                priority=0,
+                store=None,
+            ),
+            SourceKey("b", "default"): RegisteredSource(
+                provider=RecordingProvider(
+                    source_key=SourceKey("b", "default"),
+                    capability=GranularCapability(
+                        reaches={PRECIPITATION: (table.get(PRECIPITATION), footprint)}
+                    ),
+                    coverage=precip_cov,
+                ),
+                priority=1,
+                store=None,
+            ),
+        }
+    )
+    arbiter = _arbiter(registry)
+    selection = _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
+
+    with pytest.raises(RuntimeFailure, match="closed-projection invariant broken"):
+        await arbiter.project(selection)
 
 
 # --- compose_domains: the reconciler's domain composition (ADR-0007) ---
@@ -439,6 +506,7 @@ def _footprint_leaf(key: SourceKey, domain: FootprintDomain) -> Producer:
         node=Reservoir(
             StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})),
             provider,
+            STOPPED,
         ),
         key=key,
     )
@@ -501,13 +569,15 @@ def test_arbiter_reach_is_the_childs_live_object() -> None:
 
 
 def test_reservoir_forwards_child_reach_unchanged() -> None:
-    """The root is `Reservoir(store, Arbiter)`; forwarding the child's reach carries the root's."""
+    """The root is `Reservoir(store, Arbiter, clock)`; forwarding carries the child's reach."""
     domain = _global(days=10)
     table = core_parameters()
     capability = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), domain)})
     provider = FakeProvider(source_key=SourceKey("src", "default"), capability=capability)
     reservoir = Reservoir(
-        StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})), provider
+        StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})),
+        provider,
+        STOPPED,
     )
     assert reservoir.capability.reach(AIR_TEMPERATURE) is domain
 
@@ -526,6 +596,7 @@ def _multi_producer(key: SourceKey, footprints: Mapping[ParameterId, FootprintDo
         node=Reservoir(
             StoreFactory(STOPPED).create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z})),
             provider,
+            STOPPED,
         ),
         key=key,
     )

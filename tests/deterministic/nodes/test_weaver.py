@@ -19,6 +19,7 @@ from fakes import (
 from meteoscape.config import ArbiterPolicy, OfferingDef, StoreSpec
 from meteoscape.identity import CalculatorKey, SourceKey
 from meteoscape.manifold.core import Selection
+from meteoscape.manifold.coverage import CoverageRecord
 from meteoscape.manifold.domain import AxisName
 from meteoscape.nodes.arbiter import Arbiter
 from meteoscape.nodes.calculator import Calculator
@@ -103,7 +104,7 @@ def _canonical_with_wind_catalog():
 def test_single_source_weaves_capability_and_stores() -> None:
     stores = RecordingStoreFactory()
     profile = _profile(offerings=[OfferingDef(impl="fake", name="default", priority=0)])
-    root = Weaver(stores).weave(profile)
+    root = Weaver(stores, STOPPED).weave(profile)
 
     assert isinstance(root, Reservoir)
     assert AIR_TEMPERATURE in root.capability.parameters
@@ -113,7 +114,13 @@ def test_single_source_weaves_capability_and_stores() -> None:
     assert stores.calls[1] == (profile.root_store, frozenset({AxisName.T}))
     assert isinstance(root.source, Arbiter)
     assert len(root.source.producers) == 1
-    assert root.source.producers[0].key in profile.sources.sources
+    producer = root.source.producers[0]
+    assert isinstance(producer.key, SourceKey)
+    assert producer.key in profile.sources.sources
+    assert isinstance(producer.node, Reservoir)
+    registered = profile.sources.sources[producer.key]
+    assert producer.node.capability is registered.provider.capability
+    assert root.capability.reach(AIR_TEMPERATURE) is producer.node.capability.reach(AIR_TEMPERATURE)
 
 
 def test_materialized_source_weaves_storeless() -> None:
@@ -123,7 +130,7 @@ def test_materialized_source_weaves_storeless() -> None:
         offerings=[OfferingDef(impl="fake", name="default", priority=0)],
         catalog=fake_catalog(materialized=True),
     )
-    root = Weaver(stores).weave(profile)
+    root = Weaver(stores, STOPPED).weave(profile)
     assert isinstance(root, Reservoir)
     assert isinstance(root.source, Arbiter)
 
@@ -153,14 +160,14 @@ async def test_materialized_source_serves_through_arbiter() -> None:
         root_store=_root_store(),
         arbiter=ArbiterPolicy(),
     )
-    root = Weaver(RecordingStoreFactory()).weave(profile)
+    root = Weaver(RecordingStoreFactory(), STOPPED).weave(profile)
 
     selection = Selection(domain=domain, parameters=frozenset({AIR_TEMPERATURE}))
     result = await root.project(selection)
 
-    assert result is coverage  # the leaf's own answer, straight through the Arbiter
+    assert isinstance(result, CoverageRecord)
+    assert result.ranges[AIR_TEMPERATURE].values == coverage.ranges[AIR_TEMPERATURE].values
     assert len(leaf.calls) == 1
-    assert leaf.calls[0].domain is domain
 
 
 def test_empty_source_registry_weaves_empty_envelope() -> None:
@@ -170,7 +177,7 @@ def test_empty_source_registry_weaves_empty_envelope() -> None:
         root_store=_root_store(),
         arbiter=ArbiterPolicy(),
     )
-    root = Weaver(RecordingStoreFactory()).weave(profile)
+    root = Weaver(RecordingStoreFactory(), STOPPED).weave(profile)
     assert root.capability.parameters == {}
 
 
@@ -180,7 +187,7 @@ def test_wind_calculator_memoized_as_single_producer() -> None:
         catalog=_canonical_with_wind_catalog(),
         calculators=_wind_registry(),
     )
-    root = Weaver(RecordingStoreFactory()).weave(profile)
+    root = Weaver(RecordingStoreFactory(), STOPPED).weave(profile)
     assert isinstance(root, Reservoir)
     assert isinstance(root.source, Arbiter)
     calc_keys = [p.key for p in root.source.producers if isinstance(p.key, CalculatorKey)]
@@ -199,7 +206,7 @@ def test_scoped_arbiter_admits_only_input_producers() -> None:
         catalog=_canonical_with_wind_catalog(),
         calculators=_wind_registry(),
     )
-    root = Weaver(RecordingStoreFactory()).weave(profile)
+    root = Weaver(RecordingStoreFactory(), STOPPED).weave(profile)
     assert isinstance(root, Reservoir)
     assert isinstance(root.source, Arbiter)
     calc = next(p for p in root.source.producers if isinstance(p.key, CalculatorKey))
@@ -246,4 +253,4 @@ def test_calculator_cycle_raises() -> None:
         calculators=calcs,
     )
     with pytest.raises(CompositionError, match="cycle"):
-        Weaver(RecordingStoreFactory()).weave(profile)
+        Weaver(RecordingStoreFactory(), STOPPED).weave(profile)

@@ -36,7 +36,7 @@ def test_nodes_are_not_countable() -> None:
         clock=STOPPED,
         retention=timedelta(days=14),
     )
-    reservoir = Reservoir(store, provider)
+    reservoir = Reservoir(store, provider, STOPPED)
     assert not isinstance(store, Countable)
     assert not isinstance(reservoir, Countable)
     assert not isinstance(provider, Countable)

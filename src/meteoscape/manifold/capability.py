@@ -51,7 +51,7 @@ class GranularCapability:
     """An own-geometry capability with one independently shaped `Domain` per parameter.
 
     Providers use it for declared footprints; multi-domain carriers and retentive stores use it for
-    held records. Granular **in parameter only** - ADR-0006's unit granularity is finer (parameter
+    held records. Granular **in parameter only** - ADR-0006's Holding granularity is finer (parameter
     *and* cells); the shared word names the same co-domained-vs-per-parameter axis, not the same
     partition.
 

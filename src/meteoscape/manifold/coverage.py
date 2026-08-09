@@ -74,6 +74,17 @@ class CoverageSet:
                 reaches[pid] = (record.capability.parameters[pid], record.domain)
         object.__setattr__(self, "_capability", GranularCapability(reaches=reaches))
 
+    @classmethod
+    def of(cls, answer: CoverageRecord | CoverageSet) -> CoverageSet:
+        """Normalize a child answer for `assimilate` — identity on a group, wrap a record.
+
+        The Reservoir is the only caller: a source child answers a `CoverageSet`; an Arbiter or
+        Calculator answers a `CoverageRecord`. Anything else is an engine fault at the caller.
+        """
+        if isinstance(answer, CoverageSet):
+            return answer
+        return cls(records=(answer,))
+
     @property
     def capability(self) -> Capability:
         return self._capability

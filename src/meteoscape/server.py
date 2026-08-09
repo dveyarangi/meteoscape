@@ -1,8 +1,7 @@
 """Composition root - the thin entrypoint.
 
-Initializes observability and stands up the MCP surface. Wires the full DAG
-(catalogues + `Settings` → `ProfileConfig` → `SourceBinder.build` + `CalculatorBinder.build` →
-`ProfileDef` → `Weaver.weave` → `Gateway`) but holds no construction logic of its own.
+Initializes observability and stands up the MCP surface. Owns the fixed composition sequence,
+including the shared-clock `StoreFactory`; binders and the Weaver own graph decisions.
 """
 
 from __future__ import annotations
@@ -38,13 +37,12 @@ def compose(
     calculators: CalculatorCatalog,
     secrets: Mapping[str, str],
     clock: Clock,
-    stores: StoreFactory,
 ) -> Gateway:
     """Fixed pipeline: binders → ProfileDef → weave → Gateway. No branches."""
     parameters = StaticParameterTable.core()
     sources = SourceBinder(providers).build(profile.offerings, secrets, clock, parameters)
     calc_registry = CalculatorBinder(calculators).build(profile.calculators, parameters)
-    woven = Weaver(stores).weave(
+    woven = Weaver(StoreFactory(clock), clock).weave(
         ProfileDef(
             sources=sources,
             calculators=calc_registry,
@@ -65,7 +63,6 @@ def main() -> None:
         CALCULATOR_CATALOG,
         settings.secrets(),
         clock,
-        StoreFactory(clock),
     )
     app = build_mcp_app(gateway, clock)
     app.run()

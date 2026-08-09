@@ -1,4 +1,4 @@
-"""`MemoryStore` — the quantize fold, unit assimilation, holdings narration, and holdings query
+"""`MemoryStore` — the quantize fold, Holding assimilation, holdings narration, and holdings query
 (RFC 0013)."""
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def _timeline_store(
     clock: StoppedClock = STOPPED,
     retention: timedelta = _RETENTION,
 ) -> MemoryStore:
-    """The wired timeline position: X/Y latticed, T and Z spanned wholly by a unit."""
+    """The wired timeline position: X/Y latticed, T and Z spanned wholly by a Holding."""
     return MemoryStore(
         grids={AxisName.X: _global_grid(AxisName.X), AxisName.Y: _global_grid(AxisName.Y)},
         deferred=frozenset({AxisName.T, AxisName.Z}),
@@ -185,8 +185,8 @@ def test_boundary_point_reuses_clip_tolerance() -> None:
 
 @pytest.mark.asyncio
 async def test_assimilated_answer_is_narrated_on_its_native_domain() -> None:
-    """The tracer through the store core: an answer lands as a unit, and `capability` narrates
-    honest membership with the unit's own geometry as reach."""
+    """The tracer through the store core: an answer lands as a Holding, and `capability` narrates
+    honest membership with the Holding's own geometry as reach."""
     store = _timeline_store()
     native = _native(lon=10.2, lat=45.3)
 
@@ -202,7 +202,7 @@ def test_empty_store_advertises_no_parameters() -> None:
 
 @pytest.mark.asyncio
 async def test_multi_domain_answer_lands_keyed_by_native_z() -> None:
-    """Temperature at 2 m beside wind at 10 m from one trip: each parameter's unit keeps its own
+    """Temperature at 2 m beside wind at 10 m from one trip: each parameter's Holding keeps its own
     native geometry — the flatten ADR-0006 rejects never happens."""
     store = _timeline_store()
     at_2m = _native(lon=10.2, lat=45.3, z=2.0)
@@ -219,9 +219,9 @@ async def test_multi_domain_answer_lands_keyed_by_native_z() -> None:
 
 @pytest.mark.asyncio
 async def test_reassimilation_replaces_the_whole_unit() -> None:
-    """Same (parameter, cell, Z), new window: one unit exists afterwards — never two windows, never
+    """Same (parameter, cell, Z), new window: one Holding exists afterwards — never two windows, never
     a retained-head + fresh-tail splice. The replacement wins even with an *older* stamp, which is
-    what tells whole-unit replace apart from keep-both-narrate-latest."""
+    what tells whole-Holding replace apart from keep-both-narrate-latest."""
     store = _timeline_store()
     first = _native(lon=10.2, lat=45.3, start=_START, hours=4)
     shifted = _native(lon=10.2, lat=45.3, start=_START + timedelta(hours=2), hours=4)
@@ -238,7 +238,7 @@ async def test_reassimilation_replaces_the_whole_unit() -> None:
 
 @pytest.mark.asyncio
 async def test_plural_holdings_narrate_the_latest_assimilated() -> None:
-    """One parameter at two cells: membership stays honest, reach truncates to the newest unit's
+    """One parameter at two cells: membership stays honest, reach truncates to the newest Holding's
     domain (#47 — the per-ask exact answer is `project`'s, not the narration's)."""
     store = _timeline_store()
     older = _native(lon=10.2, lat=45.3)
@@ -274,8 +274,8 @@ async def test_cold_store_answers_an_empty_coverage_set() -> None:
 
 
 @pytest.mark.asyncio
-async def test_project_answers_held_units_on_their_native_domain() -> None:
-    """The holdings query returns the unit as data — native geometry and provenance intact,
+async def test_project_answers_holdings_on_their_native_domain() -> None:
+    """The holdings query returns the Holding as data — native geometry and provenance intact,
     not re-shaped onto the ask."""
     store = _timeline_store()
     native = _native(lon=10.2, lat=45.3)
@@ -293,7 +293,7 @@ async def test_project_answers_held_units_on_their_native_domain() -> None:
 
 
 @pytest.mark.asyncio
-async def test_raw_ask_and_its_fetch_order_select_the_same_units() -> None:
+async def test_raw_ask_and_its_fetch_order_select_the_same_holdings() -> None:
     """Translation agreement: `project` self-calls `quantize`, so a request and the refill
     fetch-order it would author hit the same boxes."""
     store = _timeline_store()
@@ -320,8 +320,8 @@ async def test_unheld_parameters_are_omitted() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stale_units_are_returned_as_data() -> None:
-    """The store is freshness-blind: an already-expired provenance travels with the unit;
+async def test_stale_holdings_are_returned_as_data() -> None:
+    """The store is freshness-blind: an already-expired provenance travels with the Holding;
     whether to serve or refill is the reader's policy."""
     store = _timeline_store()
     expired_at = _FETCHED - timedelta(hours=2)
@@ -340,7 +340,7 @@ async def test_stale_units_are_returned_as_data() -> None:
 
 @pytest.mark.asyncio
 async def test_project_selects_only_the_asked_cell() -> None:
-    """Two cities warm two cells; an ask at one returns that unit alone — the per-ask exact
+    """Two cities warm two cells; an ask at one returns that Holding alone — the per-ask exact
     answer #47's narration cannot give."""
     store = _timeline_store()
     here = _native(lon=10.2, lat=45.3)
@@ -358,8 +358,8 @@ async def test_project_selects_only_the_asked_cell() -> None:
 
 
 @pytest.mark.asyncio
-async def test_z_identity_position_matches_units_by_vantage_key() -> None:
-    """Root-store position: Z is not deferred, so the ask's vantage cell keys the unit —
+async def test_z_identity_position_matches_holdings_by_vantage_key() -> None:
+    """Root-store position: Z is not deferred, so the ask's vantage cell keys the Holding —
     a different vantage misses even at the same X/Y (#25's residue, mechanized here)."""
     store = MemoryStore(
         grids={AxisName.X: _global_grid(AxisName.X), AxisName.Y: _global_grid(AxisName.Y)},
@@ -400,8 +400,8 @@ async def test_z_identity_position_matches_units_by_vantage_key() -> None:
 
 
 @pytest.mark.asyncio
-async def test_units_older_than_retention_are_evicted_on_read() -> None:
-    """Housekeeping on `project`: a unit whose `fetched_at + retention` has passed is dropped
+async def test_holdings_older_than_retention_are_evicted_on_read() -> None:
+    """Housekeeping on `project`: a Holding whose `fetched_at + retention` has passed is dropped
     before the holdings query answers — never served as data."""
     now = datetime(2026, 8, 20, tzinfo=UTC)
     store = _timeline_store(clock=StoppedClock(now), retention=timedelta(days=7))
@@ -420,9 +420,9 @@ async def test_units_older_than_retention_are_evicted_on_read() -> None:
 
 
 @pytest.mark.asyncio
-async def test_units_older_than_retention_are_evicted_on_write() -> None:
-    """Housekeeping on `assimilate`: inserting a fresh unit first drops aged neighbours, so
-    an already-past unit never survives the next write."""
+async def test_holdings_older_than_retention_are_evicted_on_write() -> None:
+    """Housekeeping on `assimilate`: inserting a fresh Holding first drops aged neighbours, so
+    an already-past Holding never survives the next write."""
     now = datetime(2026, 8, 20, tzinfo=UTC)
     store = _timeline_store(clock=StoppedClock(now), retention=timedelta(days=7))
     aged = _native(lon=10.2, lat=45.3)

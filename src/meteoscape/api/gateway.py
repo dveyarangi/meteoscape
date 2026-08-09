@@ -17,5 +17,8 @@ class Gateway:
     async def resolve(self, selection: Selection) -> Coverage:
         result = await self.best_view.project(selection)
         if not isinstance(result, Coverage):
+            # TODO(#39): an engine invariant break reaching the surface as a bare `TypeError` —
+            # neither the request nor a producer is at fault. Wants the engine-side category #39
+            # inventories; deliberately uncaught until 0125's align settles the hierarchy.
             raise TypeError(f"best view must project to Coverage, got {type(result).__name__}")
         return result

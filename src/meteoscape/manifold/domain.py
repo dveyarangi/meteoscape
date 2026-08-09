@@ -468,6 +468,25 @@ def as_separable(domain: Domain) -> Separable | None:
     return domain if isinstance(domain, Separable) else None
 
 
+def as_enumerable_axes(domain: Domain) -> Mapping[AxisName, EnumerableAxis] | None:
+    """The domain's four axes, all enumerable — or `None` when any of them is not.
+
+    `as_separable`'s cell-bearing sibling: separability says *decomposable per axis*, this says
+    *and every part has cells*. Returns rather than raises, on the same grounds — a caller that
+    needs coordinates (a crop target, a read-back address) owns the sentence for why it needed them.
+    """
+    separable = as_separable(domain)
+    if separable is None:
+        return None
+    axes: dict[AxisName, EnumerableAxis] = {}
+    for name in AXIS_ORDER:
+        member = separable.axis(name)
+        if not isinstance(member, EnumerableAxis):
+            return None
+        axes[name] = member
+    return axes
+
+
 class Domain(ABC):
     """An abstract coordinate set over the 4 axes - continuous or enumerable.
 

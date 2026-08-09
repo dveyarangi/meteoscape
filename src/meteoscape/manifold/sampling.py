@@ -79,6 +79,7 @@ def _restrict_provenance(
     if isinstance(provenance, PerParameter):
         return PerParameter({pid: provenance.by_parameter[pid] for pid in parameters})
     if isinstance(provenance, PerPoint):
+        # TODO(#39): unbuilt, surfaced uncategorized — see the class inventory in concern #39.
         raise NotImplementedError(
             "PerPoint provenance must be re-indexed on a geometry crop — not built in v1"
         )
@@ -92,6 +93,9 @@ def resample(coverage: Coverage, selection: Selection) -> CoverageRecord:
     if missing:
         raise ValueError(f"parameter(s) not held: {sorted(missing)}")
 
+    # TODO(#39): the three `NotImplementedError`s below are *unbuilt*, not producer faults, and they
+    # reach the surface uncategorized (#21 calls this "not even a clean mismatch"). They want the
+    # engine-side category #39 inventories; the class split is 0125's align, not a local fix.
     if not isinstance(selection.domain, EnumerableDomain):
         raise NotImplementedError("continuous selection requires Reservoir homogenization")
 
