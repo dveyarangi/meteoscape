@@ -177,11 +177,35 @@ class _Widening(_Counting):
         return answer if self.calls == 1 else self._then
 
 
-def _live_ask(*, hours: int = 3, z: Interval[float] | None = None) -> Selection:
+class _Echoing(_Counting):
+    """Child that answers on the asked X/Y — what a real Provider does (open_meteo.py:164).
+
+    Its inherited `_answer` is never returned; the placeholder record it is built with only keeps
+    `_Counting.__init__` honest.
+    """
+
+    async def project(self, selection: Selection) -> Manifold:
+        self.calls += 1
+        self.asked.append(selection.parameters)
+        # `quantize` hands the store's fetch-order, always a SelectionDomain (store.py:185-208).
+        assert isinstance(selection.domain, SelectionDomain)
+        lon = selection.domain.axis(AxisName.X).extent.lower
+        lat = selection.domain.axis(AxisName.Y).extent.lower
+        assert isinstance(lon, float) and isinstance(lat, float)
+        return CoverageSet((_record(AIR_TEMPERATURE, _native(lon=lon, lat=lat), value=7.5),))
+
+
+def _live_ask(
+    *,
+    lon: float = 10.0,
+    lat: float = 20.0,
+    hours: int = 3,
+    z: Interval[float] | None = None,
+) -> Selection:
     return Selection(
         _ask(
-            lon=10.0,
-            lat=20.0,
+            lon=lon,
+            lat=lat,
             start=_FETCHED,
             end=_FETCHED + timedelta(hours=hours),
             z=z,
@@ -314,6 +338,79 @@ async def test_project_refills_then_serves_from_store() -> None:
     assert child.calls == 1
     assert isinstance(first, CoverageRecord)
     assert isinstance(second, CoverageRecord)
+
+
+@pytest.mark.asyncio
+async def test_off_grid_request_is_answered_at_the_requested_point() -> None:
+    """Off-grid X/Y are reported at the ask; values come from the enclosing store cell."""
+    child = _Counting(
+        (_record(AIR_TEMPERATURE, _native(lon=10.0, lat=20.0), value=7.5),),
+        frozenset({AIR_TEMPERATURE}),
+    )
+    reservoir = Reservoir(_timeline_store(), child, STOPPED)
+    served = await reservoir.project(_live_ask(lon=10.3, lat=20.2))
+    assert isinstance(served, CoverageRecord)
+    assert isinstance(served.domain, GridDomain)
+    assert served.domain.axis(AxisName.X)[0].coordinate == 10.3
+    assert served.domain.axis(AxisName.Y)[0].coordinate == 20.2
+    assert served.ranges[AIR_TEMPERATURE].values == pytest.approx([7.5] * len(served.domain))
+
+
+@pytest.mark.asyncio
+async def test_two_points_in_one_store_cell_share_one_fetch() -> None:
+    """Two asks inside one store cell share one refill; each answer keeps its own label."""
+    child = _Counting(
+        (_record(AIR_TEMPERATURE, _native(lon=10.0, lat=20.0), value=7.5),),
+        frozenset({AIR_TEMPERATURE}),
+    )
+    reservoir = Reservoir(_timeline_store(), child, STOPPED)
+    first = await reservoir.project(_live_ask(lon=10.3))
+    second = await reservoir.project(_live_ask(lon=10.4))
+    assert child.calls == 1
+    assert isinstance(first, CoverageRecord) and isinstance(second, CoverageRecord)
+    assert isinstance(first.domain, GridDomain) and isinstance(second.domain, GridDomain)
+    assert first.domain.axis(AxisName.X)[0].coordinate == 10.3
+    assert second.domain.axis(AxisName.X)[0].coordinate == 10.4
+    assert first.ranges[AIR_TEMPERATURE].values == second.ranges[AIR_TEMPERATURE].values
+
+
+@pytest.mark.asyncio
+async def test_points_in_different_store_cells_fetch_separately() -> None:
+    """Asks in different store cells each refill — enclosing is per cell, not nearest-global."""
+    child = _Echoing(
+        (_record(AIR_TEMPERATURE, _native(lon=10.0, lat=20.0)),),
+        frozenset({AIR_TEMPERATURE}),
+    )
+    reservoir = Reservoir(_timeline_store(), child, STOPPED)
+    first = await reservoir.project(_live_ask(lon=10.3))
+    second = await reservoir.project(_live_ask(lon=10.6))
+    assert child.calls == 2
+    assert isinstance(first, CoverageRecord) and isinstance(second, CoverageRecord)
+    assert isinstance(first.domain, GridDomain) and isinstance(second.domain, GridDomain)
+    assert first.domain.axis(AxisName.X)[0].coordinate == 10.3
+    assert second.domain.axis(AxisName.X)[0].coordinate == 10.6
+
+
+@pytest.mark.asyncio
+async def test_on_grid_request_is_the_identity_crop() -> None:
+    """An on-tick ask is a lossless crop: the coordinate is unchanged and values are untouched.
+
+    Relabel still runs. It harmonizes the whole axis object, and the held record carries the
+    provider's native `step` (1.0) where the ask carries the edge's (0.0001) - skipping it here
+    raises `NotImplementedError` from `resample`, on-grid as much as off. What is identity in this
+    case is the coordinate and the values, not the rewrite.
+    """
+    child = _Counting(
+        (_record(AIR_TEMPERATURE, _native(lon=10.0, lat=20.0), value=7.5),),
+        frozenset({AIR_TEMPERATURE}),
+    )
+    reservoir = Reservoir(_timeline_store(), child, STOPPED)
+    served = await reservoir.project(_live_ask())
+    assert isinstance(served, CoverageRecord)
+    assert isinstance(served.domain, GridDomain)
+    assert served.domain.axis(AxisName.X)[0].coordinate == 10.0
+    assert served.domain.axis(AxisName.Y)[0].coordinate == 20.0
+    assert served.ranges[AIR_TEMPERATURE].values == pytest.approx([7.5] * len(served.domain))
 
 
 @pytest.mark.asyncio

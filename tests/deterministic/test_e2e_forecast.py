@@ -35,8 +35,12 @@ class _AdvancingClock:
         return self.instant
 
 
-def _compose_default(clock: Clock):
-    settings = Settings()
+def _compose_default(clock: Clock, *, store_spatial_step: float | None = None):
+    settings = (
+        Settings()
+        if store_spatial_step is None
+        else Settings(store_spatial_step=store_spatial_step)
+    )
     return compose(
         settings.profile(),
         PROVIDER_CATALOG,
@@ -144,6 +148,44 @@ async def test_forecast_hourly_e2e_and_refetch() -> None:
     assert payload["wind_direction"]["provenance"] == wind["provenance"]
 
     assert second.data["air_temperature"]["values"] == first.data["air_temperature"]["values"]
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_points_within_one_store_cell_share_one_vendor_call() -> None:
+    """Two off-grid points in one root cell share one vendor trip and one value series.
+
+    A coarse root step (0.5 deg) makes the fidelity floor observable: both asks fall in
+    `[13.0, 13.5)` by `[52.5, 53.0)`, so the vendor is asked once, at the cell tick. This surface
+    serializes no coordinate (`serialize_coverage` emits `valid_time` and the parameter blocks
+    only), so the identical value series *is* the caller-visible evidence - the fidelity-floor
+    invariant on the MCP edge record. Compose once: a second empty store would hide the claim.
+    """
+    route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast())
+    )
+    gateway = _compose_default(_CLOCK, store_spatial_step=0.5)
+    app = build_mcp_app(gateway, _CLOCK)
+    window = {
+        "parameters": ["air_temperature"],
+        "start": "2026-07-11T12:00",
+        "end": "2026-07-18T11:00",
+    }
+    async with Client(app) as client:
+        first = await client.call_tool(
+            "forecast_hourly",
+            {"latitude": 52.52, "longitude": 13.41, **window},
+        )
+        second = await client.call_tool(
+            "forecast_hourly",
+            {"latitude": 52.52, "longitude": 13.44, **window},
+        )
+
+    assert route.call_count == 1
+    asked = dict(route.calls[0].request.url.params)
+    assert float(asked["longitude"]) == pytest.approx(13.0, abs=1e-9)
+    assert float(asked["latitude"]) == pytest.approx(52.5, abs=1e-9)
+    assert first.data["air_temperature"]["values"] == second.data["air_temperature"]["values"]
 
 
 @pytest.mark.asyncio

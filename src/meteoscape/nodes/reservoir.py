@@ -181,13 +181,11 @@ class Reservoir:
     def _relabel_onto(self, record: CoverageRecord, target: EnumerableDomain) -> CoverageRecord:
         """Rewrite count-1 X/Y/Z onto `target`; values and provenance untouched.
 
-        Relabel asserts a **claim** (this 2 m value answers your 0-10 m vantage), honest only because
-        admission gated it. `resample` refuses the same rewrite and names this node as the owner.
-
-        TODO (temporary): [0117](../../../docs/tickets/01-0117-off-grid-homogenization.md)
-        replaces containing-cell relabel with the nearest-neighbour kernel and an on-grid identity
-        crop. This method is the single site that edit touches: the *kernel* is value transfer and
-        belongs in `sampling.py`; the *claim* — which cell may answer for which — stays here.
+        This method is the **claim** (this 2 m value answers your 0-10 m vantage) — honest only
+        because admission gated it. The **transfer** is `resample`, reached through
+        `CoverageSet.project`; v1's Resampler is **identity**, so no value moves here or there.
+        Parameter-specific Resamplers that would change that live at
+        [#5](../../../docs/concerns.md#5-read-time-homogenization-fidelity).
         """
         held = _axes_of(record.domain)
         onto = _axes_of(target)
