@@ -394,8 +394,19 @@ Core scope:
 - Additional provider plugins such as NWS, KNMI, TWC, Tomorrow.io, or regional
   public services.
 - Basic self-host packaging and operational docs.
-- Optional REST surface if demand appears.
+- ~~Optional REST surface if demand appears.~~ **Demand appeared (2026-08-10):** REST is the
+  operator deployment's own shape, and is [scheduled](./tickets/02-0165-rest-surface.md) — near the
+  end of the current beeline, after the embedding surface, which the deployment uses first.
 - Local/regional station provider interface (optional in this phase).
+
+**Scheduled out of this phase by the 2026-08-10 beeline align** (see the
+[delivery status](./tickets/README.md)): TWC arrives not as one more provider plugin but as the
+**primary**, which pulls fallback, unit conversion, and config/secrets forward with it; "cache
+hit/miss and provider metrics" splits into a Source-seam
+[vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md) plus its
+[budget governor](./tickets/02-0155-vendor-budget-governor.md), separate from the Gateway's
+caller-facing metering; and "retention tuning" gains a
+[persisting substrate](./tickets/02-0145-persisting-store.md).
 
 Proof:
 
@@ -562,7 +573,7 @@ Proof:
   replacement observable and testable.
 - Resolution decisions need an inspectable trace or logging surface; its product
   shape remains an open design concern.
-- Homogenization starts with a deliberately simple kernel and needs an explicit
+- Homogenization starts with a deliberately simple Resampler and needs an explicit
   later fidelity path.
 - Provider capability discovery needs a product surface.
 - Self-host packaging and operational guidance must remain part of the

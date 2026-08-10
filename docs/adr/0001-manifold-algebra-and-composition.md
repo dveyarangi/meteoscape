@@ -112,7 +112,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
   Holdings is the same read homogenization.** **Freshness is read-time**, evaluated per read off each
   parameter's provenance `expiration` (the Coverage plane's `summary(parameter)`; the freshness model,
   including synthetic-origin inheritance, is [ADR-0003](./0003-provenance-and-origin.md)); `assimilate` is **pure storage** (never recomputes
-  provenance), so the algebra needs no `is_current` operation. The **kernel choice / accuracy bounds** of
+  provenance), so the algebra needs no `is_current` operation. The **Resampler choice / accuracy bounds** of
   the homogenization stay deferred ([concern #5](../concerns.md#5-read-time-homogenization-fidelity)).
 
 ## Composition

@@ -139,20 +139,29 @@ site should be classified into the Arm 1 table as it lands.**
 `sel.domain` — the pipeline, single-origin Holdings, and same-run fusion live in
 [ADR-0001 §materialization](./adr/0001-manifold-algebra-and-composition.md),
 [ADR-0003](./adr/0003-provenance-and-origin.md), and [architecture §Reservoir](./architecture.md#reservoir).
-On-grid reads degenerate to a **lossless crop**; the open question is the off-grid kernel.
+On-grid reads degenerate to a **lossless crop**; the open question is the off-grid Resampler.
 
-**What's open is fidelity:** the **kernel choice** per field axis — the resampler registry's
+**Two separable steps** (sharpened at the 2026-08-10 0117 align): **which cell answers** — the
+**enclosing** one, fixed by `quantize`'s fold in
+[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md) — and **how that cell's value
+reaches the answer point**, which is the Resampler this concern owns. v1 settles the first and carries
+**identity** for the second. Selecting *among* candidate cells is not a v1 question at all: provider
+records are point-shaped and the store is a sparse cache, so exactly one cell can answer. It becomes
+real with a gridded provider or a populated lattice.
+
+**What's open is fidelity:** the **Resampler choice** per field axis — the registry's
 implementations (nearest / linear / cubic; **conservative / area-weighted** for extensive
-re-aggregation; the non-linear `circular` / categorical kernels for scales v1 does not exercise, since
+re-aggregation; the non-linear `circular` / categorical rules for scales v1 does not exercise, since
 wind rides as linear u/v components) — and the acceptable **accuracy bounds**; ADR-0002 fixes only
-*which* axes admit a kernel and that a storing grid imposes a **fidelity floor**, not the method. The
-v1 contract specifies the **degenerate nearest-neighbor** kernel (kind-agnostic, pluggable) — it honours `sel.domain`
-without real interpolation; **per-kind** kernels (linear intensive incl. u/v wind, area-weighted
+*which* axes admit a Resampler and that a storing grid imposes a **fidelity floor**, not the method.
+The v1 contract specifies the **identity** Resampler — kind-agnostic because identity is one rule for
+every Parameter, and pluggable — which honours `sel.domain` by relabel alone, with no value transfer;
+**Parameter-specific** Resamplers (linear intensive incl. u/v wind, area-weighted
 extensive, the deferred non-linear scales), accuracy bounds, irregular vendor geometries (sparse
 stations, mixed grids), and the **provider "exact" capability** (true off-grid points bypassing the
 store-grid floor — realized as another `SourceKey`-identified offering under the instance model,
-[ADR-0004](./adr/0004-producer-resolution-and-capability.md)) are the later stress on the kernel.
-Always fetching the finest native product and resampling down is faithful **only** when the kernel is
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md)) are the later stress on the Resampler.
+Always fetching the finest native product and resampling down is faithful **only** when the Resampler is
 aggregation-correct **and** the coarser product is a true downsample of the same origin — a native-coarse
 offering is often a **distinct origin**, so it is sometimes required, not merely cheaper
 ([#15](#15-coarser-grid-resampling-and-aggregation-semantics),
@@ -176,10 +185,19 @@ inside the span are admitted, then fail at `project` with `NotImplementedError` 
 admission miss (`capability-mismatch` / Arbiter fall-through).
 
 The fixed hourly on-lattice v1 request does not exercise this mismatch. **Close inside `serves`**, not with a second check in
-`Arbiter.project`: deepen the Capability predicate with the resampler / alignment branch (registry at
-007; extensive horizon edge at 002). Composites (`Union` / `Derived`) and the Arbiter inherit
+`Arbiter.project`: deepen the Capability predicate with the resampler / alignment branch (extensive
+horizon edge at 002). Composites (`Union` / `Derived`) and the Arbiter inherit
 correctness unchanged — blast radius stays behind the Capability facet. Until then, engine
 `NotImplementedError` is an internal assert that `serves` over-promised, not the normal edge path.
+
+**Not closed by [007](./tickets/done/01-0117-off-grid-homogenization.md)** (corrected 2026-08-10; this
+paragraph used to read "registry at 007"). 007 gives the **identity** Resampler its own home — the
+enclosing cell answering for a point it already contains, with no value transfer. It adds no Resampler
+*registry* and does not touch `serves`, so the admit-then-fail gap survives it untouched. **Trigger to
+revisit:** the first request that is genuinely off-phase or on a different step from what a producer
+declares — a coarsened store lattice ([#5](#5-read-time-homogenization-fidelity)'s step question), a
+caller-facing resolution knob ([#15](#15-coarser-grid-resampling-and-aggregation-semantics)), or a
+provider whose native step differs from the store's.
 
 **Narrowed at [m4](./tickets/done/01-0100-snapped-t-request-mode.md) (2026-07-26).** The sampler used to report
 one `None` for two unrelated situations; m4 split them, because leaf assembly now crops through
@@ -343,11 +361,11 @@ load-bearing for composability.
 
 The temporal-axis counterpart to [#5](#5-read-time-homogenization-fidelity)'s spatial fidelity, and as
 central. Coarsening the `valid_time` grid below the native/store cadence is **not one operation**, and
-the choice is **product semantics, not kernel accuracy** ([#5](#5-read-time-homogenization-fidelity) owns
+the choice is **product semantics, not Resampler accuracy** ([#5](#5-read-time-homogenization-fidelity) owns
 the latter). Three regimes:
 
 - **Extensive** (precipitation): the coarse cell is the **integral** (sum over the interval) — the
-  conservative re-aggregation kernel of [#5](#5-read-time-homogenization-fidelity).
+  conservative re-aggregation Resampler of [#5](#5-read-time-homogenization-fidelity).
 - **Intensive, small factor** (3 h temperature): **point subsampling** at the tick is acceptable — the
   tick still represents its neighbourhood.
 - **Intensive, large factor** (24 h temperature): a **point** sample is **unrepresentative** — one
@@ -464,7 +482,12 @@ ride **alongside** it as a **sidecar** — a profile may expose diagnostics / tr
 Coverage — and **never** inside `ParameterData`. Open: the trace's **shape and granularity** (per-request /
 per-parameter / per-cell); its relation to per-parameter **provenance** (provenance = *what the data is*;
 trace = *how it was chosen*); and the wider **observability** surface (structured logs + metrics: selection
-counts, fallback rate, cache hit-rate, provider latency / error). Keeping the trace a sidecar channel leaves
+counts, fallback rate, cache hit-rate, provider latency / error). Also this concern's: **which cell sourced a value** — the enclosing store cell that answered, and the
+step it sat on — i.e. *how far the value travelled to reach the requested point*. That is resolution
+story, **not provenance**: [ADR-0003](./adr/0003-provenance-and-origin.md) already declined native
+fidelity as a provenance field, leaving it recoverable server-side from the `SourceKey`. (Echoing the
+*answered* coordinate is a different and smaller thing — a per-surface serialization gap, tracked on
+the [MCP edge record](./edge/mcp.md#roadmap).) Keeping the trace a sidecar channel leaves
 the read-only algebra untouched. Phase 1's **minimal structured log** is assigned to
 [minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md); the ticket's own align
 selects that narrow event surface. The structured sidecar and wider metrics remain deferred here.
@@ -583,10 +606,11 @@ correct.
 **Kind:** deferred seam · **Refs:**
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [#9](#9-cross-run-combination),
-[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md)
+[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md),
+[persisting Store](./tickets/02-0145-persisting-store.md)
 
-Release 02 deliberately gives meteoscape **no owned persistence**: the archive is the operator's
-collector MongoDB, and meteoscape projects over it read-only ("the framework doesn't own
+Release 02 deliberately gives meteoscape **no owned persistence** *of history*: the archive is the
+operator's collector MongoDB, and meteoscape projects over it read-only ("the framework doesn't own
 persistence, it projects over whatever does"). At some later point throughput will want a
 **dedicated live archive Store** — meteoscape-owned, write-path, retention-managed — as a second
 persistent Store shape beside the in-memory retentive Store. Nothing is designed; when it opens,
@@ -598,6 +622,23 @@ so nothing earlier needs this. One contract fact is already settled ahead of it:
 contract is **clockless and freshness-blind** (freshness is the reader's policy), so an archive
 store — whose Holdings are valuable *because* they are stale — implements the same face with no
 carve-outs.
+
+**Narrowed 2026-08-10 (beeline align): a persisting retention *cache* is not this.** The stance
+above is about **history**, and the distinction that carries it is derivability:
+
+| | Retention cache | Archive |
+|---|---|---|
+| State | **derivable** — every Holding re-fetchable from the vendor | **source of truth** — once the run window passes, unreconstructable |
+| Losing it costs | money and latency | information |
+| Read shape | point lookups | bulk / analytical scans |
+| Owner | [persisting Store](./tickets/02-0145-persisting-store.md) (rung 2, ticketed) | this concern (rung 3) |
+
+So persisting the cache is a substrate choice inside a contract that already permits it
+(ADR-0006: implementations vary by substrate and persistence behind one face) and claims nobody's
+data; it does not overturn the stance, and this concern keeps only the archive rung. The substrate
+ladder as a whole is tabulated in the [persisting Store](./tickets/02-0145-persisting-store.md)
+ticket. Note rung 3 is **not a bigger rung 2** — bulk analytical reads are a different access shape
+from point cache hits, which is why the two stay separately owned.
 
 ## 45. The collector schema is a contract meteoscape depends on but does not own
 
@@ -1150,7 +1191,7 @@ read-back would have homogenized an off-grid request, and
 [architecture §Reservoir](./architecture.md#reservoir) is explicit that homogenization is **not**
 leaf-only: every producer's answer must honour `sel.domain`.
 
-**Open: where a storeless producer's homogenization lives.** The kernel itself is the shared sampling
+**Open: where a storeless producer's homogenization lives.** The Resampler itself is the shared sampling
 seam ([#5](#5-read-time-homogenization-fidelity) owns fidelity); this concern owns only **placement** —
 in the provider base, or a thin non-retentive read-back wrapper the Weaver applies. Also open, smaller:
 whether `isinstance(provider.capability, EnumerableCapability)` remains the right "already

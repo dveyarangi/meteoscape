@@ -3,7 +3,7 @@
 **Legacy id:** 005
 
 - **Status:** Planned
-- **Depends on:** [004 — Second-provider fallback](./01-0150-second-provider-fallback.md)
+- **Depends on:** [004 — Second-provider fallback](./01-0121-second-provider-fallback.md)
 - **Outcome:** One response assembled from different winning providers by parameter.
 
 ## Parent PRD

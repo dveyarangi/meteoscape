@@ -5,9 +5,25 @@
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md),
   [003c — Request shaping](./done/01-0110-request-shaping.md), and
-  [011 — TWC provider](./01-0120-twc-provider.md) (the second producer this ticket
-  falls back *to*; 011 in turn rides [m4](./done/01-0100-snapped-t-request-mode.md))
+  [011 — TWC provider](./01-0120-twc-provider.md) (which makes TWC the **primary**; this ticket
+  builds the fall-through *away* from it; 011 in turn rides [m4](./done/01-0100-snapped-t-request-mode.md))
 - **Outcome:** Wholesale priority fallback across two producers.
+
+> **Load-bearing as of the 2026-08-10 align, and the primary inverted.** This ticket was written
+> with Open-Meteo primary and TWC as the spare, where fall-through was resilience polish. TWC is now
+> the primary, and it is **metered** — a 429 or an exhausted quota arrives as `runtime-failure`,
+> which today fails the whole request. Fall-through is therefore what makes a metered primary safe
+> to depend on, and it is the same mechanism that gives the
+> [vendor budget governor](./02-0155-vendor-budget-governor.md) somewhere to send traffic when it
+> refuses a call. **Open-Meteo is the backstop**: keyless, free, already parity-checked.
+>
+> One implementation note found while aligning: `Reconciler.select(parameter, candidates)` already
+> returns a **`Sequence`**, and `Arbiter.project` already walks it
+> ([arbiter.py](../../src/meteoscape/nodes/arbiter.py)) — it breaks on the first candidate whose
+> `serves` admits and never resumes after a *fault*. So this is "keep the walk alive across a
+> fault", not a new selection mechanism. Per the align, fall-through arrives as **policy** on
+> `ArbiterPolicy` rather than as unconditional Arbiter behaviour; the current minimal policy shape
+> is good enough to carry it.
 - **Scope narrowed 2026-08-02 (align):** the **provider implementation moved to
   [011](./01-0120-twc-provider.md)** — Probe, manifest, secret slot, parity check. This ticket
   keeps the **Arbiter behaviour** only. The two are tested
@@ -23,7 +39,8 @@
 ## What to build
 
 Prove **select + wholesale fallback** over the two producers. The `Arbiter` carries a `priority` order
-(Open-Meteo primary → TWC fallback); per parameter it tries candidates in order and, on a
+(**TWC primary → Open-Meteo backstop**, inverted at the 2026-08-10 align); per parameter it tries
+candidates in order and, on a
 `runtime-failure` from the primary, **falls back wholesale** to the next provider's whole window —
 never an A-then-B splice along `valid_time`. Demonstrable via a forced provider failure.
 
@@ -39,9 +56,12 @@ See `docs/v1-requirements.md` (Providers, v1 invariants → wholesale-fallback r
 
 ## Acceptance criteria
 
-- [ ] With both providers enabled, results come from the primary (Open-Meteo).
-- [ ] On a forced primary `runtime-failure`, the `Arbiter` falls back to TWC and serves the
-      **whole** window for that parameter from the fallback.
+- [ ] With both providers enabled, results come from the primary (**TWC**).
+- [ ] On a forced primary `runtime-failure`, the `Arbiter` falls back to **Open-Meteo** and serves
+      the **whole** window for that parameter from the backstop.
+- [ ] A quota-shaped failure (HTTP 429 / vendor quota-exhausted envelope) falls through like any
+      other `runtime-failure` — pinned explicitly, because this is the failure the beeline's metered
+      primary will actually produce.
 - [ ] Fallback is wholesale and single-origin — no cached-primary ∪ fallback splice along `valid_time`.
 - [ ] Per-parameter provenance on a fallback answer names the **fallback** source, with its own
       `expiration` — authored by the wrapper from that Probe's declared cadence.

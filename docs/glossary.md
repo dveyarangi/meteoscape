@@ -142,7 +142,7 @@ A Quantity's linear, circular, nominal, or ordinal value structure. → [ADR-000
 _Avoid_: Type, dtype
 
 **Resampler**:
-The Parameter-specific rule for mapping values between resolutions. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
+The rule for mapping values between resolutions — Parameter-specific when non-degenerate. Its degenerate member is **identity**: the value passes through untouched, which is one rule for every Parameter and so needs no per-Parameter form. v1 carries only the identity member; the Parameter-specific ones are deferred. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](./concerns.md#5-read-time-homogenization-fidelity)
 _Avoid_: Interpolator, kernel
 
 **Functional**:
@@ -374,6 +374,18 @@ _Avoid_: Unit (taken by physical units — Canonical unit — and too generic be
 **Reservoir**:
 A retention composite formed from a Store and one child Manifold. → [architecture.md](./architecture.md#reservoir)
 _Avoid_: Cache, CachingManifold, keeper, sentinel
+
+**Substrate**:
+What a Store is backed by — transient, persisting, or bulk — varying behind one unchanged write/read face. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+_Avoid_: Tier, grade, backend, storage class
+
+**Vendor call**:
+One outbound request a Provider makes to an external producer. Distinct from a caller's request, which retention may answer without any vendor call. → [architecture.md](./architecture.md#source)
+_Avoid_: API call, fetch, hit, upstream request
+
+**Ledger**:
+The injected per-deployment record of Vendor calls, and the budget that may refuse one. Counts what is spent outward, never what callers ask inward. → [architecture.md](./architecture.md#source)
+_Avoid_: Meter, quota, counter, usage tracker, rate limiter
 
 **Task-oriented profile**:
 A named root composition that resolves requests under one objective. → [architecture.md](./architecture.md#guiding-principles)

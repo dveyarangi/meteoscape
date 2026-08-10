@@ -153,7 +153,7 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
   combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
   coexist in one Holding (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
   read-back homogenization ([#5](../concerns.md#5-read-time-homogenization-fidelity), freshness via
-  the cadence above); kernel sophistication remains a separate decision.
+  the cadence above); Resampler sophistication remains a separate decision.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`
   descriptor block are the [data model](./0002-data-model.md); this ADR owns the provenance plane the
   `Coverage` carries.

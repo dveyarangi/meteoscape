@@ -114,8 +114,8 @@ The set is deliberately **heterogeneous** to exercise homogenization *and* deriv
 **intensive** & **linear**; **`wind_direction` is circular** — the first non-linear `scale`;
 **`cloud_cover` is the first cell-statistic (column) parameter** — a statistic over its Z cell's
 `bounds` (`[0, TOA]`) → [ADR-0004](./adr/0004-producer-resolution-and-capability.md). v1's
-degenerate nearest-neighbor read-back does **not interpolate**, so neither the linear u/v kernel nor an
-angular direction kernel is exercised; any future direction kernel must be **angular** (via u/v),
+identity read-back Resampler does **not interpolate**, so neither a linear u/v Resampler nor an
+angular direction one is exercised; any future direction Resampler must be **angular** (via u/v),
 never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
 
 **Encoding (v1's position on the data-model slots, [ADR-0002](./adr/0002-data-model.md)).** All eight share
@@ -293,10 +293,18 @@ lifts **without a contract change** — see the seams in
    provider while the rest come from the primary (capability filter).
 4. **Off-grid point via homogenization (S)**: a request for an off-grid lat/lon is answered **at the
    requested point** by read-time homogenization from each `Reservoir`'s declared store grid (served from
-   the nearest store cell — cached-fresh or refilled). The v1 **kernel is degenerate (nearest-neighbor,
-   kind-agnostic)**: the value is the nearest store cell's, reported **at `sel.domain`**. `valid_time`
-   stays hourly-aligned (identity). Per-kind / higher-order
-   kernels stay deferred ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
+   the **enclosing** store cell — cached-fresh or refilled). The v1 **Resampler is identity** — no
+   interpolation, one rule for every Parameter: the value is the enclosing store cell's, reported **at
+   `sel.domain`**. `valid_time` stays hourly-aligned (identity). Parameter-specific Resamplers
+   stay deferred ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
+
+   *Corrected 2026-08-10 (0117 align):* this bullet used to say **nearest** store cell, contradicting
+   the *enclosing* wording above and [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)'s
+   `quantize` (containing cell's tick; the glossary reserves *round* against it). The two denote the
+   same cell under v1's shape — point-shaped provider records and a sparse store that holds only cells
+   already asked for — so *enclosing* is the accurate word and nothing behavioural turns on it.
+   Selecting among several candidate cells becomes real with a gridded provider or a populated
+   lattice → [#5](./concerns.md#5-read-time-homogenization-fidelity).
 5. **Retentive `Store`, single-origin timelines**: wired in both positions; a **fully fresh** repeat is
    served **without a provider call**; a fresh parameter is reused while another is fetched (per-parameter,
    TTL = `expiration`). A parameter's **time window is single-origin** — a
@@ -354,8 +362,8 @@ real quotas/rate-limits, place-name geocoding, CoverageJSON / `format` selector,
   (local stdio, low concurrency), built when contention warrants.
 - **Capabilities introspection** surface (an MCP tool/resource reporting the available envelope from the
   Capability union) — deferred; v1 narrates the startup-resolved active envelope in the tool description.
-- **Homogenization kernel sophistication / accuracy bounds** — beyond v1's degenerate nearest-neighbor
-  kernel (acceptance §4): **per-kind** kernels (linear intensive, area-weighted extensive, angular
+- **Resampler sophistication / accuracy bounds** — beyond v1's **identity** Resampler (acceptance §4):
+  **Parameter-specific** Resamplers (linear intensive, area-weighted extensive, angular
   circular), higher-order accuracy guarantees, and a provider **`exact`** capability (true off-grid points
   bypassing the store-grid floor) stay deferred
   ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).

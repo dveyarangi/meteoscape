@@ -74,7 +74,7 @@ bounded and open are one member kind differing only in bounds. The temporal narr
 when bounds are present (a bounded spatial snapped member stays a type error; a boundless member is
 axis-generic and sits on Z). One-sided open bounds are **unrepresentable by construction**
 (`Interval` requires both edges) until the "from X onward" form's own author
-([011](../01-0120-twc-provider.md) / [004](../01-0150-second-provider-fallback.md))
+([011](../01-0120-twc-provider.md) / [004](../01-0121-second-provider-fallback.md))
 changes the field type. An open member has no `extent` (clear error; no live caller reads a request
 member's extent) and `matches` everything. The MCP edge **keeps its omitted-`end` flip** — that
 flip *is* the fold of per-parameter reach ends into one shared answer window

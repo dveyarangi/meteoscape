@@ -108,12 +108,19 @@ request).
   usable staleness bound rather than a hint. Callers may cache to it and poll no faster —
   *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
   (`test_forecast_hourly_e2e_and_refetch`, `test_expired_holdings_refetch_and_never_serve_stale`).
+- **An off-grid point is served from the enclosing store cell**, so the store step is the fidelity
+  floor: two distinct requested points inside one cell receive identical values. The response does
+  not report which point answered — *validated by:*
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
+  (`test_points_within_one_store_cell_share_one_vendor_call`).
 
 ## Concerns
 
 - [#5 — Read-time homogenization fidelity](../concerns.md#5-read-time-homogenization-fidelity)
-  — off-grid values are nearest-neighbor read-back today; fidelity at the requested point is
-  bounded by this until 007 (Roadmap 1).
+  — an off-grid value is reported at the requested point today, read back from the **enclosing**
+  store cell with the **identity** Resampler (no interpolation). Fidelity at the requested point is
+  bounded by the store step; the floor itself is an invariant above. Values change at this edge only
+  when a Parameter-specific Resampler lands.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — wire units are fixed
   per parameter; the lossless-vs-degrading conversion quality signal surfaces here when the
   catalogue grows (010).
@@ -123,10 +130,10 @@ request).
   narrated horizon is one number for the whole globe (a `min` fold over the served menu); the
   per-location truth is the deferred capabilities-introspection tool.
 - [#30 — Response membership under degraded fallback](../concerns.md#30-response-membership-under-runtime-degraded-fallback)
-  — membership semantics at this edge shift when fallback lands (Roadmap 2).
+  — membership semantics at this edge shift when fallback lands (Roadmap 1).
 - [#36 — Unserved and uncomparable are indistinguishable](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
   — the edge-local reading of silent omission: the caller cannot tell why a parameter is
-  absent, and today neither can the engine (Roadmap 4).
+  absent, and today neither can the engine (Roadmap 3).
 - [#14 — Resolution trace](../concerns.md#14-resolution-trace-and-observability) — Phase 1's
   contract-neutral structured logs are assigned to [minimal resolution
   logging](../tickets/01-0195-minimal-resolution-logging.md); the richer trace sidecar remains
@@ -134,12 +141,18 @@ request).
 
 ## Roadmap
 
-1. Off-grid fidelity — nearest-neighbor read-back from the Store lattice, reported at the exact
-   requested point —
-   [007](../tickets/01-0117-off-grid-homogenization.md).
-2. Provider fallback — upstream faults stop failing the whole request —
-   [004](../tickets/01-0150-second-provider-fallback.md).
-3. Per-parameter assembly — one response, different winning sources per parameter —
+1. Provider fallback — upstream faults stop failing the whole request —
+   [004](../tickets/01-0121-second-provider-fallback.md).
+2. Per-parameter assembly — one response, different winning sources per parameter —
    [005](../tickets/01-0170-per-parameter-selection.md).
-4. Absence reasons and partial success under fault —
+3. Absence reasons and partial success under fault —
    [009](../tickets/01-0190-error-taxonomy-partial-success.md).
+4. **Echo the answered coordinate.** `serialize_coverage` reads `coverage.domain` but emits only the
+   T axis, so this surface drops the X/Y the answer is labelled at. The Coverage already carries them
+   — this is a serialization gap of this surface alone, and it does not exist at the
+   [embedding surface](../tickets/01-0125-supported-python-embedding.md), which hands the host the
+   Coverage itself. The fix is **additive and compatible** (an echoed point beside `valid_time`);
+   unticketed, and worth doing only when a caller needs to distinguish the point they asked for from
+   the values they got. Distinct from *which* cell sourced the value — that is
+   [#14](../concerns.md#14-resolution-trace-and-observability)'s, and explicitly **not** provenance
+   ([ADR-0003](../adr/0003-provenance-and-origin.md): native fidelity is not a provenance field).

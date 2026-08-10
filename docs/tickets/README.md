@@ -1,11 +1,32 @@
 # Delivery status
 
-**Last updated:** 2026-08-09
+**Last updated:** 2026-08-10
 
-**Current stage:** [006 — retentive store](./done/01-0115-retentive-store-freshness.md) is **delivered**
-([0115.0010](./done/01-0115.0010-any-boundless-member.md)–[0115.0040](./done/01-0115.0040-reservoir-retention-pipeline.md)).
-Next is [007 — off-grid homogenization](./01-0117-off-grid-homogenization.md), then another
-Provider.
+**Current stage:** [007 — off-grid homogenization](./done/01-0117-off-grid-homogenization.md) is
+**delivered** (guard ticket: behaviour landed with 006; tests and records closed 2026-08-10).
+Next is [TWC as the primary Provider](./01-0120-twc-provider.md).
+
+**Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
+*forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
+Python, a REST surface, and provider quota monitoring.* What changed:
+
+- **TWC becomes the primary**, not a spare — which pulls
+  [fallback](./01-0121-second-provider-fallback.md), [unit conversion](./01-0122-unit-conversion-edge.md),
+  and [config/secrets](./01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
+  0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
+  resilience polish.
+- **Four tickets minted**: the [vendor-call ledger](./02-0124-vendor-call-ledger.md) and its
+  [budget governor](./02-0155-vendor-budget-governor.md) (two slices — meter first, authority
+  second), the [persisting Store](./02-0145-persisting-store.md), and the
+  [REST surface](./02-0165-rest-surface.md).
+- **Demoted off the beeline**: [per-parameter selection](./01-0170-per-parameter-selection.md),
+  [errors and partial success](./01-0190-error-taxonomy-partial-success.md),
+  [minimal resolution logging](./01-0195-minimal-resolution-logging.md), and the
+  [conventions sweep](./01-0200-artifact-conventions-sweep.md) — the v1 tail.
+- **Unchanged at the head**: 007 stays first. Stations are off-grid points, so the correction
+  workstream reads through the same read-back — but it is not *blocked* on 007: pairing a forecast to
+  a station's coordinates already answers at that point. What 007 adds is the seam the identity
+  Resampler lives in.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md) owns product direction,
@@ -42,11 +63,14 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. |
 | Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
 | Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
-| Second provider and fallback | Planned | Only Open-Meteo is configured. |
+| Second provider and fallback | Planned | Only Open-Meteo is configured. **TWC becomes the primary** and Open-Meteo the backstop (2026-08-10); fall-through on fault does not exist yet — a `runtime-failure` fails the whole request. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
-| Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. |
-| Off-grid homogenization | Planned | Nearest-neighbor read-back remains. |
-| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. Second provider is **TWC** (reverted 2026-08-08 — the 2026-08-02 Visual Crossing swap rested on TWC access being unverified, which no longer holds). |
+| Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. |
+| Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./02-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
+| Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./02-0124-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./02-0155-vendor-budget-governor.md) later gives it authority to refuse. |
+| REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./02-0165-rest-surface.md) as the operator deployment shape; does not amend v1, which defers HTTP transport by name. |
+| Off-grid homogenization | Available | An off-grid point is answered **at the requested point**, read back from the **enclosing** store cell with the **identity** Resampler. Guarded by Reservoir and e2e tests; the MCP edge states the fidelity floor (one cell ⇒ identical values). |
+| Configured keyed-provider startup | Partial | Typed settings and key-absent startup work; key-present composition remains. The keyed provider is **TWC** (reverted 2026-08-08 — the 2026-08-02 Visual Crossing swap rested on TWC access being unverified, which no longer holds), and as of 2026-08-10 it is the **primary**, so key-absent is the degraded mode rather than the normal one. |
 
 ## Delivery map
 
@@ -77,18 +101,22 @@ queue position, because it still has to be done in order.
 | 0115.0020 | [Multi-domain carrier and timeline rework](./done/01-0115.0020-multidomain-carrier-timeline.md) | — | Done | `ANY` boundless member, per-parameter materialized capability | `CoverageSet` minted; `clip` takes optional bounds; `agreed_geometry` licenses open-axis difference under a request-derived licence; both eager folds retired; natural fetch unit. |
 | 0115.0030 | [Retentive Store (`MemoryStore`)](./done/01-0115.0030-timeline-store.md) | — | Done | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; wired inert until slice 4. |
 | 0115.0040 | [Reservoir retention pipeline](./done/01-0115.0040-reservoir-retention-pipeline.md) | — | Done | retentive store leaf | Retention live in both positions; serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
-| 0117 | [Off-grid homogenization](./01-0117-off-grid-homogenization.md) | — | Planned | retentive store | Nearest-neighbor read-back completes a storing `Reservoir`: values retained on its private lattice are reported at the exact requested point. |
-| 0120 | [TWC provider](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape as the primary, so no wrapper), first shipped `SecretSlot`, its parity check. Split from second-provider fallback on 2026-08-02; reverted to TWC from Visual Crossing on 2026-08-08. |
-| 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — (former v1-tail gates dissolved 2026-08-08; see ticket) | Supported headless package boundary with public failures; ships early under live-equivalence — capability grows as later tickets land. |
-| 02-0130 | [Mongo obs source](./02-0130-mongo-obs-source.md) | — | Planned (own align precedes) | embedding surface (its consumer's construction path) | First private source: read-only projection over the operator's collector MongoDB — station registry + hourly observations; first non-HTTP transport; past-facing capability; settles [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)'s mitigations. |
+| 0117 | [Off-grid homogenization](./done/01-0117-off-grid-homogenization.md) | — | Done | retentive store | Read-back completes a storing `Reservoir`: point-exact reporting, enclosing-cell selection. Guard ticket ([RFC 0016](../rfc/0016-20260810-off-grid-homogenization.md)): tests, records, stale `TODO` removed; no `src` logic changes. |
+| 0120 | [TWC provider — as primary](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape, so no wrapper), first shipped `SecretSlot`, its parity check, **and the priority flip putting it ahead of Open-Meteo** (2026-08-10). The parity check becomes load-bearing; key-absent becomes the degraded mode. |
+| 0121 | [Second-provider fallback](./01-0121-second-provider-fallback.md) | — | Planned | TWC provider | Wholesale priority fallback — **TWC primary → Open-Meteo backstop**. Arbiter behaviour only, mocked transports, no live network. Load-bearing as of 2026-08-10: a metered primary's 429 is a `runtime-failure`, which today fails the whole request. Was 0150. |
+| 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by TWC provider | Shared verified native-to-canonical conversion edges. Likely bites immediately now that TWC's native units are on the default path. Was 0160. |
+| 0123 | [Config and graceful degrade](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction. Heavier as of 2026-08-10: key-absent is now the *degraded* mode, and this is the secret path the Mongo sources and the ledger both ride. Was 0180. |
+| 02-0124 | [Vendor-call ledger (meter)](./02-0124-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and graceful degrade | Injected per-deployment ledger counting **outbound vendor calls** by `SourceKey` — the Source-seam meter, not the Gateway's caller meter. Observes only; no behavioural change. |
+| 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — (former v1-tail gates dissolved 2026-08-08; stale list removed 2026-08-10) | Supported headless package boundary with public failures; ships early under live-equivalence — capability grows as later tickets land. Embedding is the deployment's first consumption shape; REST follows. |
+| 02-0130 | [Mongo obs source](./02-0130-mongo-obs-source.md) | — | Planned (own align precedes) | embedding surface (its consumer's construction path); config and graceful degrade (its connection string is a secret) | First private source: read-only projection over the operator's collector MongoDB — station registry + hourly observations; first non-HTTP transport; past-facing capability; settles [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)'s mitigations. |
 | 02-0134 | [Mongo forecast-run archive source](./02-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Run-keyed (`base_time`) forecast archive over the collector's common schema; per-provider origins (`ibm`, `tomorrow`, `visualcrossing`) — likely first exercise of manifest `expand`; cross-run semantics stay at [#9](../concerns.md#9-cross-run-combination). |
 | 02-0140 | [Correction calculator](./02-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | First cross-source, cross-time calculator: per-source, per-parameter bias report over paired forecast/obs history; correction only after bias proves stable. |
-| 0150 | [Second-provider fallback](./01-0150-second-provider-fallback.md) | — | Planned | core canonical parameters, request shaping, TWC provider | Wholesale priority fallback across two producers — Arbiter behaviour only, mocked transports, no live network. |
-| 0160 | [Unit-conversion catalogue](./01-0160-unit-conversion-edge.md) | — | Planned | core canonical parameters; triggered by TWC provider | Shared verified native-to-canonical conversion edges. |
-| 0170 | [Per-parameter selection](./01-0170-per-parameter-selection.md) | — | Planned | second-provider fallback | One response assembled from different winning providers by parameter. |
-| 0180 | [Config and graceful degrade](./01-0180-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction behavior. |
+| 02-0145 | [Persisting Store](./02-0145-persisting-store.md) | — | Planned (own align precedes) | retentive store | Rung 2 of the substrate ladder: retained Holdings survive restart and are shared across processes, behind the unchanged `Store` face. Both positions persist. Substrate and key shape are the ticket's align. |
+| 02-0155 | [Vendor budget governor](./02-0155-vendor-budget-governor.md) | — | Planned (own align precedes) | vendor-call ledger, second-provider fallback | The ledger gains authority to refuse: budget spent ⇒ `runtime-failure` with no HTTP call ⇒ fall-through serves from the backstop. Quota never moves `Capability`. |
+| 02-0165 | [REST surface](./02-0165-rest-surface.md) | — | Planned (own align + Edge record precede) | embedding surface (by decision, not mechanically) | The operator's deployment shape: HTTP over the same `Gateway` seam MCP uses. Makes the Gateway's caller-policy seam non-null — where **caller** quota lives. Does not amend v1; release-02 surface work. |
+| 0170 | [Per-parameter selection](./01-0170-per-parameter-selection.md) | — | Planned | second-provider fallback | One response assembled from different winning providers by parameter. Off the beeline (2026-08-10). |
 | 0190 | [Errors and partial success](./01-0190-error-taxonomy-partial-success.md) | — | Partial | provider nodata mask, request shaping, second-provider fallback | Per-parameter absence reasons and capable-but-faulting partial results. |
-| 0195 | [Minimal resolution logging](./01-0195-minimal-resolution-logging.md) | — | Planned (own align precedes) | retentive store, second-provider fallback, per-parameter selection, errors and partial success | Structured producer-selection, fall-through, and Store hit/refill evidence; no data-product change. |
+| 0195 | [Minimal resolution logging](./01-0195-minimal-resolution-logging.md) | — | Planned (own align precedes) | retentive store, second-provider fallback, per-parameter selection, errors and partial success | Structured producer-selection, fall-through, and Store hit/refill evidence; no data-product change. Stays in the tail (it needs 0170/0190); the [ledger](./02-0124-vendor-call-ledger.md) ships the smallest honest spend read-out it needs, and 0195 later absorbs rather than duplicates it. |
 | 0200 | [Artifact conventions sweep](./01-0200-artifact-conventions-sweep.md) | Maint | Planned (own align precedes) | edge records | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), skills slimmed to reference it. |
 
 ## Ticket numbering
@@ -143,13 +171,13 @@ that date cite them, and are left as written.
 | 003a | [profile reach](./done/01-0040-profile-reach.md) |
 | 003b | [capability carries its domain](./done/01-0060-capability-domain.md) — **but before 2026-07-21 this id meant request shaping** |
 | 003c | [request shaping](./done/01-0110-request-shaping.md) |
-| 004 | [second-provider fallback](./01-0150-second-provider-fallback.md) |
+| 004 | [second-provider fallback](./01-0121-second-provider-fallback.md) |
 | 005 | [per-parameter selection](./01-0170-per-parameter-selection.md) |
 | 006 | [retentive store](./done/01-0115-retentive-store-freshness.md) |
-| 007 | [off-grid homogenization](./01-0117-off-grid-homogenization.md) |
-| 008 | [config and graceful degrade](./01-0180-config-secrets-degrade.md) |
+| 007 | [off-grid homogenization](./done/01-0117-off-grid-homogenization.md) |
+| 008 | [config and graceful degrade](./01-0123-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./01-0190-error-taxonomy-partial-success.md) |
-| 010 | [unit-conversion catalogue](./01-0160-unit-conversion-edge.md) |
+| 010 | [unit-conversion catalogue](./01-0122-unit-conversion-edge.md) |
 | 011 | [TWC provider](./01-0120-twc-provider.md) — Visual Crossing 2026-08-02 → 2026-08-08, TWC before and after |
 | m1 | [type contract hygiene](./done/01-0050-type-contract-hygiene.md) |
 | m2 | [dissolve node-`Countable`](./done/01-0070-dissolve-node-countable.md) |
@@ -200,6 +228,33 @@ This ordering clears the known contract violation, establishes independent Provi
 then prioritizes real retention and request shaping before provider fallback and per-parameter
 resolution.
 
+### The 2026-08-10 beeline re-cut
+
+Steps 9–13 above are superseded from 011 onward, and kept as written for the reasoning that led
+there. The stated beeline — correction from local stations, **TWC as main provider**, persistent
+cache, embedded Python, a REST surface, provider quota monitoring — reorders what follows 007:
+
+1. **007 stays first.** A station is an off-grid point, so the correction workstream's
+   forecast-at-a-station pairing rides this read-back — though it does not block on it (the point-exact
+   half already landed with 006). No new Provider lands between the two halves of the retention path,
+   as before.
+2. **011 → 004 → 010 → 008, in that order, because TWC is primary.** Selection flips with two
+   integers; what follows is the cost of depending on a metered vendor. Fall-through (004) makes a
+   429 survivable, unit conversion (010) bites once TWC's native units are on the default path, and
+   config (008) owns key-absent as the *degraded* mode.
+3. **The ledger's meter slice**, behind 008's injection path. Watch the real spend before
+   throttling it — the same discipline the roadmap applies to bias correction ("correct only after
+   the bias proves stable"). The governor slice waits until after the product work.
+4. **The embedding surface**, then the **correction workstream** (`02-0130` → `02-0134` →
+   `02-0140`) — the product goal, and the reason for the beeline.
+5. **Persisting Store, then the budget governor, then REST.** Persistence sits here rather than
+   earlier because MCP stdio fast-use *should* stay transient and low-retention (rung 1), and the
+   deployment is a long-running process that keeps its cache hot anyway — so persistence buys
+   restart and redeploy survival, not per-session survival. It stays ahead of REST because a
+   long-running HTTP service wants it more.
+6. **The v1 tail** — per-parameter selection, errors and partial success, minimal resolution
+   logging, conventions sweep — closes behind the beeline.
+
 ## Decisions still owned by tickets
 
 - [Supported Python embedding surface](./01-0125-supported-python-embedding.md): its own align selects
@@ -229,8 +284,23 @@ resolution.
   **enforces** parity coverage and **routes** its selection is now
   [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted), which also owns the retry-once
   policy's missing failure signal.
-- [010](./01-0160-unit-conversion-edge.md): build the shared conversion catalogue when ticket 011 exposes
-  the first real multi-vendor spread.
+- [010](./01-0122-unit-conversion-edge.md): build the shared conversion catalogue when ticket 011 exposes
+  the first real multi-vendor spread — now likely at 011 itself, since TWC's native units land on the
+  default path.
+- [Vendor-call ledger](./02-0124-vendor-call-ledger.md): its own align selects what an entry is (one
+  HTTP request vs one `Provider.project`), attribution granularity, the accounting period and where
+  it is kept, the read-out channel, and whether failed calls count.
+- [Persisting Store](./02-0145-persisting-store.md): its own align selects the **substrate** and the
+  **key shape** — today's `_HoldingKey` carries X/Y as *indices into a lattice held elsewhere*, which
+  is safe only while rows and lattice live and die together. Deliberately not chosen at the
+  2026-08-10 align.
+- [Vendor budget governor](./02-0155-vendor-budget-governor.md): its own align selects budget
+  expression, headroom policy, caller visibility, and what exhaustion means with **no backstop**
+  available — refuse, or serve past `expiration`? The second would change the MCP edge's staleness
+  promise.
+- [REST surface](./02-0165-rest-surface.md): its own align selects the resource model, the
+  failure→status-code mapping (which may reopen #39's rendering, settled first at 0125), the
+  Gateway's non-null caller policy, and serialization format.
 
 ## Maintenance rule
 

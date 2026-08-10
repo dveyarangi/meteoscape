@@ -147,19 +147,19 @@ same shape. The abstraction these are shapes of is the
   *resolves* falls out of the declarations (soil temperature's `−0.06 m` sample ∉ a `[0,10]` window →
   omitted; its exact alias still serves). No `requestable-in-vantage` metadata. **Declarations are
   native facts, never widened** — a leaf states its sample levels and served statistic cells verbatim;
-  consumer tolerance rides the request aperture (edge-authored), engine approximation rides the kernel
+  consumer tolerance rides the request aperture (edge-authored), engine approximation rides the Resampler
   (read-back, [#5](../concerns.md#5-read-time-homogenization-fidelity)). The `matches` arithmetic is
   **cell-level geometry behind `matches` / the store's holdings read — not a second public verb** — and is the
   **one** predicate shared by its three consumers: capability admission (declared cells), the store's
   per-Holding availability report (held cells), and read-back cell selection
   ([ADR-0006](./0006-materialization-granularity-and-store-shape.md)).
-  Producers declare native cells; interpretation belongs in the request's aperture and the kernel.
+  Producers declare native cells; interpretation belongs in the request's aperture and the Resampler.
 
 - **The resampler/Calculator boundary.** A **resampler** is *the same value in new geometry, no
   assumptions* — entailed by `(scale, statistic, extent_scaling)`; multiple samples inside one
   vantage window (wind at 10 m + 80 m under `[0,100]`) fold to **one representative** this way
   (linear via u/v). A **Calculator** is *a new value under declared assumptions with synthetic
-  provenance* — combinations the statistic does not define are producers, never kernels: cloud
+  provenance* — combinations the statistic does not define are producers, never Resamplers: cloud
   low/mid/high → total requires an **overlap assumption**, so it is a `cloud_cover @ [0,TOA]`
   Calculator (lineage: the layers) competing as an ordinary candidate — the same gap-filling move as
   a between-levels wind-interpolation Calculator declaring the `(10, 80) m` cell. A no-total vendor
@@ -167,8 +167,8 @@ same shape. The abstraction these are shapes of is the
 
 - **Resamplers are a registry** The `ParameterDef` carries a resampler
   **selector** (derived from scale × statistic × extent, not hand-set); the **implementations**
-  (linear / angular / area-weighted / categorical kernels) live in a catalogue looked up at
-  homogenization, deferred with the kernel choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
+  (linear / angular / area-weighted / categorical) live in a catalogue looked up at
+  homogenization, deferred with the Resampler choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).
   Matching reads only resampler **existence and losslessness**; **lossy** resamplers (extensive
   disaggregation, categorical priority-down) form an optional, purely **additive** tier
   ([#7](../concerns.md#7-quality-scoring)).

@@ -25,7 +25,7 @@ Eight `ParameterDef`s: **6 canonical** (provider-served, post-normalization) + *
 | `relative_humidity` | relative_humidity | intensive | linear | `percent` | yes | 2 m |
 | `cloud_cover` | cloud_area_fraction | intensive | linear | `percent` | yes | total column — value is a **statistic over the Z cell** `[0, TOA]` |
 | `wind_speed` | wind_speed | intensive | linear | `m/s` | yes | derived `= hypot(u, v)` |
-| `wind_direction` | wind_direction | intensive | **circular** | `degree` | yes | derived `= atan2(...)`; first non-linear `scale`, unexercised under v1 nearest-neighbor read-back |
+| `wind_direction` | wind_direction | intensive | **circular** | `degree` | yes | derived `= atan2(...)`; first non-linear `scale`, unexercised under v1's identity read-back Resampler |
 
 The agent-facing **product is 6**: air temperature, precipitation, wind **speed**, wind **direction**,
 relative humidity, cloud cover (total). Wind is **canonical as u/v components** (both `linear`, so linear interpolation of u/v
@@ -67,7 +67,7 @@ X/Y footprint, not Z.
   carry the accumulation window.
 - **`m/s` for u/v and wind_speed** — SI, avoids the km/h ↔ kn ↔ mph vendor spread at one edge.
 - **`percent` for relative humidity** — 0–100, not a 0–1 fraction.
-- **`degree` for wind_direction** — meteorological convention; `circular` scale means any future kernel is
+- **`degree` for wind_direction** — meteorological convention; `circular` scale means any future Resampler is
   angular (via u/v), never linearly averaged in degrees ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
   Below the wind Calculator's `CALM_SPEED_FLOOR` (~1e-9 m/s), direction is **nodata**: `atan2(0,0)` is
   numerically arbitrary, so the engine withholds the value rather than inventing an angle. This is an

@@ -8,6 +8,18 @@
   not 004's fallback behaviour)
 - **Outcome:** Complete key-present/key-absent provider construction behavior.
 
+> **Raised at the 2026-08-10 beeline align**, for two reasons that both make it heavier than
+> "config nicety":
+>
+> - **The keyed provider is now the primary.** With TWC on the default path, key-absent stops being
+>   a spare's absence and becomes the deployment's **degraded mode** — no key must mean "run on
+>   Open-Meteo", never "run broken". [011](./01-0120-twc-provider.md) closes the `unknown impl` trap;
+>   this ticket owns the whole behaviour.
+> - **It is the mechanism the private sources need.** A Mongo connection string is a secret carried
+>   the same way a vendor key is, so this ticket serves
+>   [02-0130](./02-0130-mongo-obs-source.md) as well as TWC — and it is the injection path the
+>   [vendor-call ledger](./02-0124-vendor-call-ledger.md) is built behind.
+
 ## Parent PRD
 
 `docs/v1-requirements.md`

@@ -311,7 +311,7 @@ classDiagram
   layer") — not a wasteful multi-level Domain with a sparse `present` mask. The cell's `coordinate`
   (a nominal near-surface height) sits *within* those `bounds` by convention, the same independence
   every axis's `Cell` already has. Projecting onto a Z cell is vertical **homogenization** — the exact
-  analog of the temporal / spatial kernel; coarsening to a fat cell absorbs offsets, sampling to a thin
+  analog of the temporal / spatial Resampler; coarsening to a fat cell absorbs offsets, sampling to a thin
   cell interpolates (extent-scaling–aware).
 
 - **`ANY` is the boundless snapped member, on any axis** — not a separate axis kind: one member kind
@@ -366,7 +366,7 @@ classDiagram
   the **statistic** — whole, phase-aligned integer-multiple aggregation (`sum` for extensive,
   `max` / `min` / `mean` for windowed), never disaggregation. So interpolability is a **parameter**
   fact, not an axis one. The matching half (does a **lossless** path exist) lives with Capability
-  ([ADR-0004](./0004-producer-resolution-and-capability.md)); the kernel **implementations** (a
+  ([ADR-0004](./0004-producer-resolution-and-capability.md)); the Resampler **implementations** (a
   registry, the mirror of reconcilers) and any **lossy** tier stay deferred
   ([#5](../concerns.md#5-read-time-homogenization-fidelity), [#7](../concerns.md#7-quality-scoring)).
 
@@ -618,7 +618,7 @@ classDiagram
   ([#10](../concerns.md#10-parameter-conventions)); this ADR fixes the *structure* (quantity identity,
   `extent_scaling`, the cell axes), while the concrete quantity table, conversion edges, and their
   quality costs stay deferred (#10, [#7](../concerns.md#7-quality-scoring)).
-- **Curvilinear domains** and the **sampling-kernel choice** remain interface promises / edge-deferred
+- **Curvilinear domains** and the **Resampler choice** remain interface promises / edge-deferred
   ([#12](../concerns.md#12-curvilinear-domains), [#5](../concerns.md#5-read-time-homogenization-fidelity)).
 - **The model degenerates cleanly.** Unfilled slots — `present = None`, the `Uniform` / `PerParameter`
   provenance plane (`PerPoint`), windowed `CellStatistic` (`max` / `min` / `mean`), the

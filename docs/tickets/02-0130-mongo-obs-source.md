@@ -65,6 +65,10 @@ database.
 - [supported Python embedding surface](./01-0125-supported-python-embedding.md) (active) — the
   embedder is this source's first consumer; its align settles the construction/config experience
   this source's offering plugs into.
+- [008 — config, secrets, degradation](./01-0123-config-secrets-degrade.md) — noted at the
+  2026-08-10 align: what this source concretely needs from "construction/config" is a **connection
+  string carried as a secret**, which is the same `SecretSlot` mechanism TWC ships and 008
+  completes. That makes the harder half of this dependency land well before the facade does.
 
 ## Parent scope addressed
 

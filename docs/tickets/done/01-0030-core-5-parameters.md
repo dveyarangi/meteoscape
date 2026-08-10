@@ -46,7 +46,7 @@ negotiates units (no `wind_speed_unit` knob) — Open-Meteo wind arrives `km/h` 
 convert `× 1/3.6` to `m/s` before `decode`'s trig, so `decode` sees canonical inputs. Every other v1
 tap is a unit no-op (vendor default already canonical). A `VendorVar.unit` mismatch against the
 vendor's reported units is `runtime-failure`, never a guess. The shared conversion **catalogue** is
-deferred to [ticket 010](../01-0160-unit-conversion-edge.md) (forced by 004's second vendor); 002 ships the
+deferred to [ticket 010](../01-0122-unit-conversion-edge.md) (forced by 004's second vendor); 002 ships the
 one `km/h→m/s` factor inline.
 
 **Decision recorded — canonical units (session 0011):** `air_temperature` `degC` (Phase C),

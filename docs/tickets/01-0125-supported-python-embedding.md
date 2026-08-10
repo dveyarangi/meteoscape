@@ -2,6 +2,13 @@
 
 - **Status:** Planned — its own embedding-edge align precedes implementation; this ticket assigns
   the Phase-1 delivery without preselecting the facade.
+- **Reaffirmed 2026-08-10 (beeline align):** embedding is the deployment's **first** consumption
+  shape; the [REST surface](./02-0165-rest-surface.md) follows later in the beeline rather than
+  replacing it. The two are siblings over the same `Gateway` seam, not a stack — an edge needs no
+  public facade, as the MCP edge already demonstrates — so REST does not depend on this ticket
+  mechanically. It is sequenced after it by decision, so the public failure hierarchy
+  ([#39](../concerns.md#39-python-embedding-surface-and-public-failures)) is settled here first;
+  expect REST's status-code mapping to reopen the *rendering* of those classes, which is normal.
 - **Moved up 2026-08-08 (align):** the first real embedder arrives with the release-02 work (the
   operator's application embeds meteoscape rather than running the MCP server), so this surface no
   longer waits for the v1 tail. Consequence: the equivalence rule changes from "MCP-equivalent **v1**
@@ -52,14 +59,18 @@ for equivalent requests, without requiring identical representations or shared a
 
 ## Blocked by
 
-- [Off-grid homogenization](./01-0117-off-grid-homogenization.md) — completes the storing
-  `Reservoir`'s exact-request-point behavior.
-- [Per-parameter selection](./01-0170-per-parameter-selection.md) — completes multi-provider product
-  membership and provenance semantics.
-- [Config, secrets, and graceful degradation](./01-0180-config-secrets-degrade.md) — completes the
-  construction behavior the embedding surface must expose.
-- [Errors and partial success](./01-0190-error-taxonomy-partial-success.md) — completes the failure
-  behavior the public contract must classify.
+Nothing. This section previously listed off-grid homogenization, per-parameter selection, config,
+and errors — the v1-tail gates that the 2026-08-08 align **dissolved** when it adopted the
+live-equivalence rule (see the header). The list survived the align as stale text and is removed
+here (2026-08-10). Those tickets now merely *widen* what both surfaces serve; none gates this one.
+
+In queue order the surface still lands after [008 — config, secrets,
+degradation](./01-0123-config-secrets-degrade.md), which is ordering, not blocking.
+
+The Coverage-contract point-exactness invariant (off-grid X/Y reported at the request, values from
+the enclosing store cell) is already true and guarded by
+[007](./done/01-0117-off-grid-homogenization.md); this surface inherits it as an observable promise
+and its align does not re-decide it.
 
 ## Parent scope addressed
 

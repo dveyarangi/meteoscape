@@ -141,7 +141,7 @@ plane. The capability/matching half is
 - **Native Z as a descriptor side-channel** (per-parameter cell beside the Domain). Rejected: two
   homes for geometry; every consumer must know which to trust.
 - **Children answer native; the Arbiter homogenizes.** Rejected: gives the substrate-less node
-  kernels and makes every reconciler geometry-aware.
+  Resamplers and makes every reconciler geometry-aware.
 - **A forced co-domained store lattice (Z always snapped).** Rejected: requires inventing a fake Z
   lattice and rewrites the cells that admission and read-back need intact.
 - **Keeping node-`Countable` but loosening `domain` to per-axis lattices.** Rejected: no consumer

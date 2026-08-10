@@ -158,7 +158,7 @@ Holdings. Read-back crops the served answer.
 - The **Reservoir's read-back** does the fact→product relabel: native Z cells (2 m, 10 m, surface,
   column) are rewritten onto the request's vantage; values and provenance untouched. The
   **`TODO (temporary)`** seam is owned by
-  [0117](../tickets/01-0117-off-grid-homogenization.md). `agreed_geometry`'s single-answer law is
+  [0117](../tickets/done/01-0117-off-grid-homogenization.md). `agreed_geometry`'s single-answer law is
   deliberately **lifted on axes the request left `ANY`** — records differing there are exactly what
   boundlessness licenses.
 - **The leaf's co-domained answer path is transitional in the composed graph.** Closure still
@@ -348,7 +348,7 @@ vendor's own geometry, and only the crop afterwards lands them on the answer's.
   asserted** ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked), re-aimed at the
   answer). A crop onto a geometry the vendor already delivered exactly is an equality that holds and a
   no-op, which is how both request modes take one path.
-- *Kernels* — off-grid points, differing steps, coarser-grid re-aggregation. **Not the leaf's.**
+- *Resamplers* — off-grid points, differing steps, coarser-grid re-aggregation. **Not the leaf's.**
   `resample` refuses these by name ("requires Reservoir homogenization"); they belong to
   [#5](../concerns.md#5-read-time-homogenization-fidelity) and
   [#15](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics).
@@ -588,7 +588,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   composition rather than the request path.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — canonical units are converted
   *at the leaf*, so the lossless-vs-degrading conversion-quality signal surfaces here first
-  ([010](../tickets/01-0160-unit-conversion-edge.md)).
+  ([010](../tickets/01-0122-unit-conversion-edge.md)).
 
 ## Roadmap
 
@@ -597,7 +597,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
    inheriting snapped resolution by declaring its own geometry. Also the first shipped manifest to
    declare a `SecretSlot` and, likely, the first exercise of the non-self-reporting units path —
    [011](../tickets/01-0120-twc-provider.md). The **fallback behaviour** it enables is a
-   separate ticket, [004](../tickets/01-0150-second-provider-fallback.md), and lands at the
+   separate ticket, [004](../tickets/01-0121-second-provider-fallback.md), and lands at the
    [MCP edge](./mcp.md).
 2. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
    selection that does not depend on branch names —
