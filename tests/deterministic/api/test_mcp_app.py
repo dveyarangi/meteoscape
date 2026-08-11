@@ -350,7 +350,7 @@ async def test_horizon_floors_non_exact_days_to_whole_days() -> None:
         cadence=timedelta(hours=1),
         publication_latency=timedelta(0),
         max_lead=timedelta(hours=383),
-        window_quantum=timedelta(hours=24),
+        shelf=timedelta(hours=24),
     )
     view = _RecordingView(_coverage(hours=2), cadence=cadence)
     app = build_mcp_app(Gateway(view), _CLOCK)

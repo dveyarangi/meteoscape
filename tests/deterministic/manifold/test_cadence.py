@@ -35,24 +35,24 @@ HOURLY = CadenceDef(
 )
 
 
-def test_day_quantum_anchors_valid_time_at_midnight() -> None:
-    """A shelf-quantized product: the availability window floors to the day, not the run."""
+def test_daily_shelf_anchors_valid_time_at_midnight() -> None:
+    """A shelf-anchored product: the availability window floors to the day, not the run."""
     cadence = CadenceDef(
         cadence=timedelta(hours=1),
         publication_latency=timedelta(hours=1),
         max_lead=timedelta(hours=383),
-        window_quantum=DAY,
+        shelf=DAY,
     )
     assert cadence.valid_time(NOON) == Interval(MIDNIGHT, MIDNIGHT + timedelta(hours=383))
 
 
-def test_day_quantum_window_holds_within_the_day_and_jumps_at_midnight() -> None:
-    """Within the day the shelf is fixed; crossing midnight advances it by one quantum."""
+def test_daily_shelf_window_holds_within_the_day_and_jumps_at_midnight() -> None:
+    """Within the day the window is fixed; crossing midnight advances it by one whole Shelf."""
     cadence = CadenceDef(
         cadence=timedelta(hours=1),
         publication_latency=timedelta(hours=1),
         max_lead=timedelta(hours=383),
-        window_quantum=DAY,
+        shelf=DAY,
     )
     clock = _MovingClock(NOON)
     same_day = Interval(MIDNIGHT, MIDNIGHT + timedelta(hours=383))
@@ -66,29 +66,29 @@ def test_day_quantum_window_holds_within_the_day_and_jumps_at_midnight() -> None
     )
 
 
-def test_window_quantum_does_not_touch_anchor_or_expiration() -> None:
-    """Two clocks: the quantum shelves availability only; run identity and freshness stay on Δ/L."""
+def test_shelf_does_not_touch_anchor_or_expiration() -> None:
+    """Two clocks: the Shelf anchors availability only; run identity and freshness stay on Δ/L."""
     shared = dict(
         cadence=timedelta(hours=1),
         publication_latency=timedelta(hours=1),
         max_lead=timedelta(hours=383),
     )
-    with_quantum = CadenceDef(**shared, window_quantum=DAY)
+    with_shelf = CadenceDef(**shared, shelf=DAY)
     without = CadenceDef(**shared)
-    assert with_quantum.anchor(NOON) == without.anchor(NOON)
-    assert with_quantum.expiration(NOON) == without.expiration(NOON)
-    assert with_quantum.valid_time(NOON) != without.valid_time(NOON)
+    assert with_shelf.anchor(NOON) == without.anchor(NOON)
+    assert with_shelf.expiration(NOON) == without.expiration(NOON)
+    assert with_shelf.valid_time(NOON) != without.valid_time(NOON)
 
 
-def test_omitted_window_quantum_is_run_anchored() -> None:
-    """No quantum → valid_time is the run window; existing callers stay byte-identical."""
+def test_omitted_shelf_is_run_anchored() -> None:
+    """No Shelf → valid_time is the run window; existing callers stay byte-identical."""
     cadence = CadenceDef(
         cadence=timedelta(hours=1),
         publication_latency=timedelta(hours=1),
         max_lead=timedelta(hours=6),
-        window_quantum=None,
+        shelf=None,
     )
-    assert cadence.window_quantum is None
+    assert cadence.shelf is None
     assert cadence.valid_time(NOON) == Interval(
         cadence.anchor(NOON), cadence.anchor(NOON) + timedelta(hours=6)
     )

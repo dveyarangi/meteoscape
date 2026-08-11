@@ -11,12 +11,22 @@ from .domain import Axis, AxisName, Interval, RegularAxis
 
 @dataclass(frozen=True)
 class CadenceDef:
-    """Run timing plus an optional independent quantum for the availability window."""
+    """Run timing plus the optional Shelf its availability window stands on."""
 
     cadence: timedelta
     publication_latency: timedelta
     max_lead: timedelta
-    window_quantum: timedelta | None = None
+
+    shelf: timedelta | None = None
+    """The calendar unit this vendor's served window turns in — daily for a by-calendar-day product,
+    hourly for one relabelled each hour; `None` when availability follows the run instead.
+
+    `max_lead` is the window's *length*; the Shelf is the size of the *jumps its start makes* as the
+    clock advances. It also fixes the phase the served lattice anchors to, which is why it must stay a
+    whole boundary → ADR-0003. Declared by the vendor leaf and executed here; the `Reservoir` never
+    consults it, because refetching is governed by `expiration` and the axis's own retention answer
+    (ADR-0002).
+    """
 
     def anchor(self, now: datetime) -> datetime:
         """The effective run at `now`: the latest run whose publication (`r + L`) has already passed."""
@@ -27,8 +37,8 @@ class CadenceDef:
         return self.anchor(now) + self.cadence + self.publication_latency
 
     def valid_time(self, now: datetime) -> Interval[datetime]:
-        """Return the quantum-shelved availability window, or the run window when unshelved."""
-        base = floor_to(now, self.window_quantum) if self.window_quantum else self.anchor(now)
+        """Return the availability window on its Shelf, or the run window when there is none."""
+        base = floor_to(now, self.shelf) if self.shelf else self.anchor(now)
         return Interval(lower=base, upper=base + self.max_lead)
 
 

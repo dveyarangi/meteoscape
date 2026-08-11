@@ -54,7 +54,7 @@ CADENCE = CadenceDef(
     cadence=timedelta(hours=1),
     publication_latency=timedelta(hours=1),
     max_lead=timedelta(hours=383),
-    window_quantum=timedelta(hours=24),
+    shelf=timedelta(hours=24),  # midnight-anchored: the window turns once per calendar day
 )
 
 _CANONICAL_IDS: frozenset[ParameterId] = frozenset(

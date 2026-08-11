@@ -175,7 +175,7 @@ def _snapped_selection(*, start: datetime, end: datetime) -> Selection:
 
 @pytest.mark.asyncio
 async def test_snapped_bounds_inside_window_map_to_floored_hours() -> None:
-    """STOPPED + day-quantum CADENCE → window [00:00, +383h]; interior bounds pass through floored."""
+    """STOPPED + daily-shelf CADENCE → window [00:00, +383h]; interior bounds pass through floored."""
     start = datetime(2026, 7, 12, 0, tzinfo=UTC)
     transport = _CapturingTransport(_canned_hourly(hours=4, start=start))
     provider = _provider(transport)
@@ -232,7 +232,7 @@ async def test_snapped_mid_hour_bounds_floor_both_edges() -> None:
 async def test_snapped_raced_empty_raises_without_vendor_call() -> None:
     transport = _CapturingTransport(_canned_hourly(hours=1))
     provider = _provider(transport)
-    # Day-quantum CADENCE makes window.lower = today00 at STOPPED; end before that is empty.
+    # The daily-shelf CADENCE makes window.lower = today00 at STOPPED; end before that is empty.
     selection = _snapped_selection(
         start=datetime(2026, 7, 1, tzinfo=UTC),
         end=datetime(2026, 7, 10, 23, tzinfo=UTC),
