@@ -35,6 +35,13 @@ product/feature ideas that haven't earned a decision yet.
   their inputs' origins. Third member of the display-preference family (timezone, units,
   provenance detail); pure edge serialization.
 
+## Vendor products
+
+- **TWC Cold-risk Potential Index** (`Lifestyle Indices → Cold-risk Potential Index - Daypart`, `v2LIFP`).
+  Treat it as a comparison baseline after station-vs-forecast bias is measurable, not as a feature
+  to expose before its forecast inputs can be evaluated →
+  [correction workstream](./tickets/02-0140-correction-calculator.md).
+
 ## Freshness
 
 - **Provider-real freshness metadata.** Where a provider exposes real freshness signals (next

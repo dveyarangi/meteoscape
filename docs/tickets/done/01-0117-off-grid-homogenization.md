@@ -5,7 +5,7 @@
 - **Status:** Done — behaviour landed with 006; this ticket guarded it with tests and stated it on
   the Coverage contract and the MCP edge record (2026-08-10).
 - **Depends on:** [006 — Retentive store](./01-0115-retentive-store-freshness.md)
-- **Plan:** [RFC 0016](../../rfc/0016-20260810-off-grid-homogenization.md) — align 2026-08-10; guard
+- **Plan:** [RFC 0016](../../rfc/done/0016-20260810-off-grid-homogenization.md) — align 2026-08-10; guard
   ticket, no `src` logic changes.
 - **Outcome:** Enclosing-cell read-back onto the requested point — guarded by Reservoir and e2e
   tests; Coverage-contract invariant on the architecture record; MCP fidelity-floor invariant
@@ -47,7 +47,8 @@ Answer an **off-grid** lat/lon **at the requested point** via read-time homogeni
 store cell (cached-fresh or refilled) and reported at `sel.domain`. The v1 read-back
 **Resampler is identity** — no interpolation, one
 rule for every Parameter; `valid_time` stays hourly-aligned (identity). The store's spatial step is
-**configurable** (coarser = more cache sharing + more interpolation).
+**configurable** (coarser = more cache sharing + more approximation error: with an identity Resampler,
+a coarser cell means the unchanged value reported at the requested point was fetched from farther away).
 
 > **Resolved in the 2026-08-10 align — *enclosing*, not *nearest*.** "Nearest enclosing" named no
 > cell: there is exactly one enclosing cell, and *nearest* is only a question when several candidates

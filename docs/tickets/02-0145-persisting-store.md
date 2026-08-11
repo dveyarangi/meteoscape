@@ -11,7 +11,7 @@
 Release 02 is contract-deferred (no requirements doc yet — [delivery status](./README.md)). v1
 deliberately ships in-memory only ([v1-requirements](../v1-requirements.md)); the durable context is
 [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) and
-[architecture § Store](../architecture.md#store).
+[architecture § Store](../architecture.md#store--one-type-several-positions).
 
 ## The substrate ladder
 

@@ -44,7 +44,7 @@ the e2e re-fetch assertion flips.
    `test_winner_domains_that_differ_fail_the_whole_request` in `test_arbiter.py`, reachable with no
    network and no store, guarding [#43](../../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)'s
    re-opening case.
-4. [007](../../tickets/01-0117-off-grid-homogenization.md) owns the *nearest*-cell kernel, the
+4. [007](../../tickets/done/01-0117-off-grid-homogenization.md) owns the *nearest*-cell kernel, the
    on-grid identity crop, and the `0.0001°` default step. This slice's X/Y read-back is the
    **containing-cell relabel** — same containment math as `quantize`, no new arithmetic — and is
    temporary by design.
@@ -73,7 +73,7 @@ the e2e re-fetch assertion flips.
    `sub_lattice_offset` to align count-1 axes regardless of step is rejected**: it would make the
    substitution free and invisible system-wide, dissolving the one guard that keeps read-back
    fidelity reviewable ([#5](../../concerns.md#5-read-time-homogenization-fidelity),
-   [007](../../tickets/01-0117-off-grid-homogenization.md)).
+   [007](../../tickets/done/01-0117-off-grid-homogenization.md)).
 8. **A cold mixed request costs exactly one vendor call, and a warm repeat none** — the source
    `Reservoir` instance is *shared*: `wire_source` builds one per registered Source and the
    Calculator's scoped Arbiter filters the same `Producer` objects
@@ -247,7 +247,7 @@ moves, this table says what breaks here.
      arithmetic runs — only the address changes. It asserts each of the three is count-1 (v1
      records are point-shaped; a gridded provider would split first — the #31 posture). It carries
      one **`TODO (temporary)`** seam, owned by
-     [0117](../../tickets/01-0117-off-grid-homogenization.md): that ticket replaces containing-cell
+     [0117](../../tickets/done/01-0117-off-grid-homogenization.md): that ticket replaces containing-cell
      relabel with the nearest-neighbour kernel and an on-grid identity crop, and this function is
      the single site it edits. This is where the
      **fact→product boundary** is crossed at a Source — a value measured at 2 m answering the
@@ -375,7 +375,7 @@ inside one pipeline stage**, not separately shippable greens (plan-impl align 20
 ## Out of scope / follow-ups
 
 - Nearest-neighbor read-back, on-grid identity, default step →
-  [0117](../../tickets/01-0117-off-grid-homogenization.md) (the **`TODO (temporary)`** marker
+  [0117](../../tickets/done/01-0117-off-grid-homogenization.md) (the **`TODO (temporary)`** marker
   identifies its code seam).
 - Cross-vantage root-unit reuse → [#25](../../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
 - Per-axis winner-agreement relaxation under open members → #30/#9.

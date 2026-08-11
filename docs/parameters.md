@@ -64,7 +64,8 @@ X/Y footprint, not Z.
   ergonomic default. The interior is unit-blind regardless (canonical-mono-unit invariant, ADR-0002), so
   this is purely a presentation-of-canonical choice, cheap to revisit.
 - **`mm` for precipitation** — the extensive integral over the cell; the hourly `valid_time` cell `bounds`
-  carry the accumulation window.
+  carry the accumulation window. Open-Meteo currently labels the preceding-hour total on the
+  following cell → [#48](./concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick).
 - **`m/s` for u/v and wind_speed** — SI, avoids the km/h ↔ kn ↔ mph vendor spread at one edge.
 - **`percent` for relative humidity** — 0–100, not a 0–1 fraction.
 - **`degree` for wind_direction** — meteorological convention; `circular` scale means any future Resampler is

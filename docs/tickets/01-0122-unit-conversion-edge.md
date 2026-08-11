@@ -4,9 +4,8 @@
 
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
-- **Trigger:** First real multi-vendor unit spread, expected in
-  [011 — TWC provider](./01-0120-twc-provider.md) (repointed 2026-08-02: the unit
-  spread arrives with the *vendor*, not with 004's fallback behaviour)
+- **Trigger:** The first vendor whose unit spread outgrows one hardcoded factor. TWC uses the same
+  inline `km/h → m/s` edge as Open-Meteo, so the trigger remains unmet.
 - **Outcome:** Shared verified native-to-canonical conversion edges.
 
 ## Parent PRD
@@ -15,8 +14,8 @@
 
 ## What to build
 
-The **general unit-conversion catalogue** — the shared factor/offset library keyed by
-`(from_unit, to_unit)` (the "conversion library + Normalizer protocol" kernel item), lifting the
+The **general unit-conversion catalogue** — a shared factor/offset library keyed by
+`(from_unit, to_unit)`, lifting the
 ad-hoc per-`Tap` factors ticket 002 ships into one place and recording each edge's **lossless vs
 degrading** quality ([concern #10](../concerns.md#10-parameter-conventions); degrading edges are a
 quality signal, not silent).
@@ -24,10 +23,6 @@ quality signal, not silent).
 **Not this ticket — the v1 per-`Tap` convert-on-ingest position** (verify-always, no request knob,
 wind `km/h→m/s` inline) lands at 002 → [ticket 002 §Units](./done/01-0030-core-5-parameters.md). This ticket
 is only the shared catalogue those inline factors graduate into.
-
-**Trigger:** the first vendor whose unit spread outgrows a hardcoded factor — likely TWC at
-[ticket 011](./01-0120-twc-provider.md) (metric units serve km/h wind). Build then, against
-the real case.
 
 ## Acceptance criteria
 

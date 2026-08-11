@@ -252,7 +252,7 @@ to-tickets' machine-enforced-constraint form, not behavior tests.
 - The `Reservoir` pipeline — the serve-vs-refetch gate (freshness against the `Reservoir`'s
   clock, covers-or-refetch-whole), refill, `CoverageSet.of`, read-back →
   [RFC 0014](./0014-20260808-reservoir-retention-pipeline.md).
-- Nearest-neighbor read-back at exact off-grid points → [007](../../tickets/01-0117-off-grid-homogenization.md).
+- Nearest-neighbor read-back at exact off-grid points → [007](../../tickets/done/01-0117-off-grid-homogenization.md).
 - Cross-window unit reuse → [#25](../../concerns.md#25-root-store-holding-reuse-across-vantage-windows).
 - A plural-reach holdings advertisement → [#47](../../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach),
   revisited at the first real reader (0195 observability, or #44's persisting/archive substrate —

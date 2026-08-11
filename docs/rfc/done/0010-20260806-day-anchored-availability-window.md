@@ -13,7 +13,7 @@ edge, or Probe changes.
 
 | Boundary | Owner | What this does to it |
 |---|---|---|
-| `CadenceDef` / `RollingAxis` (`manifold/cadence.py`) | [ADR-0003 §cadence](../../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence) | The one widening: `window_quantum: timedelta \| None = None`; `valid_time` branches on it. `anchor`, `expiration`, `RollingAxis` untouched. ADR-0003 amended at landing (stage 4). |
+| `CadenceDef` / `RollingAxis` (`manifold/cadence.py`) | [ADR-0003 §cadence](../../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence) | The one widening: `window_quantum: timedelta \| None = None`; `valid_time` branches on it. `anchor`, `expiration`, `RollingAxis` untouched. ADR-0003 amended at landing (stage 4). |
 | Open-Meteo declaration (`nodes/providers/open_meteo.py`) | [edge/provider.md](../../edge/provider.md) | `CADENCE` declares the probed truth: `window_quantum=24 h`, `max_lead=383 h`; `cadence`/`publication_latency` stay 1 h / 1 h. |
 | Narration (`api/mcp_app.py`, `_horizon_sentence`) | [edge/mcp.md](../../edge/mcp.md) | One formula change: whole-days **floor** replaces the `% 24 == 0` branch. No other edge change. |
 | Provenance / freshness | ADR-0003 | **Untouched** — `issue_time = anchor(now)`, `expiration = A + Δ + L` keep reading the run clock ([timeline.py](../../../src/meteoscape/nodes/providers/timeline.py) lines 217–219 are the only consumers; verified 2026-08-06). |

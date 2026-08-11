@@ -109,8 +109,7 @@ request).
   *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
   (`test_forecast_hourly_e2e_and_refetch`, `test_expired_holdings_refetch_and_never_serve_stale`).
 - **An off-grid point is served from the enclosing store cell**, so the store step is the fidelity
-  floor: two distinct requested points inside one cell receive identical values. The response does
-  not report which point answered — *validated by:*
+  floor: two distinct requested points inside one cell receive identical values — *validated by:*
   [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
   (`test_points_within_one_store_cell_share_one_vendor_call`).
 
@@ -121,6 +120,9 @@ request).
   store cell with the **identity** Resampler (no interpolation). Fidelity at the requested point is
   bounded by the store step; the floor itself is an invariant above. Values change at this edge only
   when a Parameter-specific Resampler lands.
+- [#48 — A tap cannot declare where its value sits relative to the tick](../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick)
+  — Open-Meteo precipitation is currently labelled one hour late on this surface; values and units
+  are unaffected.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — wire units are fixed
   per parameter; the lossless-vs-degrading conversion quality signal surfaces here when the
   catalogue grows (010).

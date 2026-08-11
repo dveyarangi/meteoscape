@@ -408,6 +408,28 @@ hit/miss and provider metrics" splits into a Source-seam
 caller-facing metering; and "retention tuning" gains a
 [persisting substrate](./tickets/02-0145-persisting-store.md).
 
+**Widening the TWC licence beyond one endpoint.** The deployment holds an
+**Enterprise** licence covering far more than the hourly forecast that
+[011](./tickets/01-0120-twc-provider.md) consumes — roughly 80 products across utility, core,
+enhanced current conditions, enhanced forecast, lifestyle indices, history on demand, and aviation.
+Going further is several distinct product and architecture steps:
+
+1. **More of the same shape** — other point-plus-series forecast endpoints (intraday, 15-minute,
+   nowcast). Cheapest: new offering rows and tap tables behind the existing `TimelineProvider`.
+2. **Observations and history** — site-based and PWS observations, History on Demand. A past-facing
+   capability, adjacent to the [Mongo obs source](./tickets/02-0130-mongo-obs-source.md)'s shape and
+   the natural comparison for it.
+3. **Lifestyle indices** — new *parameters*, not new geometry: each index is a derived quantity with
+   its own scale and statistic, which stresses the parameter catalogue and
+   [#10](./concerns.md#10-parameter-conventions) rather than the algebra.
+4. **Raster / gridded and tile products** — gridded & polygonal forecasts, imagery tile servers.
+   These need the **Grid domain shape** ([architecture: extension points](./architecture.md#extension-points))
+   and collide head-on with v1's stated *"Timeline realization, no Grid output"*, so this step is a
+   contract change, not an addition.
+
+Sequencing is deliberately unset. The vendor's product map is cited in the TWC leaf's module
+docstring.
+
 Proof:
 
 - Operators can deploy and run Meteoscape themselves against several providers.

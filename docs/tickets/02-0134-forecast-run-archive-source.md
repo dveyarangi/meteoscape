@@ -33,6 +33,12 @@ case, deliberately without opening #9's combination semantics.
   sibling manifests is the align's call.
 - **Provenance:** the archived run's `base_time` is the parameter's `issue_time`; freshness
   semantics for an archived (non-live) forecast are the align's to state.
+- **Runless producers.** [ADR-0003 § Run and bucket
+  regimes](../adr/0003-provenance-and-origin.md#run-and-bucket-regimes) settles that a Provider publishing no run schedule
+  carries a **Fetch bucket** in `issue_time`, not a run — TWC is the first. This archive keys by
+  `base_time`, so filing a bucket under that key would archive fiction. **This ticket's align must
+  decide**: decline runless producers, or record the distinction explicitly so a reader can tell a
+  run from a bucket.
 - Reuses the transport, registry read, and fixture-contract machinery of the
   [Mongo obs source](./02-0130-mongo-obs-source.md).
 

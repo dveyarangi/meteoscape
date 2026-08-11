@@ -130,6 +130,39 @@ new here is that they bound what the edge can promise:
 surface. Until then this is an inventory to keep current: **every new `CapabilityMismatch` raise
 site should be classified into the Arm 1 table as it lands.**
 
+## 48. A tap cannot declare where its value sits relative to the tick
+
+**Kind:** algebra-shaped (declaration gap) · **Refs:** [ADR-0002](./adr/0002-data-model.md),
+[parameters.md](./parameters.md), [edge/provider.md](./edge/provider.md),
+[#15](#15-coarser-grid-resampling-and-aggregation-semantics)
+
+`TimelineProvider` stamps one cellular T lattice on every record, so a tick at `T` currently declares
+the cell `[T, T+step]`. A tap cannot say whether its vendor value is instantaneous at `T`, summarizes
+the preceding cell, or summarizes the following cell. Real providers exercise each case:
+
+| Vendor field | Native meaning | Current representation |
+|---|---|---|
+| Open-Meteo `precipitation` | preceding-hour integral `(T−1h, T]` | **wrong:** following cell `[T, T+1h]` |
+| TWC `qpf` | following-hour integral `[T, T+1h)` | correct cell |
+| TWC `windSpeed` | instantaneous at `T` | point statistic on a cellular axis |
+| TWC `windDirection`, `cloudCover` | hourly mean | **wrong statistic:** declared as point |
+
+The missing declaration is two-dimensional: **which temporal cell** owns the value and **which
+statistic** the vendor already computed over it. `CellStatistic` exists on `ParameterDef`, but v1 fixes
+every parameter to `point`; no field can declare its cell side. This is distinct from
+[#15](#15-coarser-grid-resampling-and-aggregation-semantics), which owns caller-requested coarsening.
+
+Open-Meteo precipitation therefore has a live contract error: values and units are correct, but the
+published hour label is one hour late. Internal arithmetic does not yet read `Cell.bounds`, so the
+error is additive to repair. Provider parity cannot detect a semantic mistake shared with its
+reference reader → [Provider edge: parity limits](./edge/provider.md).
+
+The repair must preserve vendor-native semantics and split records by temporal convention as it
+already splits them by Z level. Open: whether the cell-side declaration belongs on the tap,
+`ParameterDef`, or the axis.
+
+→ queued as [tick-convention declaration](./tickets/01-0126-tick-convention-declaration.md).
+
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
@@ -522,11 +555,19 @@ for") is worth having as well, or whether the trace alone is enough.
 
 **Kind:** deferred (tuning) · **Refs:** [ADR-0003](./adr/0003-provenance-and-origin.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 
-→ [ADR-0003: cadence](./adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence).
+→ [ADR-0003: cadence](./adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence).
 Open: timing facts for providers without probe evidence; residual estimate error in Open-Meteo's run
 cadence; and its vendor-served ~92-day archive edge, which remains undeclared pending product decisions
-about history, provenance, payload, and parity evidence. Provider-real reference and availability
-signals are the intended escape from static estimates → [ideas: freshness](./ideas.md#freshness).
+about history, provenance, payload, and parity evidence.
+
+The run/bucket distinction is settled in
+[ADR-0003 § Run and bucket regimes](./adr/0003-provenance-and-origin.md#run-and-bucket-regimes).
+What remains open is the bucket regime's cost: anchored expiry gives an effective TTL from nearly zero
+to Δ, averaging Δ/2, so steady traffic can make roughly twice as many vendor calls as the configured
+polling interval suggests. It also makes the MCP `exp` bound vary across the bucket. Provider-real
+reference and availability signals are the intended escape → [ideas: freshness](./ideas.md#freshness).
+
+→ queued for measurement by the [vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md).
 
 ## 11. Incremental synthetic recompute
 

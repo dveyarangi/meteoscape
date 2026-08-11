@@ -173,15 +173,19 @@ _Avoid_: Source, raw source string
 The time at which a weather value applies. → [architecture.md](./architecture.md#canonical-data-model)
 
 **Issue time**:
-The forecast issuance represented by a value, recorded as Origin provenance rather than as a Domain axis. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+The forecast-revision identity recorded in Origin provenance rather than as a Domain axis: a real run time where published, otherwise a Fetch bucket. → [ADR-0003](./adr/0003-provenance-and-origin.md)
 _Avoid_: Issue-time axis
+
+**Fetch bucket**:
+The Cadence-wide window a fetch fell in, used as Issue time where a Provider publishes no run schedule; a grouping of fetches, never a claim that a run occurred. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Run, cycle
 
 **Quality**:
 The fitness of a producer's data for a Parameter under an Arbiter's objective. → [architecture.md](./architecture.md#arbiter)
 
 **Cadence**:
-A Provider's timing declaration: run interval and publication latency define run identity and freshness;
-maximum lead and an optional shelf quantum define its availability window. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+A Provider's timing declaration: cadence and publication latency define revision identity and freshness;
+maximum lead and an optional shelf quantum define availability. → [ADR-0003](./adr/0003-provenance-and-origin.md)
 
 **Consensus**:
 A Reconciler that blends overlapping contributors instead of selecting one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)

@@ -255,7 +255,9 @@ The **producer-resolution composite** the best view turns to — a **reducing Ma
 
 ### Source
 
-A `Reservoir(store, Provider, clock)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. It is also where **vendor-call metering** belongs — the last node before an outbound call, and the only one that knows whether retention absorbed the ask. The counter cannot live in the leaf (a Provider is stateless by contract, and a Probe may not even read a `Clock`), so a **ledger** is injected in the same position and lifecycle as the `Clock`: `compose` builds it, one per deployment, and a budget it holds may refuse a call — producing a `runtime-failure` that fall-through routes around. **Quota never moves `Capability`**: a declaration says what a producer can serve, not whether it is allowed to right now, the same reason retention adds no capability. → [vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md), [budget governor](./tickets/02-0155-vendor-budget-governor.md). It **forwards** its Provider's **`Capability`** to the Arbiter unchanged (retention adds no capability; the `Store` grid is a fidelity floor, not a boundary) — which is what lets it **admit uncached-but-in-footprint requests**: admission reads the forwarded footprint, store contents only drive the serve-vs-refetch split inside `project`. Its Provider returns native records already carrying full **Provider-authored provenance**; the Source asks the Provider **store-shaped** — one call, `ANY` on the axes its Holding spans wholly — so the answer arrives **multi-domain** and its `assimilate` stores the records as **identity** (no resampling, no stamping).
+A `Reservoir(store, Provider, clock)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. It **forwards** its Provider's **`Capability`** to the Arbiter unchanged (retention adds no capability; the `Store` grid is a fidelity floor, not a boundary), which lets it admit uncached-but-in-footprint requests: admission reads the forwarded footprint, while Store contents drive the serve-vs-refill split inside `project`. Its Provider returns native records with full **Provider-authored provenance**; the Source asks it **store-shaped** — one call, `ANY` on the axes its Holding spans wholly — so the answer arrives **multi-domain** and `assimilate` stores the records as identity (no resampling, no stamping).
+
+**Vendor-call metering belongs at this seam**: the Source is the last retention-aware node before a Provider, so it can distinguish a warm read from vendor spend. A future per-deployment ledger is injected alongside the `Clock`; the stateless Provider owns no counter. Budget state may refuse a call, but never moves `Capability`: capability states what a producer can serve, not whether policy currently permits the call.
 
 ### Provider (leaf Manifold)
 
@@ -278,7 +280,7 @@ type becomes public merely because it might participate in an eventual implement
 
 The surface-neutral **caller-policy boundary**: it applies caller policy (authz, rate-limit, quota, or pass-through) then calls `project` on the served profile root and returns a **Coverage** (runtime-checked; a non-Coverage result is a bug). It is the one **surface-neutral policy seam** — uniform identity/limits across all surfaces — and is **not** a Manifold (it can reject/throttle; it does not project). Projection-shaped cross-cutting (response caching, metrics) stays in the Manifold algebra, not the Gateway. Surfaces serialize the Coverage; they do not sample.
 
-**What it meters is callers, not vendors.** The Gateway sits above the profile root, so it counts *requests*; whether a request costs a vendor call is decided far below it, by retention inside the `Reservoir` — on a warm store the answer is zero. The two meters are both real and are not the same instrument: **caller** spend against us is Gateway policy (and becomes non-null with the first reachable surface — [REST](./tickets/02-0165-rest-surface.md)); **our** spend against a vendor is the ledger at the [Source](#source) seam.
+**What it meters is callers, not vendors.** The Gateway sits above the profile root, so it counts *requests*; whether a request costs a vendor call is decided far below it, by retention inside the `Reservoir` — on a warm store the answer is zero. The two meters are distinct: caller spend against us is Gateway policy; our spend against a vendor belongs at the [Source](#source) seam.
 
 ### Store — one type, several positions
 
@@ -286,7 +288,7 @@ A single `Store` contract — a **`Writable` Manifold**, the only thing you can 
 implementations vary by substrate, persistence, and lattice structure behind one write/read face —
 today a **transient** substrate (`MemoryStore`, process-lifetime), with a **persisting** one
 (survives restart, shared across processes) and a **bulk/analytical** one for research-scale reads
-as the two rungs above it → [persisting Store](./tickets/02-0145-persisting-store.md),
+as the two rungs above it → [Extension points](#extension-points),
 [#44](./concerns.md#44-dedicated-live-archive-store-for-throughput). Substrate is a per-`StoreSpec`
 choice, so it varies by position. Persistence adds no freshness rule — the contract is clockless and
 freshness-blind, so a Holding restored stale is simply a stale Holding. Its

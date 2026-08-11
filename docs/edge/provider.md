@@ -139,6 +139,11 @@ uv run pytest tests/parity                  # all live parity checks
 uv run pytest tests/parity -k open_meteo    # one provider
 ```
 
+**Parity limits.** The reference reader consumes the same vendor API as the Provider, so a green
+comparison verifies transport, units, and decoding, not semantic declarations shared by both sides.
+Tick meaning and declared Z height therefore require deterministic guards against vendor
+documentation → [#48](../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick).
+
 ### Request — what a leaf may be handed
 
 A `Selection` (`Domain + parameters`) whose `domain` is typed the **base `Domain`**. The
@@ -306,7 +311,7 @@ re-derives the mode inside the leaf, which is exactly what the second Provider m
 
 - **Per-parameter footprints** at the leaf's own geometry — static spatial and Z bounds, and a
   clock-relative T axis whose `CadenceDef` declares the availability base; without a
-  `window_quantum` it follows the run → [ADR-0003: cadence](../adr/0003-provenance-and-origin.md#run-identity--freshness--the-cadence).
+  `window_quantum` it follows the run → [ADR-0003: cadence](../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence).
 - **An axis that clips to cells wherever the leaf can resolve a snapped member.** For a rolling T that
   is `RollingAxis.clip`, which materialises the live window into the lattice its series actually
   arrives on before restricting it. A leaf that declares such an axis serves snapped requests on it;

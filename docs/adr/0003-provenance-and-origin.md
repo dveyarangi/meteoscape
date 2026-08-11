@@ -16,8 +16,10 @@ A Coverage carries **one provenance plane** — a `ProvenanceField` peer to `dom
 attribute. It is indexed over **two** axes — **parameter** (the Arbiter picks a source per parameter)
 and **geometry point** (a mosaic differs per cell) — read `at(parameter, i)`, with `summary(parameter)`
 the **O(1) per-parameter handle**. A value's **origin** is either **atomic** (a single upstream fetch,
-authored in full at fetch — carrying the **run identity `issue_time`**, the forecast issuance the values
-came from — **forecast-only**: an **observation** is run-free, so `issue_time` is absent and its `expiration` is effectively **∞**, a bounded revision window for late / QC data deferred alongside observations) or **synthetic** (a composite's record of a derivation — its **lineage** of contributing parents, each
+authored in full at fetch — carrying the forecast revision identity `issue_time`: a real run time or,
+for a runless provider, a Fetch bucket — **forecast-only**: an **observation** is run-free, so
+`issue_time` is absent and its `expiration` is effectively **∞**, with a bounded revision window for
+late / QC data deferred alongside observations) or **synthetic** (a composite's record of a derivation — its **lineage** of contributing parents, each
 carrying its own `issue_time`, plus a **calculation-method** tag for a computed output). **Synthesis is
 not gated on parent count**: a method-bearing derivation mints a synthetic origin even over a *single
 shared-origin* input (the method is what it records). Conversely, a derivation that **preserves its input
@@ -44,12 +46,13 @@ reads the footprint Domain's axis **`step`s**
 (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)) — never a free
 `native_resolution` string, and never a parallel provenance / Capability `Resolution` bag.
 
-## Run identity & freshness — the cadence
+## Run identity, Fetch buckets, and freshness — the cadence
 
-`issue_time` is the **model run (reference) time in UTC** — the cycle the values came from, the run's
-identity — **not** publication time or the assimilation window. A forecast Source declares a per-provider
-**`CadenceDef`** `{cadence Δ, publication_latency L, max_lead, window_quantum?}`; run identity and
-freshness derive from one **effective run anchor** at request time `now`:
+`issue_time` is the Source's forecast-revision identity in UTC — a real model run time where the
+producer publishes runs, otherwise a Fetch bucket anchor. It is **not** publication time or a Domain
+axis. A forecast Source declares a per-provider **`CadenceDef`**
+`{cadence Δ, publication_latency L, max_lead, window_quantum?}`. In the **run regime**, identity and
+freshness derive from the latest effective run anchor at request time `now`:
 
 ```
 A(now) = floor(now - L, Δ)      # latest run whose publication (r + L) has already passed
@@ -70,6 +73,26 @@ Each run reigns over `[A + L, A + Δ + L]`, so runs tile with no gap or overlap,
 **step function** — no boundary flicker. A provider may supply conservative defaults for `{Δ, L}`;
 their concrete values, and whether to prefer a provider's **real** reference / availability signal when it
 exposes one, are [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+
+### Run and bucket regimes
+
+The formulas above describe the **run regime**. Gridded NWP products and reanalysis slices carry a
+real reference time; where a vendor exposes one, it is preferred over a computed anchor
+(→ [ideas: freshness](../ideas.md#freshness)).
+
+A provider that publishes no run schedule uses the **bucket regime**. `A` is then the **Fetch
+bucket** — the Δ-wide window the fetch fell in — rather than a claim that a run occurred:
+
+- **`L = 0`.** Publication latency is *run time → available*; with no run there is nothing to be latent
+  from, and a non-zero `L` would slide the bucket off the grid its own identity is defined on.
+- **`A = floor(fetched_at, Δ)`** — which is the same formula, with `L = 0`. Two fetches in one bucket
+  share an `issue_time`, preserving the property anchoring exists for.
+- **`Δ` is the deployment's polling interval**, not an observed vendor cadence.
+- **`expiration = A + Δ` stays anchored.** With no real event at the grid line, the effective TTL
+  sawtooths and averages `Δ/2` → [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+
+The regime is a per-provider fact; one deployment may use both. Any consumer that requires a true run
+identity must distinguish or decline Fetch buckets rather than interpret them as runs.
 
 ## Why
 
@@ -146,12 +169,12 @@ class PerPoint(ProvenanceField):           # origin varies over geometry — con
 - A synthetic `ParameterData` re-derives whenever any parent expires (`min` expiration); incremental
   recompute is an unmodeled optimization ([#11](../concerns.md#11-incremental-synthetic-recompute)).
 - A `Reservoir` only ever **spatially fuses its own Holdings** (retained ∪ freshly fetched,
-  **same-run**)
-  and stays **`Uniform`** / atomic-equivalent: identity is the **run (`issue_time`)**, not the fetch
-  moment, so same-run multi-fetch is one origin, not a synthetic blend. It never fuses **along
+  **same revision group**)
+  and stays **`Uniform`** / atomic-equivalent: identity is the **revision group (`issue_time`)**, not the fetch
+  moment, so Holdings sharing an `issue_time` are one origin, not a synthetic blend. It never fuses **along
   `valid_time`**: `assimilate` replaces **whole Holdings**, a Holding's window is **single-origin**, and
-  combining origins is the **Arbiter's** reconciler — so cross-run / cross-provider timelines never
-  coexist in one Holding (the older run goes stale first). This same-run spatial fusion is the `Reservoir`'s
+  combining origins is the **Arbiter's** reconciler — so cross-revision / cross-provider timelines never
+  coexist in one Holding (the older revision goes stale first). This same-revision spatial fusion is the `Reservoir`'s
   read-back homogenization ([#5](../concerns.md#5-read-time-homogenization-fidelity), freshness via
   the cadence above); Resampler sophistication remains a separate decision.
 - The `ParameterData` container layout (positional `values` / `present`) and the Coverage's `parameters`

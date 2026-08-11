@@ -93,6 +93,6 @@ All owned elsewhere; none live only here:
   docs are uncommitted; the `Holding` rename touches both code and docs, so it wants its own commit.
 - **Next in the queue is [0125 — supported Python embedding surface](../tickets/01-0125-supported-python-embedding.md)**
   (own align precedes), which now opens with #39's failure-class inventory in hand;
-  [007 — off-grid homogenization](../tickets/01-0117-off-grid-homogenization.md) carries the
+  [007 — off-grid homogenization](../tickets/done/01-0117-off-grid-homogenization.md) carries the
   `TODO(0117)` relabel split.
 - **`Reservoir.held`** is dead instance state (never read or written) — flagged, left in place.
