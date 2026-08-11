@@ -85,8 +85,9 @@ class Settings(BaseSettings):
 
     store_spatial_step: float = 0.0001
     """Best-view store grid step in degrees — the cache lattice / fidelity floor. v1 default ~11 m:
-    effectively a per-point cache (repeat requests hit; distinct points don't share), trading spatial
-    cache sharing for near-exact values under the identity Resampler."""
+    near a per-point cache — repeat requests hit, and sharing reaches only points falling inside one
+    ~11 m cell — trading spatial cache sharing for a tight source-point offset under the identity Resampler,
+    which reports the enclosing cell's value unchanged at the requested point."""
 
     retention_interval: timedelta = timedelta(days=14)
     """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""
