@@ -1,11 +1,13 @@
 ---
 name: plan-impl
-description: Use to plan implementation for ticket/task at hand. Use when implementing without an RFC, to align on one.
+description: Plan or repeatedly validate a ticket's implementation RFC against its governing docs and code before implementation.
 ---
 
 - Explore documentation in depth, follow links in it to find all decisions relevant to current task. Find out which documented boundaries are involved, and whether implementation challenges them.
 
 - If the ticket at hand is too coarse to yield a single unambiguous RFC, stop planning and decompose it into sub-tickets via /to-tickets first; then plan the first child.
+
+- Repeated invocations are validation passes over the same RFC. Re-read the ticket, RFC, durable docs, and relevant code; challenge the plan against new evidence and amend it in place. Do not create a replacement RFC merely because the plan changed before implementation.
 
 - An RFC implements a ticket — no ticketless RFCs. If the task at hand has no ticket, create it first per the [to-tickets skill](../to-tickets/SKILL.md); its behavior-altitude rule governs the criteria (shape stays in the RFC).
 
@@ -17,7 +19,7 @@ description: Use to plan implementation for ticket/task at hand. Use when implem
 
 - Major goal of this planning is to find inconsistencies in the pre-planned architecture. Do this diligently. If such inconsistency found, do not stick blindly for architectural decision - instead raise concern with user to resolve it - either in code or in arch docs.
 
-- Another major goal is to make sure that resulting RFC does not leave implementation ambiguities. Meaning there is only one way to implement the RFC. Do not rely on information in the session or architecture files - if a fact is relevant and shaping the implementation - it should be accented and referenced in RFC.
+- Make the RFC determinate where a choice shapes observable behavior, a boundary or interface, ownership, failure semantics, compatibility, migration, or another non-local constraint. State the shaping fact with a reference to its durable owner; never rely on session context. Leave reversible implementation-local choices to /tdd and /implement unless they become load-bearing.
 
 - The RFC (original or amended) must not describe architecture absent from the architecture docs — land the decision in the docs first (/align when needed), then reference it from the RFC.
 
@@ -33,7 +35,14 @@ description: Use to plan implementation for ticket/task at hand. Use when implem
 
 - As an additional pass, try to explain things to yourself simply, as if you are teaching the architecture, and being asked reasonable question and look for areas that evade simple or common-sense explanation.
 
-- Make sure there is no ambiguity, optionality, or decision deferred to implementation, no matter how small — either resolve it or consult with user. The RFC must state the single proper way to do things.
+- Validate the RFC adversarially on every pass:
+  - Probe each boundary and stage with counterexamples, including empty, partial, faulting, and raced outcomes where relevant.
+  - Make every planned test prove the intended behavior and failure reason, not merely that the path succeeds or raises.
+  - Separate sourced facts and existing invariants from assumptions; verify facts in code or authoritative sources and surface load-bearing assumptions for /align.
+  - Reject pseudocode or prescribed structure that introduces undocumented architecture or freezes a reversible local choice.
+  - Check that every new promise names how it will be validated, and that the stages collectively prove the ticket's acceptance criteria.
+
+- Repeat validation until no load-bearing ambiguity, contradiction, or unverified assumption remains. The RFC may permit multiple equivalent local implementations when they preserve the same documented shape and proof.
 
 - Overall, always consider future development and potential code reuse when selecting code shapes.
 
