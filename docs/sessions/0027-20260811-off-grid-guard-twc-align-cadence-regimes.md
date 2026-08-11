@@ -20,7 +20,7 @@ data type. Closed with `/denoise` and this record.
 - **Sourced TWC's API from the vendor's own documentation** (portfolio + enterprise hourly endpoint,
   both Google Docs behind `twcapi.co` shortlinks; cited in the leaf's module docstring per the align).
   The repo previously held no TWC specifics at all.
-- **[RFC 0017](../rfc/0017-20260811-twc-provider.md) written and reviewed twice**, each pass finding
+- **[RFC 0017](../rfc/01-0120-twc-provider.md) written and reviewed twice**, each pass finding
   real defects in the previous one — including two of my own mis-stated mechanisms.
 - **`/denoise` pass** (user-run, in parallel) plus RFC 0016 filed to `rfc/done/`.
 

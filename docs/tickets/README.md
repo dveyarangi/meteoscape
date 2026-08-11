@@ -4,7 +4,10 @@
 
 **Current stage:** [007 — off-grid homogenization](./done/01-0117-off-grid-homogenization.md) is
 **delivered** (guard ticket: behaviour landed with 006; tests and records closed 2026-08-10).
-Next is [TWC as the primary Provider](./01-0120-twc-provider.md).
+Next is [live-window edge tolerance](./01-0119-live-window-edge-tolerance.md), minted 2026-08-11 and
+blocking [TWC as the primary Provider](./01-0120-twc-provider.md) — TWC's live capture showed a
+declared window that opens before the vendor's first tick, which makes the Reservoir's refill gate
+unsatisfiable and costs one metered vendor call **per request**.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
@@ -65,7 +68,7 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 | Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
 | Second provider and fallback | Planned | Only Open-Meteo is configured. **TWC becomes the primary** and Open-Meteo the backstop (2026-08-10); fall-through on fault does not exist yet — a `runtime-failure` fails the whole request. |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
-| Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. |
+| Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. **Holds only while a leaf's declared live window matches what its vendor delivers** — Open-Meteo's does; TWC's does not, which is [0119](./01-0119-live-window-edge-tolerance.md). |
 | Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./02-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
 | Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./02-0124-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./02-0155-vendor-budget-governor.md) later gives it authority to refuse. |
 | REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./02-0165-rest-surface.md) as the operator deployment shape; does not amend v1, which defers HTTP transport by name. |
@@ -102,6 +105,7 @@ queue position, because it still has to be done in order.
 | 0115.0030 | [Retentive Store (`MemoryStore`)](./done/01-0115.0030-timeline-store.md) | — | Done | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; wired inert until slice 4. |
 | 0115.0040 | [Reservoir retention pipeline](./done/01-0115.0040-reservoir-retention-pipeline.md) | — | Done | retentive store leaf | Retention live in both positions; serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./done/01-0117-off-grid-homogenization.md) | — | Done | retentive store | Read-back completes a storing `Reservoir`: point-exact reporting, enclosing-cell selection. Guard ticket ([RFC 0016](../rfc/done/0016-20260810-off-grid-homogenization.md)): tests, records, stale `TODO` removed; no `src` logic changes. |
+| 0119 | [Live-window edge tolerance](./01-0119-live-window-edge-tolerance.md) | — | Ready | reservoir retention pipeline, off-grid homogenization | A declared live window is an **estimate**; holdings are the truth; the two Reservoir declaration-vs-holdings comparisons take the intersection. `RollingAxis` is the marker — static T stays exact, space stays strict. Minted 2026-08-11 from TWC's stage 0 capture, which showed the declared window opening before the vendor's first tick makes the refill gate **unsatisfiable** — one metered call per request. |
 | 0120 | [TWC provider — as primary](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape, so no wrapper), first shipped `SecretSlot`, its parity check, **and the priority flip putting it ahead of Open-Meteo** (2026-08-10). The parity check becomes load-bearing; key-absent becomes the degraded mode. |
 | 0121 | [Second-provider fallback](./01-0121-second-provider-fallback.md) | — | Planned | TWC provider | Wholesale priority fallback — **TWC primary → Open-Meteo backstop**. Arbiter behaviour only, mocked transports, no live network. Load-bearing as of 2026-08-10: a metered primary's 429 is a `runtime-failure`, which today fails the whole request. Was 0150. |
 | 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters | Shared verified native-to-canonical conversion edges; trigger remains unmet because TWC reuses the existing `km/h → m/s` edge. Was 0160. |
@@ -239,8 +243,11 @@ cache, embedded Python, a REST surface, provider quota monitoring — reorders w
    forecast-at-a-station pairing rides this read-back — though it does not block on it (the point-exact
    half already landed with 006). No new Provider lands between the two halves of the retention path,
    as before.
-2. **011 → 004 → 010 → 008, in that order, because TWC is primary.** Selection flips with two
-   integers; what follows is the cost of depending on a metered vendor. Fall-through (004) makes a
+2. **0119 → 011 → 004 → 010 → 008, in that order, because TWC is primary.** Selection flips with two
+   integers; what follows is the cost of depending on a metered vendor. *(0119 inserted 2026-08-11:
+   TWC's stage 0 capture showed its series starting at the next whole hour, which makes the refill
+   gate unsatisfiable — the cache would never hit and every request would buy a call. That has to be
+   true before a metered vendor goes on the default path.)* Fall-through (004) makes a
    429 survivable, unit conversion (010) bites once TWC's native units are on the default path, and
    config (008) owns key-absent as the *degraded* mode.
 3. **The ledger's meter slice**, behind 008's injection path. Watch the real spend before

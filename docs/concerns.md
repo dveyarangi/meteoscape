@@ -567,6 +567,16 @@ to Δ, averaging Δ/2, so steady traffic can make roughly twice as many vendor c
 polling interval suggests. It also makes the MCP `exp` bound vary across the bucket. Provider-real
 reference and availability signals are the intended escape → [ideas: freshness](./ideas.md#freshness).
 
+**A first real escape signal is now in hand, and deliberately unused (2026-08-11).** TWC's payload
+carries a per-tick `expirationTimeUtc` — observed ~5 min out for the near-term head, ~21 min for the
+tail. It is not adopted, because `expiration` currently serves **two** roles from one field: the
+caller's staleness bound ([mcp_app.py:250](../src/meteoscape/api/mcp_app.py)) and the Reservoir's
+serve-vs-refetch trigger ([reservoir.py:138](../src/meteoscape/nodes/reservoir.py)). Adopting a
+5-minute vendor expiry would set the polling interval to 5 minutes and spend the allotment the
+configured Δ exists to conserve. **Splitting those two roles is the real prerequisite** for any
+provider-real freshness signal — the escape is not a per-provider declaration but that split. Wanted
+by the faster-nowcast case, not by v1 → [TWC provider](./tickets/01-0120-twc-provider.md).
+
 → queued for measurement by the [vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md).
 
 ## 11. Incremental synthetic recompute
@@ -893,8 +903,8 @@ resampler-reachability / probed-availability seams inside `serves`
 ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)). Whether a profile should narrate the
 declared bound, or something hedged against those, is a **product** decision this concern owns.
 
-**Shelf-quantized reach adds a static-proof obligation.** Open-Meteo's whole-day floor is conservative,
-but that is not a law of `window_quantum`: a shorter shelf window near the end of its quantum can leave
+**Shelf-anchored reach adds a static-proof obligation.** Open-Meteo's whole-day floor is conservative,
+but that is not a law of the Shelf: a shorter shelf window near the end of its shelf can leave
 less time ahead of the latest run than its extent suggests. Before another shelf-quantized offering
 contributes to this surface, either its declaration must prove the narrated floor is below the minimum
 `window.upper - run_anchor`, or the horizon derivation/sentence must change. This stays surface policy,

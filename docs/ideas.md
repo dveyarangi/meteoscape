@@ -51,5 +51,5 @@ product/feature ideas that haven't earned a decision yet.
   no real signal is available.
 - **Provider-real availability signal.** Where a vendor exposes what it currently serves (forward
   and archive edges), drive the footprint window from that signal behind the same `CadenceDef`
-  declaration seam; keep the static `{max_lead, window_quantum?}` estimate as fallback
+  declaration seam; keep the static `{max_lead, shelf?}` estimate as fallback
   ([#18](./concerns.md#18-clock-anchored-footprint-fidelity)).

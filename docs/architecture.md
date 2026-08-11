@@ -210,8 +210,14 @@ flowchart TB
 
 *Colour: green = `Reservoir` (Best view + Sources, one type) · orange = Arbiter (top + scoped, one type) · purple = Calculator · pink = Provider · blue = edge.*
 
-Each `Reservoir` resolves the same way: serve fresh Holdings; on miss or stale, quantize, project the
-store-shaped child, assimilate, then homogenize onto the request. The **dashed frame** is the
+Each `Reservoir` resolves the same way: serve fresh Holdings; on miss, stale, or **unsatisfied
+retention**, quantize, project the
+store-shaped child, assimilate, then homogenize onto the request. *Unsatisfied* is the declared
+axis's own answer, never the Reservoir's rule — a clock-anchored window is satisfied by overlap
+(a farther reach arrives only with the clock, which is what staleness already governs), a static
+one by containment
+→ [ADR-0002 § the two predicates](./adr/0002-data-model.md#the-two-predicates-admission-and-retention).
+The **dashed frame** is the
 **Weaver**'s build-time product. The **dewpoint Calculator** illustrates a derived Parameter as just
 another selectable producer behind its own scoped Arbiter
 → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
@@ -379,7 +385,7 @@ Every seam in one place — the *promise* only; behaviour and rationale are in M
 
 1. **Surface adapter** (e.g. `mcp_app`) receives a tool call → translates it into a canonical **Selection** (`Domain + parameters`, where the Domain's shape carries the mode), choosing the output lattice / default resolution at the edge → hands it to the **Gateway**.
 2. **Gateway** applies its configured caller policy and calls `project(selection)` on the **best view**.
-3. **Best view** (`Reservoir`) — quantizes the request onto its `Store`'s private lattices (its **canonical lattice**; identity on Z — the request's Z cell joins the Holding key) and serves fresh Holdings; for any parameters missing or **stale** it `project`s the **store-shaped** missing Holdings on its child, the **Arbiter**, `assimilate`s them whole, then **homogenizes the stored Holdings onto the request**.
+3. **Best view** (`Reservoir`) — quantizes the request onto its `Store`'s private lattices (its **canonical lattice**; identity on Z — the request's Z cell joins the Holding key) and serves fresh Holdings; for any parameters missing, **stale**, or whose Holdings do not **satisfy** the declared axis's retention predicate ([ADR-0002](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)) it `project`s the **store-shaped** missing Holdings on its child, the **Arbiter**, `assimilate`s them whole, then **homogenizes the stored Holdings onto the request**.
 4. **Arbiter** `project` does the **per-parameter** split: per parameter it takes the reconciler's candidate order, admits by capability, and projects the **first admitted** producer whole, then assembles the per-parameter `ParameterData` into one (Coverage-shaped) **view** — including multi-node assembly via `PerParameter` when winners span more than one producer. A `RuntimeFailure` currently fails the whole request; per-candidate fall-through and per-parameter partial success require the widening in [concern #28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold).
 5. **Source** (`Reservoir`) checks its `Store` then `project`s its **Provider** **once** on the **store-shaped** residual (`ANY` on the axes its Holding spans wholly); the Provider answers **multi-domain** with native records, which the `Store` slices per parameter and stores as identity; the Source's read-back relabels the matched native cells onto the handed shape.
 6. Results are `assimilate`d into the `Store`s — the **materialization boundary** (sample the field onto the node grid, store it).

@@ -151,7 +151,9 @@ classDiagram
 - **Separability is a facet; enumerability and regularity are per-axis choices.** Mirroring the
   algebra's *capabilities, not subtypes*: per-axis decomposition is the one optional facet a
   **separable** representation exposes — its per-axis `Axis`. An **`Axis` mirrors `Domain`**: its
-  universal surface is a span (`extent`), request-driven admission (`matches`), and **restriction to
+  universal surface is a span (`extent`), request-driven admission (`matches`), its retention sibling
+  (`satisfied_by` — [the two predicates](#the-two-predicates-admission-and-retention)),
+  and **restriction to
   bounds** (`clip`, whose bounds are **optional**: asking with none asks for the axis entire), and
   **enumeration is the `EnumerableAxis` refinement** — a lazy
   `Sequence[Cell]` (`axis[i] -> Cell`, `len`). Regularity is a choice *within* an enumerable axis: a
@@ -349,6 +351,47 @@ classDiagram
   functional*, never `ParameterId`s). Against a point sample `intersects` **is** membership; against a
   column it **is** inclusion — one predicate, no per-declaration branch. *Which* admitted cell answers
   (maximal served cell / resampler) is a separate selection step, deferred with layers (ADR-0004).
+
+#### The two predicates: admission and retention
+
+An axis answers **two** comparison questions. Both take axes and read `.extent` internally, so no
+consumer unwraps geometry to compare it:
+
+| | question | dispatches on | default |
+|---|---|---|---|
+| **Admission** | May this request be taken at all? | the **request** — `requested.matches(declared)` | containment (`VantageAxis` → overlap, `SnappedAxis` → intersective) |
+| **Retention** | Would a refetch add anything a Store does not already hold? | the **declaration** — `declared.satisfied_by(held, needed)` | containment: a wider ask genuinely needs more data |
+
+Both clamp the ask to what the declaration actually offers before comparing, so an ask running past a
+producer's reach never makes its Holdings look insufficient.
+
+**Retention is admission's sibling, not a second spelling of it.** The dispatch sides differ, and must:
+a rolling producer's Holdings materialize as an ordinary lattice, indistinguishable from an archive
+slice, and the request arrives snapped in both cases — so neither the request nor the Holdings can
+carry the distinction. Only the **declaration** knows what kind of thing it describes.
+
+The two kinds answer retention oppositely, which is the whole reason the predicate exists:
+
+- **A clock-anchored `RollingAxis` → satisfied unless its horizon has fallen behind the ask's start.**
+  Its window is a pure function of the clock and therefore only ever moves **forward**, so the single
+  way a Holding can fail such an ask is by not having reached it yet; anything the Holding lacks
+  *below* its own start was never published, and anything it lacks *above* arrives with time — which
+  is exactly what **expiration** already governs. *Reach-advance and staleness are the same event for
+  a rolling producer.* Treating a short horizon as "missing" would instead make the **Shelf**,
+  not the declared cadence, the real refetch interval. Note this is **not** mere overlap: an ask lying
+  wholly below the Holding is *satisfied* — a refetch would move the window further away, so refetching
+  is futile and the honest answer is that the window is unservable, not that it is missing.
+- **A static axis → containment.** An archive's corpus does not move, so a Holding is a *slice* of
+  something larger and a wider ask really is unanswered until more is fetched. Archive and observation
+  sources get this by inheriting the default, rather than by being remembered.
+
+**A corollary to declare rather than discover:** since a rolling producer's Holding is refreshed only
+on expiry, its cadence must not exceed its `max_lead` — otherwise the held window can fall entirely
+behind `now` between refreshes and the producer goes blind.
+
+This is why the pair lives on the `Axis` rather than in its consumer: **only the axis knows how its
+own extent moves.** A consumer branching on axis kind would restate that knowledge somewhere it can
+drift → [live-window edge tolerance](../tickets/01-0119-live-window-edge-tolerance.md).
 
   Every miss is an honest per-parameter omission (`capability-mismatch` reason at the edge). The
   response always rides `sel.domain` (closed projection): the served Z cell is the requested window,

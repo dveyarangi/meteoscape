@@ -51,7 +51,7 @@ reads the footprint Domain's axis **`step`s**
 `issue_time` is the Source's forecast-revision identity in UTC — a real model run time where the
 producer publishes runs, otherwise a Fetch bucket anchor. It is **not** publication time or a Domain
 axis. A forecast Source declares a per-provider **`CadenceDef`**
-`{cadence Δ, publication_latency L, max_lead, window_quantum?}`. In the **run regime**, identity and
+`{cadence Δ, publication_latency L, max_lead, shelf?}`. In the **run regime**, identity and
 freshness derive from the latest effective run anchor at request time `now`:
 
 ```
@@ -63,11 +63,34 @@ A(now) = floor(now - L, Δ)      # latest run whose publication (r + L) has alre
   `now < expiration`), replacing a `fetched_at`-relative TTL, so two fetches of one run expire together
   (a synthetic origin still inherits the parents' `min`, per Decision).
 - the leaf's footprint **availability window** = `[W, W + max_lead]`, where
-  `W = floor(now, window_quantum)` when a quantum is declared (a shelf-anchored product — e.g. a
+  `W = floor(now, shelf)` when a **Shelf** is declared (a shelf-anchored product — e.g. a
   by-calendar-day vendor), else `W = A` (the run's own forecast window). Two clocks: the run clock
-  keeps identity and freshness; the quantum, when present, anchors only what is *servable*. Encapsulated
+  keeps identity and freshness; the shelf, when present, anchors only what is *servable* — the window
+  advances one shelf at a time, so **`max_lead` is the window's length and the shelf is the size of
+  the jumps its start makes**; Reach is where it stands now. Encapsulated
   in the continuous footprint `Domain` ([ADR-0002](./0002-data-model.md) /
-  [ADR-0004](./0004-producer-resolution-and-capability.md)).
+  [ADR-0004](./0004-producer-resolution-and-capability.md)) — declared by the vendor leaf, executed
+  by the shared axis, never consulted by the `Reservoir`, whose refetch is governed by expiration and
+  the retention predicate alone.
+
+  **`W` is a phase declaration, not merely an opening time — so it must sit on a shelf boundary.**
+  Materializing the rolling window anchors the lattice *at `W`* (`RegularAxis(name, W, step, …)`), so
+  `W` states **which phase the vendor's ticks sit on**. An off-boundary `W` — `now` itself, say —
+  would put the lattice on an arbitrary sub-step phase, which is the off-phase case
+  [#21](../concerns.md#21-serves-extent-vs-project-crop-ability) calls genuinely unimplementable by
+  index arithmetic; it would also stop `W` being a **step function**, so admission and narration would
+  flicker between two clock reads. *Which* boundary is a separate question — flooring is the shipped
+  choice, and a vendor whose series begins later than its boundary is declared **early** rather than
+  off-phase. The resulting leading-edge over-declaration is absorbed by retention, not by the
+  declaration
+  ([ADR-0002 § the two predicates](./0002-data-model.md#the-two-predicates-admission-and-retention),
+  [0119](../tickets/01-0119-live-window-edge-tolerance.md)).
+
+  **The cadence must not exceed `max_lead`.** A rolling producer's Holding is refreshed only on
+  expiry, so a cadence longer than the horizon lets the held window fall entirely behind `now` between
+  refreshes — the producer then holds nothing that meets a live request. TWC's `hourly_6hour` offering
+  (`max_lead = 5h`) against a 12 h default is exactly this trap →
+  [011](../tickets/01-0120-twc-provider.md).
 
 Each run reigns over `[A + L, A + Δ + L]`, so runs tile with no gap or overlap, and flooring makes `A` a
 **step function** — no boundary flicker. A provider may supply conservative defaults for `{Δ, L}`;

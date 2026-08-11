@@ -160,6 +160,21 @@ wholly (timeline: T and Z), so the leaf answers multi-domain in its native geome
 fetches the provider's whole live window; later requests inside that fresh window read retained
 Holdings. Read-back crops the served answer.
 
+> **⚠ A leaf's declared live window is an estimate of what its vendor serves, not a promise.** Today
+> the refill gate demands that Holdings **contain** the request ∩ the declared reach
+> ([reservoir.py:113](../../src/meteoscape/nodes/reservoir.py) →
+> [:135](../../src/meteoscape/nodes/reservoir.py)), which breaks a rolling leaf two ways: a window
+> declared wider at its leading edge than the delivered series makes the test **unsatisfiable** (every
+> request refetches), and a window that advances on its quantum makes the **quantum**, not the declared
+> cadence, the real refetch interval. Open-Meteo shows neither, because its day-quantized declaration
+> matches its delivery and its quantum equals its cadence; TWC shows both. Repaired at
+> [0119](../tickets/01-0119-live-window-edge-tolerance.md) by the declared axis answering retention for
+> itself — overlap for a rolling window, containment for a static one
+> ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)).
+>
+> **A leaf's cadence must therefore not exceed its `max_lead`**, or its Holding can fall entirely
+> behind `now` between refreshes.
+
 - The **Reservoir's read-back** does the fact→product relabel: native Z cells (2 m, 10 m, surface,
   column) are rewritten onto the request's vantage; values and provenance untouched. The
   **`TODO (temporary)`** seam is owned by
@@ -311,7 +326,7 @@ re-derives the mode inside the leaf, which is exactly what the second Provider m
 
 - **Per-parameter footprints** at the leaf's own geometry — static spatial and Z bounds, and a
   clock-relative T axis whose `CadenceDef` declares the availability base; without a
-  `window_quantum` it follows the run → [ADR-0003: cadence](../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence).
+  Shelf it follows the run → [ADR-0003: cadence](../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence).
 - **An axis that clips to cells wherever the leaf can resolve a snapped member.** For a rolling T that
   is `RollingAxis.clip`, which materialises the live window into the lattice its series actually
   arrives on before restricting it. A leaf that declares such an axis serves snapped requests on it;

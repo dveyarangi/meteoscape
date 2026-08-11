@@ -54,6 +54,10 @@ _Avoid_: Grid (a Coverage Domain shape), node domain, public lattice
 The per-axis rule that decides whether a request lies within a producer's declared Footprint. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Serves, contains
 
+**Retention predicate**:
+The per-axis rule that decides whether a refetch would add anything a Store does not already hold. Admission's sibling, dispatched on the *declared* Axis rather than the requested one. A clock-anchored window answers by overlap, because a farther reach arrives only with the clock and expiration already governs that; a static Axis answers by containment, because its corpus does not move and a Holding is a slice of something larger. → [ADR-0002](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)
+_Avoid_: Coverage check, freshness (the Provenance expiration sense), staleness
+
 **Cell**:
 One position on an Axis, represented by a coordinate and optional Bounds. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Tick, pixel
@@ -185,7 +189,11 @@ The fitness of a producer's data for a Parameter under an Arbiter's objective. �
 
 **Cadence**:
 A Provider's timing declaration: cadence and publication latency define revision identity and freshness;
-maximum lead and an optional shelf quantum define availability. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+maximum lead and an optional Shelf define availability. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+
+**Shelf**:
+The calendar unit a vendor's served window turns in — daily for a by-calendar-day product, hourly for one relabelled each hour. The availability window starts at the current shelf boundary and advances one shelf at a time, so the shelf is the size of the jumps the window's start makes; the maximum lead is the window's length, and Reach is where the window stands now. Declared in the Cadence; it also fixes the phase the served lattice anchors to. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: window_quantum (the pre-2026-08-11 field name), window quantum, quantum, window step
 
 **Consensus**:
 A Reconciler that blends overlapping contributors instead of selecting one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
