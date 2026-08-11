@@ -85,13 +85,14 @@ this ticket is where we find out.
 >
 > **This raises the stakes on the Shelf declaration** — the declared window governs **admission**, and the
 > vendor governs what exists. ~~So the declared window must never begin before the series: hence
-> **`1h`**, not `None`.~~ **Resolved 2026-08-11 (align), after the stage 0 capture showed no quantum
+> **`1h`**, not `None`.~~ **Resolved 2026-08-11 (align), after the stage 0 capture showed no Shelf value
 > can satisfy that rule:** TWC's series begins at the **next** whole hour, while `valid_time` can only
 > *floor* ([cadence.py:31](../../src/meteoscape/manifold/cadence.py)) — so `now` itself always sits in
 > a declared-but-undelivered gap.
 >
 > The premise that a declaration must match delivery exactly is what gave way. A live window is an
-> **estimate**; holdings are the truth; the comparison between them takes the intersection. That rule
+> **estimate**; holdings are the truth; and the declared axis itself decides whether a refetch would
+> add anything — for a rolling window, satisfied once its horizon reaches the ask's start. That rule
 > is [0119](./01-0119-live-window-edge-tolerance.md), landing ahead of this ticket, and it is
 > vendor-agnostic rather than a per-vendor declaration knob.
 >

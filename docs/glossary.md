@@ -55,7 +55,7 @@ The per-axis rule that decides whether a request lies within a producer's declar
 _Avoid_: Serves, contains
 
 **Retention predicate**:
-The per-axis rule that decides whether a refetch would add anything a Store does not already hold. Admission's sibling, dispatched on the *declared* Axis rather than the requested one. A clock-anchored window answers by overlap, because a farther reach arrives only with the clock and expiration already governs that; a static Axis answers by containment, because its corpus does not move and a Holding is a slice of something larger. → [ADR-0002](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)
+The per-axis rule that decides whether a refetch would add anything a Store does not already hold. Admission's sibling, dispatched on the *declared* Axis rather than the requested one. A clock-anchored window is satisfied once its horizon reaches the ask's start, because such a window only ever moves forward: a farther reach arrives with the clock, which expiration already governs, and anything below the Holding's own start was never published. A static Axis answers by containment, because its corpus does not move and a Holding is a slice of something larger. → [ADR-0002](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)
 _Avoid_: Coverage check, freshness (the Provenance expiration sense), staleness
 
 **Cell**:

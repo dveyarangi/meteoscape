@@ -904,8 +904,8 @@ resampler-reachability / probed-availability seams inside `serves`
 declared bound, or something hedged against those, is a **product** decision this concern owns.
 
 **Shelf-anchored reach adds a static-proof obligation.** Open-Meteo's whole-day floor is conservative,
-but that is not a law of the Shelf: a shorter shelf window near the end of its shelf can leave
-less time ahead of the latest run than its extent suggests. Before another shelf-quantized offering
+but that is not a law of the Shelf: a shorter window late in its shelf can leave
+less time ahead of the latest run than its extent suggests. Before another shelf-anchored offering
 contributes to this surface, either its declaration must prove the narrated floor is below the minimum
 `window.upper - run_anchor`, or the horizon derivation/sentence must change. This stays surface policy,
 not a generic `CadenceDef` constraint.

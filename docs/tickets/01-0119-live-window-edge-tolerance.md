@@ -2,8 +2,8 @@
 
 - **Status:** Ready
 - **Plan:** [live-window edge tolerance RFC](../rfc/01-0119-live-window-edge-tolerance.md) — the declared axis answers
-  retention for itself (`satisfied_by`): overlap for a clock-anchored window, containment for a static
-  one.
+  retention for itself (`satisfied_by`): a clock-anchored window is satisfied once its horizon reaches
+  the ask's start; a static one by containment.
 - **Depends on:** [Reservoir retention pipeline](./done/01-0115.0040-reservoir-retention-pipeline.md)
   (the refill gate and read-back seams this ticket changes),
   [off-grid homogenization](./done/01-0117-off-grid-homogenization.md) (the read-back guards it must
@@ -26,8 +26,10 @@ from the day boundary, so the estimate has never been wrong in the shipped tree.
 therefore treated as exact everywhere it meets holdings — which is the bug this ticket removes.
 
 **The rule this establishes:** the **declared axis answers retention for itself**. A clock-anchored
-window is satisfied by *overlap*; a static axis by *containment*. Neither the request nor the Holdings
-can tell those apart, so the declaration must
+window only ever moves forward, so it is satisfied **once its horizon reaches the ask's start** —
+anything below the Holding's own start was never published, and anything above arrives with the clock.
+A static axis answers by *containment*, because its corpus does not move. Neither the request nor the
+Holdings can tell those apart, so the declaration must
 ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)).
 
 ## What goes wrong today
@@ -35,7 +37,7 @@ can tell those apart, so the declaration must
 Two independent defects, both on TWC's default path, neither visible on Open-Meteo.
 
 **Defect 1 — the gate is unsatisfiable.** TWC's series begins at the **next** whole hour while a `1h`
-quantum floors to the current one, so `now` itself always sits in the gap:
+Shelf floors to the current one, so `now` itself always sits in the gap:
 
 ```
               11:00        11:42 (now)     12:00
@@ -51,7 +53,7 @@ request's lower bound is `clock.now()` verbatim
 ([mcp_app.py:146](../../src/meteoscape/api/mcp_app.py)), which lies in the gap, so containment can
 **never** hold: **every request costs one metered vendor call** and retention never serves a warm hit.
 
-**Defect 2 — the quantum outranks the cadence.** Reach and expiry are both pure functions of the
+**Defect 2 — the Shelf outranks the cadence.** Reach and expiry are both pure functions of the
 clock, so the coverage test and the freshness test ask the same question at different granularities —
 and the finer wins. Once the clock crosses an hour boundary the declared reach advances while the
 Holding does not, so the gate refetches **hourly** whatever `cadence` says. This is independent of
@@ -75,8 +77,8 @@ a metered primary behind a cache that cannot hit is the thing this ordering exis
 
 The predicate pair on `Axis`, per
 [ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention) — a containment
-default, overridden by `RollingAxis` to overlap — and a `Reservoir` that asks it instead of comparing
-extents itself.
+default, overridden by `RollingAxis` to its horizon rule — and a `Reservoir` that asks it instead of
+comparing extents itself.
 
 - **Overlap, not "drop the check".** Dropping it entirely serves nothing once a Holding falls behind
   `now`, and never fills an archive's wider ask. Overlap keeps both safe.
@@ -106,21 +108,22 @@ extents itself.
 - [x] **`CadenceDef.window_quantum` renamed `shelf`** per the [glossary](../glossary.md) — the field
       names the vendor's serving calendar, not a property of the window. **Landed 2026-08-11**, ahead of
       this ticket so TWC would not ship on the old name; behaviour-neutral, suite and `pyright` green.
-- [ ] A request straddling the gap serves the overlap, and the response's first tick is the vendor's
-      first delivered tick.
 - [ ] A request lying wholly inside the gap produces a **clean capability answer, not a
       `RuntimeFailure`** — and against a warm store costs **no** vendor call, however many times it is
       asked. (A cold store still pays one first-touch fetch, which is retained and answers later asks.)
 - [ ] A leaf whose T reach is a **static** axis keeps exact containment — pinned by a test, so the
       rolling behaviour cannot silently generalize to the archive and obs sources.
-- [ ] A rolling Holding that has fallen **entirely behind `now`** still refetches — the case that
-      makes overlap safe rather than permissive.
+- [ ] A rolling axis whose Holding has fallen **entirely behind** the ask reports **unsatisfied** — the
+      case that makes the horizon rule safe rather than permissive. Pinned at the **axis** level, not
+      through a provider: the `cadence ≤ max_lead` criterion below makes it unreachable via a real
+      `CadenceDef`, so the predicate must handle it defensively and that is where it is proven.
 - [ ] A provider declaring `cadence > max_lead` fails when its `CadenceDef` is constructed, not at
       serve time — enforced centrally, since [011](./01-0120-twc-provider.md) lands after this ticket
       and its `hourly_6hour` offering (`max_lead = 5h`, 12 h default cadence) is exactly the trap.
 - [ ] The spatial enclosing-cell guard is unchanged; 007's tests pass untouched.
-- [ ] Open-Meteo's behaviour is unchanged — its declaration matches delivery and its quantum equals its
-      cadence, so this ticket must be a no-op for it, pinned by the existing e2e re-fetch assertions.
+- [ ] Open-Meteo's behaviour is unchanged — its declaration matches delivery and its Shelf (24 h) is
+      **longer** than its cadence (1 h), so freshness always expires before the reach advances and both
+      predicate arms agree on every shipped path; pinned by the existing e2e re-fetch assertions.
 
 ## What this ticket does not decide
 
@@ -128,7 +131,7 @@ Both selected by the [live-window edge tolerance RFC](../rfc/01-0119-live-window
 
 - ~~**The repair shape at site 1.** Whether the gate relaxes containment to overlap, compares against
   the delivered extent, or drops the T-coverage test for boundless refills entirely.~~ **Selected: the
-  declared axis answers for itself — `RollingAxis` by overlap, static by containment**
+  declared axis answers for itself — `RollingAxis` by its horizon, static by containment**
   ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)). Dropping the
   test entirely fails an archive source, whose Holding is a *slice of a larger corpus*; keeping
   containment everywhere makes the Shelf outrank the declared cadence. Neither the request

@@ -157,7 +157,7 @@ this ticket does not add. **Accepted here, recorded at
 whether the call count matches the cadence anyone believes is configured.
 
 **A second, larger spend defect was found by the live capture and is *not* accepted here.** Because
-TWC's series starts at the next whole hour while a `1h` quantum floors to the current one, `now`
+TWC's series starts at the next whole hour while a `1h` Shelf floors to the current one, `now`
 always sits in the declared-but-undelivered gap — and the refill gate compares the request against
 the **declared** reach, so containment never holds and **every request refills**. That is one metered
 call per request, dwarfing the Δ/2 effect above. It is repaired ahead of this ticket by

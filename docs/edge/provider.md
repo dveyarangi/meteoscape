@@ -165,11 +165,13 @@ Holdings. Read-back crops the served answer.
 > ([reservoir.py:113](../../src/meteoscape/nodes/reservoir.py) →
 > [:135](../../src/meteoscape/nodes/reservoir.py)), which breaks a rolling leaf two ways: a window
 > declared wider at its leading edge than the delivered series makes the test **unsatisfiable** (every
-> request refetches), and a window that advances on its quantum makes the **quantum**, not the declared
-> cadence, the real refetch interval. Open-Meteo shows neither, because its day-quantized declaration
-> matches its delivery and its quantum equals its cadence; TWC shows both. Repaired at
+> request refetches), and a window that advances on its Shelf makes the **Shelf**, not the declared
+> cadence, the real refetch interval. Open-Meteo shows neither, because its daily-shelf declaration
+> matches its delivery and its Shelf (24 h) is **longer** than its cadence (1 h), so freshness always
+> expires first; TWC shows both. Repaired at
 > [0119](../tickets/01-0119-live-window-edge-tolerance.md) by the declared axis answering retention for
-> itself — overlap for a rolling window, containment for a static one
+> itself — a rolling window satisfied once its horizon reaches the ask's start, a static one by
+> containment
 > ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)).
 >
 > **A leaf's cadence must therefore not exceed its `max_lead`**, or its Holding can fall entirely

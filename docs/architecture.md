@@ -213,9 +213,9 @@ flowchart TB
 Each `Reservoir` resolves the same way: serve fresh Holdings; on miss, stale, or **unsatisfied
 retention**, quantize, project the
 store-shaped child, assimilate, then homogenize onto the request. *Unsatisfied* is the declared
-axis's own answer, never the Reservoir's rule — a clock-anchored window is satisfied by overlap
-(a farther reach arrives only with the clock, which is what staleness already governs), a static
-one by containment
+axis's own answer, never the Reservoir's rule — a clock-anchored window is satisfied once its
+horizon reaches the ask's start (it only moves forward, so a farther reach arrives with the clock,
+which staleness already governs), a static one by containment
 → [ADR-0002 § the two predicates](./adr/0002-data-model.md#the-two-predicates-admission-and-retention).
 The **dashed frame** is the
 **Weaver**'s build-time product. The **dewpoint Calculator** illustrates a derived Parameter as just

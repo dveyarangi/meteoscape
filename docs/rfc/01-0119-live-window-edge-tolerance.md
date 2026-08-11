@@ -4,8 +4,9 @@
 
 Implementation plan for [live-window edge tolerance](../tickets/01-0119-live-window-edge-tolerance.md).
 
-**Scope in one line:** the declared axis answers retention for itself — overlap for a clock-anchored
-window, containment for a static one — and the `Reservoir` asks instead of comparing extents.
+**Scope in one line:** the declared axis answers retention for itself — a clock-anchored window
+satisfied once its horizon reaches the ask's start, a static one by containment — and the `Reservoir`
+asks instead of comparing extents.
 
 **What this is really testing:** whether the rule can live where the knowledge is. If a consumer still
 has to branch on axis kind afterwards, the predicate is in the wrong place; record that rather than
@@ -15,8 +16,8 @@ working around it.
 
 This RFC describes no architecture the docs do not carry:
 
-1. **[ADR-0002 § The two predicates](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)** — admission dispatches on the **request**, retention on the **declaration**, and the dispatch sides must differ: a rolling producer's Holdings materialize as an ordinary lattice, indistinguishable from an archive slice, and the request arrives snapped in both cases. Rolling answers by **overlap**, static by **containment**, and the cadence-must-not-exceed-`max_lead` corollary is stated there.
-2. **[ADR-0003 § availability window](../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence)** — `W` is a **phase declaration**: it anchors the materialized lattice, so it must sit on a quantum boundary. *Which* boundary is separate; flooring is the shipped choice, and the leading-edge over-declaration it causes is absorbed by retention.
+1. **[ADR-0002 § The two predicates](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)** — admission dispatches on the **request**, retention on the **declaration**, and the dispatch sides must differ: a rolling producer's Holdings materialize as an ordinary lattice, indistinguishable from an archive slice, and the request arrives snapped in both cases. Rolling is satisfied **once its horizon reaches the ask's start** (explicitly *not* mere overlap), static by **containment**, and the cadence-must-not-exceed-`max_lead` corollary is stated there.
+2. **[ADR-0003 § availability window](../adr/0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence)** — `W` is a **phase declaration**: it anchors the materialized lattice, so it must sit on a shelf boundary. *Which* boundary is separate; flooring is the shipped choice, and the leading-edge over-declaration it causes is absorbed by retention.
 3. **[architecture.md](../architecture.md)** — both Reservoir passages now name the predicate. They previously read "missing or **stale**" with no coverage clause at all: **the containment test in the code was never in the architecture.**
 4. **[glossary](../glossary.md)** — *Retention predicate*, beside *Admission predicate*.
 
@@ -42,13 +43,13 @@ to the current one, so `now` always sits in a declared-but-undelivered gap. A de
 bound is `clock.now()` verbatim ([mcp_app.py:146](../../src/meteoscape/api/mcp_app.py)), so
 containment is never satisfiable and **every request refetches**.
 
-**Defect 2 — the quantum outranks the cadence.** Reach and expiry are both pure functions of the
+**Defect 2 — the Shelf outranks the cadence.** Reach and expiry are both pure functions of the
 clock, so the containment test and the freshness test ask the same question at different
 granularities — and the finer one always wins:
 
 ```
 t0 = 11:42  fetch → holding [12:00, 12:00+239h], expires 23:42   (cadence 12h)
-t  = 12:05  declared reach advances to [13:00, 13:00+239h]        (quantum 1h)
+t  = 12:05  declared reach advances to [13:00, 13:00+239h]        (shelf 1h)
             over.upper = 13:00+239h  >  held.upper = 12:00+239h  → REFETCH
 ```
 
@@ -57,7 +58,7 @@ decorative. This is independent of defect 1 and survives any correction to the *
 correctly-declared window advances hourly too.
 
 **Defect 2's exact trigger is `shelf < cadence`** — that is when the reach advances before
-freshness expires. Open-Meteo declares `quantum=24h` against `cadence=1h`
+freshness expires. Open-Meteo declares a `24h` Shelf against a `1h` cadence
 ([open_meteo.py:53-58](../../src/meteoscape/nodes/providers/open_meteo.py)), so expiry always fires
 first and the coverage test never bites; TWC declares `1h` against `12h`, so it bites eleven times out
 of twelve. That is the whole reason this has never shown in the shipped tree, and it is checkable
@@ -69,7 +70,7 @@ Four cases decide the rule. The fourth is why the rolling arm is **not** plain o
 | | containment (today) | drop the test | overlap | **horizon ≥ ask start** |
 |---|---|---|---|---|
 | **A** ask starts before the Holding (defect 1) | refetch — storm | serve ✓ | serve ✓ | serve ✓ |
-| **B** clock crossed a quantum boundary, Holding fresh (defect 2) | refetch — cadence overridden | serve ✓ | serve ✓ | serve ✓ |
+| **B** clock crossed a shelf boundary, Holding fresh (defect 2) | refetch — cadence overridden | serve ✓ | serve ✓ | serve ✓ |
 | **C** Holding fallen entirely behind `now` | refetch ✓ | serve nothing — **fault** | refetch ✓ | refetch ✓ |
 | **D** ask lies wholly *inside* the gap | refetch every ask | refetch every ask | **refetch every ask** | satisfied ✓ |
 | **E** archive: wider ask than the held slice | refetch ✓ | never fills — **wrong** | **wrong** | n/a — static arm |
@@ -133,7 +134,7 @@ class RollingAxis(Axis):
         My window is a pure function of the clock, so it only ever moves forward: the one way a
         Holding can fail an ask is by not having reached it yet. What it lacks *below* its own start
         was never published, and what it lacks *above* arrives with time, which `expiration` already
-        governs — demanding containment would make my *quantum*, not the declared cadence, the real
+        governs — demanding containment would make my *Shelf*, not the declared cadence, the real
         refetch interval.
 
         Deliberately weaker than overlap: an ask lying wholly below the Holding is satisfied, because
@@ -234,7 +235,9 @@ encodes a different reason:
 - **rolling B** — satisfied by Holdings short at the horizon while the ask has started; the assertion
   that keeps cadence in charge, with a comment saying so;
 - **rolling C** — **unsatisfied** by Holdings entirely behind the ask; the case that stops the rule
-  being merely permissive;
+  being merely permissive. **This is the only home for that proof**: the `cadence ≤ max_lead` invariant
+  (stage 4) makes it unreachable through a real `CadenceDef`, so the predicate handles it defensively
+  and no Reservoir-level test can construct it without violating the invariant;
 - **rolling D** — **satisfied** by Holdings entirely *above* the ask. Counter-intuitive and therefore
   the one most likely to be "fixed" into overlap later, so its test carries the reason: refetching
   moves a rolling window further away, so the ask is unservable rather than unfetched;
@@ -248,12 +251,12 @@ Then the two methods.
 ### Stage 2 — the gate asks *(red → green)*
 
 Reservoir tests with a source whose declared window opens **before** its delivered records (fact 7 —
-`footprint_domain(clock, cadence=…)`, `1h` quantum, records anchored an hour later):
+`footprint_domain(clock, cadence=…)`, `1h` Shelf, records anchored an hour later):
 
 - **defect 1** — two successive asks whose lower bound sits in the gap produce **exactly one** child
   call;
-- **defect 2** — advance the clock past a quantum boundary but not past expiry; assert **no** second
-  call. This is the one that proves cadence outranks quantum;
+- **defect 2** — advance the clock past a shelf boundary but not past expiry; assert **no** second
+  call. This is the one that proves cadence outranks the Shelf;
 - advance past **expiry**: assert the refetch does happen;
 - a straddling ask **serves**, first tick = first *delivered* tick;
 - **static T stays exact** — a source declaring static T, held short, **does** refill;
@@ -270,8 +273,8 @@ Then `_missing`, the `_t_axis` collapse, the deletion, and the rewrite of fact 8
 ### Stage 4 — guards and records *(green)*
 
 - **space stays strict** — 0117's enclosing-cell assertions unchanged;
-- **Open-Meteo is a no-op**, and provably rather than hopefully: its `quantum=24h` exceeds its
-  `cadence=1h`, so expiry always fires before the reach advances and the old containment test never
+- **Open-Meteo is a no-op**, and provably rather than hopefully: its `24h` Shelf exceeds its
+  `1h` cadence, so expiry always fires before the reach advances and the old containment test never
   bit (fact 10). Assert via the existing e2e re-fetch expectations, which must not move;
 - **`cadence ≤ max_lead`** — the ADR-0003 corollary. **Enforced in `CadenceDef.__post_init__`, not in
   a provider's `build`** *(corrected on the second validation pass: the earlier draft put it in TWC's
