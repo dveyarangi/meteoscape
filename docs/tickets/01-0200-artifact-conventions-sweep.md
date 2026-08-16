@@ -8,8 +8,8 @@
   exist as an artifact type before the roster that classifies it is remapped.
 - **Outcome:** one canonical **artifact conventions registry**; every document type in the
   [documentation map](../README.md) analyzed against the artifact definitions and classified;
-  conventions (numbering, lifecycle, location) remapped where they drift; artifact-supporting
-  skills reference the registry instead of restating it.
+  conventions (numbering, lifecycle, location) remapped where they drift; the registry names each
+  convention's owner instead of requiring artifact-supporting skills to duplicate it.
 
 ## Why
 
@@ -61,10 +61,32 @@ transient-with-`done/` / append-only) are the other axes.
      the sweep (tickets own the definition of done; implementation detail is each ticket's
      RFC's), and fold the altitude rule into the registry so the skill stops being its private
      owner.
+   - **RFC filename identity (settled 2026-08-11).** An RFC uses the exact basename of its owning
+     ticket: `docs/tickets/RR-NNNN-slug.md` pairs with `docs/rfc/RR-NNNN-slug.md`. Moving either
+     completed artifact to its `done/` folder preserves the basename. Repositioning an active
+     ticket renames its RFC in the same change. The decisive constraint is one RFC per
+     implementation-ready ticket; an independent RFC sequence and datestamp create a second
+     identity without describing a second lifecycle.
+   - **RFC citation identity (settled 2026-08-11).** The independent RFC serial is retired from
+     document titles and link text as well as filenames. Cite a plan by its owning ticket's slug
+     (for example, `TWC provider RFC`), never by an RFC number or the ticket's mutable position.
+     Authored and amended dates remain document metadata so a completed RFC retains its historical
+     context without gaining a second identity.
+   - **RFC convention ownership (settled 2026-08-11).** The `plan-impl` skill owns the RFC filename
+     and citation convention because it creates and repeatedly amends that artifact. This replaces
+     this ticket's older assumption that every convention must live in a central registry. The
+     registry should name and link to an artifact-local owner; other skills should follow that owner
+     rather than restating the rule.
+   - **RFC document header (settled 2026-08-11).** The H1 is the owning ticket's title followed by
+     `â€” implementation plan`, with no RFC serial, release/position, or date in the heading. An
+     `**Authored:** YYYY-MM-DD` metadata line follows; `**Last amended:** YYYY-MM-DD` is present only
+     after a later revision. The title follows the ticket if its slug/title changes, while the dates
+     preserve the plan's historical context.
 3. **Registry home:** extend the [documentation map](../README.md) table or mint a sibling
    conventions document — decided at the align.
-4. **Skill slimming:** each artifact-supporting skill references the registry for conventions it
-   currently restates; no skill remains the private owner of a shared convention.
+4. **Skill slimming:** each convention has one named owner. Cross-artifact conventions may live in
+   the registry; artifact-local operational conventions may live in the skill that creates and
+   maintains that artifact. Other skills reference the owner instead of restating the rule.
 
 ## Acceptance criteria (provisional until the align)
 
@@ -72,7 +94,8 @@ transient-with-`done/` / append-only) are the other axes.
       on all axes (granularity, lifecycle, normative/descriptive, validated-by, owning skill).
 - [x] A sequencing scheme supporting nested subtickets is decided and documented (adopted or
       explicitly rejected with reasons). — **done 2026-08-02**, see scope item 2.
-- [ ] No artifact-supporting skill restates a convention the registry owns.
+- [ ] Every convention has one named owner; no artifact-supporting skill restates another owner's
+      convention.
 - [ ] Contradictions found during the roster analysis are resolved or filed as concerns.
 
 ## Out of scope

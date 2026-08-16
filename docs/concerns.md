@@ -1,12 +1,13 @@
 # Open concerns
 
-Open design concerns, **ordered by priority** (highest first). Priority blends *how much it blocks the
-encoding pass / v1 build* with *how hard it is to absorb additively later*. `architecture.md` indexes
-this file by subtitle. **Numbers are stable IDs, not contiguous ranks** — when a concern is settled it
-**moves out** to its owning ADR, leaving a gap (what each ADR owns →
-[architecture: ADR index](./architecture.md#adr-index)).
+Open design concerns, **ordered by priority** (highest first) and numbered by **stable ID**, so the
+sequence is deliberately full of gaps — a settled concern has moved out to its owning ADR (what each
+ADR owns → [architecture: ADR index](./architecture.md#adr-index)). `architecture.md` indexes this
+file by subtitle.
 
-This file owns unresolved design pressure, not delivery sequencing.
+This file owns unresolved design pressure — not delivery sequencing, and not decisions. How entries
+are written, ordered, and retired is owned by
+[/align](../.agents/skills/align/SKILL.md#extract-open-questions-and-risks).
 
 ---
 

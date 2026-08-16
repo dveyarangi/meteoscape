@@ -1,6 +1,6 @@
 # Delivery status
 
-**Last updated:** 2026-08-10
+**Last updated:** 2026-08-11
 
 **Current stage:** [007 — off-grid homogenization](./done/01-0117-off-grid-homogenization.md) is
 **delivered** (guard ticket: behaviour landed with 006; tests and records closed 2026-08-10).
@@ -42,15 +42,11 @@ the project reached its current state; they do not override this page.
 
 ## Status vocabulary
 
-- **Done** — acceptance criteria are complete; the ticket lives under [`done/`](./done).
-- **In progress** — implementation work is active; completion and verification remain pending.
-- **Ready** — dependencies are complete and implementation can start.
-- **Partial** — some behavior landed earlier; the remaining acceptance criteria are still open.
-- **Planned** — accepted work whose dependencies are not yet complete.
-- **Blocked** — work cannot proceed for a reason other than an ordinary incomplete dependency. No
-  active v1 ticket is presently blocked in this sense.
+**Done**, **In progress**, **Ready**, **Partial**, **Planned**, **Blocked** — defined in
+[TICKET-FORMAT.md § Status](../../.agents/skills/to-tickets/TICKET-FORMAT.md#status).
 
-Dependencies describe ordering; a completed dependency does not make a ticket "blocked."
+No active ticket is presently **Blocked**: everything unstarted is waiting on an ordinary incomplete
+dependency, which is ordering, not blockage.
 
 ## Available today
 
@@ -77,10 +73,10 @@ Dependencies describe ordering; a completed dependency does not make a ticket "b
 
 ## Delivery map
 
-One queue, in the order the work is done. The **#** column is the ticket's position — see
-[Ticket numbering](#ticket-numbering). Maintenance work keeps the build honest but delivers no
-product capability, so it is marked `Maint` and appears in no capability table; it still holds a
-queue position, because it still has to be done in order.
+One queue, in the order the work is done — this table is the canonical order. The **#** column is
+the ticket's position ([Ticket numbering](#ticket-numbering)); the `Kind` column marks maintenance
+work `Maint`. What those columns mean is
+[TICKET-FORMAT.md § The queue](../../.agents/skills/to-tickets/TICKET-FORMAT.md#the-queue).
 
 | # | Ticket | Kind | Status | Depends on | Outcome |
 |---|---|---|---|---|---|
@@ -126,42 +122,23 @@ queue position, because it still has to be done in order.
 
 ## Ticket numbering
 
-A ticket's filename is `RR-NNNN-slug.md` — release, position, name:
+Filenames are `RR-NNNN-slug.md` — release, position, name. The scheme itself (anatomy, position
+stepping and insertion, subticket depth, citation by slug, what completion does to a number) is
+owned by [TICKET-FORMAT.md § Numbering](../../.agents/skills/to-tickets/TICKET-FORMAT.md#numbering).
+This section records only how it landed here.
 
-```
-docs/tickets/done/01-0115-retentive-store-freshness.md
-              │  │    └── slug — what the ticket is. Never changes. Cite tickets by this.
-              │  └─────── position in the queue — global across releases. Changes when priority changes.
-              └────────── release (01 = v1). Names the contract the ticket serves.
-```
-
-- **A release is a contract-closure milestone, not a chronological gate.** Execution interleaves
-  across open releases in one queue (the delivery map's order); a release closes when its contract's
-  criteria are all met, regardless of what landed around it — release-02 tickets may land before v1
-  closes. Release 02 (the shape-diversity workstream: archive source, correction calculators, new
-  source shapes) opened at the 2026-08-08 align; its requirements doc is deliberately deferred until
-  its first shapes land and teach us what the contract should say.
-- **Positions are one global line across releases** (2026-08-08). A ticket's position orders it
-  against *every* open ticket, not only its own release's — `02-0130` executes between `01-0120` and
-  `01-0150`. The release prefix names the contract; the folder therefore groups by release and is
-  ordered only within one, and the delivery map is the cross-release order.
-- **Positions step by 10** — `0010`, `0020`, `0030`.
-- **To insert between two tickets, split the difference**: between `0010` and `0020` is `0015`;
-  between `0010` and `0015` is `0012`; then `00105`. This never runs out and never renumbers
-  anything else.
-- **A subticket appends a level**: `0130.0010`, `0130.0010.0010`. Depth is unbounded.
-- **Depth means "is a child of", nothing else.** A ticket merely *filed after* `0130` takes a
-  sibling slot (`0135`), not `0130.0010`. That keeps the nesting worth reading.
-- **Cite tickets by slug, never by number** — "retentive store", not "0130". The number moves when
-  priority moves; the slug does not. A number is a position, not a name.
-- **Maintenance is a `Kind`, not a prefix.** It carries a queue position like everything else, so
-  the next thing to do is always at the top of the folder.
-- **Completed tickets keep their number** and move to [`done/`](./done), where the position is
-  inert history.
-
-Adopted 2026-08-02, replacing the flat `NNN` scheme with its `002b`/`003a` letter suffixes and `m`
-maintenance prefix. The old ids are listed under [Legacy ids](#legacy-ids); documents written before
-that date cite them, and are left as written.
+- **Adopted 2026-08-02**, replacing the flat `NNN` scheme with its `002b`/`003a` letter suffixes and
+  `m` maintenance prefix. All existing tickets were renumbered. The old ids are listed under
+  [Legacy ids](#legacy-ids); documents written before that date cite them, and are left as written.
+- **One global line across releases, 2026-08-08.** Before that date positions were read
+  release-locally; the [delivery map](#delivery-map) has been the single cross-release order since.
+- **RFCs took the owning ticket's basename, 2026-08-11**, retiring the independent
+  `NNNN-YYYYMMDD-name` serial. The sixteen RFCs in [`rfc/done`](../rfc/done) predate it and keep
+  their names; documents citing an RFC by number are left as written.
+- **Release 01 is v1.** Release 02 — the shape-diversity workstream (archive source, correction
+  calculators, new source shapes) — opened at the 2026-08-08 align; its requirements doc is
+  deliberately deferred until its first shapes land and teach us what the contract should say. Its
+  tickets may land before v1 closes.
 
 ### Legacy ids
 
