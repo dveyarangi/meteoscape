@@ -99,7 +99,13 @@ When high-level architecture of this project changes, update `architecture.md`. 
 
 ### Extract open questions and risks
 
-Open questions and risks should live in [docs/concerns.md](../../../docs/concerns.md). The concerns should be sorted highest priority first; settled items move out to other architecture docs.
+Open questions and risks live in `docs/concerns.md`, this skill's artifact:
+
+- Ordered by priority, highest first — how much it blocks the current build, and how hard it is to absorb later.
+- Entry is `## N. Title`, then `**Kind:** {sort of pressure, and whether a driver exists} · **Refs:** {ADRs, architecture sections, sibling concerns}`, then the pressure.
+- Numbers are stable IDs, not ranks. A settled concern moves out to its owning ADR or architecture section, leaving a gap. Never renumber, never resolve in place.
+- A concern queued as work keeps only its architectural contact surface plus `→ queued as <ticket-slug>`; the deliberation moves into the ticket.
+- The file holds unresolved pressure — not delivery sequencing, not decisions.
 
 ### Record resolutions in the owning ticket inline
 

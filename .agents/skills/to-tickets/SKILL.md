@@ -9,11 +9,15 @@ Break a parent work into independently-grabbable tickets using vertical slices (
 
 ## Layout
 
-- **Active tickets** live flat in `docs/tickets/RR-NNNN-short-title.md`. The naming and numbering
-  rules are owned by [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering) — read it
-  before allocating a number; do not restate it here.
-- **Completed tickets** move to `docs/tickets/done/` (all acceptance boxes checked). Keep the filename; only the folder changes.
-- The **parent** is referenced by its own path (a PRD like `docs/v1-requirements.md`, or a ticket); child tickets do not duplicate it.
+The shape of both artifacts this skill owns — the ticket file and the queue
+(`docs/tickets/README.md`) — is [TICKET-FORMAT.md](./TICKET-FORMAT.md)'s, including the
+[numbering scheme](./TICKET-FORMAT.md#numbering). Read it before writing either, and restate none of
+it here.
+
+- **Active tickets** live flat in `docs/tickets`; **completed tickets** move to `docs/tickets/done/`
+  (all acceptance boxes checked). The filename never changes, only the folder.
+- The **parent** is referenced by its own path (a PRD like `docs/v1-requirements.md`, or a ticket);
+  child tickets do not duplicate it.
 
 ## Process
 
@@ -67,46 +71,16 @@ Iterate until the user approves the breakdown.
 
 For each approved slice, write a markdown file at `docs/tickets/RR-NNNN-short-title.md` (e.g. `docs/tickets/01-0210-add-user-auth.md`).
 
-Allocate positions per [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering) — place each
+Allocate positions per [Numbering](./TICKET-FORMAT.md#numbering) — place each
 slice where it will actually be worked, not merely at the end, and check both `docs/tickets/` and
 `docs/tickets/done/` for the surrounding positions. Children of a ticket take subticket positions
 under their parent, per the same rules. Add a row to the delivery map in the same pass.
 
 Create files in dependency order (blockers first) so you can reference real filenames in the "Blocked by" field. A blocker that is already complete lives in `docs/tickets/done/` — reference it there.
 
-Do NOT use `gh issue create` or any GitHub CLI commands. Do NOT reference GitHub issue numbers. Use local filenames for all cross-references.
-
-<ticket-template>
-## Parent
-
-Path to the parent work item — the PRD, or the coarse ticket this slice was carved from. A conversation-born ticket cites the owning durable doc (concern, roadmap line) instead — never a session — or drops this section and carries its own context.
-
-## What to build
-
-A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation. Reference specific sections of the parent rather than duplicating content.
-
-## Acceptance criteria
-
-<!-- Behavioral only — see "Acceptance criteria hold the behavior altitude" -->
-
-- [ ] Criterion 1
-- [ ] Criterion 2
-- [ ] Criterion 3
-
-## Blocked by
-
-- Blocked by `docs/tickets/RR-NNNN-title.md` (active) or `docs/tickets/done/RR-NNNN-title.md` (already complete). Refer to blockers **by slug**, not by number.
-
-Or "None - can start immediately" if no blockers.
-
-## Parent scope addressed
-
-Reference the parent's user stories or acceptance criteria by number:
-
-- User story 3
-- User story 7
-
-</ticket-template>
+Write each file to [TICKET-FORMAT.md](./TICKET-FORMAT.md) — its skeleton, header block, section
+rules, and citation conventions. A freshly minted slice needs at minimum `Status`, `Outcome`,
+`Parent`, `What to build`, and `Acceptance criteria`.
 
 ### Decision-bearing ticket lifecycle
 
@@ -122,30 +96,21 @@ decision and implementation tickets for that outcome.
 - **During alignment:** follow [/align](../align/SKILL.md)'s inline resolution rule; the ticket is the
   live working document.
 - **At resolution:** land decisions in their durable homes, remove the resolved concern entry (or
-  retain separately-scoped residue), and rewrite the same ticket in place to feature altitude:
-  behavioral outcome, end-to-end work, acceptance criteria, blockers, and parent scope. Preserve
-  its slug and parent; keep its queue position unless the resolved dependencies require reordering
-  under the repository's numbering rules.
+  retain separately-scoped residue), and rewrite the same ticket in place to feature altitude
+  ([TICKET-FORMAT.md](./TICKET-FORMAT.md)). Keep its queue position unless the resolved dependencies
+  require reordering under the repository's numbering rules.
 - **If the resolved feature is too coarse for one RFC:** retain the ticket as the parent/end-state
   and decompose it through `/to-tickets`; do not create a sibling merely to hold the implementation.
 - **If alignment eliminates the feature:** complete the ticket as a landed decision; this is the
   only case where it closes without becoming an implementation ticket.
 
-### Acceptance criteria hold the behavior altitude
+### Altitude decides whether a slice is a ticket
 
-- A criterion states what is observably true when the ticket is done — verifiable by a test, a
-  probe, or a user action. Code shape (types, fields, formulas, module layout) is the RFC's
-  (`/plan-impl`); ticket prose may sketch mechanism, criteria never do.
-- Refactor tickets: criteria are that existing behavior is unchanged (suite green through the
-  reshape), the new constraint is machine-enforced (a guard test fails when violated — never "the
-  code looks right"), and the dependent work is unblocked.
-- A refactor too large for one RFC splits into subtickets
-  (→ [Ticket numbering](../../../docs/tickets/README.md#ticket-numbering)), one RFC per child; the
-  parent's criteria state the end-state that only holds when all children land.
-- While a ticket is decision-bearing, its provisional criteria follow the decision-bearing
-  lifecycle above. Once transformed, this behavior-altitude rule applies in full.
-- The `Outcome` line holds the same altitude as the criteria.
-- A ticket that fits none of these shapes → `/align` before writing it.
+Criteria state observable behavior; code shape is the RFC's
+(→ [Acceptance criteria](./TICKET-FORMAT.md#acceptance-criteria)).
+
+- A refactor too large for one RFC splits into subtickets, one RFC per child.
+- A slice whose criteria cannot be written at that altitude is not yet a ticket → `/align` first.
 
 ### 6. Completing a ticket
 

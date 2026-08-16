@@ -35,11 +35,9 @@ Core architecture docs must not reference sessions, tickets or RFCs. One excepti
 concern's `→ queued as <ticket-slug>` marker in `concerns.md` is delivery routing, not
 architecture — keep it.
 
-Move sessions over week old into `docs/sessions/history/YYYY-MM` folder.
+Enforce [/conclude](../conclude/SKILL.md)'s session rules: archive records past the rolling window, and make sure nothing links to a session.
 
-Done tickets and rfcs should move to corresponding done folders.
-
-Make there are no links to sessions anywhere, between sessions themselves or from other documentation. So we would never need to update the session links. Sessions can point outward to other docs.
+Done tickets and rfcs should move to corresponding done folders, keeping their basenames ([TICKET-FORMAT.md](../to-tickets/TICKET-FORMAT.md#one-basename-per-work-item)).
 
 HOWEVER, the README.md of sessions, tickets and rfcs, and all other indexes must be denoised.
 

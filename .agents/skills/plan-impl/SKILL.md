@@ -48,6 +48,8 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - Cover migrations, compatibility, rollout, failure handling, and observability when relevant.
 
-- Record the plan into markdown file in /docs/rfc. The file should be using naming pattern `docs/rfc/0001-<YYYYMMDD>-<name>.md`, keeping constantly incrementing enumeration.
+- Record the plan into `docs/rfc/`, named with the owning ticket's basename — no RFC serial. Filename, `done/` moves, and citation: [TICKET-FORMAT.md](../to-tickets/TICKET-FORMAT.md#one-basename-per-work-item).
+
+- RFC header: H1 is the ticket's title plus ` — implementation plan`; then `**Authored:** YYYY-MM-DD`, and `**Last amended:** YYYY-MM-DD` once a later pass changes the plan; then one line stating what it implements, linking the ticket.
 
 - DO NOT CHANGE THE CODE!
