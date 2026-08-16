@@ -3,3 +3,4 @@
 .mcp_live_probe.py
 tests/parity/_artifacts/
 tmp/
+.idea/
