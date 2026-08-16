@@ -1,6 +1,7 @@
 # TWC provider — implementation plan
 
 **Authored:** 2026-08-11
+**Last amended:** 2026-08-16
 
 Implementation plan for [TWC provider](../tickets/01-0120-twc-provider.md) (legacy 011).
 
@@ -380,6 +381,11 @@ per-tick expiry (⇒ fact 8 corrected), and the wind quantization premise.
 **Remaining mechanical step:** land `hourly_10day.json` as the deterministic fixture, with the
 `apiKey` absent from any recorded URL (the capture already scrubs it and refuses to save a body
 containing the key).
+
+**Until that step runs, the capture exists on one machine only** — it sits under `tmp/`, which
+`.gitignore` excludes. Every declaration in this RFC, and the whole basis for `twc.py`, rests on it.
+Losing it means re-running stage 0 against the metered key. Land the fixture before stage 1 rather
+than alongside it.
 
 ### Stage 1 — the leaf *(red → green)*
 
