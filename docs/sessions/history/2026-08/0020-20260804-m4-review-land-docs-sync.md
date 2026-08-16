@@ -7,18 +7,18 @@ record, the missing stage 6 written, live parity run, the Probe seam guard, the 
 ## Work done
 
 - **Reviewed the m4 diff** (~2 200 insertions) against
-  [RFC 0009](../rfc/done/0009-20260725-m4-snapped-t-request-mode.md) and
-  [edge/provider.md](../edge/provider.md). The load-bearing acceptance criterion held: the leaf
+  [RFC 0009](../../../rfc/done/0009-20260725-m4-snapped-t-request-mode.md) and
+  [edge/provider.md](../../../edge/provider.md). The load-bearing acceptance criterion held: the leaf
   carries no mode code, no snap arithmetic outside `RegularAxis.clip`, no `SnappedAxis` import.
   Findings were doc-side or missing-stage, not algebra defects; each fix below names the doc gap
   that caused the code weirdness where there was one.
-- **Wrote stage 6** ([test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)): a
+- **Wrote stage 6** ([test_e2e_forecast.py](../../../../tests/deterministic/test_e2e_forecast.py)): a
   snapped Selection through `Gateway.resolve` on a mixed direct+derived request, and the
   **divergence pin** — two fetches of one request answered with different reaches →
   `RuntimeFailure` on the Arbiter's closed-projection check.
 - **Ran live parity** — green, unchanged: the last acceptance criterion.
 - **Wrote the Probe seam guard**
-  ([test_probe_seam_guard.py](../../tests/deterministic/test_probe_seam_guard.py)) — static AST,
+  ([test_probe_seam_guard.py](../../../../tests/deterministic/test_probe_seam_guard.py)) — static AST,
   not import-based, since a vendor module legitimately imports the wrapper. Verified it fires by
   injecting both violation kinds, then reverting.
 - **Doc landing** per the RFC's stage-6 list: ADR-0002 (`clip` on the universal axis surface,
@@ -33,7 +33,7 @@ record, the missing stage 6 written, live parity run, the Probe seam guard, the 
   reduced to summary + pointer, and RFC 0009 decision 3's recorded follow-up discharged — the
   triple-verbatim `matches` fold is now `_admits_per_axis` in `domain.py`.
 - **Landed m4**: ticket + RFC 0009 → `done/` with ~35 inbound links rewritten; 003c and 011
-  flipped **Ready**; [delivery status](../tickets/README.md) updated.
+  flipped **Ready**; [delivery status](../../../tickets/README.md) updated.
 
 Gate at close: 209 deterministic tests, live parity, ruff, ruff format, pyright — all green; full
 docs link scan clean.
@@ -42,7 +42,7 @@ docs link scan clean.
 
 - **`ground` returns `EnumerableDomain` and v1 wrappers narrow past it to `GridDomain`** — chosen
   over widening `EnumerableDomain` with `axis()`; recorded in
-  [ADR-0002](../adr/0002-data-model.md) ("what ground returns") and the edge record's Resolution
+  [ADR-0002](../../../adr/0002-data-model.md) ("what ground returns") and the edge record's Resolution
   properties.
 - **The post-fetch `agreed_geometry` fold is a law, structurally unfirable in the timeline shape**
   (one delivery → one lattice stamped on every record) — the edge record's Resolution section and
@@ -54,8 +54,8 @@ docs link scan clean.
   references inside `*Probe` bodies, `Clock` included) — edge record Invariants, *validated by*.
 - **Stage 6's divergence exposure is pinned, not handled** — decision 11 confirmed by test;
   ownership unchanged (003c's landing, revisited at
-  [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback)).
-- **m4 is Done** — [ticket](../tickets/done/01-0100-snapped-t-request-mode.md), all six acceptance
+  [#30](../../../concerns.md#30-response-membership-under-runtime-degraded-fallback)).
+- **m4 is Done** — [ticket](../../../tickets/done/01-0100-snapped-t-request-mode.md), all six acceptance
   boxes ticked.
 
 ## Open questions
@@ -63,11 +63,11 @@ docs link scan clean.
 All owned elsewhere; none minted here:
 
 - **Parity-existence is the edge record's one remaining ⚠ unguarded promise** →
-  [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
+  [#41](../../../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 - **RFC 0008 must be re-staged against the landed mode before 003c implementation** — recorded in
-  the [003c ticket](../tickets/done/01-0110-request-shaping.md) status; the RFC planned the superseded
+  the [003c ticket](../../../tickets/done/01-0110-request-shaping.md) status; the RFC planned the superseded
   edge-clamp.
-- **Two request representations** → [#42](../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)
+- **Two request representations** → [#42](../../../concerns.md#42-two-request-representations-so-resolution-cannot-be-a-method)
   (triggers: 006's refill, 003c's edge migration, #39's builder).
 - **Divergent winner domains go live at 003c** — its ticket carries the landing risk.
 
@@ -76,5 +76,5 @@ All owned elsewhere; none minted here:
 - **Next per the queue: 003c (request shaping) or 011 (Visual Crossing)** — both Ready, no
   ordering constraint between them. 003c starts by re-staging RFC 0008; 011 is the first real test
   of *declaration, not gate* and of the new seam guard.
-- The shortfall-padding site ([#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback))
+- The shortfall-padding site ([#30](../../../concerns.md#30-response-membership-under-runtime-degraded-fallback))
   and the `agreed_geometry` naming checkpoint (edge record, at 006) remain future work as recorded.
