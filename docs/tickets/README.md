@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-08-17
 
-**Current stage:** [0119 — live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) is
-**delivered**. Next is [TWC as the primary Provider](./01-0120-twc-provider.md) — its live capture
-showed a declared window that opens before the vendor's first tick; 0119 makes that leaf retain
+**Current stage:** [0118 — sample-level allowance](./done/01-0118-sample-level-allowance.md) is
+**delivered**. Next is [TWC as the primary Provider](./01-0120-twc-provider.md) — TWC's 1.5 m
+screen height now composes against Open-Meteo's 2 m, and 0119 already makes that leaf retain
 instead of refetching on every request.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
@@ -99,8 +99,9 @@ work `Maint`. What those columns mean is
 | 0115.0030 | [Retentive Store (`MemoryStore`)](./done/01-0115.0030-timeline-store.md) | — | Done | multi-domain carrier | `quantize` + the unit-granular, clockless `MemoryStore` holdings leaf; wired inert until slice 4. |
 | 0115.0040 | [Reservoir retention pipeline](./done/01-0115.0040-reservoir-retention-pipeline.md) | — | Done | retentive store leaf | Retention live in both positions; serve-vs-refetch gate as `Reservoir` policy; mixed-request divergence dissolves; e2e re-fetch assertion flips. |
 | 0117 | [Off-grid homogenization](./done/01-0117-off-grid-homogenization.md) | — | Done | retentive store | Read-back completes a storing `Reservoir`: point-exact reporting, enclosing-cell selection. Guard ticket ([RFC 0016](../rfc/done/0016-20260810-off-grid-homogenization.md)): tests, records, stale `TODO` removed; no `src` logic changes. |
+| 0118 | [Sample-level allowance](./done/01-0118-sample-level-allowance.md) | — | Done | — | Two producers declaring the same parameter at nearby sample levels compose into one profile — the fold reads the Parameter's declared allowance instead of demanding point containment; outside the band still fails the build by name. Minted 2026-08-17 from the 0120 validation pass; numbered into the free slot before done 0119, worked after it — the four-digit line between 0119 and 0120 was exhausted. |
 | 0119 | [Live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) | — | Done | reservoir retention pipeline, off-grid homogenization | A declared live window is an **estimate**; the declared axis answers retention for itself — rolling once its horizon reaches the ask's start, static by containment. Landed 2026-08-17. |
-| 0120 | [TWC provider — as primary](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks | TWC `TimelineProbe` (same shape, so no wrapper), first shipped `SecretSlot`, its parity check, **and the priority flip putting it ahead of Open-Meteo** (2026-08-10). The parity check becomes load-bearing; key-absent becomes the degraded mode. |
+| 0120 | [TWC provider — as primary](./01-0120-twc-provider.md) | — | Ready | snapped request mode, provider parity checks, **sample-level allowance** (its 1.5 m screen height vs Open-Meteo's 2 m fails key-present boot without it) | TWC `TimelineProbe` (same shape, so no wrapper), first shipped `SecretSlot`, its parity check, **and the priority flip putting it ahead of Open-Meteo** (2026-08-10). The parity check becomes load-bearing; key-absent becomes the degraded mode. |
 | 0121 | [Second-provider fallback](./01-0121-second-provider-fallback.md) | — | Planned | TWC provider | Wholesale priority fallback — **TWC primary → Open-Meteo backstop**. Arbiter behaviour only, mocked transports, no live network. Load-bearing as of 2026-08-10: a metered primary's 429 is a `runtime-failure`, which today fails the whole request. Was 0150. |
 | 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters | Shared verified native-to-canonical conversion edges; trigger remains unmet because TWC reuses the existing `km/h → m/s` edge. Was 0160. |
 | 0123 | [Config and graceful degrade](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction. Heavier as of 2026-08-10: key-absent is now the *degraded* mode, and this is the secret path the Mongo sources and the ledger both ride. Was 0180. |

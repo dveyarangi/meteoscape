@@ -81,6 +81,10 @@ _Avoid_: Ground mode, Z tolerance
 The declared statistic Cell that contains every other Cell for the same Functional and therefore answers a Vantage request. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
 _Avoid_: Canonical cell, default cell, total
 
+**Allowance**:
+The band of sample levels a Parameter declares interchangeable — the accepted quality degradation of answering at one level what another producer measures at a nearby one, bounded by the Parameter rather than negotiated per producer. A licence, never a constraint: equal levels compose as a tie regardless; the band additionally licenses unequal levels lying inside it. → [ADR-0007](./adr/0007-capability-carries-its-domain.md), [parameters.md](./parameters.md#sample-level-allowance)
+_Avoid_: Tolerance (float-noise lattice alignment, not quality); aperture (the Vantage's request-side reading); Z band
+
 **Categorical key**:
 A discrete collection-layer dimension used for selection, grouping, or iteration rather than interpolation. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Categorical axis, label axis, index axis

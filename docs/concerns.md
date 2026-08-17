@@ -564,7 +564,7 @@ reference and availability signals are the intended escape → [ideas: freshness
 carries a per-tick `expirationTimeUtc` — observed ~5 min out for the near-term head, ~21 min for the
 tail. It is not adopted, because `expiration` currently serves **two** roles from one field: the
 caller's staleness bound ([mcp_app.py:250](../src/meteoscape/api/mcp_app.py)) and the Reservoir's
-serve-vs-refetch trigger ([reservoir.py:138](../src/meteoscape/nodes/reservoir.py)). Adopting a
+serve-vs-refetch trigger ([reservoir.py:126](../src/meteoscape/nodes/reservoir.py)). Adopting a
 5-minute vendor expiry would set the polling interval to 5 minutes and spend the allotment the
 configured Δ exists to conserve. **Splitting those two roles is the real prerequisite** for any
 provider-real freshness signal — the escape is not a per-provider declaration but that split. Wanted
@@ -1304,8 +1304,11 @@ or read the Holding table through a substrate-side face instead.
 identify conflicting producers and axes. The current implementation satisfies that operator-facing
 contract by pushing identity and prose into geometry helpers:
 
-- `split_extents(left_key: object, …) -> str` and `first_incomparable(Sequence[tuple[object,
-  Separable]])` accept opaque keys and render prose inside `manifold/domain.py`. They also compute the
+- `split_extents(left_key: object, …, z_allowance=None) -> str` and
+  `first_incomparable(Sequence[tuple[object, Separable]], z_allowance=None)` accept opaque keys and
+  render prose inside `manifold/domain.py` — since
+  [0118](./tickets/done/01-0118-sample-level-allowance.md) including the allowance sentence
+  (`z level … outside allowance […]`). They also compute the
   incomparable pair twice: once to find it and again to describe its axes.
 - The shared `require_separable` (`nodes/composition.py`) authors one sentence skeleton with
   caller-supplied identities; parallel `_names` one-liners remain in `nodes/arbiter.py` and
@@ -1313,12 +1316,14 @@ contract by pushing identity and prose into geometry helpers:
 - `UnionCapability.members` retains `ProducerKey`s that nothing reads. Both composition folds author
   any failure before constructing their capability, so neither carrier needs identity.
 
-**Why this waits.** Neither failure path is reachable in a current profile. Incomparability needs a
-regional footprint that shears against a global one; current providers are global, and the expected
-regional/global nesting is described in
-[ADR-0007](./adr/0007-capability-carries-its-domain.md#why-per-axis-folding-is-invalid). The separability
-guard waits on a curvilinear domain ([#12](#12-curvilinear-domains)). The real failing configuration
-should decide which diagnostic is more useful.
+**Why this waits.** The X/Y shear path is still unreachable (current providers are global; the
+expected regional/global nesting is described in
+[ADR-0007](./adr/0007-capability-carries-its-domain.md#why-per-axis-folding-is-invalid)), and the
+separability guard waits on a curvilinear domain ([#12](#12-curvilinear-domains)). The
+**sample-level refusal became reachable at
+[0118](./tickets/done/01-0118-sample-level-allowance.md)** — an out-of-band level renders the band
+sentence from inside geometry, with tests pinning the prose — which grows this concern's surface
+without deciding the diagnostic's shape; the real regional configuration should still decide it.
 
 **Candidate resolutions** — both replace `UnionCapability.members` with an unkeyed collection:
 

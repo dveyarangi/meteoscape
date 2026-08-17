@@ -58,6 +58,28 @@ X/Y footprint, not Z.
   of cell-statistic matching and the maximal-served-cell rule. Layer aliases (`cloud_cover_low` …)
   and any low/mid/high→total **overlap Calculator** (a derivation under a declared assumption — never
   a resampler) are post-v1.
+
+## Sample-level allowance
+
+A Parameter with a **sample**-level Z may declare an **allowance**: the band of levels its consumers
+accept as interchangeable *(decided 2026-08-17; the composition rule it feeds is
+[ADR-0007](./adr/0007-capability-carries-its-domain.md)'s)*. Fallback is accepted quality
+degradation — a 2 m temperature answering where the alternative measures at 1.5 m is that
+degradation — and it is accepted the way everything else here is: by declaring its bound once, per
+Parameter, rather than negotiating it per vendor. Two declared sample levels compose iff **equal**
+(a tie — the band is a licence, never a constraint) or **both** lie inside the band; an unequal
+pair not both inside is a genuine incomparability and fails the build. Leaves
+still declare their **native** level, never widened — the allowance bounds the *comparison*, not the
+declaration.
+
+| ParameterId | allowance | source |
+|---|---|---|
+| `air_temperature` | `[1.25, 2.0] m` | WMO screen height (Guide No. 8: 1.25–2.0 m) |
+| `relative_humidity` | `[1.25, 2.0] m` | same screen instrument |
+| `wind_u` / `wind_v` | none — exact `10 m` | WMO anemometer standard; no differing vendor yet |
+| `precipitation` | none — exact surface `0 m` | |
+| `cloud_cover` | n/a — statistic **span**; containment (maximal served cell) applies | |
+
 ## Rationale (only where the choice is non-obvious)
 
 - **`degC` (not K)** — the surface is an MCP agent answering human-facing weather questions; Celsius is the

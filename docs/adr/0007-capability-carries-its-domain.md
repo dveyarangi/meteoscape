@@ -166,6 +166,24 @@ without it a future reader will re-propose the fold.
 - **Dominance is per-axis extent containment, not `Domain.matches`.** `matches` is the request-side
   admission test and `VantageAxis` specialises it to intersection, so reusing it would silently make
   dominance mean "overlaps".
+- **Sample levels compose by Allowance, not containment** *(2026-08-17, triggered by TWC's 1.5 m
+  screen height against Open-Meteo's 2 m)*. Where both candidates declare a count-1 **sample** cell,
+  containment degenerates to point equality — `[2,2]` neither contains nor is contained by
+  `[1.5,1.5]`, though both are ordinary screen heights — so the exact-fit question is the wrong one.
+  Fallback is *accepted quality degradation*: serving one screen level for another is that
+  degradation, and it is accepted the same way — by declaring its bound. Two sample levels compose
+  iff **equal** (a tie, per the tie rule above — the band never narrows what composes) **or both
+  inside the Parameter's declared allowance**
+  ([parameters.md § Sample-level allowance](../parameters.md#sample-level-allowance)); dominance is
+  then decided on the remaining axes, and the winner's own `Domain` is returned unchanged — its
+  level stays its own, honest within the band. A level outside the band is a genuine
+  incomparability and still fails the build. A sample-vs-span pair under a **banded** parameter
+  is the same incomparability — the band declares that Z is a sample level, so a span candidate
+  under that id is a modeling violation to surface, not absorb; unbanded parameters keep
+  containment for mixed pairs. The allowance is the **Parameter's** fact, never a
+  producer's: a leaf declaring its own acceptability would be policy smuggled into a declaration,
+  and the shared fold stays provider-blind. Statistic **span** cells (cloud cover's column) keep
+  containment — that is the maximal-served-cell rule, where extent is genuinely coverage.
 - **Separability is a precondition of comparing, not of publishing.** A lone candidate compares
   against nothing, so its footprint — separable or not — is returned unchecked; refusing it would
   break reach-equals-`serves` for a leaf `serves` already admits. Two or more candidates must all
@@ -173,8 +191,11 @@ without it a future reader will re-propose the fold.
   ([#12](../concerns.md#12-curvilinear-domains)).
 - **Config narrows candidates; it never declares geometry.** `OfferingSpec` carries no geometry,
   deliberately; declaring reach outright was rejected as a second source of truth that can drift.
-- **The X/Y-first preference stays decided-but-unbuilt.** v1's body is containment only; the judgment's
-  trigger is the first regional provider, the only configuration that can make candidates incomparable.
+- **The X/Y-first preference stays decided-but-unbuilt.** v1's body is containment plus the
+  sample-level Allowance arm above; since 0118 a regional provider is no longer the *only*
+  incomparable configuration (an out-of-band sample level also refuses, and a shipped test
+  exercises it), but it remains the only one whose resolution would need an axis **preference** —
+  the sample-level case resolves by Parameter declaration, not by ranking axes.
 
 ## Consequences
 

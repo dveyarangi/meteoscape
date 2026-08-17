@@ -74,6 +74,7 @@ classDiagram
         Quantity quantity
         Unit canonical_unit
         CellStatistic statistic
+        (float, float) | None z_allowance
     }
     class Quantity {
         str name
@@ -437,7 +438,11 @@ drift → [live-window edge tolerance](../tickets/done/01-0119-live-window-edge-
   does **not** restate its own `ParameterId` (the `ranges` map key) and carries **no** descriptors at
   all. Under the **canonical-mono-unit invariant** (*Parameters* below) every fact that interprets the
   numbers — `quantity`, `extent_scaling`, `unit`, `statistic` — is *entailed by the parameter's
-  identity*, so it has exactly one home, the `ParameterDef`. A tableless reader interprets the slice
+  identity*, so it has exactly one home, the `ParameterDef`. The optional vertical **Allowance**
+  (added 2026-08-17 with [ADR-0007](./0007-capability-carries-its-domain.md)'s sample-level
+  composition rule) is id-entailed the same way — the band of interchangeable sample levels is a
+  fact of the parameter, never of a producer; concrete v1 bands live in
+  [parameters.md § Sample-level allowance](../parameters.md#sample-level-allowance). A tableless reader interprets the slice
   through the Coverage's own **`capability`** (`capability.served[pid][0].canonical_unit` /
   `.statistic` / `.quantity` / `.extent_scaling`); the global `ParameterTable` is not needed at read. This
   mirrors CoverageJSON, where a `range` carries minimal value facts and the `parameters` block carries
