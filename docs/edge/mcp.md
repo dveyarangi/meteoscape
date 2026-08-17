@@ -22,7 +22,10 @@ subset of it.
   Omitted `start` begins at the tick containing now; omitted `end` runs to the profile's live
   reach end. A backwards window (raw instants, implicit `start = now`) → `bad-request`; a
   well-formed window with no overlap with the served range → `capability-mismatch` — admission's
-  answer, never the edge's, which holds no reach authority. Out-of-range bounds yield the
+  answer, never the edge's, which holds no reach authority. A window that *does* overlap the
+  declared range but which the Holdings cannot meet — a rolling leaf asked below its first delivered
+  tick — is admitted and reaches the same outcome from the serving seam instead
+  ([0119](../tickets/done/01-0119-live-window-edge-tolerance.md)). Out-of-range bounds yield the
   **servable part**; the response's `valid_time` shows the window actually served. Landed
   2026-08-06 ([003c](../tickets/done/01-0110-request-shaping.md)) as a **compatible** contract
   change: the schema always declared `start`/`end`; only the semantics went live.
@@ -98,6 +101,14 @@ request).
   *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
   (`test_history_window_is_capability_mismatch_with_no_vendor_call`,
   `test_out_of_range_bounds_fetch_exactly_the_clipped_window`).
+- A window overlapping the declaration but not the Holdings reaches the same
+  `capability-mismatch` from the serving seam, with **no vendor call once warm** — a cold store
+  still pays one first-touch fetch, which is retained and answers later asks — *validated by:*
+  [test_reservoir.py](../../tests/deterministic/nodes/test_reservoir.py)
+  (`test_wholly_in_gap_ask_is_capability_mismatch_without_refetch_when_warm`). Unreachable until a
+  leaf declares wider than it delivers, which is
+  [TWC](../tickets/01-0120-twc-provider.md) — a **compatible** contract addition, since no wired
+  provider can produce it today.
 - A vendor delivering fewer ticks than declared is an honest shorter answer, disclosed through
   `valid_time` — never a fault ([edge/provider.md](./provider.md)) — *validated by:*
   [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)

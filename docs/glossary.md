@@ -201,7 +201,7 @@ A Reconciler that blends overlapping contributors instead of selecting one. → 
 ### Outcomes
 
 **Capability mismatch**:
-An unavailable requested Parameter because no producer declares support for it. → [architecture.md](./architecture.md#failure-nodata-and-availability)
+An unavailable requested Parameter — either no producer declares support for it, or one does and still cannot serve it where a refetch would not help. → [architecture.md](./architecture.md#failure-nodata-and-availability)
 _Avoid_: Not found, unsupported, Nodata
 
 **Runtime failure**:

@@ -9,7 +9,7 @@
   `TimelineProvider` is extracted; this ticket writes only a Probe behind it),
   [m3 — Provider parity checks](./done/01-0080-provider-parity-checks.md) (the harness this Probe's check
   plugs into),
-  [0119 — live-window edge tolerance](./01-0119-live-window-edge-tolerance.md) (**added 2026-08-11**
+  [0119 — live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) (**added 2026-08-11**
   after the stage 0 capture: TWC's series starts at the next whole hour, so without 0119 the refill
   gate never reaches containment and every request costs one metered vendor call)
 - **Blocks:** [004 — Second-provider fallback](./01-0121-second-provider-fallback.md) (needs a real second
@@ -93,7 +93,7 @@ this ticket is where we find out.
 > The premise that a declaration must match delivery exactly is what gave way. A live window is an
 > **estimate**; holdings are the truth; and the declared axis itself decides whether a refetch would
 > add anything — for a rolling window, satisfied once its horizon reaches the ask's start. That rule
-> is [0119](./01-0119-live-window-edge-tolerance.md), landing ahead of this ticket, and it is
+> is [0119](./done/01-0119-live-window-edge-tolerance.md), landing ahead of this ticket, and it is
 > vendor-agnostic rather than a per-vendor declaration knob.
 >
 > **The hourly Shelf (`shelf=1h`) therefore stands** — not because it is exact, but because **declaring late is
@@ -150,7 +150,7 @@ this ticket is where we find out.
 > | `cadence` | **`12h`, operator-overridable** | Polling policy against a monthly allotment; faster nowcasting may choose differently. **The vendor's own refresh is ~5 min (near-term) / ~21 min (tail)** — see below; 12 h is a deliberate under-poll, not an estimate of the vendor. |
 > | `publication_latency` | **`0`** | The bucket regime has no run-publication delay → [ADR-0003](../adr/0003-provenance-and-origin.md#run-and-bucket-regimes). |
 > | `max_lead` | from the selected offering | ✅ **Confirmed 2026-08-11** for all seven durations: 5/11/23/47/71/239/359 h, uniform hourly steps. |
-> | `shelf` | **`1h`** | ✅ Delivery is **hour**-anchored, and starts at the *next* whole hour — so `1h` over-declares by up to an hour, absorbed by [0119](./01-0119-live-window-edge-tolerance.md). Declaring late is the safe direction. |
+> | `shelf` | **`1h`** | ✅ Delivery is **hour**-anchored, and starts at the *next* whole hour — so `1h` over-declares by up to an hour, absorbed by [0119](./done/01-0119-live-window-edge-tolerance.md). Declaring late is the safe direction. |
 >
 > **`cadence` is not a vendor fact and must not be "corrected" to one.** The payload carries a
 > per-tick `expirationTimeUtc` (first 7 ticks ~5 min out, the remaining 233 ~21 min out). We do not

@@ -138,7 +138,7 @@ Rule of thumb: **units & parameter identity = Provider (write-time, in the data)
 
 ### Failure, nodata, and availability
 
-Three distinct outcomes, never conflated: **nodata** (a producer succeeded but has no value at a cell — `present[i] = False`; **data, a successful gap**), **`runtime-failure`** (couldn't produce — 5xx / timeout / malformed), **`capability-mismatch`** (no producer declares it). The failure-aware Arbiter contract resolves each parameter independently and **omits** any whose candidates all fault, so a partially-served request returns the **producible subset** (an unserved parameter is simply absent, never persisted). `project` stays closed — failures are not Coverage state; the **edge** derives each absent parameter's reason (capable ⇒ `runtime-failure`, else `capability-mismatch`) and raises a whole-request error only when **nothing** is produced. The implemented selection path still propagates `RuntimeFailure` for the whole request; [concern #28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold) records the widening needed for per-candidate fall-through and partial results.
+Three distinct outcomes, never conflated: **nodata** (a producer succeeded but has no value at a cell — `present[i] = False`; **data, a successful gap**), **`runtime-failure`** (couldn't produce — 5xx / timeout / malformed), **`capability-mismatch`** (no producer declares it — **or one does, admits the ask, and still cannot serve it where a refetch would not help**: a rolling window asked below its own start was never published and only moves further away, so the honest answer is unservable, not faulted → [ADR-0002 § the two predicates](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)). The failure-aware Arbiter contract resolves each parameter independently and **omits** any whose candidates all fault, so a partially-served request returns the **producible subset** (an unserved parameter is simply absent, never persisted). `project` stays closed — failures are not Coverage state; the **edge** derives each absent parameter's reason (capable ⇒ `runtime-failure`, else `capability-mismatch`) and raises a whole-request error only when **nothing** is produced. That derivation assumes capable-implies-servable, which a **capable but unservable** parameter breaks; it holds today only because every parameter shares one T reach, so the serving check fails the whole request before the edge derives anything → [#30](./concerns.md#30-response-membership-under-runtime-degraded-fallback). The implemented selection path still propagates `RuntimeFailure` for the whole request; [concern #28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold) records the widening needed for per-candidate fall-through and partial results.
 
 ## Major components
 
@@ -232,11 +232,15 @@ Store's lattices remain private ([ADR-0006](./adr/0006-materialization-granulari
 
 `project` applies that `Capability`'s **per-Parameter admission** first, then loads the admitted
 Parameters' Holdings from the Store using the raw request. A Holding refills when it is absent,
-expired, or — only for bounded T — does not cover `request T ∩ child Reach`; `ANY` asks for everything
-held, so freshness alone governs. Missing Holdings are requested together on the Store's `quantize`d
-fetch-order, assimilated whole, and reloaded. A child's natural fetch unit may make the answer wider
-than the refill ask. Serving is restricted to the same admitted set, so retained data outside the
-child's current Capability is omitted rather than revived.
+expired, or — only for bounded T — when the **declared** axis answers that its Holdings do not yet
+satisfy the ask
+([ADR-0002](./adr/0002-data-model.md#the-two-predicates-admission-and-retention)); `ANY` asks for
+everything held, so freshness alone governs. Missing Holdings are requested together on the Store's
+`quantize`d fetch-order, assimilated whole, and reloaded. A child's natural fetch unit may make the
+answer wider than the refill ask. Holdings that **still** do not meet the ask end the request as
+`capability-mismatch` — a check on the shared serving path, because an ask no refetch can help never
+refills and would otherwise reach it only when cold. Serving is restricted to the same admitted set,
+so retained data outside the child's current Capability is omitted rather than revived.
 
 Read-back homogenizes the surviving Holdings onto the request-derived answer geometry. For a Source,
 that is also the fact→product boundary: native cells are relabelled below the Arbiter so every answer
@@ -379,7 +383,11 @@ Every seam in one place — the *promise* only; behaviour and rationale are in M
 - **Error taxonomy** — `capability-mismatch | runtime-failure | bad-request`; adapters map to protocol errors. Distinct from successful **nodata**; partial success is the norm → [Failure, nodata, and availability](#failure-nodata-and-availability).
 - **Typed config** — catalogues (provider / calculator / parameter) + secrets + `ProfileConfig`
   (`OfferingDef`s, `CalculatorDef`s, root store, arbiter) → `SourceRegistry` + `CalculatorRegistry` →
-  `ProfileDef`.
+  `ProfileDef`. The boot seam is **parse, then join**: what is checkable from operator input alone is
+  typed settings' (a pydantic `ValidationError`), and everything past it is config *meeting* a
+  catalogue — unknown entry, dangling secret, duplicate key, missing `StoreSpec`, an offering setting
+  contradicting a catalogue declaration — which is `CompositionError`'s. A rule needing one number
+  from each side has no home in configuration and belongs to the join.
 
 ## Data / request flow
 

@@ -84,7 +84,7 @@ A(now) = floor(now - L, Δ)      # latest run whose publication (r + L) has alre
   off-phase. The resulting leading-edge over-declaration is absorbed by retention, not by the
   declaration
   ([ADR-0002 § the two predicates](./0002-data-model.md#the-two-predicates-admission-and-retention),
-  [0119](../tickets/01-0119-live-window-edge-tolerance.md)).
+  [0119](../tickets/done/01-0119-live-window-edge-tolerance.md)).
 
   **The cadence must not exceed `max_lead`.** A rolling producer's Holding is refreshed only on
   expiry, so a cadence longer than the horizon lets the held window fall entirely behind `now` between

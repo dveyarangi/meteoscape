@@ -391,7 +391,7 @@ behind `now` between refreshes and the producer goes blind.
 
 This is why the pair lives on the `Axis` rather than in its consumer: **only the axis knows how its
 own extent moves.** A consumer branching on axis kind would restate that knowledge somewhere it can
-drift → [live-window edge tolerance](../tickets/01-0119-live-window-edge-tolerance.md).
+drift → [live-window edge tolerance](../tickets/done/01-0119-live-window-edge-tolerance.md).
 
   Every miss is an honest per-parameter omission (`capability-mismatch` reason at the edge). The
   response always rides `sel.domain` (closed projection): the served Z cell is the requested window,

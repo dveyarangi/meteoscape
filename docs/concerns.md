@@ -241,6 +241,11 @@ end* is a **shortfall**: the crop is well-defined over the overlap and short by 
 callers can diagnose (a vendor delivered less than it declared) and
 [#30](#30-response-membership-under-runtime-degraded-fallback) can eventually pad.
 
+**Family note (0119, 2026-08-17).** [Live-window edge tolerance](./tickets/done/01-0119-live-window-edge-tolerance.md)
+is the same *admitted-by-extent then unserved* family — a declared window that over-reaches delivery —
+but does not narrow this concern: its off-phase / different-step case stays open. 0119 repaired the
+retention predicate and the in-gap serving seam; it did not deepen `serves`.
+
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
 **Kind:** room-left (module layout)
@@ -252,19 +257,6 @@ a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`*
 pure refactor, no contract change. The trigger has not fired: `sub_lattice_offset` and
 `RegularAxis.clip` are the two index-arithmetic sites, while `quantize` delegates its spatial snap to
 `Axis.clip` and writes none. Do not split preemptively.
-
-**Typed temporal extent reads are a separate repetition.** Three sites write the same four lines —
-`as_separable` → `axis(T).extent` →
-narrow to `datetime` → `# type: ignore[return-value]`: `mcp_app._t_extent` (the reach fold),
-`reservoir._t_extent` (a declared geometry), and `reservoir._request_t_bounds` (snapped bounds or an
-enumerable extent). The copies are honest — each raises its own caller's sentence. What is worth
-deciding rather than drifting: whether the *typed
-coordinate read* belongs beside `as_separable` / `as_enumerable_axes` in `domain.py` as a fourth
-narrowing helper returning `Interval[datetime] | None`, which would also delete three
-`type: ignore`s. This does **not** re-trigger the `lattice.py` carve above — that one counts index
-arithmetic, and this writes none. Marked in code with `TODO(#22)` on `_request_t_bounds`.
-`as_enumerable_axes` states the layering rule: geometry checks are geometry's; the error sentence
-stays the caller's.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 

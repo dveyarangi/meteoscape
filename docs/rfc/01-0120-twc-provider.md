@@ -9,7 +9,7 @@ Implementation plan for [TWC provider](../tickets/01-0120-twc-provider.md) (lega
 `TimelineProvider`, with seven enterprise offering rows, the first shipped `SecretSlot`, its parity
 check, and the priority flip. **The flip is two integers; the Probe is the ticket.**
 
-**Depends on [0119 — live-window edge tolerance](../tickets/01-0119-live-window-edge-tolerance.md)**
+**Depends on [0119 — live-window edge tolerance](../tickets/done/01-0119-live-window-edge-tolerance.md)**
 (added 2026-08-11 after the stage 0 capture). TWC's series starts at the next whole hour, which makes
 the Reservoir's refill gate refetch on *every* request — one metered call per request. 0119 lands
 first.
@@ -23,7 +23,7 @@ than working around it.
 | Boundary | Owner | What this does to it |
 |---|---|---|
 | `TimelineProbe` — value types only | [edge/provider.md](../edge/provider.md) | New implementation. **No** `Domain`, `Selection`, `Coverage`, `Capability`, `Provenance`, `Clock` — pinned by the **existing** [test_probe_seam_guard.py](../../tests/deterministic/test_probe_seam_guard.py), which auto-discovers vendor modules, so `twc.py` is guarded on creation with nothing written (corrected 2026-08-11; an earlier draft called for a new guard and mis-cited the edge record as listing this unguarded). |
-| Declared live window vs delivered series | [0119](../tickets/01-0119-live-window-edge-tolerance.md) | **Moved out of this ticket.** TWC's series starts at the *next* whole hour, so the declared window opens before any tick exists. Repaired there, ahead of this ticket. |
+| Declared live window vs delivered series | [0119](../tickets/done/01-0119-live-window-edge-tolerance.md) | **Moved out of this ticket.** TWC's series starts at the *next* whole hour, so the declared window opens before any tick exists. Repaired there, ahead of this ticket. |
 | `TimelineProvider` — the shape | [timeline.py](../../src/meteoscape/nodes/providers/timeline.py) | **Unchanged**, except one added Z constant (`Z_1_5M`). If it needs more, that is this ticket's finding. |
 | Offering identity vs operator policy | [ADR-0005](../adr/0005-build-time-composition.md), ticket | **Identity → `OfferingDef.name`** (duration, a catalogue row, boot-checked). **Policy → `OfferingDef.settings`** (cadence). First use of `settings`, wired at [composition.py:94](../../src/meteoscape/nodes/composition.py) and unused since. |
 | `SecretSlot` | [catalog/providers.py](../../src/meteoscape/nodes/catalog/providers.py) | First shipped manifest to declare one. The seam is already built and guarded; this exercises it. |
@@ -162,7 +162,7 @@ TWC's series starts at the next whole hour while a `1h` Shelf floors to the curr
 always sits in the declared-but-undelivered gap — and the refill gate compares the request against
 the **declared** reach, so containment never holds and **every request refills**. That is one metered
 call per request, dwarfing the Δ/2 effect above. It is repaired ahead of this ticket by
-[0119](../tickets/01-0119-live-window-edge-tolerance.md), which this ticket now depends on.
+[0119](../tickets/done/01-0119-live-window-edge-tolerance.md), which this ticket now depends on.
 
 ## Facts about our own tree (verified 2026-08-11)
 
@@ -407,7 +407,7 @@ than alongside it.
   This is the one declaration the first review got wrong, so it gets a test rather than a comment.
   It stands as written after the capture: the vendor's *first tick* under that clock would be
   `14:00`, but this test pins the **declaration**, and the one-hour over-declaration between them is
-  exactly what [0119](../tickets/01-0119-live-window-edge-tolerance.md) absorbs. Do not "fix" this
+  exactly what [0119](../tickets/done/01-0119-live-window-edge-tolerance.md) absorbs. Do not "fix" this
   test to expect `14:00` — that would re-couple the declaration to delivery.
 
 ### Stage 2 — composition *(green)*

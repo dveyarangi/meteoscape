@@ -160,22 +160,21 @@ wholly (timeline: T and Z), so the leaf answers multi-domain in its native geome
 fetches the provider's whole live window; later requests inside that fresh window read retained
 Holdings. Read-back crops the served answer.
 
-> **⚠ A leaf's declared live window is an estimate of what its vendor serves, not a promise.** Today
-> the refill gate demands that Holdings **contain** the request ∩ the declared reach
-> ([reservoir.py:113](../../src/meteoscape/nodes/reservoir.py) →
-> [:135](../../src/meteoscape/nodes/reservoir.py)), which breaks a rolling leaf two ways: a window
-> declared wider at its leading edge than the delivered series makes the test **unsatisfiable** (every
-> request refetches), and a window that advances on its Shelf makes the **Shelf**, not the declared
-> cadence, the real refetch interval. Open-Meteo shows neither, because its daily-shelf declaration
-> matches its delivery and its Shelf (24 h) is **longer** than its cadence (1 h), so freshness always
-> expires first; TWC shows both. Repaired at
-> [0119](../tickets/01-0119-live-window-edge-tolerance.md) by the declared axis answering retention for
-> itself — a rolling window satisfied once its horizon reaches the ask's start, a static one by
-> containment
-> ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)).
+> **A leaf's declared live window is an estimate of what its vendor serves, not a promise.** The
+> declared axis answers retention for itself — a rolling window satisfied once its horizon reaches
+> the ask's start, a static one by containment
+> ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention);
+> [0119](../tickets/done/01-0119-live-window-edge-tolerance.md)). An ask the Holdings cannot meet is a
+> `CapabilityMismatch`, not a refetch storm.
 >
 > **A leaf's cadence must therefore not exceed its `max_lead`**, or its Holding can fall entirely
-> behind `now` between refreshes.
+> behind `now` between refreshes — enforced on `CadenceDef` construction, which raises `ValueError`:
+> it holds both numbers and neither name (*validated by:* `test_cadence_must_not_exceed_max_lead` in
+> [test_cadence.py](../../tests/deterministic/manifold/test_cadence.py)). When the cadence came from an
+> **operator setting**, the leaf's `build` owes the translation — `CompositionError` naming its
+> `SourceKey` and offering, `build` being the first layer that knows whose numbers these are —
+> **⚠ unguarded**: no shipped leaf takes a cadence setting yet, so the first is
+> [TWC](../tickets/01-0120-twc-provider.md) and the check lands with it.
 
 - The **Reservoir's read-back** does the fact→product relabel: native Z cells (2 m, 10 m, surface,
   column) are rewritten onto the request's vantage; values and provenance untouched. The
