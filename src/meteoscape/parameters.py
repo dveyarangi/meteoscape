@@ -84,6 +84,8 @@ class ParameterDef:
     quantity: Quantity
     canonical_unit: Unit
     statistic: CellStatistic
+    # Inclusive metres-above-ground; None = exact. A fact of the parameter, never a producer (ADR-0007).
+    z_allowance: tuple[float, float] | None = None
 
     @property
     def extent_scaling(self) -> ExtentScaling:

@@ -78,6 +78,7 @@ _CANONICAL: tuple[ParameterDef, ...] = (
         quantity=Quantity("air_temperature", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("degC"),
         statistic=CellStatistic.POINT,
+        z_allowance=(1.25, 2.0),
     ),
     ParameterDef(
         id=PRECIPITATION,
@@ -102,6 +103,7 @@ _CANONICAL: tuple[ParameterDef, ...] = (
         quantity=Quantity("relative_humidity", ExtentScaling.INTENSIVE),
         canonical_unit=Unit("percent"),
         statistic=CellStatistic.POINT,
+        z_allowance=(1.25, 2.0),
     ),
     ParameterDef(
         id=CLOUD_COVER,

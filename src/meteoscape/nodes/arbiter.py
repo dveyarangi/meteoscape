@@ -28,6 +28,7 @@ from ..manifold.coverage import CoverageRecord
 from ..manifold.data import ParameterData
 from ..manifold.domain import (
     Domain,
+    Interval,
     contains_extents,
     first_incomparable,
     split_extents,
@@ -62,9 +63,11 @@ class Reconciler(Protocol):
     ) -> Sequence[Producer]: ...
 
     def compose_domains(
-        self, parameter: ParameterId, candidates: Sequence[tuple[ProducerKey, Domain]]
+        self,
+        definition: ParameterDef,
+        candidates: Sequence[tuple[ProducerKey, Domain]],
     ) -> Domain:
-        """The composed Reach for one parameter over its candidates' published reaches (ADR-0007)."""
+        """The composed Reach for `definition` over its candidates' published reaches (ADR-0007)."""
         ...
 
 
@@ -78,7 +81,9 @@ class PriorityReconciler:
         return sorted(candidates, key=lambda p: self.priority[p.key])
 
     def compose_domains(
-        self, parameter: ParameterId, candidates: Sequence[tuple[ProducerKey, Domain]]
+        self,
+        definition: ParameterDef,
+        candidates: Sequence[tuple[ProducerKey, Domain]],
     ) -> Domain:
         """Dominance-or-raise: the candidate whose reach contains all others, else `CompositionError`.
 
@@ -90,29 +95,32 @@ class PriorityReconciler:
         """
         if not candidates:
             raise CompositionError(
-                f"reach composition for {parameter} requires at least one candidate"
+                f"reach composition for {definition.id} requires at least one candidate"
             )
         if len(candidates) == 1:
             return candidates[0][1]
 
+        band = None if definition.z_allowance is None else Interval(*definition.z_allowance)
         checked = [
             (
                 key,
-                require_separable(domain, rule=f"reach composition for {parameter}", declarer=key),
+                require_separable(
+                    domain, rule=f"reach composition for {definition.id}", declarer=key
+                ),
             )
             for key, domain in candidates
         ]
         for index, (_key, domain) in enumerate(checked):
-            if all(contains_extents(domain, other) for _k, other in checked):
+            if all(contains_extents(domain, other, z_allowance=band) for _k, other in checked):
                 return candidates[index][1]
 
-        witness = first_incomparable(checked)
+        witness = first_incomparable(checked, z_allowance=band)
         # Containment is transitive: no maximum ⇒ some pair nests neither way.
         assert witness is not None
         (left_key, left), (right_key, right) = witness
         raise CompositionError(
-            f"incomparable reach footprints for {parameter}: "
-            f"{split_extents(left_key, left, right_key, right)}; "
+            f"incomparable reach footprints for {definition.id}: "
+            f"{split_extents(left_key, left, right_key, right, z_allowance=band)}; "
             f"candidates {_names(candidates)}; X/Y preference is unbuilt"
         )
 
@@ -148,7 +156,10 @@ class Arbiter:
         self._capability = UnionCapability(
             members={p.key: p.node.capability for p in self.producers},
             domains={
-                parameter: reconciler.compose_domains(parameter, _reaches(parameter, candidates))
+                parameter: reconciler.compose_domains(
+                    candidates[0].node.capability.parameters[parameter],
+                    _reaches(parameter, candidates),
+                )
                 for parameter, candidates in self.by_parameter.items()
             },
         )

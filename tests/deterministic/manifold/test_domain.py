@@ -1092,3 +1092,79 @@ def test_as_separable_returns_the_domain_or_none() -> None:
     footprint = _footprint(x=Interval(-10.0, 10.0))
     assert as_separable(footprint) is footprint  # same object, no synthesis
     assert as_separable(_Curvilinear()) is None
+
+
+# --- Sample-level allowance (ADR-0007) ---
+
+_SCREEN = Interval(1.25, 2.0)
+
+
+def _sample(*, z: float, days: int = 10) -> FootprintDomain:
+    """Shipped sample Z is a count-1 RegularAxis, not a ContinuousAxis degenerate."""
+    t0 = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: RegularAxis(AxisName.Z, z, 1.0, 1, False),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(t0, t0 + timedelta(days=days))),
+        }
+    )
+
+
+def test_sample_levels_inside_allowance_compose_both_ways() -> None:
+    """1.5 m and 2 m are a Z-tie under the screen band, so other axes decide dominance."""
+    low = _sample(z=1.5)
+    high = _sample(z=2.0)
+    assert contains_extents(low, high, z_allowance=_SCREEN) is True
+    assert contains_extents(high, low, z_allowance=_SCREEN) is True
+
+
+def test_sample_level_outside_allowance_refuses_and_names_the_band() -> None:
+    """An unequal pair not both inside is incomparable: the band must not become any two points."""
+    screen = _sample(z=1.5)
+    mast = _sample(z=30.0)
+    assert contains_extents(screen, mast, z_allowance=_SCREEN) is False
+    assert contains_extents(mast, screen, z_allowance=_SCREEN) is False
+    message = split_extents("screen", screen, "mast", mast, z_allowance=_SCREEN)
+    assert "z level 30.0 outside allowance [1.25, 2.0]" in message
+    assert "extends beyond" not in message
+
+
+def _column(*, z: Interval[float], days: int = 10) -> FootprintDomain:
+    t0 = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: IntervalAxis(AxisName.Z, z),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(t0, t0 + timedelta(days=days))),
+        }
+    )
+
+
+def test_banded_parameter_refuses_sample_vs_span() -> None:
+    """A banded Z is a sample level; absorbing a span via containment would hide a modeling violation."""
+    sample = _sample(z=1.5)
+    column = _column(z=Interval(0.0, 15_000.0))
+    assert contains_extents(sample, column, z_allowance=_SCREEN) is False
+    assert contains_extents(column, sample, z_allowance=_SCREEN) is False
+
+
+def test_span_cells_keep_containment_when_banded() -> None:
+    """The band is a sample-level licence; statistic spans still compose by coverage."""
+    total = _column(z=Interval(0.0, 15_000.0))
+    low = _column(z=Interval(0.0, 2_000.0))
+    assert contains_extents(total, low, z_allowance=_SCREEN) is True
+    assert contains_extents(low, total, z_allowance=_SCREEN) is False
+
+
+def test_first_incomparable_honours_the_allowance() -> None:
+    """A licensed Z-tie is not a witness; a level outside the band still is."""
+    low = _sample(z=1.5)
+    high = _sample(z=2.0)
+    mast = _sample(z=30.0)
+    assert first_incomparable([("low", low), ("high", high)], z_allowance=_SCREEN) is None
+    witness = first_incomparable([("low", low), ("mast", mast)], z_allowance=_SCREEN)
+    assert witness is not None
+    assert {witness[0][0], witness[1][0]} == {"low", "mast"}

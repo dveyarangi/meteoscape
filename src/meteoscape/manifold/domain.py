@@ -418,31 +418,70 @@ class Separable(Protocol):
     def axis(self, name: AxisName) -> Axis: ...
 
 
-def contains_extents(outer: Separable, inner: Separable) -> bool:
+def contains_extents(
+    outer: Separable, inner: Separable, z_allowance: Interval | None = None
+) -> bool:
     """Whether `outer` whole-box contains `inner` by per-axis extent — **not** `Domain.matches`.
 
     `matches` is the request-side admission test and `VantageAxis` specialises it to intersection, so
     reusing it would silently make dominance mean "overlaps" (ADR-0007). Both reach consumers — the
     reconciler's domain composition and a Calculator's contained-in-all — read this downward.
+
+    `z_allowance` is a plain band, never a `ParameterDef` — geometry stays parameter-blind. `None`
+    is pure containment on Z too.
     """
     return all(
-        outer.axis(name).extent.contains(inner.axis(name).extent)  # type: ignore[arg-type]
+        _extent_contains(outer.axis(name).extent, inner.axis(name).extent, name, z_allowance)
         for name in AXIS_ORDER
     )
 
 
+def _extent_contains(
+    outer: Interval, inner: Interval, name: AxisName, z_allowance: Interval | None
+) -> bool:
+    if name is AxisName.Z and z_allowance is not None:
+        return _sample_z_contains(outer, inner, z_allowance)
+    return outer.contains(inner)  # type: ignore[arg-type]
+
+
+def _sample_z_contains(outer: Interval, inner: Interval, band: Interval) -> bool:
+    """Equal levels compose even outside the band — the band licenses, it never constrains (ADR-0007).
+
+    A sample-vs-span pair under a band is a modeling violation: do not absorb it as span-contains-point.
+    """
+    outer_sample = outer.lower == outer.upper
+    inner_sample = inner.lower == inner.upper
+    if outer_sample and inner_sample:
+        return outer == inner or (band.contains(outer) and band.contains(inner))
+    if outer_sample or inner_sample:
+        return False
+    return outer.contains(inner)  # type: ignore[arg-type]
+
+
 # TODO: Move operator attribution out of geometry; see concern #46.
-def split_extents(left_key: object, left: Separable, right_key: object, right: Separable) -> str:
+def split_extents(
+    left_key: object,
+    left: Separable,
+    right_key: object,
+    right: Separable,
+    z_allowance: Interval | None = None,
+) -> str:
     """Why two Domains fail to nest, **both directions** — the split is the incomparability.
 
     A single "failing axis" is a misreport: nested-but-incomparable boxes (`Global x 10 d` vs
     `Europe x 16 d`) each dominate on a *different* axis, and naming only the first sends an operator to
     the axis where the other candidate is winning.
+
+    A sample level outside `z_allowance` is not coverage: report the level and the band instead of
+    the mutual "extends beyond" pair (ADR-0007).
     """
     parts: list[str] = []
     for name in AXIS_ORDER:
         a = left.axis(name).extent
         b = right.axis(name).extent
+        if name is AxisName.Z and z_allowance is not None:
+            parts.extend(_sample_z_split(left_key, a, right_key, b, z_allowance))
+            continue
         if not a.contains(b):  # type: ignore[arg-type]
             parts.append(f"{right_key} extends beyond {left_key} on {name.value}")
         if not b.contains(a):  # type: ignore[arg-type]
@@ -450,13 +489,41 @@ def split_extents(left_key: object, left: Separable, right_key: object, right: S
     return "; ".join(parts)
 
 
+def _sample_z_split(
+    left_key: object,
+    left: Interval,
+    right_key: object,
+    right: Interval,
+    band: Interval,
+) -> list[str]:
+    if _sample_z_contains(left, right, band) and _sample_z_contains(right, left, band):
+        return []
+    left_sample = left.lower == left.upper
+    right_sample = right.lower == right.upper
+    if left_sample and right_sample:
+        return [
+            f"z level {extent.lower} outside allowance [{band.lower}, {band.upper}]"
+            for extent in (left, right)
+            if not band.contains(extent)
+        ]
+    parts: list[str] = []
+    if not _sample_z_contains(left, right, band):
+        parts.append(f"{right_key} extends beyond {left_key} on z")
+    if not _sample_z_contains(right, left, band):
+        parts.append(f"{left_key} extends beyond {right_key} on z")
+    return parts
+
+
 def first_incomparable(
     candidates: Sequence[tuple[object, Separable]],
+    z_allowance: Interval | None = None,
 ) -> tuple[tuple[object, Separable], tuple[object, Separable]] | None:
     """First pair nesting neither way — the witness both call sites report when selection is unresolved."""
     for i, left in enumerate(candidates):
         for right in candidates[i + 1 :]:
-            if not contains_extents(left[1], right[1]) and not contains_extents(right[1], left[1]):
+            if not contains_extents(
+                left[1], right[1], z_allowance=z_allowance
+            ) and not contains_extents(right[1], left[1], z_allowance=z_allowance):
                 return left, right
     return None
 

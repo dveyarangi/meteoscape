@@ -34,6 +34,7 @@ from meteoscape.manifold.domain import (
     FootprintDomain,
     GridDomain,
     Interval,
+    IntervalAxis,
     RegularAxis,
 )
 from meteoscape.manifold.provenance import AtomicOrigin, PerParameter
@@ -49,7 +50,7 @@ from meteoscape.nodes.providers.base import Provider
 from meteoscape.nodes.reservoir import Reservoir
 from meteoscape.nodes.store import StoreFactory
 from meteoscape.nodes.weaver import wire_source
-from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, ParameterId
+from meteoscape.parameters import AIR_TEMPERATURE, CLOUD_COVER, PRECIPITATION, WIND_U, ParameterId
 
 
 def _bind(*offerings: OfferingDef, catalog=None):
@@ -379,6 +380,28 @@ def _global(*, days: int) -> FootprintDomain:
     )
 
 
+def _sample_at(*, z: float, days: int) -> FootprintDomain:
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: RegularAxis(AxisName.Z, z, 1.0, 1, False),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(_T0, _T0 + timedelta(days=days))),
+        }
+    )
+
+
+def _column_at(*, z: Interval[float], days: int) -> FootprintDomain:
+    return FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: IntervalAxis(AxisName.Z, z),
+            AxisName.T: ContinuousAxis(AxisName.T, Interval(_T0, _T0 + timedelta(days=days))),
+        }
+    )
+
+
 def _box(*, x: Interval[float], days: int = 10) -> FootprintDomain:
     return FootprintDomain(
         axes={
@@ -398,6 +421,10 @@ def _reconciler() -> PriorityReconciler:
     return PriorityReconciler(priority={})
 
 
+def _air():
+    return core_parameters().get(AIR_TEMPERATURE)
+
+
 class _NonSeparable(Domain):
     """Curvilinear stand-in: satisfies `Domain`, exposes no axes (concern #12, source role)."""
 
@@ -410,15 +437,13 @@ class _NonSeparable(Domain):
 
 def test_compose_domains_single_candidate_returns_itself() -> None:
     domain = _global(days=10)
-    assert _reconciler().compose_domains(AIR_TEMPERATURE, [(_pkey("a"), domain)]) is domain
+    assert _reconciler().compose_domains(_air(), [(_pkey("a"), domain)]) is domain
 
 
 def test_compose_domains_returns_dominating_reach() -> None:
     short = _global(days=10)
     long = _global(days=16)
-    result = _reconciler().compose_domains(
-        AIR_TEMPERATURE, [(_pkey("short"), short), (_pkey("long"), long)]
-    )
+    result = _reconciler().compose_domains(_air(), [(_pkey("short"), short), (_pkey("long"), long)])
     assert result is long
 
 
@@ -426,9 +451,7 @@ def test_compose_domains_equal_extent_tie_returns_one_input() -> None:
     left = _global(days=10)
     right = _global(days=10)
     assert left is not right
-    result = _reconciler().compose_domains(
-        AIR_TEMPERATURE, [(_pkey("a"), left), (_pkey("b"), right)]
-    )
+    result = _reconciler().compose_domains(_air(), [(_pkey("a"), left), (_pkey("b"), right)])
     assert result is left or result is right
 
 
@@ -441,7 +464,7 @@ def test_compose_domains_ignores_priority(priority: Mapping[ProducerKey, int]) -
     short = _global(days=10)
     long = _global(days=16)
     result = PriorityReconciler(priority=priority).compose_domains(
-        AIR_TEMPERATURE, [(_pkey("short"), short), (_pkey("long"), long)]
+        _air(), [(_pkey("short"), short), (_pkey("long"), long)]
     )
     assert result is long
 
@@ -451,9 +474,7 @@ def test_compose_domains_incomparable_names_parameter_producers_and_both_axes() 
     glob = _box(x=Interval(-180.0, 180.0), days=10)
     europe = _box(x=Interval(-10.0, 40.0), days=16)
     with pytest.raises(CompositionError) as exc:
-        _reconciler().compose_domains(
-            AIR_TEMPERATURE, [(_pkey("global"), glob), (_pkey("europe"), europe)]
-        )
+        _reconciler().compose_domains(_air(), [(_pkey("global"), glob), (_pkey("europe"), europe)])
     message = str(exc.value)
     assert "air_temperature" in message
     assert "test:global extends beyond test:europe on x" in message
@@ -463,7 +484,7 @@ def test_compose_domains_incomparable_names_parameter_producers_and_both_axes() 
 def test_compose_domains_rejects_non_separable_multi_candidate() -> None:
     with pytest.raises(CompositionError) as exc:
         _reconciler().compose_domains(
-            AIR_TEMPERATURE,
+            _air(),
             [(_pkey("swath"), _NonSeparable()), (_pkey("grid"), _global(days=10))],
         )
     message = str(exc.value)
@@ -476,12 +497,12 @@ def test_compose_domains_rejects_non_separable_multi_candidate() -> None:
 def test_compose_domains_lone_non_separable_returned_unchanged() -> None:
     """A single curvilinear candidate compares against nothing, so it builds."""
     swath = _NonSeparable()
-    assert _reconciler().compose_domains(AIR_TEMPERATURE, [(_pkey("swath"), swath)]) is swath
+    assert _reconciler().compose_domains(_air(), [(_pkey("swath"), swath)]) is swath
 
 
 def test_compose_domains_empty_raises() -> None:
     with pytest.raises(CompositionError, match="air_temperature"):
-        _reconciler().compose_domains(AIR_TEMPERATURE, [])
+        _reconciler().compose_domains(_air(), [])
 
 
 # --- The Arbiter composes reach eagerly at construction (ADR-0007) ---
@@ -523,6 +544,61 @@ def test_arbiter_publishes_the_dominating_reach() -> None:
         PriorityReconciler(priority={}),
     )
     assert arbiter.capability.reach(AIR_TEMPERATURE) is long
+
+
+def test_arbiter_composes_screen_heights_inside_the_allowance() -> None:
+    """TWC-shaped 1.5 m and Open-Meteo-shaped 2 m compose; the published reach is the T-winner's own Domain."""
+    twc = _sample_at(z=1.5, days=15)
+    open_meteo = _sample_at(z=2.0, days=16)
+    arbiter = Arbiter(
+        [
+            _footprint_leaf(SourceKey("twc", "default"), twc),
+            _footprint_leaf(SourceKey("open_meteo", "default"), open_meteo),
+        ],
+        PriorityReconciler(priority={}),
+    )
+    assert arbiter.capability.reach(AIR_TEMPERATURE) is open_meteo
+
+
+def test_compose_domains_outside_allowance_names_parameter_producers_axis_and_band() -> None:
+    screen = _sample_at(z=1.5, days=10)
+    mast = _sample_at(z=30.0, days=10)
+    with pytest.raises(CompositionError) as exc:
+        _reconciler().compose_domains(_air(), [(_pkey("screen"), screen), (_pkey("mast"), mast)])
+    message = str(exc.value)
+    assert "air_temperature" in message
+    assert "test:screen" in message
+    assert "test:mast" in message
+    assert "z level 30.0 outside allowance [1.25, 2.0]" in message
+
+
+def test_compose_domains_equal_levels_outside_the_band_still_compose() -> None:
+    """The band licenses extra pairs; it never forbids two producers that state the same level."""
+    left = _sample_at(z=30.0, days=10)
+    right = _sample_at(z=30.0, days=10)
+    result = _reconciler().compose_domains(_air(), [(_pkey("a"), left), (_pkey("b"), right)])
+    # A tie's choice is unobservable (ADR-0007) - pinning one side would freeze iteration order.
+    assert result is left or result is right
+
+
+def test_compose_domains_without_allowance_still_requires_equal_sample_levels() -> None:
+    ten = _sample_at(z=10.0, days=10)
+    nine = _sample_at(z=9.0, days=10)
+    wind = core_parameters().get(WIND_U)
+    with pytest.raises(CompositionError) as exc:
+        _reconciler().compose_domains(wind, [(_pkey("a"), ten), (_pkey("b"), nine)])
+    message = str(exc.value)
+    assert "wind_u" in message
+    assert "extends beyond" in message
+    assert "allowance" not in message
+
+
+def test_compose_domains_cloud_cover_span_still_uses_containment() -> None:
+    total = _column_at(z=Interval(0.0, 15_000.0), days=10)
+    low = _column_at(z=Interval(0.0, 2_000.0), days=10)
+    cloud = core_parameters().get(CLOUD_COVER)
+    result = _reconciler().compose_domains(cloud, [(_pkey("low"), low), (_pkey("total"), total)])
+    assert result is total
 
 
 def test_arbiter_incomparable_reach_raises_at_construction() -> None:
