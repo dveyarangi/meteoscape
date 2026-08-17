@@ -12,8 +12,10 @@ docs/tickets/done/01-0115-retentive-store-freshness.md
               └────────── release — the contract the ticket serves.
 ```
 
-- Positions step by 10. Insert by splitting the difference: `0015`, then `0012`, then `00105`. Never
-  renumber anything else.
+- Positions step by 10. Insert by splitting the difference: `0015`, then `0012`. Positions stay
+  four digits — longer numbers break numeric ordering. When the gap is exhausted, take the nearest
+  free slot on the correct side and note the placement in the queue row. Never renumber anything
+  else.
 - A subticket appends a level: `0130.0010`. Depth is unbounded and means "is a child of", nothing
   else — work merely filed after `0130` takes `0135`. A slice carved out of unstarted work is
   usually a prerequisite, so it sorts *before* its origin and cannot nest.
