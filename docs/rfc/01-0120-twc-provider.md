@@ -378,14 +378,16 @@ capture](#confirmed-by-the-live-capture-2026-08-11-seven-durations-pilot). It an
 intended: the flat envelope, all seven `max_lead` values, the next-whole-hour start (⇒ 0119), the
 per-tick expiry (⇒ fact 8 corrected), and the wind quantization premise.
 
-**Remaining mechanical step:** land `hourly_10day.json` as the deterministic fixture, with the
-`apiKey` absent from any recorded URL (the capture already scrubs it and refuses to save a body
-containing the key).
+**The capture is not yet committed — it exists on one machine, under gitignored `tmp/`.** Every
+declaration in this RFC and the whole basis for `twc.py` rests on it, and losing it means re-running
+stage 0 against the metered key. Landing it is now the ticket's **first** acceptance criterion, ahead
+of stage 1 rather than alongside it; the shape of what to land (truncated, envelope-pinning, canned
+payloads for value assertions) is stated there and not restated here.
 
-**Until that step runs, the capture exists on one machine only** — it sits under `tmp/`, which
-`.gitignore` excludes. Every declaration in this RFC, and the whole basis for `twc.py`, rests on it.
-Losing it means re-running stage 0 against the metered key. Land the fixture before stage 1 rather
-than alongside it.
+**Land the default offering, `hourly_10day`** — the path stage 1 exercises. The competing candidate
+was `hourly_6hour`, whose only extra pull was carrying the `max_lead = 5h` trap next to its own test;
+[0119](../tickets/done/01-0119-live-window-edge-tolerance.md) enforces `cadence ≤ max_lead` centrally
+on `CadenceDef`, so that trap now fails at construction and needs no payload to demonstrate.
 
 ### Stage 1 — the leaf *(red → green)*
 

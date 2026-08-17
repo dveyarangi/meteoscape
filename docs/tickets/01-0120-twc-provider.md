@@ -220,6 +220,20 @@ operator-supplied key; no key or evidence artifact may expose the secret.
 
 ## Acceptance criteria
 
+- [ ] **The stage 0 capture is committed as a fixture, before anything else in this ticket.** It
+      exists on one machine under gitignored `tmp/`, and every declaration below rests on it —
+      losing it costs a re-run against the metered key. **Truncate to a handful of ticks**: the
+      fact being preserved is the vendor's *envelope* (flat, 42 parallel top-level lists), which
+      survives truncation intact, while 239 ticks of real forecast values are licensed vendor
+      content this repo has no need to redistribute. The capture already scrubs `apiKey` and
+      refuses to save a body containing it — verified absent from all seven bodies.
+- [ ] **The fixture pins the envelope; canned payloads pin the decode.** One test parses the real
+      capture and asserts the flat shape and the six canonical fields present — including that
+      undeclared fields carrying JSON `null` (`windGust`, `wxString`) do not disturb the parse.
+      Every *value* assertion rides a hand-built payload in the `_canned_hourly` style
+      ([test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py)), so
+      `36 km/h → 10.0 m/s` stays legible; real data cannot carry that assertion, and a golden-master
+      read over 239 ticks would prove nothing a reviewer can check.
 - [ ] `TwcProbe` serves the canonical parameters it declares, exercised through
       `TimelineProvider` with a **mocked transport** in the deterministic suite.
 - [ ] **TWC wins by default.** With both producers enabled, every canonical parameter resolves to
