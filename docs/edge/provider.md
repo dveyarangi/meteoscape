@@ -167,8 +167,11 @@ Holdings. Read-back crops the served answer.
 > [0119](../tickets/done/01-0119-live-window-edge-tolerance.md)). An ask the Holdings cannot meet is a
 > `CapabilityMismatch`, not a refetch storm.
 >
-> **A leaf's cadence must therefore not exceed its `max_lead`**, or its Holding can fall entirely
-> behind `now` between refreshes — enforced on `CadenceDef` construction, which raises `ValueError`:
+> **A leaf's cadence must therefore not exceed its `max_lead`**, or retention's rescue refills —
+> not the declared cadence — govern vendor spend, and each refill serves newer data before the
+> narrated `exp` ([ADR-0003](../adr/0003-provenance-and-origin.md), corrected 2026-08-17: the
+> window cannot "fall behind" any more; the predicate above refills it) — enforced on `CadenceDef`
+> construction, which raises `ValueError`:
 > it holds both numbers and neither name (*validated by:* `test_cadence_must_not_exceed_max_lead` in
 > [test_cadence.py](../../tests/deterministic/manifold/test_cadence.py)). When the cadence came from an
 > **operator setting**, the leaf's `build` owes the translation — `CompositionError` naming its
