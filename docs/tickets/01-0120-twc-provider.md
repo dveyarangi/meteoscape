@@ -11,7 +11,10 @@
   plugs into),
   [0119 — live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) (**added 2026-08-11**
   after the stage 0 capture: TWC's series starts at the next whole hour, so without 0119 the refill
-  gate never reaches containment and every request costs one metered vendor call)
+  gate never reaches containment and every request costs one metered vendor call),
+  [sample-level allowance](./done/01-0118-sample-level-allowance.md) (**added 2026-08-17** after this
+  ticket's validation pass: TWC's native `Z_1_5M` against Open-Meteo's `Z_2M` makes reach
+  composition incomparable, so key-present boot fails until the fold reads the Parameter's band)
 - **Blocks:** [004 — Second-provider fallback](./01-0121-second-provider-fallback.md) (needs a real second
   producer to fall back *to*), [008 — Config, secrets, degradation](./01-0123-config-secrets-degrade.md)
   (needs a shipped manifest that actually declares a secret)
@@ -87,7 +90,7 @@ this ticket is where we find out.
 > vendor governs what exists. ~~So the declared window must never begin before the series: hence
 > **`1h`**, not `None`.~~ **Resolved 2026-08-11 (align), after the stage 0 capture showed no Shelf value
 > can satisfy that rule:** TWC's series begins at the **next** whole hour, while `valid_time` can only
-> *floor* ([cadence.py:31](../../src/meteoscape/manifold/cadence.py)) — so `now` itself always sits in
+> *floor* ([cadence.py:46](../../src/meteoscape/manifold/cadence.py)) — so `now` itself always sits in
 > a declared-but-undelivered gap.
 >
 > The premise that a declaration must match delivery exactly is what gave way. A live window is an
@@ -100,11 +103,13 @@ this ticket is where we find out.
 > the safe direction** and `1h` keeps the over-declaration to at most one hour, where `None` would
 > anchor on the 12-hourly run grid and reach up to 13 hours backwards.
 >
-> What 0119 repairs, in this vendor's shape: the refill gate compares the request against the
-> **declared** reach ([reservoir.py:113](../../src/meteoscape/nodes/reservoir.py)) and then asks
-> whether **holdings** contain it ([:135](../../src/meteoscape/nodes/reservoir.py)) — never true here,
-> so every request refills, at one metered call each. A request lying wholly in the gap additionally
-> faults at [:177](../../src/meteoscape/nodes/reservoir.py). A *straddling* request already serves
+> What 0119 repaired, in this vendor's shape *(retensed 2026-08-17 — 0119 landed and the cited
+> code is deleted)*: the refill gate compared the request against the **declared** reach and then
+> asked whether **holdings** contained it — never true here, so every request refilled, at one
+> metered call each, and a wholly-in-gap request additionally faulted. Post-0119 the declared axis
+> answers retention for itself ([reservoir.py:123](../../src/meteoscape/nodes/reservoir.py)) and a
+> warm in-gap ask is a served `capability-mismatch` on the shared path
+> ([:130](../../src/meteoscape/nodes/reservoir.py)). A *straddling* request already served
 > correctly, because `ground` asks the record's own axis to clip itself. Family, not identity, with
 > [#21](../concerns.md#21-serves-extent-vs-project-crop-ability).
 
@@ -155,7 +160,7 @@ this ticket is where we find out.
 > **`cadence` is not a vendor fact and must not be "corrected" to one.** The payload carries a
 > per-tick `expirationTimeUtc` (first 7 ticks ~5 min out, the remaining 233 ~21 min out). We do not
 > adopt it: `expiration` is *also* the Reservoir's refetch trigger
-> ([reservoir.py:138](../../src/meteoscape/nodes/reservoir.py)), so adopting a 5-minute expiry would
+> ([reservoir.py:126](../../src/meteoscape/nodes/reservoir.py)), so adopting a 5-minute expiry would
 > set our polling to 5 minutes and spend the allotment 12 h exists to conserve. `exp` at the MCP edge
 > promises *our* refresh policy, not the vendor's. Recorded as a known-unused signal →
 > [ideas: freshness](../ideas.md#freshness), [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
@@ -236,6 +241,13 @@ operator-supplied key; no key or evidence artifact may expose the secret.
       read over 239 ticks would prove nothing a reviewer can check.
 - [ ] `TwcProbe` serves the canonical parameters it declares, exercised through
       `TimelineProvider` with a **mocked transport** in the deterministic suite.
+- [ ] **A duration shorter than the configured cadence is refused at boot, not shipped around**
+      *(aligned 2026-08-17)*: all seven rows stay declared, and an offering whose `max_lead` is
+      below the cadence (`hourly_6hour`, `hourly_12hour` at the 12 h default) fails composition
+      with a `CompositionError` naming both numbers and the `twc_cadence_hours` knob — the
+      operator picks a coherent pairing; no per-offering default cadence exists. This is the
+      first exercise of the `build`-owed translation
+      [edge/provider.md](../edge/provider.md) marks ⚠ unguarded, and discharges it.
 - [ ] **TWC wins by default.** With both producers enabled, every canonical parameter resolves to
       TWC; a test pins the priority pair rather than trusting the integers to stay put. Open-Meteo
       remains configured and admits the same parameters — it is the backstop
