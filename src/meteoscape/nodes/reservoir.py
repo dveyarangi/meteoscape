@@ -7,7 +7,6 @@ architecture.md ("Reservoir") and ADR-0001. The `Store` protocol and factories l
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime
 
 from ..clock import Clock
 from ..errors import CapabilityMismatch, RuntimeFailure
@@ -15,14 +14,12 @@ from ..manifold.capability import Capability, EnumerableCapability
 from ..manifold.core import Manifold, Selection
 from ..manifold.coverage import CoverageRecord, CoverageSet
 from ..manifold.domain import (
+    Axis,
     AxisName,
     Domain,
     EnumerableAxis,
     EnumerableDomain,
     GridDomain,
-    Interval,
-    SelectionDomain,
-    SnappedAxis,
     agreed_geometry,
     as_enumerable_axes,
     as_separable,
@@ -73,8 +70,7 @@ class Reservoir:
 
         # Only admitted parameters may refill or serve; retained data outside current capability is
         # historical state, not an answer.
-        over = self._required_coverage(admitted, selection)
-        missing = self._missing(admitted, held, over)
+        missing = self._missing(admitted, held, selection)
         if missing:
             # `quantize` is the fetch-order — its one public use, so the lattices stay store-private.
             # The ask names only the missing parameters; a wider answer is the child's own natural
@@ -89,6 +85,10 @@ class Reservoir:
                 # The child answered nothing while raising nothing, or nothing landed: engine fault.
                 raise RuntimeFailure("refill produced no holdings")
 
+        # An ask the Holdings cannot meet is unservable, not missing — warm in-gap asks never
+        # refill, so this check must sit on the shared path (ADR-0002).
+        self._reject_unmeetable(admitted, held, selection)
+
         # Serving happens from the store alone, warm or refilled — one path, which is what makes a
         # shared `issue_time` across a mixed request structural rather than a test's good luck.
         return await self._read_back(held, selection, admitted)
@@ -97,47 +97,60 @@ class Reservoir:
     def capability(self) -> Capability:
         return self.source.capability
 
-    def _required_coverage(
-        self, admitted: frozenset[ParameterId], selection: Selection
-    ) -> dict[ParameterId, Interval[datetime]] | None:
-        """Request T ∩ child reach per parameter, or `None` when the ask leaves T open.
-
-        `Capability.serves` has already admitted every parameter. Under `ANY`, a Holding is the whole
-        of one fetch, so freshness alone governs.
-        """
-        if AxisName.T in open_axes(selection.domain):
-            return None
-        request_t = _request_t_bounds(selection.domain)
-        required: dict[ParameterId, Interval[datetime]] = {}
-        for pid in admitted:
-            overlap = request_t.intersection(_t_extent(self.source.capability.reach(pid)))
-            if overlap is None:
-                raise RuntimeFailure("admitted parameter has no required T coverage")
-            required[pid] = overlap
-        return required
-
     def _missing(
         self,
         admitted: frozenset[ParameterId],
         held: CoverageSet,
-        over: dict[ParameterId, Interval[datetime]] | None = None,
+        selection: Selection,
     ) -> frozenset[ParameterId]:
-        """Parameters that need a refill: absent, uncovered (bounded T only), or expired.
+        """Parameters that need a refill: absent, unsatisfied retention, or expired.
 
         `admitted` comes from the child's Capability, so a refill never widens the parameter ask.
-        A wider answer is only the child's natural fetch unit.
+        A wider answer is only the child's natural fetch unit. Under ANY on T a Holding is the whole
+        of one fetch, so freshness alone governs coverage.
         """
+        needed = None if AxisName.T in open_axes(selection.domain) else _t_axis(selection.domain)
         missing: set[ParameterId] = set()
         for pid in admitted:
             if pid not in held.capability.parameters:
                 missing.add(pid)
                 continue
-            if over is not None and not _t_extent(held.capability.reach(pid)).contains(over[pid]):
-                missing.add(pid)
-                continue
+            if needed is not None:
+                # Invariant: serves already admitted this pair — no overlap is an engine break,
+                # not "satisfied" via the predicate's want-is-None arm (ADR-0002).
+                declared = _t_axis(self.source.capability.reach(pid))
+                assert needed.matches(declared)
+                if not declared.satisfied_by(_t_axis(held.capability.reach(pid)), needed):
+                    missing.add(pid)
+                    continue
             if _owning(held, pid).provenance.summary(pid).expiration <= self._clock.now():
                 missing.add(pid)
         return frozenset(missing)
+
+    def _reject_unmeetable(
+        self,
+        admitted: frozenset[ParameterId],
+        held: CoverageSet,
+        selection: Selection,
+    ) -> None:
+        """Holdings that do not meet the ask are a capability miss, not a ground-time fault.
+
+        Runs after any refill, so it asks whether what we *now* hold can answer — never whether a
+        fetch would help, which is the retention predicate's question (ADR-0002).
+
+        `matches` rather than a bare overlap test, because its per-kind dispatch is exactly what each
+        request shape needs to be answerable: a snapped ask negotiates its bounds, so overlap is
+        enough and `ground` clips the rest; an exact ask names cells nothing will clip, so the
+        holdings must contain them or `resample`'s aligned crop fails uncategorized.
+        """
+        asked_t = _t_axis(selection.domain)
+        for pid in admitted & held.capability.parameters.keys():
+            held_t = _t_axis(held.capability.reach(pid))
+            if not asked_t.matches(held_t):
+                raise CapabilityMismatch(
+                    f"holdings do not meet asked T for {pid}: "
+                    f"asked {asked_t.extent}, held {held_t.extent}"
+                )
 
     def _as_group(self, answer: Manifold) -> CoverageSet:
         if isinstance(answer, (CoverageRecord, CoverageSet)):
@@ -216,36 +229,12 @@ def _owning(held: CoverageSet, pid: ParameterId) -> CoverageRecord:
     raise RuntimeFailure(f"holdings advertise {pid!r} with no owning record")
 
 
-def _request_t_bounds(domain: Domain) -> Interval[datetime]:
-    """The request's T span — snapped bounds, or an enumerable axis's extent.
-
-    TODO: [#22](../../../docs/concerns.md#22-lattice-helpers-vs-domain--sampling-module-split)
-    decides whether the repeated typed T-extent read belongs in `domain.py`; keep the caller-specific
-    error here.
-    """
-    if isinstance(domain, SelectionDomain):
-        member = domain.axis(AxisName.T)
-        if not isinstance(member, SnappedAxis) or member.interval is None:
-            raise RuntimeFailure("bounded-T coverage check needs snapped T bounds")
-        return member.interval
+def _t_axis(domain: Domain) -> Axis:
+    """The T member of a separable geometry — retention compares axes, not intervals."""
     separable = as_separable(domain)
     if separable is None:
-        raise RuntimeFailure("bounded-T coverage check needs separable geometry")
-    extent = separable.axis(AxisName.T).extent
-    if not isinstance(extent.lower, datetime):
-        raise RuntimeFailure("T extent is not temporal")
-    return extent  # type: ignore[return-value]
-
-
-def _t_extent(domain: Domain) -> Interval[datetime]:
-    """A declared geometry's temporal span."""
-    separable = as_separable(domain)
-    if separable is None:
-        raise RuntimeFailure("T extent needs separable geometry")
-    extent = separable.axis(AxisName.T).extent
-    if not isinstance(extent.lower, datetime):
-        raise RuntimeFailure("T extent is not temporal")
-    return extent  # type: ignore[return-value]
+        raise RuntimeFailure("T axis needs separable geometry")
+    return separable.axis(AxisName.T)
 
 
 def _axes_of(domain: EnumerableDomain) -> Mapping[AxisName, EnumerableAxis]:

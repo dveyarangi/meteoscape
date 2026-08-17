@@ -95,10 +95,11 @@ class Point:
 class Axis(ABC):
     """One axis of a `Separable` Domain: the geometry along one named dimension.
 
-    Its universal surface is its span (`extent`) plus request-driven admission (`matches`) — set-
-    algebra, not enumeration; enumeration is the `EnumerableAxis` refinement. An axis is **pure
-    geometry** - it carries no interpolability flag, since whether a value may be resampled along it
-    is the parameter's resampler fact, not the axis's (ADR-0002).
+    Its universal surface is its span (`extent`), request-driven admission (`matches`), and its
+    retention sibling (`satisfied_by`) — set-algebra, not enumeration; enumeration is the
+    `EnumerableAxis` refinement. An axis is **pure geometry** - it carries no interpolability flag,
+    since whether a value may be resampled along it is the parameter's resampler fact, not the
+    axis's (ADR-0002).
     """
 
     name: AxisName
@@ -112,6 +113,19 @@ class Axis(ABC):
     def matches(self, declared: Axis) -> bool:
         """Whether this *requested* axis matches a *declared* axis — default: full containment."""
         return declared.extent.contains(self.extent)  # type: ignore[arg-type]
+
+    def satisfied_by(self, held: Axis, needed: Axis) -> bool:
+        """Whether `held` answers `needed` as completely as I will ever answer it (ADR-0002).
+
+        Admission's sibling, dispatched on the declaration rather than the request. Default — a
+        static axis does not move, so a Holding is a slice of something larger and a wider ask is
+        genuinely unanswered until more is fetched.
+
+        `needed` must be bounded: an `ANY` member has no extent, and the caller skips the check
+        entirely in that case rather than passing one here.
+        """
+        want = needed.extent.intersection(self.extent)  # type: ignore[arg-type]
+        return want is None or held.extent.contains(want)
 
     @abstractmethod
     def clip(self, bounds: Interval | None) -> Axis | None:

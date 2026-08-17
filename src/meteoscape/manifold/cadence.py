@@ -22,11 +22,16 @@ class CadenceDef:
     hourly for one relabelled each hour; `None` when availability follows the run instead.
 
     `max_lead` is the window's *length*; the Shelf is the size of the *jumps its start makes* as the
-    clock advances. It also fixes the phase the served lattice anchors to, which is why it must stay a
-    whole boundary → ADR-0003. Declared by the vendor leaf and executed here; the `Reservoir` never
-    consults it, because refetching is governed by `expiration` and the axis's own retention answer
-    (ADR-0002).
+    clock advances, and the phase the served lattice anchors to (ADR-0003). The `Reservoir` never
+    *decides* refetch from it — that is `expiration` plus the axis retention answer (ADR-0002) —
+    though clamping the ask still reads the declared extent the Shelf helped form.
     """
+
+    def __post_init__(self) -> None:
+        # A rolling Holding refreshes only on expiry; cadence longer than the window lets it fall
+        # entirely behind `now` between refreshes (ADR-0002 / ADR-0003).
+        if self.cadence > self.max_lead:
+            raise ValueError(f"cadence {self.cadence} must not exceed max_lead {self.max_lead}")
 
     def anchor(self, now: datetime) -> datetime:
         """The effective run at `now`: the latest run whose publication (`r + L`) has already passed."""
@@ -54,6 +59,22 @@ class RollingAxis(Axis):
     @property
     def extent(self) -> Interval:
         return self.cadence.valid_time(self.clock.now())
+
+    def satisfied_by(self, held: Axis, needed: Axis) -> bool:
+        """Satisfied unless my horizon has fallen behind the ask — reach-advance IS staleness here.
+
+        My window is a pure function of the clock, so it only ever moves forward: the one way a
+        Holding can fail an ask is by not having reached it yet. What it lacks *below* its own start
+        was never published, and what it lacks *above* arrives with time, which `expiration` already
+        governs — demanding containment would make my *Shelf*, not the declared cadence, the real
+        refetch interval.
+
+        Deliberately weaker than overlap: an ask lying wholly below the Holding is satisfied, because
+        refetching moves the window further away. That ask is unservable, not unfetched, and the
+        serving seam reports it as `CapabilityMismatch` rather than buying a useless fetch per call.
+        """
+        want = needed.extent.intersection(self.extent)  # type: ignore[arg-type]
+        return want is None or want.lower <= held.extent.upper
 
     def clip(self, bounds: Interval | None) -> RegularAxis | None:
         """Materialize the current window at the series step, restricted to `bounds`.

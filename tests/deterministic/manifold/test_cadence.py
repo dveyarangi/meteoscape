@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 from meteoscape.manifold.domain import AxisName, Interval, RegularAxis
 
@@ -78,6 +80,16 @@ def test_shelf_does_not_touch_anchor_or_expiration() -> None:
     assert with_shelf.anchor(NOON) == without.anchor(NOON)
     assert with_shelf.expiration(NOON) == without.expiration(NOON)
     assert with_shelf.valid_time(NOON) != without.valid_time(NOON)
+
+
+def test_cadence_must_not_exceed_max_lead() -> None:
+    """ADR-0003 corollary: a Holding refreshed only on expiry cannot outlive its own window."""
+    with pytest.raises(ValueError, match="must not exceed max_lead"):
+        CadenceDef(
+            cadence=timedelta(hours=12),
+            publication_latency=timedelta(0),
+            max_lead=timedelta(hours=5),
+        )
 
 
 def test_omitted_shelf_is_run_anchored() -> None:
