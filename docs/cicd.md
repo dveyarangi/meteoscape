@@ -47,13 +47,23 @@ Live Provider parity checks (`uv run pytest tests/parity`) are deliberately **ou
 see the [Provider edge record](./edge/provider.md). Enforcement and routing of those checks are
 [#41](./concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 
-**Documentation link integrity is not gated, and should be.** The corpus is deliberately
-cross-referential — a claim lives in one document and is cited from the rest — so a relative link
-that stops resolving is a silent loss of that structure, not a cosmetic defect. Moving any document
-re-depths every relative link inside it and invalidates every link to it; archiving a session or
-closing a ticket into `done/` does this routinely. The check is manual at landing time, which means
-it is skipped exactly when a session runs long. Anchor-only checkers are insufficient here. Not yet
-ticketed.
+**Documentation integrity is gated.** The corpus is deliberately cross-referential — a claim lives
+in one document and is cited from the rest — so two guard modules in the deterministic suite
+(`test_docs_integrity_guard.py`, `test_docs_conventions_guard.py`) fail the ordinary pytest step
+when that structure breaks: a live document's relative link or heading anchor stops resolving; any
+tracked file carries a BOM, a stray control character, or a blocklisted invisible codepoint; a code
+comment's doc pointer (a `#NN` concern ref, an `ADR-NNNN`, or a `.md` path in its canonical
+repo-root form, `docs/edge/provider.md`) stops resolving; the delivery map and the ticket folders
+disagree; or a session record's filename and H1 disagree about its number or date. Dated records —
+`docs/sessions/`, `docs/tickets/done/`, `docs/rfc/done/`, `docs/dreams/` — are kept as written, so
+their *outbound* links are exempt (a README inside such a directory stays gated); byte hygiene has
+no exemptions. External URLs are never checked — the gate stays network-free. Policy, exemptions,
+and the incident history: [docs-integrity-gate](./tickets/done/01-0127-docs-integrity-gate.md).
+
+Lifecycle moves are mechanical: `uv run python .agents/scripts/move_doc.py SRC DST [SRC DST ...]`
+performs the `git mv`, re-depths the moved record's own links, and rewrites live citers (a paired
+ticket+RFC close goes in one invocation); the guards then prove the move →
+[mechanical record moves](./tickets/done/01-0128-mechanical-record-moves.md).
 
 ## Deployment form
 

@@ -2,8 +2,9 @@
 
 **Last updated:** 2026-08-18
 
-**Current stage:** [TWC as the primary Provider](./done/01-0120-twc-provider.md) is delivered, with
-live parity passing on 2026-08-18. Next is
+**Current stage:** the [doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) and the
+[mechanical record mover](./done/01-0128-mechanical-record-moves.md) are delivered (2026-08-18), ending
+six sessions of manual link/encoding sweeps. Next is
 [second-provider fallback](./01-0121-second-provider-fallback.md): a metered primary's 429 is on the
 default path, and today it still fails the whole request.
 
@@ -102,6 +103,8 @@ work `Maint`. What those columns mean is
 | 0118 | [Sample-level allowance](./done/01-0118-sample-level-allowance.md) | — | Done | — | Two producers declaring the same parameter at nearby sample levels compose into one profile; outside the declared allowance still fails the build. Position 0118 uses the remaining slot before 0119; the four-digit gap was exhausted. |
 | 0119 | [Live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) | — | Done | reservoir retention pipeline, off-grid homogenization | A leaf whose declared live window exceeds its delivered series serves the overlap and avoids repeated gap refetches; static axes stay exact. |
 | 0120 | [TWC provider — as primary](./done/01-0120-twc-provider.md) | — | Done | snapped request mode, provider parity checks, sample-level allowance | TWC is the primary producer, with offering-specific horizons, keyed startup, and a live parity check. Spanning asks serve its clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). |
+| 0127 | [Doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) | Maint | Done | — | CI fails when a live document's relative link or heading anchor stops resolving, when any tracked file carries a BOM, control character, or listed invisible codepoint, when a code comment's doc pointer (concern, ADR, or `.md` path) no longer resolves, or when the queue and the ticket folders disagree; historical records stay exempt from link gating. *Row sits where the work happens; 0121–0126 left no free integer, so the position is the nearest free slot.* |
+| 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./01-0121-second-provider-fallback.md) | — | Planned | TWC provider | Wholesale priority fallback across two producers. |
 | 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters | Shared verified native-to-canonical conversion edges. |
 | 0123 | [Config and graceful degrade](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction behavior. |
