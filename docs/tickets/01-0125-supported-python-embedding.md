@@ -3,15 +3,15 @@
 - **Status:** Planned — its own embedding-edge align precedes implementation; this ticket assigns
   the Phase-1 delivery without preselecting the facade.
 - **Reaffirmed 2026-08-10 (beeline align):** embedding is the deployment's **first** consumption
-  shape; the [REST surface](./02-0165-rest-surface.md) follows later in the beeline rather than
+  shape; the [REST surface](./01-0165-rest-surface.md) follows later in the beeline rather than
   replacing it. The two are siblings over the same `Gateway` seam, not a stack — an edge needs no
   public facade, as the MCP edge already demonstrates — so REST does not depend on this ticket
   mechanically. It is sequenced after it by decision, so the public failure hierarchy
   ([#39](../concerns.md#39-python-embedding-surface-and-public-failures)) is settled here first;
   expect REST's status-code mapping to reopen the *rendering* of those classes, which is normal.
-- **Moved up 2026-08-08 (align):** the first real embedder arrives with the release-02 work (the
+- **Moved up 2026-08-08 (align):** the first real embedder arrives with the local-station work (the
   operator's application embeds meteoscape rather than running the MCP server), so this surface no
-  longer waits for the v1 tail. Consequence: the equivalence rule changes from "MCP-equivalent **v1**
+  no longer waits for the former v1 tail. Consequence: the equivalence rule changes from "MCP-equivalent **v1**
   semantics" (ship only when everything exposed is done) to **"equivalent to whatever is live"** —
   the facade ships early and its capability grows as tickets land, exactly as the MCP surface already
   does. The former dependency chain (off-grid homogenization, per-parameter selection, config,

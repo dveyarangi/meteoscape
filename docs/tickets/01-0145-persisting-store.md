@@ -1,4 +1,4 @@
-# Persisting Store
+# Persisting SQLite Store
 
 - **Status:** Planned (own align precedes) — minted at the 2026-08-10 beeline align.
 - **Depends on:** [006 — Retentive store](./done/01-0115-retentive-store-freshness.md) (the
@@ -8,8 +8,9 @@
 
 ## Parent
 
-Release 02 is contract-deferred (no requirements doc yet — [delivery status](./README.md)). v1
-deliberately ships in-memory only ([v1-requirements](../v1-requirements.md)); the durable context is
+The release-01 bee-line requires every cache position to survive restart and redeploy
+([delivery status](./README.md)); this supersedes the predecessor
+[v1 requirements](../v1-requirements.md)' in-memory-only position. The durable design context is
 [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) and
 [architecture § Store](../architecture.md#store--one-type-several-positions).
 
@@ -22,16 +23,16 @@ behind one write/read face":
 | Rung | Substrate | For | Owner |
 |---|---|---|---|
 | 1 | `MemoryStore`, low retention | MCP stdio fast-use — process-lifetime, dies with the session, and *should* | delivered at [006](./done/01-0115-retentive-store-freshness.md) |
-| 2 | persisting | regular deployment — survives restart and redeploy, shared across processes | **this ticket** |
+| 2 | `SQLiteStore` | regular deployment — survives restart and redeploy, shared across processes | **this ticket** |
 | 3 | bulk / columnar | long-running research jobs — analytical scans, not point lookups | [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput) |
 
 Rung 3 is not a bigger rung 2: it is a different read shape. It stays with #44.
 
 ## Why this does not overturn "we don't own persistence"
 
-[#44](../concerns.md#44-dedicated-live-archive-store-for-throughput) records that release 02 gives
-meteoscape **no owned persistence** — "the framework doesn't own persistence, it projects over
-whatever does". That stance is about **history**, and it survives intact:
+[#44](../concerns.md#44-dedicated-live-archive-store-for-throughput) records the earlier stance that
+meteoscape owns no historical persistence — "the framework doesn't own persistence, it projects
+over whatever does". That stance is about **history**, and it survives intact:
 
 - A **retention cache is derivable state.** Every Holding in it can be re-fetched from the vendor.
   Losing it costs money and latency, never information.
@@ -78,18 +79,19 @@ only… correct, just colder" arm. Dead rows are swept by `retention_interval`.
 
 ## Decisions this ticket's align owns
 
-- **The substrate.** Deliberately not chosen here. Whatever is picked must not need a daemon for the
-  self-hosting operator, and must not conflate the two clocks: retention eviction is
-  `retention_interval`, freshness is `expiration`, and Holdings are deliberately kept past expiry.
-  A substrate whose native TTL evicts on expiration would silently undo that separation.
+- ~~**The substrate.** Deliberately not chosen here.~~ **SQLite is the v1 persistent Store
+  substrate:** it needs no daemon and gives the embedded library a durable out-of-box path. Its
+  implementation must not conflate the two clocks: retention eviction is `retention_interval`,
+  freshness is `expiration`, and Holdings are deliberately kept past expiry.
 - **The key shape**, per the section above.
-- **Selection mechanism.** `StoreFactory.create(spec, deferred)` is the single allocation site and
-  hardcodes `MemoryStore`; substrate riding on `StoreSpec` makes the choice **per-position** for
-  free, since `OfferingDef.store` already whole-spec-replaces per Source and `root_store` is
-  separate.
-- **Whether an embedder may supply its own `Store`.** The contract admits it; there is no store
-  plugin seam today ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding) scaffolds
-  providers and calculators only), so promising one is a new claim.
+- **Store selection and embedding attachment.** `StoreFactory.create(spec, deferred)` is the single
+  allocation site and currently hardcodes `MemoryStore`; that is enough while only one Store
+  implementation exists. This second implementation is the trigger to decide both how an embedding
+  host selects among shipped Store implementations and whether it may supply its own implementation.
+  Shipped implementations must not require the host to declare or register them. No configuration,
+  factory, registry, or public extension shape is selected ahead of this ticket's align; split that
+  decision into a child ticket if it needs its own implementation slice. Provider/calculator plugin
+  scaffolding does not answer it ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)).
 
 ## Acceptance criteria
 

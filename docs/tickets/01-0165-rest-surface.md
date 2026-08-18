@@ -10,11 +10,10 @@
 
 ## Parent
 
-Release 02 is contract-deferred (no requirements doc yet — [delivery status](./README.md)). This
-ticket does **not** amend v1: [v1-requirements](../v1-requirements.md) defers HTTP transport by name
-and that stays true for the v1 contract — REST arrives as release-02 surface work, after the v1
-contract closes on stdio MCP plus the embedding surface. Durable context:
-[roadmap Phase 2](../product-roadmap.md) ("optional REST surface if demand appears" — demand
+The release-01 bee-line makes the operator's REST deployment shape part of v1
+([delivery status](./README.md)); this supersedes the predecessor
+[v1 requirements](../v1-requirements.md)' explicit HTTP deferral. Durable context:
+[product roadmap](../product-roadmap.md) ("optional REST surface if demand appears" — demand
 appeared, 2026-08-10) and [architecture § Gateway](../architecture.md#gateway--caller-policy-boundary).
 
 ## What to build
@@ -35,13 +34,13 @@ reachable by someone other than its owner:
 
 - **The Gateway's caller-policy seam stops being null.** Caller identity, authz, and rate-limiting
   become real for the first time — and this is where **caller** quota lives, the other meter from
-  the [vendor-call ledger](./02-0124-vendor-call-ledger.md)'s. Two meters, two layers: what a caller
+  the [vendor-call ledger](./01-0124-vendor-call-ledger.md)'s. Two meters, two layers: what a caller
   spends against us here, what we spend against a vendor there.
 - **A second serialization contract to keep equivalent** with MCP and the embedding surface — the
   same equivalence obligation [0125](./01-0125-supported-python-embedding.md) carries, now with a
   third party to it.
 - **A long-running deployment shape** rather than a per-session process, which is part of why the
-  [persisting store](./02-0145-persisting-store.md) sits just ahead of this in the queue.
+  [persisting store](./01-0145-persisting-store.md) sits just ahead of this in the queue.
 
 ## Decisions this ticket's align owns
 

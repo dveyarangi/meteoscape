@@ -17,8 +17,8 @@
 >   this ticket owns the whole behaviour.
 > - **It is the mechanism the private sources need.** A Mongo connection string is a secret carried
 >   the same way a vendor key is, so this ticket serves
->   [02-0130](./02-0130-mongo-obs-source.md) as well as TWC — and it is the injection path the
->   [vendor-call ledger](./02-0124-vendor-call-ledger.md) is built behind.
+>   [01-0130](./01-0130-mongo-obs-source.md) as well as TWC — and it is the injection path the
+>   [vendor-call ledger](./01-0124-vendor-call-ledger.md) is built behind.
 
 ## Parent PRD
 
@@ -49,7 +49,7 @@ default or semantics — and their generic forms land here: secret material popu
 enablement derived from slot presence and impl registration rather than per-vendor fields, and
 generic env pass-through of opaque per-offering `settings` — the cadence-override channel
 [0120's RFC](../rfc/done/01-0120-twc-provider.md) explicitly defers here. The Mongo connection string
-([02-0130](./02-0130-mongo-obs-source.md)) is the second consumer, which is what forces the
+([01-0130](./01-0130-mongo-obs-source.md)) is the second consumer, which is what forces the
 generic shape. The exact env spelling is this ticket's own decision — as is whether the v1
 **profile enumeration** itself (`offerings()` hard-coding impl names and priorities as code)
 becomes declared data here, or stays code until [#26](../concerns.md#26-provider--calculator-plugin-scaffolding)'s

@@ -4,16 +4,17 @@
   [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)
   mitigations (fixtures-as-contract, schema version marker if cheap, ownership statement) and the
   observation-source semantics still open below.
-- **Blocks:** [Mongo forecast-run archive source](./02-0134-forecast-run-archive-source.md) (shares
-  the transport and registry), [correction calculator](./02-0140-correction-calculator.md).
+- **Blocks:** [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) (shares
+  the transport and registry), [correction calculator](./01-0140-correction-calculator.md).
 - **Outcome:** Hourly station observations from the operator's Collector database served through
   the projection algebra as a read-only private source, with per-parameter provenance naming the
   observation origin.
 
 ## Parent
 
-Release 02 is contract-deferred (no requirements doc yet — [delivery status](./README.md)); the
-owning durable context is [product-roadmap → Priority candidate after v1](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction)
+The release-01 bee-line makes local-station validation part of v1
+([delivery status](./README.md)). Its durable product context is the
+[local-station validation and bias-correction roadmap](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction)
 and concern [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own).
 
 ## What to build
@@ -38,7 +39,7 @@ New semantics this shape introduces (decided at this ticket's align, not before)
   adapts.
 
 **Out of scope:** the forecast collections
-([forecast-run archive source](./02-0134-forecast-run-archive-source.md)); any live station
+([forecast-run archive source](./01-0134-forecast-run-archive-source.md)); any live station
 *endpoint* — permanently embedder-plug-in territory per #45 and
 [#26](../concerns.md#26-provider--calculator-plugin-scaffolding); any write path to the collector
 database.

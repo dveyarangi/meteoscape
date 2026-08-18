@@ -77,7 +77,7 @@ candidate has been tried; fails the whole request).
   (`test_in_footprint_projects_once_with_admitted_params`,
   `test_beyond_footprint_raises_without_projecting`) — Arbiter-level; the wire-level assertion
   gap is noted in the
-  [error-taxonomy ticket](../tickets/01-0190-error-taxonomy-partial-success.md).
+  [error-taxonomy ticket](../tickets/02-0190-error-taxonomy-partial-success.md).
 - A child's `runtime-failure` falls through to the next admitted candidate; the request fails
   whole only when every candidate has faulted or none of the rest admit (**compatible** — a
   request that used to fail may now succeed). No partial response survives exhaustion —
@@ -164,7 +164,7 @@ candidate has been tried; fails the whole request).
   absent, and today neither can the engine (Roadmap 3).
 - [#14 — Resolution trace](../concerns.md#14-resolution-trace-and-observability) — Phase 1's
   contract-neutral structured logs are assigned to [minimal resolution
-  logging](../tickets/01-0195-minimal-resolution-logging.md); the richer trace sidecar remains
+  logging](../tickets/02-0195-minimal-resolution-logging.md); the richer trace sidecar remains
   deferred and would become a separate edge concern before changing this surface.
 
 ## Roadmap
@@ -173,9 +173,9 @@ candidate has been tried; fails the whole request).
    candidate; the request fails whole only on exhaustion —
    [second-provider fallback](../tickets/done/01-0121-second-provider-fallback.md).
 2. Per-parameter assembly — one response, different winning sources per parameter —
-   [per-parameter selection](../tickets/01-0170-per-parameter-selection.md).
+   [per-parameter selection](../tickets/02-0170-per-parameter-selection.md).
 3. Absence reasons and partial success under fault —
-   [error taxonomy and partial success](../tickets/01-0190-error-taxonomy-partial-success.md).
+   [error taxonomy and partial success](../tickets/02-0190-error-taxonomy-partial-success.md).
 4. **Echo the answered coordinate.** `serialize_coverage` reads `coverage.domain` but emits only the
    T axis, so this surface drops the X/Y the answer is labelled at. The Coverage already carries them
    — this is a serialization gap of this surface alone, and it does not exist at the

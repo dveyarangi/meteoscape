@@ -10,16 +10,17 @@
 
 ## Parent
 
-Release 02 is contract-deferred ([delivery status](./README.md)); the owning durable context is
-[product-roadmap → Priority candidate after v1](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction)
-(including the staged division of labor: bias statistics start operator-side and eventually become
-a Meteoscape product).
+The release-01 bee-line makes local-station validation and correction the v1 product goal
+([delivery status](./README.md)). Its durable product context is the
+[local-station validation and bias-correction roadmap](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction),
+including the staged division of labor: bias statistics start operator-side and eventually become
+a Meteoscape product.
 
 ## What to build
 
 The first Calculator whose inputs span sources and times: it pairs each provider's archived
-forecast values (from the [forecast-run archive source](./02-0134-forecast-run-archive-source.md))
-with observations (from the [Mongo obs source](./02-0130-mongo-obs-source.md)) at the same station
+forecast values (from the [forecast-run archive source](./01-0134-forecast-run-archive-source.md))
+with observations (from the [Mongo obs source](./01-0130-mongo-obs-source.md)) at the same station
 and `valid_time`, honoring lead time (`base_time` → `valid_time` distance), and produces bias
 statistics per provider, per parameter, per station over a requested period.
 
@@ -52,8 +53,8 @@ statistics per provider, per parameter, per station over a requested period.
 
 ## Blocked by
 
-- [Mongo obs source](./02-0130-mongo-obs-source.md) (active)
-- [Mongo forecast-run archive source](./02-0134-forecast-run-archive-source.md) (active)
+- [Mongo obs source](./01-0130-mongo-obs-source.md) (active)
+- [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) (active)
 
 ## Parent scope addressed
 

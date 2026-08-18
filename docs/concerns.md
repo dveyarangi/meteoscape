@@ -199,7 +199,7 @@ Candidate mechanisms, deliberately unchosen: the root refill keeping the ask's T
 boundless-answer licence); narration re-scoped to the primary's reach (moves producer knowledge to
 the edge, which [#29](#29-narrated-reach-what-a-profile-promises) resists); offering/reach-aware
 selection ([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)). Trigger: real
-demand for the beyond-primary tail — or the [ledger](./tickets/02-0124-vendor-call-ledger.md)
+demand for the beyond-primary tail — or the [ledger](./tickets/01-0124-vendor-call-ledger.md)
 pricing the redundant tail-ask refetch.
 
 ## 5. Read-time homogenization fidelity
@@ -553,7 +553,7 @@ fidelity as a provenance field, leaving it recoverable server-side from the `Sou
 *answered* coordinate is a different and smaller thing — a per-surface serialization gap, tracked on
 the [MCP edge record](./edge/mcp.md#roadmap).) Keeping the trace a sidecar channel leaves
 the read-only algebra untouched. Phase 1's **minimal structured log** is assigned to
-[minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md); the ticket's own align
+[minimal resolution logging](./tickets/02-0195-minimal-resolution-logging.md); the ticket's own align
 selects that narrow event surface. The structured sidecar and wider metrics remain deferred here.
 
 ## 36. Unserved and uncomparable are indistinguishable
@@ -608,7 +608,7 @@ configured Δ exists to conserve. **Splitting those two roles is the real prereq
 provider-real freshness signal — the escape is not a per-provider declaration but that split. Wanted
 by the faster-nowcast case, not by v1 → [TWC provider](./tickets/done/01-0120-twc-provider.md).
 
-→ queued for measurement by the [vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md).
+→ queued for measurement by the [vendor-call ledger](./tickets/01-0124-vendor-call-ledger.md).
 
 ## 11. Incremental synthetic recompute
 
@@ -688,8 +688,8 @@ correct.
 **Kind:** deferred seam · **Refs:**
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [#9](#9-cross-run-combination),
-[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md),
-[persisting Store](./tickets/02-0145-persisting-store.md)
+[Mongo forecast-run archive source](./tickets/01-0134-forecast-run-archive-source.md),
+[persisting Store](./tickets/01-0145-persisting-store.md)
 
 Release 02 deliberately gives meteoscape **no owned persistence** *of history*: the archive is the
 operator's collector MongoDB, and meteoscape projects over it read-only ("the framework doesn't own
@@ -713,21 +713,21 @@ above is about **history**, and the distinction that carries it is derivability:
 | State | **derivable** — every Holding re-fetchable from the vendor | **source of truth** — once the run window passes, unreconstructable |
 | Losing it costs | money and latency | information |
 | Read shape | point lookups | bulk / analytical scans |
-| Owner | [persisting Store](./tickets/02-0145-persisting-store.md) (rung 2, ticketed) | this concern (rung 3) |
+| Owner | [persisting Store](./tickets/01-0145-persisting-store.md) (rung 2, ticketed) | this concern (rung 3) |
 
 So persisting the cache is a substrate choice inside a contract that already permits it
 (ADR-0006: implementations vary by substrate and persistence behind one face) and claims nobody's
 data; it does not overturn the stance, and this concern keeps only the archive rung. The substrate
-ladder as a whole is tabulated in the [persisting Store](./tickets/02-0145-persisting-store.md)
+ladder as a whole is tabulated in the [persisting Store](./tickets/01-0145-persisting-store.md)
 ticket. Note rung 3 is **not a bigger rung 2** — bulk analytical reads are a different access shape
 from point cache hits, which is why the two stay separately owned.
 
 ## 45. The collector schema is a contract meteoscape depends on but does not own
 
 **Kind:** external-contract risk (2026-08-08 align) · **Refs:**
-[Mongo obs source](./tickets/02-0130-mongo-obs-source.md),
-[Mongo forecast-run archive source](./tickets/02-0134-forecast-run-archive-source.md) ·
-**→ queued as [mongo-obs-source](./tickets/02-0130-mongo-obs-source.md)** (its align settles the
+[Mongo obs source](./tickets/01-0130-mongo-obs-source.md),
+[Mongo forecast-run archive source](./tickets/01-0134-forecast-run-archive-source.md) ·
+**→ queued as [mongo-obs-source](./tickets/01-0130-mongo-obs-source.md)** (its align settles the
 mitigations below)
 
 The collector (external repo) writes parsed documents in its own schema — common camelCase forecast
@@ -735,7 +735,7 @@ fields sparse per provider (`ibm`, `tomorrow`, `visualcrossing`), two obs schema
 station-network source carrying `raw` payload and `method`; legacy `ibm_hod`), a `stations`
 registry, and a `state` freshness doc, keyed `(base_time, time)` / `time`. The Mongo sources map
 this schema to canonical parameters, so a collector-side schema change silently breaks them.
-Mitigations to settle at the `02-0130` align: pinned integration fixtures (sampled real documents)
+Mitigations to settle at the `01-0130` align: pinned integration fixtures (sampled real documents)
 as the contract test, a schema version marker in the collector if cheap, and a documented ownership
 statement (collector owns the schema; meteoscape adapts). The station network's obs `raw` payload
 preserves replayability; forecast documents carry no raw, so forecast decode fidelity is bounded by
@@ -1331,7 +1331,7 @@ temporal extrapolator, subregion-valid downscaler). No v1 driver.
 [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
 [ADR-0007](./adr/0007-capability-carries-its-domain.md),
 [#44](#44-dedicated-live-archive-store-for-throughput),
-[minimal resolution logging](./tickets/01-0195-minimal-resolution-logging.md)
+[minimal resolution logging](./tickets/02-0195-minimal-resolution-logging.md)
 
 A live store accumulates Holdings at many spatial cells per parameter (two requests for two cities
 warm two cells, one store), but the `Capability` protocol's `reach(p)` returns **one** `Domain`,
@@ -1348,7 +1348,7 @@ ask pins one cell and plurality cannot arise. A narrating reach with gaps is eve
 archive store, whose holdings are plural by design.
 
 **Revisit** when the first real multi-reach reader arrives — store hit/refill observability
-([0195](./tickets/01-0195-minimal-resolution-logging.md)) or the persisting/archive substrate
+([0195](./tickets/02-0195-minimal-resolution-logging.md)) or the persisting/archive substrate
 (#44). That reader decides whether to mint a plural-reach advertisement form (ADR-0007 amendment)
 or read the Holding table through a substrate-side face instead.
 

@@ -2,15 +2,16 @@
 
 - **Status:** Planned — its own align precedes implementation; it settles run-selection semantics
   within the initial scope and how per-provider origins compose (see below).
-- **Blocks:** [correction calculator](./02-0140-correction-calculator.md).
+- **Blocks:** [correction calculator](./01-0140-correction-calculator.md).
 - **Outcome:** Archived forecast runs from the operator's Collector database served as distinct
   per-provider origins, run identity carried in provenance, without deciding cross-run combination
   (stays at [#9](../concerns.md#9-cross-run-combination)).
 
 ## Parent
 
-Release 02 is contract-deferred ([delivery status](./README.md)); the owning durable context is
-[product-roadmap → Priority candidate after v1](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction)
+The release-01 bee-line makes forecast/observation comparison part of v1
+([delivery status](./README.md)). Its durable product context is the
+[local-station validation and bias-correction roadmap](../product-roadmap.md#priority-candidate-after-v1-local-station-validation-and-bias-correction)
 and concerns [#9](../concerns.md#9-cross-run-combination) /
 [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own).
 
@@ -40,7 +41,7 @@ case, deliberately without opening #9's combination semantics.
   decide**: decline runless producers, or record the distinction explicitly so a reader can tell a
   run from a bucket.
 - Reuses the transport, registry read, and fixture-contract machinery of the
-  [Mongo obs source](./02-0130-mongo-obs-source.md).
+  [Mongo obs source](./01-0130-mongo-obs-source.md).
 
 **Out of scope:** cross-run folding, run-ensemble semantics, any as-of-time request vocabulary
 (#9); collector write paths; the live TWC provider (a different ticket and transport entirely).
@@ -63,7 +64,7 @@ case, deliberately without opening #9's combination semantics.
 
 ## Blocked by
 
-- [Mongo obs source](./02-0130-mongo-obs-source.md) (active) — shares transport, registry, and the
+- [Mongo obs source](./01-0130-mongo-obs-source.md) (active) — shares transport, registry, and the
   #45 contract machinery.
 
 ## Parent scope addressed
