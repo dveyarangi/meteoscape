@@ -11,11 +11,13 @@ from fakes import (
     SAMPLE_STORE,
     STOPPED,
     FakeProvider,
+    FaultingProvider,
     RecordingProvider,
     air_temperature_capability,
     core_parameters,
     coverage_record,
     fake_catalog,
+    footprint_capability,
     footprint_domain,
     point_timeline_domain,
     snapped_point_domain,
@@ -362,6 +364,189 @@ async def test_winner_domains_that_differ_fail_the_whole_request() -> None:
 
     with pytest.raises(RuntimeFailure, match="closed-projection invariant broken"):
         await arbiter.project(selection)
+
+
+# --- Fall-through on a child's RuntimeFailure (docs/tickets/done/01-0121-second-provider-fallback.md) ---
+
+
+def _materialized(*providers_and_priority: tuple[Provider, int]) -> SourceRegistry:
+    return SourceRegistry(
+        sources={
+            provider.source_key: RegisteredSource(provider=provider, priority=priority, store=None)
+            for provider, priority in providers_and_priority
+        }
+    )
+
+
+def _serving(key: SourceKey, *pids: ParameterId) -> RecordingProvider:
+    table = core_parameters()
+    return RecordingProvider(
+        source_key=key,
+        capability=footprint_capability(STOPPED, table, frozenset(pids)),
+        coverage=_coverage(*pids, origin_key=key),
+    )
+
+
+def _faulting(
+    key: SourceKey, *pids: ParameterId, message: str = "upstream HTTP 429"
+) -> FaultingProvider:
+    return FaultingProvider(
+        source_key=key,
+        capability=footprint_capability(STOPPED, core_parameters(), frozenset(pids)),
+        message=message,
+    )
+
+
+@pytest.mark.asyncio
+async def test_faulting_priority_0_falls_through_to_priority_1() -> None:
+    primary = _faulting(SourceKey("a", "default"), AIR_TEMPERATURE)
+    backstop = _serving(SourceKey("b", "default"), AIR_TEMPERATURE)
+    arbiter = _arbiter(_materialized((primary, 0), (backstop, 1)))
+
+    result = await arbiter.project(_point_selection())
+
+    assert result is backstop.coverage
+    origin = backstop.coverage.provenance.summary(AIR_TEMPERATURE).origin
+    assert isinstance(origin, AtomicOrigin)
+    assert origin.source == SourceKey("b", "default")
+    assert len(primary.calls) == 1
+    assert len(backstop.calls) == 1
+    assert backstop.calls[0].parameters == frozenset({AIR_TEMPERATURE})
+
+
+@pytest.mark.asyncio
+async def test_two_winner_fault_reroutes_only_the_faulted_parameters() -> None:
+    temp_primary = _faulting(SourceKey("a", "default"), AIR_TEMPERATURE)
+    temp_backstop = _serving(SourceKey("a-spare", "default"), AIR_TEMPERATURE)
+    precip = _serving(SourceKey("b", "default"), PRECIPITATION)
+    arbiter = _arbiter(_materialized((temp_primary, 0), (temp_backstop, 1), (precip, 0)))
+
+    result = await arbiter.project(
+        _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
+    )
+
+    assert isinstance(result, CoverageRecord)
+    assert set(result.ranges) == {AIR_TEMPERATURE, PRECIPITATION}
+    assert result.ranges[AIR_TEMPERATURE] is temp_backstop.coverage.ranges[AIR_TEMPERATURE]
+    assert result.ranges[PRECIPITATION] is precip.coverage.ranges[PRECIPITATION]
+    temp_origin = result.provenance.summary(AIR_TEMPERATURE).origin
+    precip_origin = result.provenance.summary(PRECIPITATION).origin
+    assert isinstance(temp_origin, AtomicOrigin) and isinstance(precip_origin, AtomicOrigin)
+    assert temp_origin.source == SourceKey("a-spare", "default")
+    assert precip_origin.source == SourceKey("b", "default")
+    assert len(temp_primary.calls) == 1
+    assert len(temp_backstop.calls) == 1
+    assert len(precip.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_fault_reroutes_onto_a_producer_that_already_served_other_parameters() -> None:
+    """P0 declares {temp, precip} at priority 1; P1 declares precip at priority 0 and faults.
+
+    Precip lands on P0, which then serves temp and precip in two projections — both answers appear.
+    """
+    both = _serving(SourceKey("wide", "default"), AIR_TEMPERATURE, PRECIPITATION)
+    precip_primary = _faulting(SourceKey("narrow", "default"), PRECIPITATION)
+    arbiter = _arbiter(_materialized((both, 1), (precip_primary, 0)))
+
+    result = await arbiter.project(
+        _point_selection(parameters=frozenset({AIR_TEMPERATURE, PRECIPITATION}))
+    )
+
+    assert isinstance(result, CoverageRecord)
+    assert set(result.ranges) == {AIR_TEMPERATURE, PRECIPITATION}
+    assert len(both.calls) == 2
+    assert {call.parameters for call in both.calls} == {
+        frozenset({AIR_TEMPERATURE}),
+        frozenset({PRECIPITATION}),
+    }
+    assert len(precip_primary.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_all_candidates_fault_names_parameter_producers_and_last_fault() -> None:
+    primary = _faulting(SourceKey("a", "default"), AIR_TEMPERATURE, message="primary 429")
+    backstop = _faulting(SourceKey("b", "default"), AIR_TEMPERATURE, message="backstop timeout")
+    arbiter = _arbiter(_materialized((primary, 0), (backstop, 1)))
+
+    with pytest.raises(RuntimeFailure, match="air_temperature") as exc:
+        await arbiter.project(_point_selection())
+    message = str(exc.value)
+    assert "a:default" in message
+    assert "b:default" in message
+    assert "backstop timeout" in message
+    assert len(primary.calls) == 1
+    assert len(backstop.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_no_remaining_candidate_admits_is_exhaustion_not_omission() -> None:
+    table = core_parameters()
+    t_window = Interval(datetime(2026, 7, 1, tzinfo=UTC), datetime(2026, 8, 1, tzinfo=UTC))
+    wide = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-180.0, 180.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
+            AxisName.T: ContinuousAxis(AxisName.T, t_window),
+        }
+    )
+    narrow = FootprintDomain(
+        axes={
+            AxisName.X: ContinuousAxis(AxisName.X, Interval(-10.0, 10.0)),
+            AxisName.Y: ContinuousAxis(AxisName.Y, Interval(-90.0, 90.0)),
+            AxisName.Z: ContinuousAxis(AxisName.Z, Interval(0.0, 0.0)),
+            AxisName.T: ContinuousAxis(AxisName.T, t_window),
+        }
+    )
+    primary = FaultingProvider(
+        source_key=SourceKey("a", "default"),
+        capability=GranularCapability(
+            reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), wide)}
+        ),
+    )
+    backstop = FaultingProvider(
+        source_key=SourceKey("b", "default"),
+        capability=GranularCapability(
+            reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), narrow)}
+        ),
+        message="should not be asked",
+    )
+    arbiter = _arbiter(_materialized((primary, 0), (backstop, 1)))
+
+    with pytest.raises(RuntimeFailure, match="air_temperature") as exc:
+        await arbiter.project(_point_selection())  # lon=13.41, outside the backstop's X footprint
+    assert "a:default" in str(exc.value)
+    assert "upstream HTTP 429" in str(exc.value)
+    assert len(primary.calls) == 1
+    assert backstop.calls == []
+
+
+class _MismatchingProvider(FakeProvider):
+    """Admits, then raises `CapabilityMismatch` at projection — unservability, not a fault."""
+
+    def __init__(self, *, source_key: SourceKey, capability: GranularCapability) -> None:
+        super().__init__(source_key=source_key, capability=capability)
+        self.calls: list[Selection] = []
+
+    async def project(self, selection: Selection) -> CoverageRecord:
+        self.calls.append(selection)
+        raise CapabilityMismatch("admitted but unservable")
+
+
+@pytest.mark.asyncio
+async def test_projection_capability_mismatch_propagates_without_fall_through() -> None:
+    primary = _MismatchingProvider(
+        source_key=SourceKey("a", "default"),
+        capability=air_temperature_capability(STOPPED, core_parameters()),
+    )
+    backstop = _serving(SourceKey("b", "default"), AIR_TEMPERATURE)
+    arbiter = _arbiter(_materialized((primary, 0), (backstop, 1)))
+
+    with pytest.raises(CapabilityMismatch, match="admitted but unservable"):
+        await arbiter.project(_point_selection())
+    assert len(primary.calls) == 1
+    assert backstop.calls == []
 
 
 # --- compose_domains: the reconciler's domain composition (ADR-0007) ---

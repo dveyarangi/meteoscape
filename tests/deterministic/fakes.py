@@ -8,6 +8,7 @@ from typing import Any
 
 from meteoscape.clock import Clock, StoppedClock
 from meteoscape.config import Settings, StoreSpec
+from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 from meteoscape.manifold.capability import Capability, EnumerableCapability, GranularCapability
@@ -180,11 +181,33 @@ class RecordingProvider(FakeProvider):
             capability=coverage.capability if capability is None else capability,
         )
         self.calls: list[Selection] = []
-        self._coverage = coverage
+        self.coverage = coverage
 
     async def project(self, selection: Selection) -> Manifold:
         self.calls.append(selection)
-        return self._coverage
+        return self.coverage
+
+
+class FaultingProvider(FakeProvider):
+    """Records each `project` attempt, then raises `RuntimeFailure`.
+
+    The fall-through proof needs a winner that blows up mid-request with no canned answer.
+    """
+
+    def __init__(
+        self,
+        *,
+        source_key: SourceKey,
+        capability: Capability,
+        message: str = "upstream HTTP 429",
+    ) -> None:
+        super().__init__(source_key=source_key, capability=capability)
+        self.calls: list[Selection] = []
+        self._message = message
+
+    async def project(self, selection: Selection) -> Manifold:
+        self.calls.append(selection)
+        raise RuntimeFailure(self._message)
 
 
 def coverage_record(

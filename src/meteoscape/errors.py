@@ -33,8 +33,8 @@ class RuntimeFailure(MeteoscapeError):
     TODO(#39): split engine invariant breaks, such as the Arbiter's closed-projection check, from
     producer failures; concern #39 owns the public hierarchy.
 
-    Currently propagates and fails the whole request; wholesale priority fallback will try the next
-    candidate.
+    Currently a child's `RuntimeFailure` falls through to the next admitted candidate; exhaustion of
+    every candidate still fails the whole request.
     """
 
 

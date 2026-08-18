@@ -165,61 +165,105 @@ class Arbiter:
         )
 
     async def project(self, selection: Selection) -> Manifold:
-        """Admit per parameter; project each winning producer once; assemble if winners span nodes.
+        """Admit per parameter; project each winner; on a child's `RuntimeFailure`, try the next.
 
-        Unserved parameters are omitted; an empty admitted set → `CapabilityMismatch`.
-        `RuntimeFailure` propagates and fails the whole request.
+        Unserved parameters are omitted; an empty admitted set → `CapabilityMismatch`. A fault
+        re-enters selection for that producer's parameters, skipping anyone who already faulted
+        in this call — wholesale, one origin per parameter (docs/v1-requirements.md). Exhaustion
+        of every candidate still fails the whole request
+        (docs/concerns.md#30-response-membership-under-runtime-degraded-fallback).
         """
-        winners: dict[ParameterId, Producer] = {}
-        for parameter in selection.parameters:
-            candidates = self.by_parameter.get(parameter, ())
-            for candidate in self.reconciler.select(parameter, candidates):
-                if candidate.node.capability.serves(parameter, selection.domain):
-                    winners[parameter] = candidate
-                    break
-
+        winners = self._admit(selection)
         if not winners:
             raise CapabilityMismatch("no producer admits any requested parameter")
 
-        by_producer = _group_by_producer(winners)
-        if len(by_producer) == 1:
-            producer, params = next(iter(by_producer.values()))
-            return await producer.node.project(selection.with_params(params))
-        return await self._assemble(by_producer, selection)
+        served: list[tuple[Producer, frozenset[ParameterId], Manifold]] = []
+        pending = list(_group_by_producer(winners).values())
+        faulted: list[ProducerKey] = []
 
-    async def _assemble(
+        while pending:
+            producer, params = pending.pop(0)
+            try:
+                result = await producer.node.project(selection.with_params(params))
+            except RuntimeFailure as fault:
+                faulted.append(producer.key)
+                pending.extend(self._reroute(params, selection, faulted, fault))
+                continue
+            served.append((producer, params, result))
+
+        if len(served) == 1:
+            return served[0][2]
+        return self._assemble(served)
+
+    def _admit(self, selection: Selection) -> dict[ParameterId, Producer]:
+        """First candidate that `serves`, per requested parameter — no projection yet."""
+        winners: dict[ParameterId, Producer] = {}
+        for parameter in selection.parameters:
+            winner = self._first_admitted(parameter, selection, faulted=())
+            if winner is not None:
+                winners[parameter] = winner
+        return winners
+
+    def _first_admitted(
         self,
-        by_producer: Mapping[ProducerKey, tuple[Producer, frozenset[ParameterId]]],
+        parameter: ParameterId,
         selection: Selection,
-    ) -> CoverageRecord:
-        """Merge disjoint single-parameter winners on the shared domain via `PerParameter`."""
-        results: dict[ProducerKey, Coverage] = {}
-        for key, (producer, params) in by_producer.items():
-            result = await producer.node.project(selection.with_params(params))
-            if not isinstance(result, Coverage):
-                raise RuntimeFailure(
-                    f"producer {key} returned a non-Coverage Manifold from project"
-                )
-            results[key] = result
+        faulted: Sequence[ProducerKey],
+    ) -> Producer | None:
+        skipped = set(faulted)
+        for candidate in self.reconciler.select(parameter, self.by_parameter.get(parameter, ())):
+            if candidate.key in skipped:
+                continue
+            if candidate.node.capability.serves(parameter, selection.domain):
+                return candidate
+        return None
 
+    def _reroute(
+        self,
+        params: frozenset[ParameterId],
+        selection: Selection,
+        faulted: Sequence[ProducerKey],
+        last_fault: RuntimeFailure,
+    ) -> list[tuple[Producer, frozenset[ParameterId]]]:
+        """Re-select the faulted group's parameters, skipping producers that already blew up."""
+        next_winners: dict[ParameterId, Producer] = {}
+        for parameter in params:
+            winner = self._first_admitted(parameter, selection, faulted)
+            if winner is None:
+                # TODO(#30): 0190 dissolves this whole-request failure into per-parameter reasons.
+                names = ", ".join(str(key) for key in faulted)
+                raise RuntimeFailure(
+                    f"{parameter} exhausted after {names} faulted: {last_fault}"
+                ) from last_fault
+            next_winners[parameter] = winner
+        return list(_group_by_producer(next_winners).values())
+
+    def _assemble(
+        self,
+        served: Sequence[tuple[Producer, frozenset[ParameterId], Manifold]],
+    ) -> CoverageRecord:
+        """Merge already-projected parameter groups on the shared domain via `PerParameter`."""
         ranges: dict[ParameterId, ParameterData] = {}
         defs: dict[ParameterId, ParameterDef] = {}
         prov: dict[ParameterId, Provenance] = {}
         domain = None
-        for key, (_producer, params) in by_producer.items():
-            cov = results[key]
+        for producer, params, result in served:
+            if not isinstance(result, Coverage):
+                raise RuntimeFailure(
+                    f"producer {producer.key} returned a non-Coverage Manifold from project"
+                )
             if domain is None:
-                domain = cov.domain
-            elif cov.domain != domain:
+                domain = result.domain
+            elif result.domain != domain:
                 # TODO(#39): an engine invariant break wearing a producer's category — no producer
                 # faulted here. `RuntimeFailure` is kept because it is the only class that reaches
                 # the wire cleanly; the retraction is concern #39's inventory, 0125's align.
                 # Guarded by `test_winner_domains_that_differ_fail_the_whole_request`.
                 raise RuntimeFailure("closed-projection invariant broken: winner domains differ")
             for pid in params:
-                ranges[pid] = cov.ranges[pid]
-                defs[pid] = cov.capability.parameters[pid]
-                prov[pid] = cov.provenance.summary(pid)
+                ranges[pid] = result.ranges[pid]
+                defs[pid] = result.capability.parameters[pid]
+                prov[pid] = result.provenance.summary(pid)
 
         assert domain is not None
         return CoverageRecord(

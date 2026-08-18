@@ -525,3 +525,36 @@ async def test_ask_wholly_past_twc_is_capability_mismatch() -> None:
             )
     assert om.call_count == 0
     assert twc.call_count >= 1
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_primary_429_falls_through_to_backstop() -> None:
+    """A metered primary's 429 is a RuntimeFailure; the request survives on Open-Meteo."""
+    respx.get(url__startswith=f"{TWC_BASE_URL}/v3/wx/forecast/hourly/").mock(
+        return_value=httpx.Response(429, json={"ok": False})
+    )
+    respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast())
+    )
+    gateway = _compose_both(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+    exp = CADENCE.expiration(_CLOCK.now()).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    async with Client(app) as client:
+        result = await client.call_tool(
+            "forecast_hourly",
+            {
+                "latitude": 52.52,
+                "longitude": 13.41,
+                "start": "2026-07-11T12:00",
+                "end": "2026-07-18T11:00",
+            },
+        )
+
+    payload = result.data
+    served = {name: block for name, block in payload.items() if name != "valid_time"}
+    assert served
+    for block in served.values():
+        assert block["provenance"]["source"] == "open-meteo:best_match"
+        assert block["provenance"]["exp"] == exp
