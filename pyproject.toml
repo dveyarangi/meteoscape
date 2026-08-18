@@ -44,7 +44,8 @@ pythonpath = ["src", "tests/deterministic", "tests"]
 pythonVersion = "3.14"
 venvPath = "."
 venv = ".venv"
-include = ["src", "tests"]
+include = ["src", "tests", ".agents/scripts"]
+extraPaths = [".agents/scripts"]
 
 [tool.ruff]
 target-version = "py314"
