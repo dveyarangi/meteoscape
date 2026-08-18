@@ -41,7 +41,7 @@ from meteoscape.parameters import (
 )
 
 # Mid-hour on purpose: raw instants must ride unfloored — the production Metronome floors to the
-# hour, so only a mid-hour StoppedClock exercises the raw rule directly (RFC 0008 fact 7).
+# hour, so only a mid-hour StoppedClock exercises the raw rule directly.
 _CLOCK = StoppedClock(datetime(2026, 7, 11, 12, 34, tzinfo=UTC))
 
 
@@ -148,7 +148,7 @@ class _RecordingView:
     @property
     def capability(self):
         # A rolling footprint, not the canned coverage's 2-hour lattice: the reach fold for an
-        # omitted `end` must land after `now`, or every defaulted request degenerates (RFC 0008).
+        # omitted `end` must land after `now`, or every defaulted request degenerates.
         return footprint_capability(STOPPED, core_parameters(), self._pids, cadence=self._cadence)
 
 
@@ -219,7 +219,7 @@ def test_build_selection_rejects_past_end_against_implicit_now() -> None:
 
 def test_build_selection_beyond_reach_start_authors_single_instant_ask() -> None:
     # Beyond the 7-day fake reach: the edge still never rejects on reach's word — it authors the
-    # single-instant ask and admission answers capability-mismatch (RFC 0008 decision 7).
+    # single-instant ask and admission answers capability-mismatch.
     capability = _capability(AIR_TEMPERATURE)
     start = datetime(2026, 8, 1, 0, 0, tzinfo=UTC)
     assert _reach_end(capability) < start

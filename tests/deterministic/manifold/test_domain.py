@@ -315,7 +315,7 @@ def test_regular_axis_clip_absorbs_float_noise_at_a_cell_edge() -> None:
 
 def test_one_boundary_tolerance_policy() -> None:
     """Guard: one tolerance constant, referenced by both alignment reads — a second diverging
-    constant fails here (RFC 0011)."""
+    constant fails here."""
     import inspect
     import re
 

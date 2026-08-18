@@ -2,7 +2,7 @@
 
 `ProfileConfig` (operator enablement per profile), secrets, and cache/grid tuning. Secrets are
 injected, never read from globals downstream. `nodes/` receive plain values from `server.py`, never
-this type. The defaults encode v1's positions (Open-Meteo primary, TWC fallback).
+this type. The defaults encode v1's positions (TWC primary, Open-Meteo fallback).
 """
 
 from __future__ import annotations
@@ -29,8 +29,9 @@ class OfferingDef:
     """Profile enablement declaration for one catalogue offering.
 
     Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
-    `name=None` selects the expand path. Optional `store` whole-spec-replaces the catalogue
-    `StoreSpec` for non-materialized Sources.
+    `name=None` defers to the manifest's `default_offering`, or the expand path when the manifest
+    declares none. Optional `store` whole-spec-replaces the catalogue `StoreSpec` for
+    non-materialized Sources.
     """
 
     impl: str
@@ -75,10 +76,18 @@ class ProfileConfig:
 
 
 class Settings(BaseSettings):
+    """Operator env scalars projected into a `ProfileConfig`.
+
+    TODO (temporary): the vendor-named fields and the `offerings` / `secrets` branches that name
+    vendors dissolve into generic enablement and secret injection
+    ([edge/provider.md](../../docs/edge/provider.md) vendor-config-purity;
+    [#26](../../docs/concerns.md#26-provider--calculator-plugin-scaffolding)).
+    """
+
     model_config = SettingsConfigDict(env_prefix="METEOSCAPE_", env_file=".env", extra="ignore")
 
     open_meteo_enabled: bool = True
-    """Include the Open-Meteo producer. Keyless; off disables the primary source."""
+    """Include the Open-Meteo producer. Keyless; off disables the backstop source."""
 
     twc_api_key: str | None = None
     """The Weather Company key (optional). Absent => serve on Open-Meteo alone."""
@@ -93,19 +102,12 @@ class Settings(BaseSettings):
     """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""
 
     def offerings(self) -> tuple[OfferingDef, ...]:
-        """Enabled producer declarations with explicit offering names."""
+        """Enabled producer declarations. Omitted names resolve at the binder."""
         defs: list[OfferingDef] = []
-        if self.open_meteo_enabled:
-            defs.append(OfferingDef(impl="open-meteo", name="best_match", priority=0))
         if self.twc_api_key is not None:
-            defs.append(
-                OfferingDef(
-                    impl="twc",
-                    name="default",
-                    priority=1,
-                    secret_ref="twc_api_key",
-                )
-            )
+            defs.append(OfferingDef(impl="twc", priority=0, secret_ref="twc_api_key"))
+        if self.open_meteo_enabled:
+            defs.append(OfferingDef(impl="open-meteo", priority=1))
         return tuple(defs)
 
     def calculators(self) -> tuple[CalculatorDef, ...]:

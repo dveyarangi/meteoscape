@@ -72,18 +72,17 @@ class SourceBinder:
         """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each Source store."""
         sources: dict[SourceKey, RegisteredSource] = {}
         for offering in defs:
-            if offering.name is None:
-                raise NotImplementedError("OfferingDef expand (name=None) is not built yet")
-
             manifest = self.catalog.get(offering.impl)
             if manifest is None:
                 raise CompositionError(f"unknown provider impl {offering.impl!r}")
 
-            spec = manifest.offerings.get(offering.name)
+            name = offering.name if offering.name is not None else manifest.default_offering
+            if name is None:
+                raise NotImplementedError("OfferingDef expand (name=None) is not built yet")
+
+            spec = manifest.offerings.get(name)
             if spec is None:
-                raise CompositionError(
-                    f"unknown offering {offering.name!r} for impl {offering.impl!r}"
-                )
+                raise CompositionError(f"unknown offering {name!r} for impl {offering.impl!r}")
 
             secret_value: str | None = None
             if offering.secret_ref is not None:

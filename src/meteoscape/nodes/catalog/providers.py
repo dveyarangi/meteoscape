@@ -36,7 +36,7 @@ class OfferingSpec:
 
 @dataclass(frozen=True)
 class ProviderManifest:
-    """Plugin face for one impl — declared offerings, secret slot, `build` / optional `expand`."""
+    """Plugin face for one impl — declared offerings, default offering, secret slot, `build` / optional `expand`."""
 
     impl_id: str
     provider_id: str
@@ -53,3 +53,6 @@ class ProviderManifest:
         ]
         | None
     ) = None
+    default_offering: str | None = None
+    """Catalogue row used when `OfferingDef.name` is omitted; `None` leaves an omitted name to the
+    (unbuilt) expand path."""

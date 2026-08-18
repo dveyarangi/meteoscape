@@ -140,7 +140,7 @@ def build_selection(
 
     params = _resolve_parameters(parameter_names, envelope=capability.parameters, table=table)
     if not params:
-        # Before the reach fold, which is undefined over zero parameters (RFC 0008 decision 3).
+        # Reject before the reach fold, which is undefined over zero parameters.
         raise CapabilityMismatch("profile serves no parameters")
 
     start_i = _parse_bound(start) if start is not None else clock.now()
@@ -157,8 +157,7 @@ def build_selection(
         # promise. `min` over the requested parameters (never a sentinel): at the first
         # diverging-reach parameter set the fold is what keeps a mixed response one shape (#30).
         reach_end = min(_t_extent(capability.reach(p)).upper for p in params)
-        # A start beyond reach authors the single-instant ask; admission answers
-        # capability-mismatch (RFC 0008 decision 7).
+        # A start beyond reach authors the single-instant ask; admission answers the mismatch.
         end_i = max(reach_end, start_i)
 
     domain = SelectionDomain(
@@ -175,9 +174,8 @@ def build_selection(
 def _parse_bound(raw: str) -> datetime:
     """One `start`/`end` string as an aware-UTC raw instant; naive reads as UTC.
 
-    `date.fromisoformat` probes first: `datetime.fromisoformat` silently reads a bare date as
-    midnight, which would be the silently short answer session 0013 rejected — a bare (or week)
-    date is refused loudly with the fix in the message instead (RFC 0008 decision 5).
+    `date.fromisoformat` probes first because `datetime.fromisoformat` silently reads a bare date as
+    midnight. Refusing bare and week dates prevents an accidental, silently shortened answer.
     """
     try:
         date.fromisoformat(raw)
@@ -265,7 +263,7 @@ def _resolve_parameters(
     table: ParameterTable,
 ) -> frozenset[ParameterId]:
     if names is not None and not names:
-        # `None` means "all served"; an explicitly empty ask is meaningless (RFC 0008 decision 3).
+        # `None` means "all served"; an explicitly empty ask is meaningless.
         raise BadRequest("parameters must not be empty; omit it to get all served parameters")
     menu = _exposed_menu(envelope)
     if names is None:

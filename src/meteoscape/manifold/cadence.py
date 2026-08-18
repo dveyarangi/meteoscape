@@ -28,8 +28,9 @@ class CadenceDef:
     """
 
     def __post_init__(self) -> None:
-        # A rolling Holding refreshes only on expiry; cadence longer than the window lets it fall
-        # entirely behind `now` between refreshes (ADR-0002 / ADR-0003).
+        # A cadence longer than the window makes retention's rescue refills - vendor calls the
+        # cadence never scheduled - the real spend driver, each serving before the narrated
+        # expiration (ADR-0003).
         if self.cadence > self.max_lead:
             raise ValueError(f"cadence {self.cadence} must not exceed max_lead {self.max_lead}")
 

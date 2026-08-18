@@ -209,6 +209,16 @@ def test_expand_name_none_not_implemented() -> None:
         )
 
 
+def test_omitted_name_resolves_to_manifest_default() -> None:
+    registry = SourceBinder(fake_catalog(default_offering="default")).build(
+        [OfferingDef(impl="fake", name=None, priority=0)],
+        secrets={},
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    assert set(registry.sources) == {SourceKey(provider="fake", dataset="default")}
+
+
 def test_calculator_binder_empty() -> None:
     empty = CalculatorBinder({}).build((), core_parameters())
     assert empty.calculators == {}

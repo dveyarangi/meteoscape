@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from fakes import STOPPED, fake_catalog
+from fakes import STOPPED, fake_catalog, pinned_settings
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
 from meteoscape.config import (
@@ -15,10 +15,11 @@ from meteoscape.config import (
     CalculatorDef,
     OfferingDef,
     ProfileConfig,
-    Settings,
     StoreSpec,
 )
-from meteoscape.nodes.composition import CompositionError
+from meteoscape.identity import SourceKey
+from meteoscape.nodes.catalog.paramtable import StaticParameterTable
+from meteoscape.nodes.composition import CompositionError, SourceBinder
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
@@ -58,7 +59,7 @@ def test_compose_rejects_unproducible_calculator_input() -> None:
 
 
 def test_default_settings_compose_open_meteo() -> None:
-    settings = Settings()
+    settings = pinned_settings()
     gateway = compose(
         settings.profile(),
         PROVIDER_CATALOG,
@@ -69,11 +70,12 @@ def test_default_settings_compose_open_meteo() -> None:
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
     assert WIND_SPEED in gateway.best_view.capability.parameters
     assert "open-meteo" in PROVIDER_CATALOG
+    assert "twc" in PROVIDER_CATALOG
     assert "wind_uv" in CALCULATOR_CATALOG
 
 
 def test_default_compose_and_forecast_hourly_registered() -> None:
-    settings = Settings()
+    settings = pinned_settings()
     clock = StoppedClock(datetime(2026, 7, 11, tzinfo=UTC))
     gateway = compose(
         settings.profile(),
@@ -89,3 +91,37 @@ def test_default_compose_and_forecast_hourly_registered() -> None:
     assert tool is not None
     assert tool.name == "forecast_hourly"
     assert "air_temperature" in (tool.description or "")
+
+
+def test_key_present_composes_twc_as_primary() -> None:
+    settings = pinned_settings(twc_api_key="secret")
+    gateway = compose(
+        settings.profile(),
+        PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
+        settings.secrets(),
+        STOPPED,
+    )
+    assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
+    registry = SourceBinder(PROVIDER_CATALOG).build(
+        settings.offerings(),
+        settings.secrets(),
+        STOPPED,
+        StaticParameterTable.core(),
+    )
+    twc = SourceKey(provider="twc", dataset="hourly_10day")
+    om = SourceKey(provider="open-meteo", dataset="best_match")
+    assert registry.sources[twc].priority == 0
+    assert registry.sources[om].priority == 1
+    assert AIR_TEMPERATURE in registry.sources[twc].provider.capability.parameters
+    assert AIR_TEMPERATURE in registry.sources[om].provider.capability.parameters
+
+
+def test_unknown_twc_offering_fails_at_boot() -> None:
+    with pytest.raises(CompositionError, match="nope"):
+        SourceBinder(PROVIDER_CATALOG).build(
+            [OfferingDef(impl="twc", name="nope", priority=0, secret_ref="twc_api_key")],
+            {"twc_api_key": "secret"},
+            STOPPED,
+            StaticParameterTable.core(),
+        )

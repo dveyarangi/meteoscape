@@ -18,6 +18,7 @@ from .nodes.catalog.paramtable import StaticParameterTable
 from .nodes.catalog.providers import ProviderCatalog
 from .nodes.composition import CalculatorBinder, ProfileDef, SourceBinder
 from .nodes.providers.open_meteo import MANIFEST as OPEN_METEO_MANIFEST
+from .nodes.providers.twc import MANIFEST as TWC_MANIFEST
 from .nodes.store import StoreFactory
 from .nodes.weaver import Weaver
 from .observability import init_observability
@@ -25,6 +26,7 @@ from .observability import init_observability
 # Vendor / calculator modules each export a MANIFEST; the root assembles — data, not logic.
 PROVIDER_CATALOG: ProviderCatalog = {
     OPEN_METEO_MANIFEST.impl_id: OPEN_METEO_MANIFEST,
+    TWC_MANIFEST.impl_id: TWC_MANIFEST,
 }
 CALCULATOR_CATALOG: CalculatorCatalog = {
     WIND_UV_MANIFEST.fn_id: WIND_UV_MANIFEST,

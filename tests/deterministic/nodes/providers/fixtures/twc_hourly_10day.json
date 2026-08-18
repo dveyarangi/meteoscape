@@ -1,0 +1,254 @@
+{
+  "cloudCover": [
+    28,
+    30,
+    47,
+    29
+  ],
+  "dayOfWeek": [
+    "Tuesday",
+    "Tuesday",
+    "Tuesday",
+    "Tuesday"
+  ],
+  "dayOrNight": [
+    "D",
+    "D",
+    "D",
+    "D"
+  ],
+  "expirationTimeUtc": [
+    1786448867,
+    1786448867,
+    1786448867,
+    1786448867
+  ],
+  "iconCode": [
+    34,
+    30,
+    30,
+    34
+  ],
+  "iconCodeExtend": [
+    3400,
+    3000,
+    3000,
+    3400
+  ],
+  "precipChance": [
+    1,
+    0,
+    0,
+    0
+  ],
+  "precipType": [
+    "precip",
+    "rain",
+    "rain",
+    "rain"
+  ],
+  "pressureMeanSeaLevel": [
+    1022.68,
+    1022.78,
+    1022.6,
+    1022.2
+  ],
+  "qpf": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "qpfRain": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "qpfSnow": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "relativeHumidity": [
+    67,
+    59,
+    49,
+    46
+  ],
+  "temperature": [
+    2.6,
+    4.9,
+    6.6,
+    7.6
+  ],
+  "temperatureDewPoint": [
+    -3.0,
+    -2.5,
+    -3.4,
+    -3.3
+  ],
+  "temperatureFeelsLike": [
+    -0.1,
+    2.3,
+    3.8,
+    5.4
+  ],
+  "temperatureHeatIndex": [
+    2.6,
+    4.9,
+    6.6,
+    7.6
+  ],
+  "temperatureWindChill": [
+    -0.1,
+    2.3,
+    3.8,
+    5.4
+  ],
+  "uvDescription": [
+    "Low",
+    "Low",
+    "Low",
+    "Moderate"
+  ],
+  "uvIndex": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "validTimeLocal": [
+    "2026-08-11T09:00:00-0300",
+    "2026-08-11T10:00:00-0300",
+    "2026-08-11T11:00:00-0300",
+    "2026-08-11T12:00:00-0300"
+  ],
+  "validTimeUtc": [
+    1786449600,
+    1786453200,
+    1786456800,
+    1786460400
+  ],
+  "visibility": [
+    16.0,
+    16.0,
+    16.0,
+    16.0
+  ],
+  "windDirection": [
+    195,
+    184,
+    165,
+    152
+  ],
+  "windDirectionCardinal": [
+    "SSW",
+    "S",
+    "SSE",
+    "SSE"
+  ],
+  "windGust": [
+    null,
+    null,
+    26,
+    null
+  ],
+  "windSpeed": [
+    9,
+    11,
+    14,
+    12
+  ],
+  "wxPhraseLong": [
+    "Mostly Sunny",
+    "Partly Cloudy",
+    "Partly Cloudy",
+    "Mostly Sunny"
+  ],
+  "wxPhraseShort": [
+    "M Sunny",
+    "P Cloudy",
+    "P Cloudy",
+    "M Sunny"
+  ],
+  "wxSeverity": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "wxString": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "ceiling": [
+    99999,
+    99999,
+    99999,
+    99999
+  ],
+  "scatteredCloudBaseHeight": [
+    99999,
+    3390,
+    3180,
+    99999
+  ],
+  "pressureAltimeter": [
+    1021.0,
+    1021.1,
+    1021.0,
+    1020.8
+  ],
+  "qpfIce": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "qualifierSet": [
+    [],
+    [],
+    [],
+    []
+  ],
+  "temperatureWetBulbGlobe": [
+    2.6,
+    4.9,
+    6.6,
+    7.6
+  ],
+  "conditionalProbabilityThunder": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "conditionalProbabilitySleet": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "conditionalProbabilitySnow": [
+    95,
+    40,
+    1,
+    0
+  ],
+  "conditionalProbabilityRain": [
+    5,
+    54,
+    99,
+    100
+  ],
+  "conditionalProbabilityFreezingRain": [
+    0,
+    0,
+    0,
+    0
+  ]
+}

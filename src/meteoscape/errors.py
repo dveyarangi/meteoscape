@@ -30,12 +30,11 @@ class CapabilityMismatch(MeteoscapeError):
 class RuntimeFailure(MeteoscapeError):
     """A producer could not produce: 5xx, timeout, malformed upstream response.
 
-    TODO(#39): also carries engine **invariant breaks** today (the Arbiter's closed-projection
-    check), which are nobody's producer fault — the class inventory and the retraction this wants
-    are concern #39; the hierarchy is 0125's align.
+    TODO(#39): split engine invariant breaks, such as the Arbiter's closed-projection check, from
+    producer failures; concern #39 owns the public hierarchy.
 
-    Propagates and fails the whole request; fall-through to the next candidate arrives with
-    wholesale priority fallback (ticket 004).
+    Currently propagates and fails the whole request; wholesale priority fallback will try the next
+    candidate.
     """
 
 

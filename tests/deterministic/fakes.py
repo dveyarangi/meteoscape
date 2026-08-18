@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from meteoscape.clock import Clock, StoppedClock
-from meteoscape.config import StoreSpec
+from meteoscape.config import Settings, StoreSpec
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
 from meteoscape.manifold.capability import Capability, EnumerableCapability, GranularCapability
@@ -37,6 +38,18 @@ from meteoscape.nodes.store import Store, StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, ParameterId
 
 STOPPED = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
+
+
+def pinned_settings(**kwargs: Any) -> Settings:
+    """`Settings` with vendor slots taken from kwargs, not `.env`.
+
+    Init overrides env, so a local `METEOSCAPE_TWC_API_KEY` cannot silently enable TWC.
+    TODO (temporary): goes with the vendor-named fields when generic secret injection replaces
+    them ([edge/provider.md](../../docs/edge/provider.md) vendor-config-purity).
+    """
+    kwargs.setdefault("twc_api_key", None)
+    return Settings(**kwargs)
+
 
 _CADENCE = CadenceDef(
     cadence=timedelta(hours=1),
@@ -217,6 +230,7 @@ def fake_catalog(
     offerings: Mapping[str, OfferingSpec] | None = None,
     materialized: bool = False,
     secret: SecretSlot | None = None,
+    default_offering: str | None = None,
     built: list[tuple[OfferingSpec, Mapping[str, object], str | None]] | None = None,
 ) -> ProviderCatalog:
     """One-impl catalogue whose `build` yields a fake serving air temperature."""
@@ -257,6 +271,7 @@ def fake_catalog(
             offerings=specs,
             secret=secret,
             build=build,
+            default_offering=default_offering,
         )
     }
 

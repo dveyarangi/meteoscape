@@ -1,5 +1,4 @@
-"""`MemoryStore` — the quantize fold, Holding assimilation, holdings narration, and holdings query
-(RFC 0013)."""
+"""`MemoryStore` quantization, Holding assimilation, narration, and query behavior."""
 
 from __future__ import annotations
 
@@ -58,7 +57,7 @@ def _native(
 def _record(
     pid: ParameterId, domain: GridDomain, *, fetched_at: datetime = _FETCHED
 ) -> CoverageRecord:
-    """A single-parameter, single-origin record — provenance mocked freely (RFC 0013 fact 4)."""
+    """A single-parameter, single-origin record with freely mocked provenance."""
     return CoverageRecord(
         capability=EnumerableCapability(
             domain=domain, parameters={pid: core_parameters().get(pid)}
@@ -108,8 +107,7 @@ def test_timeline_ask_defers_t_z_and_pins_containing_cell_ticks() -> None:
 
 
 def test_a_tick_quantizes_to_itself() -> None:
-    """The fixed point (RFC 0013 fact 6): a fetch-order re-quantized at the same lattice is itself,
-    so a point ask stays a point through every store hop."""
+    """A fetch order is a quantization fixed point, so point asks stay points across store hops."""
     store = _timeline_store()
     shape = store.quantize(snapped_point_domain(start=_START, end=_END, lon=10.2, lat=45.3))
 

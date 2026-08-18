@@ -10,14 +10,14 @@ import respx
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from fakes import snapped_point_domain
+from fakes import pinned_settings, snapped_point_domain
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Clock, StoppedClock
-from meteoscape.config import Settings
 from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.domain import AxisName, FootprintDomain, GridDomain, RegularAxis
 from meteoscape.nodes.providers.open_meteo import BASE_URL, CADENCE
+from meteoscape.nodes.providers.twc import BASE_URL as TWC_BASE_URL
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED
 from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
 
@@ -37,10 +37,21 @@ class _AdvancingClock:
 
 def _compose_default(clock: Clock, *, store_spatial_step: float | None = None):
     settings = (
-        Settings()
+        pinned_settings()
         if store_spatial_step is None
-        else Settings(store_spatial_step=store_spatial_step)
+        else pinned_settings(store_spatial_step=store_spatial_step)
     )
+    return compose(
+        settings.profile(),
+        PROVIDER_CATALOG,
+        CALCULATOR_CATALOG,
+        settings.secrets(),
+        clock,
+    )
+
+
+def _compose_both(clock: Clock):
+    settings = pinned_settings(twc_api_key="test-key")
     return compose(
         settings.profile(),
         PROVIDER_CATALOG,
@@ -80,20 +91,30 @@ def _canned_forecast(
     }
 
 
+def _canned_twc(
+    *,
+    hours: int = 240,
+    start: datetime = datetime(2026, 7, 11, 12, 0, tzinfo=UTC),
+) -> dict:
+    epochs = [int((start + timedelta(hours=i)).timestamp()) for i in range(hours)]
+    return {
+        "validTimeUtc": epochs,
+        "temperature": [18.0] * hours,
+        "relativeHumidity": [50] * hours,
+        "qpf": [0.0] * hours,
+        "cloudCover": [40] * hours,
+        "windSpeed": [36] * hours,
+        "windDirection": [90] * hours,
+    }
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_forecast_hourly_e2e_and_refetch() -> None:
     route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
         return_value=httpx.Response(200, json=_canned_forecast())
     )
-    settings = Settings()
-    gateway = compose(
-        settings.profile(),
-        PROVIDER_CATALOG,
-        CALCULATOR_CATALOG,
-        settings.secrets(),
-        _CLOCK,
-    )
+    gateway = _compose_default(_CLOCK)
     app = build_mcp_app(gateway, _CLOCK)
 
     # The explicit window is exactly the 168 canned ticks (inclusive `end` = the last canned
@@ -415,7 +436,7 @@ async def test_short_vendor_delivery_is_disclosed_not_failed() -> None:
 
 
 def test_root_reach_is_the_live_leaf_domain_for_a_direct_parameter() -> None:
-    """The reach the ticket exists for: readable off the public root, the leaf's own live Domain."""
+    """The public root exposes the leaf's own live Domain as its reach."""
     clock = _AdvancingClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
     capability = _compose_default(clock).best_view.capability
     reach = capability.reach(AIR_TEMPERATURE)
@@ -444,3 +465,63 @@ def test_root_reach_resolves_a_derived_parameter_through_the_calculator() -> Non
     before = speed.axis(AxisName.T).extent.upper
     clock.instant = clock.instant + timedelta(days=1)
     assert speed.axis(AxisName.T).extent.upper == before + timedelta(days=1)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_default_ask_with_twc_primary_answers_twc_horizon() -> None:
+    """Composed narration stays the longer reach; the answer is the primary's clipped window."""
+    twc = respx.get(url__startswith=f"{TWC_BASE_URL}/v3/wx/forecast/hourly/").mock(
+        return_value=httpx.Response(200, json=_canned_twc())
+    )
+    om = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=372))
+    )
+    gateway = _compose_both(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    tool = await app.get_tool("forecast_hourly")
+    assert tool is not None
+    assert "out to 15 days ahead of the latest model run" in (tool.description or "")
+
+    async with Client(app) as client:
+        result = await client.call_tool(
+            "forecast_hourly",
+            {"latitude": 52.52, "longitude": 13.41},
+        )
+
+    payload = result.data
+    assert twc.call_count == 1
+    assert om.call_count == 0
+    assert payload["valid_time"][0] == "2026-07-11T12:00:00Z"
+    assert payload["valid_time"][-1] == "2026-07-21T11:00:00Z"
+    assert len(payload["valid_time"]) == 240
+    assert payload["air_temperature"]["provenance"]["source"] == "twc:hourly_10day"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_ask_wholly_past_twc_is_capability_mismatch() -> None:
+    """A tail past the primary does not fall through to Open-Meteo through the root store."""
+    twc = respx.get(url__startswith=f"{TWC_BASE_URL}/v3/wx/forecast/hourly/").mock(
+        return_value=httpx.Response(200, json=_canned_twc())
+    )
+    om = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(
+        return_value=httpx.Response(200, json=_canned_forecast(hours=372))
+    )
+    gateway = _compose_both(_CLOCK)
+    app = build_mcp_app(gateway, _CLOCK)
+
+    async with Client(app) as client:
+        with pytest.raises(ToolError, match=r"^capability-mismatch:"):
+            await client.call_tool(
+                "forecast_hourly",
+                {
+                    "latitude": 52.52,
+                    "longitude": 13.41,
+                    "start": "2026-07-22T00:00",
+                    "end": "2026-07-22T12:00",
+                },
+            )
+    assert om.call_count == 0
+    assert twc.call_count >= 1

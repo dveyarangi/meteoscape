@@ -558,6 +558,7 @@ HOURLY_STEP = timedelta(hours=1)
 # Conventional tropopause-scale upper for a total-cloud column cell (stand-in; vendors rarely publish TOA).
 TOA_M = 15_000.0
 
+Z_1_5M = AxisSpec(Interval(1.5, 1.5), AxisMode.POINT)
 Z_2M = AxisSpec(Interval(2.0, 2.0), AxisMode.POINT)
 Z_10M = AxisSpec(Interval(10.0, 10.0), AxisMode.POINT)
 Z_SURFACE = AxisSpec(Interval(0.0, 0.0), AxisMode.POINT)

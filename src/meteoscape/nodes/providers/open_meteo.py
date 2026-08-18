@@ -260,4 +260,5 @@ MANIFEST = ProviderManifest(
     },
     secret=None,
     build=build,
+    default_offering=BEST_MATCH,
 )
