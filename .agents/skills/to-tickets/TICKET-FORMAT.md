@@ -32,7 +32,9 @@ docs/tickets/done/01-0115-retentive-store-freshness.md
 The ticket names the work; its other artifacts take the same basename —
 `docs/tickets/01-0119-live-window-edge-tolerance.md` ↔ `docs/rfc/01-0119-live-window-edge-tolerance.md`.
 
-- Each artifact moves to its own `done/` on its own completion, basename intact.
+- Each artifact moves to its own `done/` on its own completion, basename intact. The move is
+  mechanical — `uv run python .agents/scripts/move_doc.py SRC DST [SRC DST ...]` re-depths the
+  moved record and rewrites live citers; a paired close (ticket + RFC) goes in one invocation.
 - Repositioning a ticket renames its RFC in the same change.
 - Cite a plan by its ticket's slug ("the TWC provider RFC"), never by a serial or position.
 - Artifacts predating this keep their names.
