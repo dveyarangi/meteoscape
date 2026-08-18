@@ -1,7 +1,7 @@
 # Tick-convention declaration
 
 - **Status:** Planned (own align precedes)
-- **Depends on:** [011 — TWC provider](./01-0120-twc-provider.md), which supplies the second real
+- **Depends on:** [011 — TWC provider](./done/01-0120-twc-provider.md), which supplies the second real
   convention and prevents an Open-Meteo-specific default.
 - **Outcome:** A tap declares where its value sits relative to the tick, and Open-Meteo's
   precipitation stops being labelled an hour late.

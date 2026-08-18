@@ -5,7 +5,7 @@
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md),
   [003c — Request shaping](./done/01-0110-request-shaping.md), and
-  [011 — TWC provider](./01-0120-twc-provider.md) (which makes TWC the **primary**; this ticket
+  [011 — TWC provider](./done/01-0120-twc-provider.md) (which makes TWC the **primary**; this ticket
   builds the fall-through *away* from it; 011 in turn rides [m4](./done/01-0100-snapped-t-request-mode.md))
 - **Outcome:** Wholesale priority fallback across two producers.
 
@@ -25,7 +25,7 @@
 > `ArbiterPolicy` rather than as unconditional Arbiter behaviour; the current minimal policy shape
 > is good enough to carry it.
 - **Scope narrowed 2026-08-02 (align):** the **provider implementation moved to
-  [011](./01-0120-twc-provider.md)** — Probe, manifest, secret slot, parity check. This ticket
+  [011](./done/01-0120-twc-provider.md)** — Probe, manifest, secret slot, parity check. This ticket
   keeps the **Arbiter behaviour** only. The two are tested
   differently and fail differently: 011 is a live parity question about one vendor's data; 004 is a
   deterministic question about selection and fall-through, provable against mocked transports with no
@@ -67,7 +67,7 @@ See `docs/v1-requirements.md` (Providers, v1 invariants → wholesale-fallback r
       `expiration` — authored by the wrapper from that Probe's declared cadence.
 - [ ] Unit + mocked-transport integration tests cover primary-serves and forced-failure-fallback.
       **No live network in this ticket** — the vendor's own correctness is
-      [011](./01-0120-twc-provider.md)'s parity check.
+      [011](./done/01-0120-twc-provider.md)'s parity check.
 - [ ] The [MCP edge record](../edge/mcp.md)'s whole-request `runtime-failure` invariant and Roadmap 4
       are updated at landing, and the change is named **compatible**.
 

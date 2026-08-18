@@ -2,21 +2,21 @@
 
 **Legacy id:** 011
 
-- **Status:** Ready
-- **Plan:** [TWC provider RFC](../rfc/01-0120-twc-provider.md) — enterprise endpoints,
+- **Status:** Done (landed 2026-08-18; live parity passed the same day)
+- **Plan:** [TWC provider RFC](../../rfc/done/01-0120-twc-provider.md) — enterprise endpoints,
   seven offering rows, `units=m`, 12 h polling cadence.
-- **Depends on:** [m4 — Snapped request mode](./done/01-0100-snapped-t-request-mode.md) (done —
+- **Depends on:** [m4 — Snapped request mode](./01-0100-snapped-t-request-mode.md) (done —
   `TimelineProvider` is extracted; this ticket writes only a Probe behind it),
-  [m3 — Provider parity checks](./done/01-0080-provider-parity-checks.md) (the harness this Probe's check
+  [m3 — Provider parity checks](./01-0080-provider-parity-checks.md) (the harness this Probe's check
   plugs into),
-  [0119 — live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md) (**added 2026-08-11**
+  [0119 — live-window edge tolerance](./01-0119-live-window-edge-tolerance.md) (**added 2026-08-11**
   after the stage 0 capture: TWC's series starts at the next whole hour, so without 0119 the refill
   gate never reaches containment and every request costs one metered vendor call),
-  [sample-level allowance](./done/01-0118-sample-level-allowance.md) (**added 2026-08-17** after this
+  [sample-level allowance](./01-0118-sample-level-allowance.md) (**added 2026-08-17** after this
   ticket's validation pass: TWC's native `Z_1_5M` against Open-Meteo's `Z_2M` makes reach
   composition incomparable, so key-present boot fails until the fold reads the Parameter's band)
-- **Blocks:** [004 — Second-provider fallback](./01-0121-second-provider-fallback.md) (needs a real second
-  producer to fall back *to*), [008 — Config, secrets, degradation](./01-0123-config-secrets-degrade.md)
+- **Blocks:** [004 — Second-provider fallback](../01-0121-second-provider-fallback.md) (needs a real second
+  producer to fall back *to*), [008 — Config, secrets, degradation](../01-0123-config-secrets-degrade.md)
   (needs a shipped manifest that actually declares a secret)
 - **Outcome:** TWC shipped as the **primary** producer — a `TimelineProbe`, a manifest declaring the
   first real `SecretSlot` and one offering row per licensed duration, its live parity check, and the
@@ -26,20 +26,25 @@
 
 - **Parity remains manual.** The TWC parity check guards the default path, but `tests/parity` stays
   outside CI and CI holds no key. Run it once after landing; scheduling and coverage enforcement stay
-  at [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
+  at [#41](../../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 - **Key-absent is the degraded mode.** Without the TWC key, composition omits the primary and serves
-  on Open-Meteo → [008](./01-0123-config-secrets-degrade.md).
+  on Open-Meteo → [008](../01-0123-config-secrets-degrade.md).
 - **Fault fall-through is separate.** A TWC 429 or exhausted quota is a `runtime-failure`, which the
-  current Arbiter propagates for the whole request → [004](./01-0121-second-provider-fallback.md).
-  A shorter reach is not fall-through: reach differences between
-  producers are resolved by **admission**, not fallback: a request beyond TWC's declared reach simply
-  does not admit TWC, and Open-Meteo wins on capability
-  ([ADR-0004](../adr/0004-producer-resolution-and-capability.md)). A window spanning both reaches still resolves whole to one
-  producer — `agreed_geometry` answers one bounded geometry, per
-  [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
-- **Vendor spend becomes real** → [vendor-call ledger](./02-0124-vendor-call-ledger.md).
+  current Arbiter propagates for the whole request → [004](../01-0121-second-provider-fallback.md).
+  **A shorter reach is neither fall-through nor an admission win for the backstop** *(corrected
+  2026-08-17; the earlier "a request beyond TWC's reach does not admit TWC, and Open-Meteo wins"
+  described admission only and is not what the retention flow serves)*: v1 always serves the
+  **primary's shape** — a spanning window is answered by TWC's ~10 days clipped, disclosed through
+  `valid_time`, while the tool narrates the composed ~16
+  ([ADR-0004](../../adr/0004-producer-resolution-and-capability.md),
+  [#29](../../concerns.md#29-narrated-reach-what-a-profile-promises)); and an ask **wholly past**
+  TWC's reach does not reach Open-Meteo through the root store — it answers
+  `capability-mismatch` after a redundant primary refill. The max-reach policy that would change
+  either is deliberately unbuilt →
+  [#49](../../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
+- **Vendor spend becomes real** → [vendor-call ledger](../02-0124-vendor-call-ledger.md).
 - **No new unit-conversion edge.** The Probe requests `units=m`; wind reuses Open-Meteo's inline
-  `km/h → m/s` conversion, so [010](./01-0122-unit-conversion-edge.md)'s catalogue trigger remains
+  `km/h → m/s` conversion, so [010](../01-0122-unit-conversion-edge.md)'s catalogue trigger remains
   unmet. Metric is preferred over SI because TWC's integer wind field yields 0.28 m/s rather than
   1 m/s quantization. TWC does not self-report units, so parity is the only guard on that declaration.
 
@@ -49,14 +54,14 @@
 
 ## Why this is its own ticket
 
-This ticket and [004](./01-0121-second-provider-fallback.md) are tested differently and fail
+This ticket and [004](../01-0121-second-provider-fallback.md) are tested differently and fail
 differently: **this** ticket is *"does one vendor's data arrive correctly"*
 — answered by a live parity check against the real API, with its own key, quota, and evidence; **004**
 is *"does the Arbiter select and fall back correctly"* — answered deterministically against mocked
 transports, with no network at all. Bundling them would put a live-network dependency inside the
 fallback proof and make a vendor outage look like a fallback regression.
 
-It is also the first real test of m4's [shape/vendor split](../edge/provider.md): if adding a producer
+It is also the first real test of m4's [shape/vendor split](../../edge/provider.md): if adding a producer
 of a known shape requires anything beyond a Probe and its declarations, that abstraction is wrong, and
 this ticket is where we find out.
 
@@ -83,20 +88,20 @@ this ticket is where we find out.
 > **TWC takes no window parameter**, so `TwcProbe.retrieve` receives `over` and **cannot use it**: the
 > vendor returns its whole series and the wrapper crops. That is the leaf's *natural fetch unit* on the
 > T axis — already the architecture's position (*ask narrow, answer natural*,
-> [edge/provider.md](../edge/provider.md)) — and `_lattice_of` builds the axis from the ticks actually
+> [edge/provider.md](../../edge/provider.md)) — and `_lattice_of` builds the axis from the ticks actually
 > delivered, so a wider-than-asked answer is normal, not a fault.
 >
 > **This raises the stakes on the Shelf declaration** — the declared window governs **admission**, and the
 > vendor governs what exists. ~~So the declared window must never begin before the series: hence
 > **`1h`**, not `None`.~~ **Resolved 2026-08-11 (align), after the stage 0 capture showed no Shelf value
 > can satisfy that rule:** TWC's series begins at the **next** whole hour, while `valid_time` can only
-> *floor* ([cadence.py:46](../../src/meteoscape/manifold/cadence.py)) — so `now` itself always sits in
+> *floor* ([cadence.py:47](../../../src/meteoscape/manifold/cadence.py)) — so `now` itself always sits in
 > a declared-but-undelivered gap.
 >
 > The premise that a declaration must match delivery exactly is what gave way. A live window is an
 > **estimate**; holdings are the truth; and the declared axis itself decides whether a refetch would
 > add anything — for a rolling window, satisfied once its horizon reaches the ask's start. That rule
-> is [0119](./done/01-0119-live-window-edge-tolerance.md), landing ahead of this ticket, and it is
+> is [0119](./01-0119-live-window-edge-tolerance.md), landing ahead of this ticket, and it is
 > vendor-agnostic rather than a per-vendor declaration knob.
 >
 > **The hourly Shelf (`shelf=1h`) therefore stands** — not because it is exact, but because **declaring late is
@@ -107,16 +112,16 @@ this ticket is where we find out.
 > code is deleted)*: the refill gate compared the request against the **declared** reach and then
 > asked whether **holdings** contained it — never true here, so every request refilled, at one
 > metered call each, and a wholly-in-gap request additionally faulted. Post-0119 the declared axis
-> answers retention for itself ([reservoir.py:123](../../src/meteoscape/nodes/reservoir.py)) and a
+> answers retention for itself ([reservoir.py:123](../../../src/meteoscape/nodes/reservoir.py)) and a
 > warm in-gap ask is a served `capability-mismatch` on the shared path
-> ([:130](../../src/meteoscape/nodes/reservoir.py)). A *straddling* request already served
+> ([:130](../../../src/meteoscape/nodes/reservoir.py)). A *straddling* request already served
 > correctly, because `ground` asks the record's own axis to clip itself. Family, not identity, with
-> [#21](../concerns.md#21-serves-extent-vs-project-crop-ability).
+> [#21](../../concerns.md#21-serves-extent-vs-project-crop-ability).
 
 > **Duration is an offering, not a setting.** The licensed duration is a **path
 > segment**, and the catalogue declares **one `OfferingSpec` per duration**; the operator selects one
 > with `OfferingDef(impl="twc", name=…)`. `spec.name` already reaches `build`
-> ([composition.py:94](../../src/meteoscape/nodes/composition.py)), so this needs no new plumbing.
+> ([composition.py:94](../../../src/meteoscape/nodes/composition.py)), so this needs no new plumbing.
 >
 > **The product is *Hourly Forecast — Enterprise*** (the licence held), whose path carries the
 > duration as a segment and `enterprise` as a suffix:
@@ -140,76 +145,82 @@ this ticket is where we find out.
 > shape of trap acceptance criterion 6 exists to close.
 >
 > First offering-parameterized producer, so this lands part of
-> [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)'s leaf side.
+> [#20](../../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)'s leaf side.
 > Its sharpest worry there — *two offerings of one impl fetching identical payloads under distinct
 > `SourceKey`s* — **does not apply**: the duration is in the path, so the payloads genuinely differ.
 > That is the vendor token #20 records as missing. Nothing stops an operator enabling both durations
 > at once; left unguarded, since #20 owns offering-aware selection.
 
 > **Cadence declaration.** TWC documents neither refresh cadence nor whether the series is hour- or
-> day-anchored. Policy values are explicit; delivery-dependent values remain provisional and are
-> confirmed against the live key during the manual parity run:
+> day-anchored. Policy values are explicit; the delivery-dependent values were provisional until
+> the stage 0 capture confirmed them (✅ below) *(retensed 2026-08-18)*:
 >
 > | | value | why |
 > |---|---|---|
 > | `cadence` | **`12h`, operator-overridable** | Polling policy against a monthly allotment; faster nowcasting may choose differently. **The vendor's own refresh is ~5 min (near-term) / ~21 min (tail)** — see below; 12 h is a deliberate under-poll, not an estimate of the vendor. |
-> | `publication_latency` | **`0`** | The bucket regime has no run-publication delay → [ADR-0003](../adr/0003-provenance-and-origin.md#run-and-bucket-regimes). |
+> | `publication_latency` | **`0`** | The bucket regime has no run-publication delay → [ADR-0003](../../adr/0003-provenance-and-origin.md#run-and-bucket-regimes). |
 > | `max_lead` | from the selected offering | ✅ **Confirmed 2026-08-11** for all seven durations: 5/11/23/47/71/239/359 h, uniform hourly steps. |
-> | `shelf` | **`1h`** | ✅ Delivery is **hour**-anchored, and starts at the *next* whole hour — so `1h` over-declares by up to an hour, absorbed by [0119](./done/01-0119-live-window-edge-tolerance.md). Declaring late is the safe direction. |
+> | `shelf` | **`1h`** | ✅ Delivery is **hour**-anchored, and starts at the *next* whole hour — so `1h` over-declares by up to an hour, absorbed by [0119](./01-0119-live-window-edge-tolerance.md). Declaring late is the safe direction. |
 >
 > **`cadence` is not a vendor fact and must not be "corrected" to one.** The payload carries a
 > per-tick `expirationTimeUtc` (first 7 ticks ~5 min out, the remaining 233 ~21 min out). We do not
 > adopt it: `expiration` is *also* the Reservoir's refetch trigger
-> ([reservoir.py:126](../../src/meteoscape/nodes/reservoir.py)), so adopting a 5-minute expiry would
+> ([reservoir.py:126](../../../src/meteoscape/nodes/reservoir.py)), so adopting a 5-minute expiry would
 > set our polling to 5 minutes and spend the allotment 12 h exists to conserve. `exp` at the MCP edge
 > promises *our* refresh policy, not the vendor's. Recorded as a known-unused signal →
-> [ideas: freshness](../ideas.md#freshness), [#18](../concerns.md#18-clock-anchored-footprint-fidelity).
+> [ideas: freshness](../../ideas.md#freshness), [#18](../../concerns.md#18-clock-anchored-footprint-fidelity).
 >
 > TWC uses ADR-0003's **bucket regime** because it publishes no run schedule. The source must name
-> that declaration; [#18](../concerns.md#18-clock-anchored-footprint-fidelity) owns the anchored-expiry
+> that declaration; [#18](../../concerns.md#18-clock-anchored-footprint-fidelity) owns the anchored-expiry
 > cost and provider-real freshness escape.
 
 > **Cadence is operator policy.** It rides `OfferingDef.settings`; TWC's `build` reads
 > `cadence_hours`, integer, default
 > **12**, validated there with `CompositionError` on a non-positive or non-integer value.
 >
-> Live parity must verify the provisional delivery facts: plausible values alone do not prove that
-> the declared window matches the vendor series.
+> What live parity still owes here is **value agreement**, not delivery facts — the capture settled
+> those. Plausible values alone do not prove the numbers mean what we declare, and TWC self-reports
+> no units, so the independent reader is the only check on `units=m` *(retensed 2026-08-18)*.
 
 **1. The Probe.** `TwcProbe` implementing `TimelineProbe` — one query builder, one envelope
 parse, a tap table, and a `CadenceDef`. TWC's hourly forecast endpoint is point-plus-series, the **same
 shape as Open-Meteo**, so this adds **no wrapper**. It must contain no algebra: no `ground`, no
 `agreed_geometry`, no crop, no provenance stamping, no `Clock`, no `Coverage` construction — those are
-`TimelineProvider`'s, and reaching for them is the [edge record](../edge/provider.md)'s
+`TimelineProvider`'s, and reaching for them is the [edge record](../../edge/provider.md)'s
 import-direction violation.
 
 **2. Manifest and catalogue registration.** `ProviderManifest` with `secret=SecretSlot(...)` — the
 first shipped manifest to declare one — registered in `PROVIDER_CATALOG`, carrying one `OfferingSpec`
-per enterprise duration.
+per enterprise duration and naming `default_offering="hourly_10day"` — the manifest, not core
+config, answers "the operator didn't pick a product"
+([ADR-0005](../../adr/0005-build-time-composition.md), 2026-08-18 amendment).
 
 **2b. Cite the vendor documentation in the leaf's module docstring.** Two links: the **portfolio**
 (the product map, `https://docs.google.com/document/d/1pXDXkT4wd4I77LxkBnltQ7tKG4GlOsDeRUPdaDDtAW8`)
 and the **enterprise hourly endpoint** (`https://twcapi.co/v3FODHE`), which is where every declaration
 below the docstring — paths, required params, field names, units, `qpf`'s window, the 1.5 m
 temperature height — comes from. The leaf is the right home because
-[edge/provider.md](../edge/provider.md) puts vendor knowledge there and the tap table is the thing
+[edge/provider.md](../../edge/provider.md) puts vendor knowledge there and the tap table is the thing
 derived from those pages; no dedicated vendor-reference doc, which the
-[doc map](../README.md) has no row for. Note in the docstring that both are Google Docs behind
+[doc map](../../README.md) has no row for. Note in the docstring that both are Google Docs behind
 `twcapi.co` shortlinks, and that **units are not self-reported** — so those pages, not the payload,
 are the only evidence for what the numbers mean.
 
 **3. Config and priority.**
-[`config.py`](../../src/meteoscape/config.py) carries `twc_api_key` and the
+[`config.py`](../../../src/meteoscape/config.py) carries `twc_api_key` and the
 `OfferingDef(impl="twc", …, secret_ref="twc_api_key")`, with `test_config.py` pinning those names —
 the key and `secret_ref` stay. Three things change:
 
 - the **priority pair** (`twc=0`, `open-meteo=1`);
 - the module docstring's producer ordering;
 - the **offering name**. Today `Settings.offerings()` emits `name="default"`, which under the
-  offering-per-duration decision is not a catalogue row at all. `Settings` gains a field naming the
-  licensed offering (defaulting to `hourly_10day`), and that value becomes `OfferingDef.name`. This
-  is where the decision pays: a wrong value is a boot `CompositionError` from the binder resolving
-  the name against `PROVIDER_CATALOG`, not a runtime 404 from the vendor.
+  offering-per-duration decision is not a catalogue row at all. The **manifest** names the default
+  (`default_offering="hourly_10day"`; the binder resolves an omitted `OfferingDef.name` to it).
+  `Settings` grows no offering-name or cadence field — cadence's default lives in `build`, and a
+  wrong `OfferingDef.name` is a boot `CompositionError` from the binder resolving the name against
+  `PROVIDER_CATALOG`, not a runtime 404 from the vendor
+  ([edge/provider.md](../../edge/provider.md) vendor-config-purity,
+  [ADR-0005](../../adr/0005-build-time-composition.md)).
 
 `test_config.py` pins `name="default"` in two tests, both of which update, and
 `test_twc_key_adds_fallback_offering` is renamed once TWC is primary.
@@ -220,63 +231,76 @@ not a fallback provider, and not graceful degrade. Registering a real impl behin
 a test should pin key-present composition succeeding.
 
 **5. Its parity check** — reader, live test, deterministic `parse_reference` coverage, per the
-[edge record](../edge/provider.md)'s contribution bundle. The live check runs under an
+[edge record](../../edge/provider.md)'s contribution bundle. The live check runs under an
 operator-supplied key; no key or evidence artifact may expose the secret.
 
 ## Acceptance criteria
 
-- [ ] **The stage 0 capture is committed as a fixture, before anything else in this ticket.** It
-      exists on one machine under gitignored `tmp/`, and every declaration below rests on it —
-      losing it costs a re-run against the metered key. **Truncate to a handful of ticks**: the
-      fact being preserved is the vendor's *envelope* (flat, 42 parallel top-level lists), which
-      survives truncation intact, while 239 ticks of real forecast values are licensed vendor
-      content this repo has no need to redistribute. The capture already scrubs `apiKey` and
-      refuses to save a body containing it — verified absent from all seven bodies.
-- [ ] **The fixture pins the envelope; canned payloads pin the decode.** One test parses the real
+- [x] **The stage 0 capture is committed as a fixture, before anything else in this ticket.**
+      Truncated `hourly_10day` envelope (4 ticks, 42 parallel top-level lists) at
+      [twc_hourly_10day.json](../../../tests/deterministic/nodes/providers/fixtures/twc_hourly_10day.json).
+      `apiKey` is absent. Value assertions stay on canned payloads — this file pins the envelope.
+- [x] **The fixture pins the envelope; canned payloads pin the decode.** One test parses the real
       capture and asserts the flat shape and the six canonical fields present — including that
       undeclared fields carrying JSON `null` (`windGust`, `wxString`) do not disturb the parse.
       Every *value* assertion rides a hand-built payload in the `_canned_hourly` style
-      ([test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py)), so
+      ([test_open_meteo.py](../../../tests/deterministic/nodes/providers/test_open_meteo.py)), so
       `36 km/h → 10.0 m/s` stays legible; real data cannot carry that assertion, and a golden-master
       read over 239 ticks would prove nothing a reviewer can check.
-- [ ] `TwcProbe` serves the canonical parameters it declares, exercised through
+- [x] `TwcProbe` serves the canonical parameters it declares, exercised through
       `TimelineProvider` with a **mocked transport** in the deterministic suite.
-- [ ] **A duration shorter than the configured cadence is refused at boot, not shipped around**
+- [x] **A duration shorter than the configured cadence is refused at boot, not shipped around**
       *(aligned 2026-08-17)*: all seven rows stay declared, and an offering whose `max_lead` is
       below the cadence (`hourly_6hour`, `hourly_12hour` at the 12 h default) fails composition
-      with a `CompositionError` naming both numbers and the `twc_cadence_hours` knob — the
+      with a `CompositionError` naming both numbers and the `cadence_hours` knob — the
       operator picks a coherent pairing; no per-offering default cadence exists. This is the
       first exercise of the `build`-owed translation
-      [edge/provider.md](../edge/provider.md) marks ⚠ unguarded, and discharges it.
-- [ ] **TWC wins by default.** With both producers enabled, every canonical parameter resolves to
+      [edge/provider.md](../../edge/provider.md) marks ⚠ unguarded, and discharges it.
+- [x] **TWC wins by default.** With both producers enabled, every canonical parameter resolves to
       TWC; a test pins the priority pair rather than trusting the integers to stay put. Open-Meteo
       remains configured and admits the same parameters — it is the backstop
-      [004](./01-0121-second-provider-fallback.md) makes live, not a disabled producer.
-- [ ] **The Probe adds no wrapper and no algebra.** Snapped resolution, unit conversion, `decode`, Z
+      [004](../01-0121-second-provider-fallback.md) makes live, not a disabled producer.
+- [x] **The flip's window behavior is pinned end-to-end** *(added 2026-08-18 — these tests discharge
+      the ⚠-unguarded narration bullet in [edge/mcp.md](../../edge/mcp.md))*: the default full-horizon
+      ask resolves to TWC and answers **TWC's own horizon** — narrated reach stays the composed
+      ~16 d, the answer's `valid_time` stops at TWC's ~10 d, no fault raised; and a `start` wholly
+      past TWC's reach answers **`capability-mismatch`**, asserted on the error — not on Open-Meteo
+      serving, which the retention flow cannot reach →
+      [#49](../../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
+- [x] **The Probe adds no wrapper and no algebra.** Snapped resolution, unit conversion, `decode`, Z
       grouping, and the crop all arrive by declaration. If any must be written here, m4's abstraction
       is wrong and that is this ticket's most valuable finding — record it rather than working around
       it.
-- [ ] The existing Probe import-direction guard covers the TWC module: no `Domain`, `Selection`,
+- [x] The existing Probe import-direction guard covers the TWC module: no `Domain`, `Selection`,
       `Coverage`, `Capability`, `Provenance`, or `Clock` imports.
-- [ ] The manifest declares a `SecretSlot`; the key is injected via config at construction and reaches
+- [x] The manifest declares a `SecretSlot`; the key is injected via config at construction and reaches
       `build`. No secret appears in fixtures, logs, or parity evidence.
-- [ ] **Key-present composition succeeds** — the `unknown impl` trap is closed and pinned by a test.
-- [ ] Key-absent still degrades gracefully: the server starts and serves on Open-Meteo alone
-      ([008](./01-0123-config-secrets-degrade.md) owns the wider config story).
-- [ ] **Unit self-reporting is declared honestly.** TWC does not report per-field units; the Probe
+- [x] **Key-present composition succeeds** — the `unknown impl` trap is closed and pinned by a test.
+- [x] Key-absent still degrades gracefully: the server starts and serves on Open-Meteo alone
+      ([008](../01-0123-config-secrets-degrade.md) owns the wider config story).
+- [x] **Unit self-reporting is declared honestly.** TWC does not report per-field units; the Probe
       declares that fact, and the record's consequence applies:
       canonical units are **parity-verified only** for this provider
-      ([#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)).
+      ([#41](../../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)).
 - [x] ~~The source marks delivery-dependent cadence facts provisional; the manual parity run confirms
       the first tick, series length, and whether the availability window shifts hourly or daily.~~
       **Answered by the stage 0 capture, 2026-08-11**, ahead of parity: hour-anchored, series starts
       at the *next* whole hour, and all seven `max_lead` values confirmed exact (5/11/23/47/71/239/359 h).
-      What stays provisional is `publication_latency` alone; `cadence` is policy, not a vendor fact.
-- [ ] TWC ships and passes its live parity check
+      Nothing stays provisional *(corrected 2026-08-18)*: `publication_latency = 0` is entailed by
+      the bucket regime — no runs means no publication delay, and a live fetch cannot measure a
+      delay that does not exist — and `cadence` is policy, not a vendor fact.
+- [x] **No reference treats `Visual Crossing` as a current or planned Meteoscape provider** in
+      `src/`, `tests/`, or live `docs/` *(restored 2026-08-18 — this criterion was lost in a
+      restructure while the RFC still cited it)*. References that do not present it as our
+      provider stay: the dated swap-and-revert notes, the legacy-id table row, the
+      collector-schema origin ids (`visualcrossing` — the operator's external MongoDB), and the
+      product-roadmap's commercial-API landscape. `history/`, `tickets/done/`, and `rfc/done/`
+      are excepted wholesale. Verify with both spellings: `grep -inE "visual ?crossing"`.
+- [x] TWC ships and passes its live parity check
       (`uv run pytest tests/parity -k twc`), with the reference reader importing no
       Meteoscape code (existing guard covers it with no registration).
 
 ## User stories addressed
 
 - User story 12 (key injected via config), user story 13 (absent key degrades gracefully) — jointly
-  with [008](./01-0123-config-secrets-degrade.md).
+  with [008](../01-0123-config-secrets-degrade.md).

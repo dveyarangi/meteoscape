@@ -3,7 +3,7 @@
 **Legacy id:** 008
 
 - **Status:** Partial
-- **Depends on:** [011 — TWC provider](./01-0120-twc-provider.md) (repointed
+- **Depends on:** [011 — TWC provider](./done/01-0120-twc-provider.md) (repointed
   2026-08-02: what this ticket needs is a shipped manifest that *declares* a secret, which 011 lands —
   not 004's fallback behaviour)
 - **Outcome:** Complete key-present/key-absent provider construction behavior.
@@ -13,7 +13,7 @@
 >
 > - **The keyed provider is now the primary.** With TWC on the default path, key-absent stops being
 >   a spare's absence and becomes the deployment's **degraded mode** — no key must mean "run on
->   Open-Meteo", never "run broken". [011](./01-0120-twc-provider.md) closes the `unknown impl` trap;
+>   Open-Meteo", never "run broken". [011](./done/01-0120-twc-provider.md) closes the `unknown impl` trap;
 >   this ticket owns the whole behaviour.
 > - **It is the mechanism the private sources need.** A Mongo connection string is a secret carried
 >   the same way a vendor key is, so this ticket serves
@@ -41,6 +41,21 @@ Note: `config.py` (`Settings` / `OfferingDef` / `ProfileConfig` knobs) and `test
 exist from the seam work; this slice wires them through `SourceBinder` end-to-end and proves the
 degrade path.
 
+**This ticket also dissolves the vendor-named `Settings` fields** *(scoped 2026-08-18 by
+[edge/provider.md](../edge/provider.md)'s vendor-config-purity invariant)*: `twc_api_key` and
+`open_meteo_enabled` are acknowledged v1 plumbing — they name a vendor while carrying no vendor
+default or semantics — and their generic forms land here: secret material populated generically
+(e.g. an env scan keyed by the manifests' `SecretSlot` names into the injected secrets map),
+enablement derived from slot presence and impl registration rather than per-vendor fields, and
+generic env pass-through of opaque per-offering `settings` — the cadence-override channel
+[0120's RFC](../rfc/done/01-0120-twc-provider.md) explicitly defers here. The Mongo connection string
+([02-0130](./02-0130-mongo-obs-source.md)) is the second consumer, which is what forces the
+generic shape. The exact env spelling is this ticket's own decision — as is whether the v1
+**profile enumeration** itself (`offerings()` hard-coding impl names and priorities as code)
+becomes declared data here, or stays code until [#26](../concerns.md#26-provider--calculator-plugin-scaffolding)'s
+discovery story / the [embedding surface](./01-0125-supported-python-embedding.md)'s programmatic
+path force it; today that question has no other owner.
+
 See `docs/v1-requirements.md` (Config & secrets, acceptance §6), `docs/architecture.md` (Config,
 binders, Weaver; Composition root), and [ADR-0005](../adr/0005-build-time-composition.md).
 
@@ -60,6 +75,9 @@ rate-limit policy stays the **deferred null Gateway seam**
       stays a thin composition root (catalogues + `Settings` → `ProfileConfig` → binders →
       `ProfileDef` → `weave`).
 - [ ] Unit + integration tests cover key-present (both providers) and key-absent (degrade) startup.
+- [ ] **No vendor-named field remains on `Settings`** *(added 2026-08-18)*: secrets and enablement
+      ride generic mechanisms keyed by `SecretSlot` names and impl registration; the provider
+      edge's vendor-config-purity carve-out for the v1 plumbing fields is discharged.
 
 ## User stories addressed
 

@@ -64,7 +64,7 @@ so nothing is restated here)*
   in prose after breaking twenty links; it had no owner until now. Not yet ticketed.
 - **The TWC capture exists on one machine.** It sits under gitignored `tmp/`, and every declaration
   in the TWC plan rests on it. Losing it costs a re-run against the metered key →
-  [RFC 0120 stage 0](../rfc/01-0120-twc-provider.md).
+  [RFC 0120 stage 0](../rfc/done/01-0120-twc-provider.md).
 
 ## Open questions
 

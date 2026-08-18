@@ -3,7 +3,7 @@
 This directory contains dated planning, alignment, and implementation records. Each file is a
 **historical snapshot**: statements such as "not implemented," "next," or "lands in ticket 002"
 describe the project at the time of that session and are not maintained as current status. Records
-older than a week move to `history/YYYY-MM/`.
+outside the rolling seven-day window move to `history/YYYY-MM/`.
 
 Naming, retention, and the rule that nothing links *to* a session are owned by
 [/conclude](../../.agents/skills/conclude/SKILL.md), which writes these records.

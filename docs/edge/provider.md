@@ -30,15 +30,17 @@ is one no existing shape covers, a wrapper too.
   — `TimelineProvider` for the point-plus-hourly-series family. It owns everything algebraic: both
   `ground` calls, `agreed_geometry`, unit verification, `decode`, Z grouping, capability construction,
   provenance stamping, the aligned crop, and the `ValueError → CapabilityMismatch` translation. A new
-  producer of an existing shape adds **no** wrapper; a genuinely new geometry (gridded NWP, soundings —
+  producer of an existing shape adds **no** wrapper: TWC consists of declarations plus a Probe, with
+  the probe-seam guard covering it unchanged.
+  A genuinely new geometry (gridded NWP, soundings —
   a [deferred seam](../../src/meteoscape/nodes/providers/timeline.py)) adds one.
   **Its constructor arguments are the per-offering facts** — the tap table, the native `step`, the
   `CadenceDef`, and the spatial reach (`longitudes` / `latitudes`, defaulting to whole-globe, which a
-  regional producer overrides). v1 passes one offering's worth as leaf module constants, which is the
-  honest state at one offering per provider; an offering-parameterized producer supplies a different row
-  per `spec.name` rather than a different wrapper
-  ([#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection), which also
-  records what is still missing for that — a vendor model token in the query).
+  regional producer overrides). Open-Meteo passes one offering's worth as leaf module constants;
+  TWC is offering-parameterized — per `spec.name` its `build` supplies a different `CadenceDef`
+  horizon and vendor duration path segment through the same wrapper. Two enabled durations therefore
+  fetch genuinely different payloads
+  ([#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 - **The vendor `Probe`** is what an author actually writes: a `Protocol`, injected, inheriting nothing
   (the [`Transport`](../../src/meteoscape/nodes/providers/base.py) precedent one layer down). Its face
   is shape-specific — `TimelineProbe.retrieve(longitude, latitude, over=window, variables=…) ->
@@ -68,6 +70,13 @@ is one no existing shape covers, a wrapper too.
   `secret` slot, and the `build` face (`OfferingSpec, settings, secret_value, Clock, ParameterTable ->
   Provider`), optionally `expand`. The manifest is the plugin face; how catalogues are *filled* is
   [#26](../concerns.md#26-provider--calculator-plugin-scaffolding).
+  **The manifest also names its own `default_offering`**: "the operator didn't pick a product" is
+  the plugin's to answer — the binder resolves an omitted `OfferingDef.name` to it before the expand
+  path, keeping Open-Meteo's `best_match` naming plugin-side
+  ([ADR-0005](../adr/0005-build-time-composition.md)) — *validated by:*
+  `test_omitted_name_resolves_to_manifest_default` in
+  [test_composition.py](../../tests/deterministic/nodes/test_composition.py) and the
+  `SourceKey.dataset` pins in [test_server.py](../../tests/deterministic/test_server.py).
   **A declared `SecretSlot` is an optionality declaration, not just a name.** Absent value → the
   offering is never enabled and the server starts without it (graceful degrade is `Settings`' policy;
   the binder itself stays strict, so a def that *does* reach it must be complete). An author declaring
@@ -75,9 +84,12 @@ is one no existing shape covers, a wrapper too.
   that collision is [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade).
   **The seam is built and guarded, not prospective** — resolution, injection, and the dangling-ref
   failure are live in [composition.py](../../src/meteoscape/nodes/composition.py) and *validated by:*
-  `test_secret_ref_reaches_build` / `test_dangling_secret_ref_raises`; Open-Meteo's `build` already
-  receives `secret_value` and discards it as keyless. No shipped manifest yet declares a slot
-  (`secret=None` today).
+  `test_secret_ref_reaches_build` / `test_dangling_secret_ref_raises`; Open-Meteo's `build`
+  receives `secret_value` and discards it as keyless. **TWC declares a secret slot**
+  (`SecretSlot("twc_api_key")`): its `build` refuses a `None` value
+  (*validated by:* `test_build_requires_a_secret` in
+  [test_twc.py](../../tests/deterministic/nodes/providers/test_twc.py)), and key-absent means the
+  offering is never emitted, per the optionality reading above.
   `expand` — one manifest yielding several Providers — is likewise **unexercised**
   (`test_expand_name_none_not_implemented`); under the split it raises an unanswered question, several
   Probes behind one wrapper or several wrappers, which interacts with
@@ -163,26 +175,27 @@ Holdings. Read-back crops the served answer.
 > **A leaf's declared live window is an estimate of what its vendor serves, not a promise.** The
 > declared axis answers retention for itself — a rolling window satisfied once its horizon reaches
 > the ask's start, a static one by containment
-> ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention);
-> [0119](../tickets/done/01-0119-live-window-edge-tolerance.md)). An ask the Holdings cannot meet is a
+> ([ADR-0002](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)). An ask the
+> Holdings cannot meet is a
 > `CapabilityMismatch`, not a refetch storm.
 >
 > **A leaf's cadence must therefore not exceed its `max_lead`**, or retention's rescue refills —
 > not the declared cadence — govern vendor spend, and each refill serves newer data before the
-> narrated `exp` ([ADR-0003](../adr/0003-provenance-and-origin.md), corrected 2026-08-17: the
-> window cannot "fall behind" any more; the predicate above refills it) — enforced on `CadenceDef`
+> narrated `exp` ([ADR-0003](../adr/0003-provenance-and-origin.md)) — enforced on `CadenceDef`
 > construction, which raises `ValueError`:
 > it holds both numbers and neither name (*validated by:* `test_cadence_must_not_exceed_max_lead` in
 > [test_cadence.py](../../tests/deterministic/manifold/test_cadence.py)). When the cadence came from an
 > **operator setting**, the leaf's `build` owes the translation — `CompositionError` naming its
 > `SourceKey` and offering, `build` being the first layer that knows whose numbers these are —
-> **⚠ unguarded**: no shipped leaf takes a cadence setting yet, so the first is
-> [TWC](../tickets/01-0120-twc-provider.md) and the check lands with it.
+> *validated by:* `test_build_refuses_an_offering_shorter_than_the_cadence` in
+> [test_twc.py](../../tests/deterministic/nodes/providers/test_twc.py). The error is
+> `"twc {offering}: cadence_hours={n} exceeds this offering's horizon {max_lead}; choose a smaller
+> cadence_hours"` — impl + offering are the `SourceKey`'s two components — and the test asserts the
+> message and that the `ValueError` rides as `__cause__`, so the wrap cannot silently unwind.
 
 - The **Reservoir's read-back** does the fact→product relabel: native Z cells (2 m, 10 m, surface,
-  column) are rewritten onto the request's vantage; values and provenance untouched. The
-  **`TODO (temporary)`** seam is owned by
-  [0117](../tickets/done/01-0117-off-grid-homogenization.md). `agreed_geometry`'s single-answer law is
+  column) are rewritten onto the request's vantage; values and provenance untouched.
+  `agreed_geometry`'s single-answer law is
   deliberately **lifted on axes the request left `ANY`** — records differing there are exactly what
   boundlessness licenses.
 - **The leaf's co-domained answer path is transitional in the composed graph.** Closure still
@@ -192,9 +205,9 @@ Holdings. Read-back crops the served answer.
   never narrower. Open-Meteo's natural unit is its whole offering, which collapses the cold
   mixed-request double fetch; a leaf that answers narrow (per-variable billing) re-accepts that
   divergence for its own parameters —
-  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence). Today the
-  whole tap table is the fetch unit, written once in the shape wrapper; a second Provider will test
-  whether that economy fact belongs per offering.
+  [#43](../concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence). Both
+  shipped timeline Providers use the whole tap table as their fetch unit, written once in the shape
+  wrapper.
 
 **A leaf does not inspect request shape.** It **declares its geometry** — per-parameter footprints,
 with a lattice-bearing axis wherever it can resolve a snapped member — and the request is resolved
@@ -324,7 +337,7 @@ deterministically instead of only at parity.
 or step arithmetic, no clamp to the live window, no end-inclusivity handling, no raced-empty guard, no
 index math, no clock anywhere in the Probe, and no branch on request mode. Every one of those is
 `clip` against the declared lattice — the lattice **is** the window — and writing any of them by hand
-re-derives the mode inside the leaf, which is exactly what the second Provider must not have to do.
+  re-derives the mode inside the leaf, which no Provider author should repeat.
 
 **What the leaf must therefore declare**, for any of it to work:
 
@@ -362,15 +375,14 @@ vendor's own geometry, and only the crop afterwards lands them on the answer's.
 
 **At what strength.** Three exist; the leaf owns the middle one:
 
-- *Identity-or-fail* — the delivered geometry must already equal the request positionally. The leaf
-  used to do this (a length check, then passthrough) and it was **under-implementation, not the
-  contract**: it refuses requests that are perfectly croppable, which contradicts closure. Gone at m4.
+- *Identity-or-fail* — requiring delivered geometry to equal the request positionally is
+  under-implementation: it refuses requests that are perfectly croppable, which contradicts closure.
 - **Aligned crop — the leaf's promise.** Same step, on-phase anchor, differing extent; index arithmetic
   only, no interpolation. [`resample`](../../src/meteoscape/manifold/sampling.py) implements exactly
-  this and the wrapper hands every answer through it — which also retired the hand-written length
-  assertion in favour of a check by the component that owns index math, **reported rather than
-  asserted** ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked), re-aimed at the
-  answer). A crop onto a geometry the vendor already delivered exactly is an equality that holds and a
+  this and the wrapper hands every answer through it. Alignment is checked by the component that owns
+  index math and is **reported rather than asserted**
+  ([#31](../concerns.md#31-positional-alignment-is-asserted-never-checked)). A crop onto a geometry
+  the vendor already delivered exactly is an equality that holds and a
   no-op, which is how both request modes take one path.
 - *Resamplers* — off-grid points, differing steps, coarser-grid re-aggregation. **Not the leaf's.**
   `resample` refuses these by name ("requires Reservoir homogenization"); they belong to
@@ -414,9 +426,8 @@ native 2 m point  →  pinned  10 m     lattice-to-lattice: no aligned offset �
 A **vantage** cell is an aperture, so landing a native level in it is the fact→product step and it is
 honest exactly because admission already gated that parameter against its own native footprint. A
 **pinned** Z names a coordinate the caller owns, so a record measured elsewhere cannot answer it and
-the alignment read declines rather than mis-indexing. Before the carrier, a mixed-parameter ask
-pinning Z was answered by stacking every record on the first one's cells, which silently reported 10 m
-wind at a 2 m pin; each parameter now crops against its **own** record.
+the alignment read declines rather than mis-indexing. Each parameter crops against its **own** record,
+so a mixed-parameter ask cannot stack every value onto the first record's Z cell.
 
 What the relabel claims is an **∃-claim** — *measured somewhere in `[0,10]`* — never a ∀-claim about
 every level in it. So the label may not later be narrowed by plain inclusion: `[0,5]` does not follow
@@ -496,6 +507,20 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
 
 ### What every leaf must uphold
 
+- **Provider-specific configuration never extends core config.** Everything
+  vendor-specific — the default offering, policy defaults such as a polling cadence, endpoint
+  facts, vendor vocabulary — lives in the plugin: the manifest (its `default_offering`), `build`'s
+  interpretation of the opaque `OfferingDef.settings` mapping (fallback defaults included), and
+  the Probe. Core `Settings` carries only generic enablement plumbing — which impls are enabled,
+  priorities, secret material, pass-through `settings` overrides — holds **no vendor default or
+  vendor-vocabulary value**, and imports no vendor module (in either direction: the leaf importing
+  config's types is the one legal arrow). This is what keeps a provider plugin definable out of
+  tree ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)): a plugin can register a
+  manifest; it can never add a `Settings` field. The v1 vendor-*named* fields (`twc_api_key`,
+  `open_meteo_enabled`) are acknowledged enablement plumbing whose generic form is tracked by the
+  [config/secrets ticket](../tickets/01-0123-config-secrets-degrade.md); they name a vendor but carry
+  no vendor default or semantics — *validated by:* `test_config_imports_nothing_from_nodes` in
+  [test_config.py](../../tests/deterministic/test_config.py).
 - **A leaf serves the modes its declarations imply, and writes no mode code.** A snapped ask is answered
   on the leaf's own lattice within the bounds — mid-hour bounds floored onto its ticks before any vendor
   call, a wider delivery trimmed, a disjoint one declined — with no branch on request shape anywhere in
@@ -518,10 +543,10 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   trusted. A producer that publishes no units in its payload declares nothing, and for it this invariant
   is **parity-verified only**: the reference reader converts independently, so the live check is the
   sole guard. Making such a Probe echo the *declared* units back would be a fabricated confirmation —
-  the check would pass by construction. This is a live reading of
-  [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted): for those providers the
-  unenforced, unrouted check is the only one there is. Today's single provider declares `reports_units`
-  and is checked on every call.
+  the check would pass by construction. Open-Meteo reports units and is checked on every call; TWC
+  does not and relies on parity for this evidence. For non-reporting providers, the unenforced and
+  unrouted parity check is the only evidence
+  ([#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted)).
 - **A `Probe` touches no manifold types** — it speaks `Interval`, `RegularAxis`, `ParameterData`,
   `ParameterId`, and `VendorVar`, and never `Domain`, `Selection`, `Coverage`, `Capability`,
   `Provenance`, or `Clock`. Each exclusion removes a way to be wrong rather than warning against it —
@@ -596,7 +621,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
 - [#23 — Spatial vs temporal `RegularAxis` types](../concerns.md#23-spatial-vs-temporal-regularaxis-types)
   — **inverts the embedding reading.** There the split must stay *invisible* to request authors; here it
   is visible and wanted, because it is what turns coordinate-kind `isinstance` checks into static ones.
-  m4 adds **no** such narrowing — `RegularAxis.clip` is one coordinate-generic expression — so what a
+  `RegularAxis.clip` is one coordinate-generic expression, so what a
   spatial sibling would buy here is a float phase-tolerance policy stated statically rather than
   chosen per call; recorded at #23, not decided here.
 - [#18 — Clock-anchored footprint fidelity](../concerns.md#18-clock-anchored-footprint-fidelity)
@@ -612,22 +637,15 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   composition rather than the request path.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — canonical units are converted
   *at the leaf*, so the lossless-vs-degrading conversion-quality signal surfaces here first
-  ([010](../tickets/01-0122-unit-conversion-edge.md)).
+  ([unit-conversion catalogue](../tickets/01-0122-unit-conversion-edge.md)).
 
 ## Roadmap
 
-1. **A second Provider** — the first real test of *declaration, not gate*: **TWC** ships a
-   `TimelineProbe`, not a leaf (its hourly forecast API is the same point-plus-series shape, so no wrapper),
-   inheriting snapped resolution by declaring its own geometry. Also the first shipped manifest to
-   declare a `SecretSlot` and, likely, the first exercise of the non-self-reporting units path —
-   [011](../tickets/01-0120-twc-provider.md). The **fallback behaviour** it enables is a
-   separate ticket, [004](../tickets/01-0121-second-provider-fallback.md), and lands at the
-   [MCP edge](./mcp.md).
-2. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
+1. **Parity coverage becomes enforced and routed** — a guard connecting a manifest to its check, and
    selection that does not depend on branch names —
    [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted); no owning ticket.
-3. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
+2. **A second provider *shape*** — gridded NWP or soundings, the first case that adds a wrapper rather
    than a Probe ([timeline.py](../../src/meteoscape/nodes/providers/timeline.py) names it a deferred
    seam); no owning ticket.
-4. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
+3. **Third-party plugin authoring** — the point at which this edge's audience leaves the repository —
    [#26](../concerns.md#26-provider--calculator-plugin-scaffolding); no owning ticket.

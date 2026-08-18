@@ -51,10 +51,9 @@ see the [Provider edge record](./edge/provider.md). Enforcement and routing of t
 cross-referential — a claim lives in one document and is cited from the rest — so a relative link
 that stops resolving is a silent loss of that structure, not a cosmetic defect. Moving any document
 re-depths every relative link inside it and invalidates every link to it; archiving a session or
-closing a ticket into `done/` does this routinely. The check is currently a manual sweep at landing
-time (~2 300 relative links under `docs/` and `.agents/`, all resolving as of 2026-08-16), which
-means it is skipped exactly when a session runs long. Anchor-only checkers are known insufficient
-here. Not yet ticketed.
+closing a ticket into `done/` does this routinely. The check is manual at landing time, which means
+it is skipped exactly when a session runs long. Anchor-only checkers are insufficient here. Not yet
+ticketed.
 
 ## Deployment form
 

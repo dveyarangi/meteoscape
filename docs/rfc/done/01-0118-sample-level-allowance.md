@@ -12,7 +12,7 @@ the deviation is a decision, not drift.
 
 **Scope in one line:** the reach-composition fold learns the sample-vs-span distinction on Z and
 reads the Parameter's declared band; `ParameterDef` gains the optional `z_allowance`; the calculator
-fold and every admission path are untouched. Unblocks [0120](../../tickets/01-0120-twc-provider.md).
+fold and every admission path are untouched. Unblocks [0120](../../tickets/done/01-0120-twc-provider.md).
 
 ## Boundaries involved
 
@@ -200,7 +200,7 @@ calls pass the def (a plain helper def suffices). New tests:
 
 Tick the ticket into `done/`; discharge the **⚠ unimplemented** in
 [parameters.md § Sample-level allowance](../../parameters.md#sample-level-allowance); flip
-[0120](../../tickets/01-0120-twc-provider.md) to **Ready** and update the queue's current stage.
+[0120](../../tickets/done/01-0120-twc-provider.md) to **Ready** and update the queue's current stage.
 
 ## Limitations and follow-ups
 

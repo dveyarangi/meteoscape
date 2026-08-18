@@ -13,12 +13,10 @@ behind one small contract, surfaced over **MCP** so an AI agent can ask for weat
 each vendor itself.
 
 > **Current status:** early v1 development. `forecast_hourly` serves the full canonical v1
-> parameter set through Open-Meteo — six provider-served parameters plus derived wind
-> speed/direction — with per-value source provenance, expiration, and nodata handling, and free
-> `start`/`end` request windows: bounds are served as their intersection with the live provider
-> window, and omitted bounds default to now and the profile's full reach. Retentive caching,
-> off-grid read-back, second-provider fallback, and the supported Python embedding surface are
-> still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
+> parameter set through TWC when configured, with Open-Meteo as the keyless backstop. Responses
+> include per-value provenance, expiration, nodata handling, free `start`/`end` windows, in-process
+> retention, and off-grid read-back. Automatic fault fallback and the supported Python embedding
+> surface are still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
 > capability matrix and execution order.
 
 ## v1 target
@@ -70,10 +68,10 @@ uv run pytest
 uv run meteoscape
 ```
 
-Configuration is via environment / typed settings (Pydantic Settings). The current keyless
-Open-Meteo path requires no provider secret, and a missing `SENTRY_DSN` disables error reporting
-without failing startup. Complete key-present/key-absent multi-provider construction is tracked by
-[ticket 008](./docs/tickets/01-0180-config-secrets-degrade.md).
+Configuration is via environment / typed settings (Pydantic Settings). A TWC key enables the
+primary provider; without one, startup degrades to keyless Open-Meteo. A missing `SENTRY_DSN`
+disables error reporting without failing startup. The remaining generic configuration and secrets
+work is tracked by the [config/secrets ticket](./docs/tickets/01-0123-config-secrets-degrade.md).
 
 ## Requirements
 

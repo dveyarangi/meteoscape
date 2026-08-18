@@ -1,7 +1,7 @@
 # Vendor-call ledger (meter slice)
 
 - **Status:** Planned (own align precedes) — minted at the 2026-08-10 beeline align.
-- **Depends on:** [011 — TWC provider](./01-0120-twc-provider.md) (the first metered vendor, and the
+- **Depends on:** [011 — TWC provider](./done/01-0120-twc-provider.md) (the first metered vendor, and the
   reason this exists), [008 — Config, secrets, degradation](./01-0123-config-secrets-degrade.md)
   (the construction path a ledger is injected through)
 - **Blocks:** [vendor budget governor](./02-0155-vendor-budget-governor.md) — the same object, given

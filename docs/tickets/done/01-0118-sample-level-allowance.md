@@ -5,7 +5,7 @@
 - **Plan:** [Sample-level allowance RFC](../../rfc/done/01-0118-sample-level-allowance.md) — band on
   `ParameterDef` as plain floats (layering), the Z rule scoped to the reconciler's fold via an
   optional argument, `compose_domains` takes the def; calculator fold and admission untouched.
-- **Blocks:** [TWC provider](../01-0120-twc-provider.md) — its native 1.5 m screen height against
+- **Blocks:** [TWC provider](./01-0120-twc-provider.md) — its native 1.5 m screen height against
   Open-Meteo's 2 m makes key-present composition fail at boot until this lands.
 - **Outcome:** Two producers declaring the same parameter at nearby sample levels compose into one
   profile — the fold treats sample levels inside the Parameter's declared allowance as
@@ -68,7 +68,7 @@ Constraints, each with its reason:
 ## Acceptance criteria
 
 - [x] Two producers declaring `air_temperature` at `1.5 m` and `2 m` (synthetic candidates — TWC
-      itself lands at [0120](../01-0120-twc-provider.md)) compose; the composed reach is the
+      itself lands at [0120](./01-0120-twc-provider.md)) compose; the composed reach is the
       axes-dominant candidate's own `Domain`, its Z that candidate's native level.
 - [x] An **unequal** sample-level pair not both inside the band still fails the build with the
       error naming the parameter, both producers, and the axis — pinned so the allowance cannot
@@ -86,7 +86,7 @@ Constraints, each with its reason:
 
 ## Out of scope
 
-- **The TWC leaf and the live pairing** — [0120](../01-0120-twc-provider.md), which depends on this.
+- **The TWC leaf and the live pairing** — [0120](./01-0120-twc-provider.md), which depends on this.
 - **Request-side Z admission** — untouched; the `VantageAxis` already admits both levels against
   each member's own footprint ([ADR-0002](../../adr/0002-data-model.md),
   [ADR-0004](../../adr/0004-producer-resolution-and-capability.md)).

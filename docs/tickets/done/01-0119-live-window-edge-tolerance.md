@@ -8,7 +8,7 @@
   (the refill gate and read-back seams this ticket changes),
   [off-grid homogenization](./01-0117-off-grid-homogenization.md) (the read-back guards it must
   not weaken)
-- **Blocks:** [TWC provider](../01-0120-twc-provider.md) — see
+- **Blocks:** [TWC provider](./01-0120-twc-provider.md) — see
   [Why this blocks TWC](#why-this-blocks-twc)
 - **Outcome:** A leaf whose declared live window reaches past the series its vendor actually delivers
   serves the overlap and refills once, instead of refetching on every request and faulting on the
@@ -120,7 +120,7 @@ comparing extents itself.
       through a provider: the `cadence ≤ max_lead` criterion below makes it unreachable via a real
       `CadenceDef`, so the predicate must handle it defensively and that is where it is proven.
 - [x] A provider declaring `cadence > max_lead` fails when its `CadenceDef` is constructed, not at
-      serve time — enforced centrally, since [011](../01-0120-twc-provider.md) lands after this ticket
+      serve time — enforced centrally, since [011](./01-0120-twc-provider.md) lands after this ticket
       and its `hourly_6hour` offering (`max_lead = 5h`, 12 h default cadence) is exactly the trap.
 - [x] The spatial enclosing-cell guard is unchanged; 007's tests pass untouched.
 - [x] Open-Meteo's behaviour is unchanged — its declaration matches delivery and its Shelf (24 h) is

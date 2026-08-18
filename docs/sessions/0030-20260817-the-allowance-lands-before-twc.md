@@ -53,7 +53,7 @@ pyright clean) against **~170/-50** in docs — the second code-forward stretch 
   [edge/provider.md](../edge/provider.md).
 - **All seven TWC offerings stay declared; an under-long duration at the configured cadence is an
   incoherent pairing refused at boot** by a `CompositionError` naming both numbers and the knob →
-  [0120's acceptance criterion](../tickets/01-0120-twc-provider.md).
+  [0120's acceptance criterion](../tickets/done/01-0120-twc-provider.md).
 - **`compose_domains` takes the `ParameterDef`, replacing the `ParameterId`** — landed shape,
   recorded as a decision → [RFC 0118 closing note](../rfc/done/01-0118-sample-level-allowance.md);
   reverses a choice recorded in done ticket 0060, which stays as written.

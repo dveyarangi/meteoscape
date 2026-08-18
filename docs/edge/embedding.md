@@ -60,8 +60,8 @@ work is unstarted. Candidate promises waiting on #39's decisions:
   raise sites land.
 - [#23 — Spatial vs temporal `RegularAxis` types](../concerns.md#23-spatial-vs-temporal-regularaxis-types)
   — if the axis split lands, it must stay **invisible at this surface**: one axis name per kind,
-  or absorbed by facade builders (the m4 align priced sibling public types as an
-  embedding-vocabulary cost and deferred them).
+  or absorbed by facade builders. Sibling public types would add embedding vocabulary and remain
+  deferred.
 - [#12 — Curvilinear domains](../concerns.md#12-curvilinear-domains) — a future non-separable
   request composition arrives as a sibling representation in the embedder's request vocabulary;
   the interface promise is that today's shapes survive it.
@@ -78,22 +78,18 @@ Tentative — the Phase-1 stages below are owned by the [supported Python embedd
 surface](../tickets/01-0125-supported-python-embedding.md); its own align selects the still-open
 contract before implementation. They are the expected shape of the work, not commitments.
 
-1. Facade and lifecycle selected, then shipped by [0125](../tickets/01-0125-supported-python-embedding.md)
-   — decision at
+1. Facade and lifecycle selected, with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context —
-   [0125](../tickets/01-0125-supported-python-embedding.md), with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
-3. Request-composition ergonomics — [0125](../tickets/01-0125-supported-python-embedding.md) makes
-   `SelectionDomain` / mode builders embedder vocabulary
+3. Request-composition ergonomics — `SelectionDomain` / mode builders become embedder vocabulary
    ([request modes](../architecture.md#request-modes)). Whether those builders are merely
    **shape-safe** (unservable shapes unrepresentable, no capability read) or **capability-aware**
    (validated against a live `Capability`, therefore advisory) is
    [#40](../concerns.md#40-composing-servable-requests-at-the-embedding-edge).
 4. `0.x` compatibility policy — supported import paths, deprecation mechanics, embedded ↔
-   protocol consistency — [0125](../tickets/01-0125-supported-python-embedding.md), with the decision
-   at [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
-5. Third-party plugin authoring — [0125](../tickets/01-0125-supported-python-embedding.md) selects how
-   an embedding host *supplies* manifests
+   protocol consistency — with the decision at
+   [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
+5. Third-party plugin authoring — select how an embedding host *supplies* manifests
    ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)); how a Provider is *authored*
    is its own edge, [edge/provider.md](./provider.md).

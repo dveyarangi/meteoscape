@@ -3,8 +3,7 @@
 - **Status:** Normative
 
 The seam record for the MCP protocol surface: one tool, `forecast_hourly`, served by the FastMCP
-app over the woven best-view profile. Populated 2026-07-25 from the live surface
-([m5](../tickets/done/01-0090-edge-records.md)); the tool's self-description in
+app over the woven best-view profile. The tool's self-description in
 [mcp_app.py](../../src/meteoscape/api/mcp_app.py) is a derivation of this record and must stay a
 subset of it.
 
@@ -17,7 +16,7 @@ subset of it.
   normalizes to UTC, naive reads as UTC; a bare date (or week date) → `bad-request` with the
   datetime fix in the message; unparsable → `bad-request`. The window is served as
   **`bounds ∩ the winner's live window`** on the winner's own lattice
-  ([m4](../tickets/done/01-0100-snapped-t-request-mode.md)): the tick containing `start` is
+  ([ADR-0002](../adr/0002-data-model.md)): the tick containing `start` is
   served, `end` is inclusive of its containing tick, and `start == end` yields exactly one tick.
   Omitted `start` begins at the tick containing now; omitted `end` runs to the profile's live
   reach end. A backwards window (raw instants, implicit `start = now`) → `bad-request`; a
@@ -25,10 +24,9 @@ subset of it.
   answer, never the edge's, which holds no reach authority. A window that *does* overlap the
   declared range but which the Holdings cannot meet — a rolling leaf asked below its first delivered
   tick — is admitted and reaches the same outcome from the serving seam instead
-  ([0119](../tickets/done/01-0119-live-window-edge-tolerance.md)). Out-of-range bounds yield the
-  **servable part**; the response's `valid_time` shows the window actually served. Landed
-  2026-08-06 ([003c](../tickets/done/01-0110-request-shaping.md)) as a **compatible** contract
-  change: the schema always declared `start`/`end`; only the semantics went live.
+  ([ADR-0002: retention predicate](../adr/0002-data-model.md#the-two-predicates-admission-and-retention)).
+  Out-of-range bounds yield the **servable part**; the response's `valid_time` shows the window
+  actually served.
 - `parameters` — optional list of product parameter names; default is the full served menu.
   The menu is *exposure ∩ woven capability*; today: `air_temperature`, `precipitation`,
   `relative_humidity`, `cloud_cover`, `wind_speed`, `wind_direction`. The wind components
@@ -46,7 +44,7 @@ subset of it.
   unit from [parameters.md](../parameters.md); `values` are floats or `null`; `provenance.source`
   names the winning producer, `exp` its freshness expiration.
 - **Absent parameter block = unserved over this request** (no reason attached today —
-  Concern #36, Roadmap 6). **`null` in `values` = served, nodata at that tick.** Callers must
+  Concern #36, Roadmap 3). **`null` in `values` = served, nodata at that tick.** Callers must
   build on this distinction.
 
 **Outcomes** — errors are `ToolError` texts with three stable category prefixes, per the
@@ -78,9 +76,10 @@ request).
   [test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py)
   (`test_in_footprint_projects_once_with_admitted_params`,
   `test_beyond_footprint_raises_without_projecting`) — Arbiter-level; the wire-level assertion
-  gap is noted in [009](../tickets/01-0190-error-taxonomy-partial-success.md).
+  gap is noted in the
+  [error-taxonomy ticket](../tickets/01-0190-error-taxonomy-partial-success.md).
 - `runtime-failure` is whole-request: no partial response survives an upstream fault (fallback
-  is Roadmap 4) — *validated by:* `test_tool_error_prefixes` in
+  is Roadmap 1) — *validated by:* `test_tool_error_prefixes` in
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
 - Per-parameter provenance (`source`, `exp`) is always present on served parameters —
   *validated by:* serializer tests in
@@ -96,6 +95,19 @@ request).
   `test_horizon_floors_non_exact_days_to_whole_days`,
   `test_horizon_narrates_sub_day_reach_in_hours`, the empty-menu skip) and the e2e
   default-window case ([test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)).
+- **The narrated horizon is an upper bound on the default ask's answer, not its span**:
+  the horizon derives from the composed reach, while a spanning ask is answered by the **priority
+  winner's own clipped horizon**, disclosed through `valid_time`
+  ([ADR-0004](../adr/0004-producer-resolution-and-capability.md),
+  [#29](../concerns.md#29-narrated-reach-what-a-profile-promises)). An ask **wholly past the
+  primary's reach** does not fall through to the longer backstop — the retention flow refills from
+  the primary and answers `capability-mismatch` — the unbuilt max-reach policy →
+  [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
+  *validated by:* `test_default_ask_with_twc_primary_answers_twc_horizon` (15-day narration, the
+  answer's `valid_time` stopping at the primary's 240 ticks, backstop never called) and
+  `test_ask_wholly_past_twc_is_capability_mismatch` (the error asserted, plus the redundant
+  primary refill) in
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py).
 - A zero-overlap window is answered at admission — `capability-mismatch` with **no vendor
   call** — and out-of-range bounds reach the vendor as exactly the clipped lattice —
   *validated by:* [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
@@ -105,10 +117,7 @@ request).
   `capability-mismatch` from the serving seam, with **no vendor call once warm** — a cold store
   still pays one first-touch fetch, which is retained and answers later asks — *validated by:*
   [test_reservoir.py](../../tests/deterministic/nodes/test_reservoir.py)
-  (`test_wholly_in_gap_ask_is_capability_mismatch_without_refetch_when_warm`). Unreachable until a
-  leaf declares wider than it delivers, which is
-  [TWC](../tickets/01-0120-twc-provider.md) — a **compatible** contract addition, since no wired
-  provider can produce it today.
+  (`test_wholly_in_gap_ask_is_capability_mismatch_without_refetch_when_warm`).
 - A vendor delivering fewer ticks than declared is an honest shorter answer, disclosed through
   `valid_time` — never a fault ([edge/provider.md](./provider.md)) — *validated by:*
   [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py)
@@ -136,7 +145,7 @@ request).
   are unaffected.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — wire units are fixed
   per parameter; the lossless-vs-degrading conversion quality signal surfaces here when the
-  catalogue grows (010).
+  [unit-conversion catalogue](../tickets/01-0122-unit-conversion-edge.md) grows.
 - [#15 — Coarser-grid resampling](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)
   — a future caller-facing resolution knob; today this edge always serves hourly.
 - [#29 — Narrated reach](../concerns.md#29-narrated-reach-what-a-profile-promises) — the
@@ -155,15 +164,15 @@ request).
 ## Roadmap
 
 1. Provider fallback — upstream faults stop failing the whole request —
-   [004](../tickets/01-0121-second-provider-fallback.md).
+   [second-provider fallback](../tickets/01-0121-second-provider-fallback.md).
 2. Per-parameter assembly — one response, different winning sources per parameter —
-   [005](../tickets/01-0170-per-parameter-selection.md).
+   [per-parameter selection](../tickets/01-0170-per-parameter-selection.md).
 3. Absence reasons and partial success under fault —
-   [009](../tickets/01-0190-error-taxonomy-partial-success.md).
+   [error taxonomy and partial success](../tickets/01-0190-error-taxonomy-partial-success.md).
 4. **Echo the answered coordinate.** `serialize_coverage` reads `coverage.domain` but emits only the
    T axis, so this surface drops the X/Y the answer is labelled at. The Coverage already carries them
    — this is a serialization gap of this surface alone, and it does not exist at the
-   [embedding surface](../tickets/01-0125-supported-python-embedding.md), which hands the host the
+   [embedding surface](./embedding.md), which hands the host the
    Coverage itself. The fix is **additive and compatible** (an echoed point beside `valid_time`);
    unticketed, and worth doing only when a caller needs to distinguish the point they asked for from
    the values they got. Distinct from *which* cell sourced the value — that is

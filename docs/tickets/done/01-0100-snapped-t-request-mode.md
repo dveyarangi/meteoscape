@@ -263,7 +263,7 @@ freshness/run identity, never a promised response extent.
       single-origin.
 - [x] **The leaf carries no snapped-mode code** — no mode branch, no lattice arithmetic, no
       `SnappedAxis` import: a geometry declaration and `ground` calls. This is the property
-      [011](../01-0120-twc-provider.md) and [006](./01-0115-retentive-store-freshness.md) inherit;
+      [011](./01-0120-twc-provider.md) and [006](./01-0115-retentive-store-freshness.md) inherit;
       if it is false, the algebra is in the wrong place.
 - [x] **Non-duplication guard:** the design document can truthfully state — *"enabling snapped
       X/Y is: declare an enumerable X/Y geometry, settle float phase tolerance in `RegularAxis.clip`,

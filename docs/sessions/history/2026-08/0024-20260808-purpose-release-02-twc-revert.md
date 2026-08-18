@@ -15,7 +15,7 @@ minted at the end; a repo-wide sweep renamed two tickets and touched ~20 docs.
   menu; the shape-diversity rule owns sequencing →
   [product-roadmap §Purpose and sequencing authority](../../../product-roadmap.md#purpose-and-sequencing-authority).
 - **TWC reverted as v1's second provider** — the 2026-08-02 swap's premise (unverified access)
-  dissolved; the code had never left TWC → [ticket](../../../tickets/01-0120-twc-provider.md)
+  dissolved; the code had never left TWC → [ticket](../../../tickets/done/01-0120-twc-provider.md)
   (identity-history note), [v1-requirements §Providers](../../../v1-requirements.md).
 - **Release 02 opened, contract-deferred; a release is a contract-closure milestone, not a
   chronological gate** → [delivery README §Ticket numbering](../../../tickets/README.md#ticket-numbering).
@@ -70,7 +70,7 @@ slice. The three release-02 tickets are Planned, each with "own align precedes."
 - Pairing mechanics, bias-product shape, parity tolerance, and the stability criterion that later
   licenses correction → [02-0140](../../../tickets/02-0140-correction-calculator.md) align.
 - Live parity under an operator-supplied commercial key (no secret in evidence; routing/enforcement)
-  → [ticket 0120 acceptance](../../../tickets/01-0120-twc-provider.md),
+  → [ticket 0120 acceptance](../../../tickets/done/01-0120-twc-provider.md),
   [#41](../../../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 
 ## Continuation
