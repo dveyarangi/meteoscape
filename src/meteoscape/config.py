@@ -80,8 +80,8 @@ class Settings(BaseSettings):
 
     TODO (temporary): the vendor-named fields and the `offerings` / `secrets` branches that name
     vendors dissolve into generic enablement and secret injection
-    ([edge/provider.md](../../docs/edge/provider.md) vendor-config-purity;
-    [#26](../../docs/concerns.md#26-provider--calculator-plugin-scaffolding)).
+    (docs/edge/provider.md vendor-config-purity;
+    docs/concerns.md#26-provider--calculator-plugin-scaffolding).
     """
 
     model_config = SettingsConfigDict(env_prefix="METEOSCAPE_", env_file=".env", extra="ignore")

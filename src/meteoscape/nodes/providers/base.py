@@ -5,7 +5,8 @@ endpoints / envelope) behind a shape wrapper that owns the geometry, with a `Clo
 Stateless, no storage, no children; authors the Coverage's provenance (a single-fetch `Uniform` plane)
 at fetch. Its `capability` is a stable `GranularCapability` leaf built once from the cadence + clock:
 per-parameter footprints with static spatial / Z bounds and a clock-anchored `RollingAxis` on
-`valid_time` that rolls with the run anchor (ADR-0003 / ADR-0004). See architecture.md ("Provider").
+`valid_time` that rolls with the run anchor (ADR-0003 / ADR-0004). See docs/architecture.md
+("Provider").
 
 Also hosts the shared HTTP fetch seam (`Transport` / `FetchRequest` / `HttpxTransport`) used by
 vendor leaves.

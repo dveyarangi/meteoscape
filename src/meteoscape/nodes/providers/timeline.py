@@ -5,7 +5,7 @@ A timeline producer delivers a single X/Y point and a regular T series; only Z v
 injected `TimelineProbe` that builds one request and parses one envelope. Other provider shapes
 (gridded NWP, soundings) are a deferred seam — they add a wrapper beside this one, never a Probe.
 
-The contract both halves answer to is [edge/provider.md](../../../../docs/edge/provider.md).
+The contract both halves answer to is docs/edge/provider.md.
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ class TimelineProvider(Provider):
     `TimelineProbe` and no algebra of its own — the property that keeps snap arithmetic out of every
     vendor leaf after the first. Its constructor arguments are **per-offering** facts, carrying one
     offering's worth in v1
-    ([#20](../../../../docs/concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
+    (docs/concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
     """
 
     def __init__(
@@ -286,7 +286,7 @@ class TimelineProvider(Provider):
 
         **TODO (temporary):** this translation goes with the raise it catches, once a short tail is
         padded as `present=False`
-        ([#30](../../../../docs/concerns.md#30-response-membership-under-runtime-degraded-fallback)).
+        (docs/concerns.md#30-response-membership-under-runtime-degraded-fallback).
         """
         try:
             return await group.project(Selection(domain=answer, parameters=parameters))
@@ -308,7 +308,7 @@ def _declare_footprints(
 
     The `Capability` widens these to `Domain` — it is the abstract advertisement, and a producer
     declaring curvilinear geometry advertises through the same field
-    ([#12](../../../../docs/concerns.md), source role). The wrapper keeps the narrow map because it
+    (#12 in docs/concerns.md, source role). The wrapper keeps the narrow map because it
     *knows* what it built, and resolution reads it back at that type.
     """
     footprints: dict[ParameterId, tuple[ParameterDef, FootprintDomain]] = {}
@@ -424,7 +424,7 @@ class TapTable:
 
         **TODO (temporary):** the one conversion edge v1 has is wind km/h→m/s, hardcoded against the
         declared unit token; a verified conversion catalogue replaces both the check and the branch
-        ([#10](../../../../docs/concerns.md#10-parameter-conventions)).
+        (docs/concerns.md#10-parameter-conventions).
         """
         reported = delivery.reported_units
         out: dict[str, Sequence[float | None]] = {}

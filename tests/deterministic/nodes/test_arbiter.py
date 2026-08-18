@@ -304,7 +304,7 @@ async def test_winner_domains_that_differ_fail_the_whole_request() -> None:
 
     The invariant lives here, at the fold — not in any vendor path. A narrow-answering Provider can
     project winners separately and expose the disagreement
-    ([#43](../../../docs/concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence)),
+    (docs/concerns.md#43-narrow-answering-providers-re-open-mixed-request-run-divergence),
     so the guard is kept where it is reachable with no network and no store: two canned winners
     whose timelines disagree by one tick.
     """

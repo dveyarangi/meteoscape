@@ -10,7 +10,7 @@ registries, which compose the `ProfileDef` the Weaver consumes:
 
 Binders instantiate/resolve; neither wires the DAG nor allocates the profile-root `Store` (the Weaver
 owns that). Both take plain values by injection, never the `config.py` `Settings` type. See
-architecture.md ("Config, binders, Weaver") and ADR-0005.
+docs/architecture.md ("Config, binders, Weaver") and ADR-0005.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """`Reservoir` - the retention composite.
 
 A read-only Manifold composed of a `Store` + one child. Adds retention, not selection. See
-architecture.md ("Reservoir") and ADR-0001. The `Store` protocol and factories live in `store.py`.
+docs/architecture.md ("Reservoir") and ADR-0001. The `Store` protocol and factories live in
+`store.py`.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ class Reservoir:
     grid is an internal fidelity floor, not a capability boundary). Freshness is this node's policy
     over holdings — the store face stays clockless (ADR-0006).
 
-    TODO (temporary): [#39](../../../docs/concerns.md#39-python-embedding-surface-and-public-failures)
+    TODO (temporary): docs/concerns.md#39-python-embedding-surface-and-public-failures
     will separate engine invariant breaks from producer `RuntimeFailure`s. The borrowed category is
     the only one that currently reaches every surface cleanly.
     """
@@ -173,7 +174,7 @@ class Reservoir:
         refresh — serving it would answer outside the declared reach, and grounding it can fail the
         whole request. Unreachable while every parameter shares one T reach (v1's single provider);
         live at the first diverging-reach parameter set
-        ([#30](../../../docs/concerns.md#30-response-membership-under-runtime-degraded-fallback)).
+        (docs/concerns.md#30-response-membership-under-runtime-degraded-fallback).
         """
         served = frozenset(held.capability.parameters)
         if admitted is not None:
@@ -198,7 +199,7 @@ class Reservoir:
         because admission gated it. The **transfer** is `resample`, reached through
         `CoverageSet.project`; v1's Resampler is **identity**, so no value moves here or there.
         Parameter-specific Resamplers that would change that live at
-        [#5](../../../docs/concerns.md#5-read-time-homogenization-fidelity).
+        docs/concerns.md#5-read-time-homogenization-fidelity.
         """
         held = _axes_of(record.domain)
         onto = _axes_of(target)

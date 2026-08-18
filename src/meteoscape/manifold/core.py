@@ -7,7 +7,7 @@ module read-only (ADR-0001). The `Coverage` *contract* lives here (its realizati
 contract with the algebra is what keeps that dependency acyclic. Everything here is an interface bar
 the `Selection` value type.
 
-See architecture.md ("Core concepts") and ADR-0001.
+See docs/architecture.md ("Core concepts") and ADR-0001.
 """
 
 from __future__ import annotations

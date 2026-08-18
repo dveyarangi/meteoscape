@@ -1,6 +1,7 @@
 """Guard: a vendor `Probe` speaks value types only, never the manifold's.
 
-The seam is typed by value on purpose (edge/provider.md): a Probe that never holds a `Clock` cannot
+The seam is typed by value on purpose (docs/edge/provider.md): a Probe that never holds a `Clock`
+cannot
 mis-stamp provenance, and one that never narrows a `Domain` cannot mistake an unservable request for a
 vendor fault. That buys the rule structurally instead of by review — but only if something checks it,
 which is what this is. It guards the *next* Probe more than the shipped one.

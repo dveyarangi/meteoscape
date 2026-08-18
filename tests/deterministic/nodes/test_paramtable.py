@@ -5,7 +5,7 @@ from meteoscape.parameters import AIR_TEMPERATURE, RELATIVE_HUMIDITY
 
 
 def test_core_table_declares_screen_allowance_on_temperature_and_humidity() -> None:
-    """The v1 bands live on the Parameter, matching parameters.md, not on any producer."""
+    """The v1 bands live on the Parameter, matching docs/parameters.md, not on any producer."""
     table = StaticParameterTable.core()
     banded = {
         pid: table.get(pid).z_allowance for pid in table if table.get(pid).z_allowance is not None

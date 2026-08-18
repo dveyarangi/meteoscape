@@ -4,7 +4,7 @@
 the `Reconciler` via `build_reconciler`, and builds `Arbiter(producers, reconciler)` under the
 best-view `Reservoir`. Calculators are memoized per `CalculatorKey` with a scoped input Arbiter
 (DAG). The Weaver never ranks — priority stays registry data the reconciler interprets. See
-architecture.md ("Config, binders, Weaver") and ADR-0005 / ADR-0004.
+docs/architecture.md ("Config, binders, Weaver") and ADR-0005 / ADR-0004.
 """
 
 from __future__ import annotations

@@ -35,7 +35,7 @@ class Shortfall(ValueError):
     **TODO (temporary):** raising at all is scaffolding. `missing` is the durable part, because the
     answer to a shortfall is to pad that tail as `present=False` rather than to fail — which retires
     this class's raise and every translation of it
-    ([#30](../../../docs/concerns.md#30-response-membership-under-runtime-degraded-fallback)).
+    (docs/concerns.md#30-response-membership-under-runtime-degraded-fallback).
     """
 
     def __init__(self, axis: AxisName, missing: int) -> None:

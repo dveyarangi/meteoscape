@@ -2,7 +2,7 @@
 
 The three first-class failure categories the engine distinguishes, mapped to protocol errors at
 the surface adapter. Distinct from a successful *nodata* gap (`present[i] is False`), which is data,
-not an error. See architecture.md - "Failure, nodata, and availability".
+not an error. See docs/architecture.md - "Failure, nodata, and availability".
 """
 
 from __future__ import annotations

@@ -69,7 +69,7 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
 @pytest.mark.asyncio
 async def test_open_meteo_parity() -> None:
     # TODO (temporary): goes with the vendor-named fields when generic secret injection replaces
-    # them (edge/provider.md vendor-config-purity); the init override isolates this check from a
+    # them (docs/edge/provider.md vendor-config-purity); the init override isolates this check from a
     # local TWC key.
     settings = Settings(open_meteo_enabled=True, twc_api_key=None)
     request_desc = f"forecast_hourly lat={_LAT} lon={_LON} default window UTC"

@@ -1,7 +1,7 @@
 """Shared native→canonical conversion edges.
 
 Vendor quantities are converted before anything downstream sees a value, at the shape wrapper that
-executes a producer's declared tap table ([parameters.md](../../../docs/parameters.md)). Both kinds of
+executes a producer's declared tap table (docs/parameters.md). Both kinds of
 edge live here — a scale factor, and a transform between quantities — because neither is vendor
 knowledge: every vendor publishing wind as a speed and a bearing means the same thing by it. These are
 the seed of a verified conversion catalogue; until it exists, each edge is hand-declared per tap.

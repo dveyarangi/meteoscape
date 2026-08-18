@@ -45,7 +45,7 @@ def pinned_settings(**kwargs: Any) -> Settings:
 
     Init overrides env, so a local `METEOSCAPE_TWC_API_KEY` cannot silently enable TWC.
     TODO (temporary): goes with the vendor-named fields when generic secret injection replaces
-    them ([edge/provider.md](../../docs/edge/provider.md) vendor-config-purity).
+    them (docs/edge/provider.md vendor-config-purity).
     """
     kwargs.setdefault("twc_api_key", None)
     return Settings(**kwargs)

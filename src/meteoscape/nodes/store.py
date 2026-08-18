@@ -5,7 +5,7 @@ the in-memory substrate. A store's whole public face is the Manifold contract + 
 `quantize`; its `project` is the holdings query — clockless and freshness-blind, so an archive
 substrate serves deliberately stale history through the same face. The Weaver allocates every store
 via an injected `StoreFactory` — it owns *where* stores exist; the factory owns *what* a store is.
-See architecture.md ("Store") and ADR-0005/0006.
+See docs/architecture.md ("Store") and ADR-0005/0006.
 """
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ class Store(Manifold, Writable, Protocol):
     Holds sampled Coverages in whole assimilable Holdings (a Holding is replaced atomically, so it carries
     one origin); the only `assimilate` target. Its `capability` *narrates* holdings — plural cells
     per parameter truncate to one reach
-    ([#47](../../../docs/concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach));
+    (docs/concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach);
     the per-ask exact answer is `project`'s. Its
     lattices stay private — consumed by `quantize`, the holdings query, and read-back; never exposed
     as a node `domain`. `quantize` authors the refill fetch-order (ADR-0006).
