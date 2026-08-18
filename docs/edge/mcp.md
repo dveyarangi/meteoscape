@@ -151,7 +151,7 @@ candidate has been tried; fails the whole request).
   are unaffected.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — wire units are fixed
   per parameter; the lossless-vs-degrading conversion quality signal surfaces here when the
-  [unit-conversion catalogue](../tickets/01-0122-unit-conversion-edge.md) grows.
+  [unit-conversion catalogue](../tickets/01-0129-unit-conversion-edge.md) grows.
 - [#15 — Coarser-grid resampling](../concerns.md#15-coarser-grid-resampling-and-aggregation-semantics)
   — a future caller-facing resolution knob; today this edge always serves hourly.
 - [#29 — Narrated reach](../concerns.md#29-narrated-reach-what-a-profile-promises) — the

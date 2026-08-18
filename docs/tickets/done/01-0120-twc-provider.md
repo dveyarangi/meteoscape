@@ -42,9 +42,9 @@
   `capability-mismatch` after a redundant primary refill. The max-reach policy that would change
   either is deliberately unbuilt →
   [#49](../../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
-- **Vendor spend becomes real** → [vendor-call ledger](../02-0124-vendor-call-ledger.md).
+- **Vendor spend becomes real** → [vendor-call ledger](../01-0124-vendor-call-ledger.md).
 - **No new unit-conversion edge.** The Probe requests `units=m`; wind reuses Open-Meteo's inline
-  `km/h → m/s` conversion, so [010](../01-0122-unit-conversion-edge.md)'s catalogue trigger remains
+  `km/h → m/s` conversion, so [010](../01-0129-unit-conversion-edge.md)'s catalogue trigger remains
   unmet. Metric is preferred over SI because TWC's integer wind field yields 0.28 m/s rather than
   1 m/s quantization. TWC does not self-report units, so parity is the only guard on that declaration.
 

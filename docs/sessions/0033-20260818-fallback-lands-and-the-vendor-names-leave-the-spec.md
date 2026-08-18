@@ -85,7 +85,7 @@ All live in their owning documents; cited, not restated.
 - Per-parameter partial success and absence reasons →
   [0190](../tickets/01-0190-error-taxonomy-partial-success.md).
 - Whether TWC's native units create the multi-vendor spread that triggers the conversion catalogue →
-  [0122](../tickets/01-0122-unit-conversion-edge.md).
+  [0122](../tickets/01-0129-unit-conversion-edge.md).
 - Parity enforcement and routing → [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted).
 - Tick convention → [#48](../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick)
   / [0126](../tickets/01-0126-tick-convention-declaration.md).

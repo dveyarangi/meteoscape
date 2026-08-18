@@ -4,16 +4,17 @@
 
 **Current stage:** [second-provider fallback](./done/01-0121-second-provider-fallback.md) is
 delivered (2026-08-18) — a metered primary's fault no longer fails the request. Next is
-[unit-conversion catalogue](./01-0122-unit-conversion-edge.md) if TWC's native units create the
-spread its trigger waits for, else [config and graceful degrade](./01-0123-config-secrets-degrade.md),
-which owns key-absent as the *degraded* mode.
+[config and graceful degrade](./01-0123-config-secrets-degrade.md), which owns key-absent as the
+*degraded* mode. The [unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger was
+falsified at TWC (metric, same inline edge), so the ticket moved behind its first plausible
+customer, just ahead of the Mongo sources (0122 → 0129, 2026-08-19).
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
 Python, a REST surface, and provider quota monitoring.* What changed:
 
 - **TWC becomes the primary**, not a spare — which pulls
-  [fallback](./done/01-0121-second-provider-fallback.md), [unit conversion](./01-0122-unit-conversion-edge.md),
+  [fallback](./done/01-0121-second-provider-fallback.md), [unit conversion](./01-0129-unit-conversion-edge.md),
   and [config/secrets](./01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
   0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
   resilience polish.
@@ -111,11 +112,11 @@ work `Maint`. What those columns mean is
 | 0127 | [Doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) | Maint | Done | — | CI fails when a live document's relative link or heading anchor stops resolving, when any tracked file carries a BOM, control character, or listed invisible codepoint, when a code comment's doc pointer (concern, ADR, or `.md` path) no longer resolves, or when the queue and the ticket folders disagree; historical records stay exempt from link gating. *Row sits where the work happens; 0121–0126 left no free integer, so the position is the nearest free slot.* |
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
-| 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters | Shared verified native-to-canonical conversion edges. |
 | 0123 | [Config and graceful degrade](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction behavior. |
 | 0124 | [Vendor-call ledger (meter)](./01-0124-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and graceful degrade | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on request results. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — | A supported Python package boundary resolves the same v1 forecast product as MCP without a protocol server and exposes expected failures through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
+| 0129 | [Unit-conversion catalogue](./01-0129-unit-conversion-edge.md) | — | Planned (trigger-gated) | core canonical parameters | Shared verified native-to-canonical conversion edges. Runs only if the Mongo aligns reveal a real unit spread; slides further otherwise. |
 | 0130 | [Mongo obs source](./01-0130-mongo-obs-source.md) | — | Planned (own align precedes) | embedding surface (its consumer's construction path); config and graceful degrade (its connection string is a secret) | Hourly station observations from the operator's Collector database are served through the projection algebra as a read-only private source, with per-parameter provenance. |
 | 0134 | [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Archived forecast runs are served as distinct per-provider origins with run identity in provenance, without deciding cross-run combination. |
 | 0140 | [Correction calculator](./01-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | Per-source, per-parameter bias over paired forecast/observation history; correction remains gated on measured bias proving stable. |
@@ -146,6 +147,10 @@ This section records only how it landed here.
   correction work, persistent Store, embedded/REST deployment, and vendor-spend controls therefore
   carry `01`. Release 02 receives the former v1 tail: per-parameter selection, error/partial-success
   completion, minimal resolution logging, and the artifact-conventions sweep.
+- **First within-queue renumber: 0122 → 0129 (2026-08-19).** The unit-conversion catalogue's
+  trigger was falsified at TWC, so the ticket moved behind its first plausible customer — just
+  ahead of the Mongo sources. 0127/0128 being consumed left 0129 the free integer. Documents
+  citing 0122 predate the move and are left as written.
 
 ### Legacy ids
 
@@ -166,7 +171,7 @@ This section records only how it landed here.
 | 007 | [off-grid homogenization](./done/01-0117-off-grid-homogenization.md) |
 | 008 | [config and graceful degrade](./01-0123-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./02-0190-error-taxonomy-partial-success.md) |
-| 010 | [unit-conversion catalogue](./01-0122-unit-conversion-edge.md) |
+| 010 | [unit-conversion catalogue](./01-0129-unit-conversion-edge.md) |
 | 011 | [TWC provider](./done/01-0120-twc-provider.md) — Visual Crossing 2026-08-02 → 2026-08-08, TWC before and after |
 | m1 | [type contract hygiene](./done/01-0050-type-contract-hygiene.md) |
 | m2 | [dissolve node-`Countable`](./done/01-0070-dissolve-node-countable.md) |
@@ -282,9 +287,9 @@ to release 02. Ticket positions remain unchanged because position is global acro
   **enforces** parity coverage and **routes** its selection is now
   [#41](../concerns.md#41-parity-evidence-is-unenforced-and-unrouted), which also owns the retry-once
   policy's missing failure signal.
-- [010](./01-0122-unit-conversion-edge.md): build the shared conversion catalogue when a vendor exposes
+- [010](./01-0129-unit-conversion-edge.md): build the shared conversion catalogue when a vendor exposes
   the first real multi-vendor spread. TWC reuses Open-Meteo's inline `km/h → m/s` edge, so the trigger
-  remains unmet.
+  remains unmet; the Mongo obs align's pinned collector fixtures are the next place it can fire.
 - [Vendor-call ledger](./01-0124-vendor-call-ledger.md): its own align selects what an entry is (one
   HTTP request vs one `Provider.project`), attribution granularity, the accounting period and where
   it is kept, the read-out channel, and whether failed calls count.

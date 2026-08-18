@@ -4,9 +4,16 @@
 
 - **Status:** Planned
 - **Depends on:** [002 — Core canonical parameters](./done/01-0030-core-5-parameters.md)
-- **Trigger:** The first vendor whose unit spread outgrows one hardcoded factor. TWC uses the same
-  inline `km/h → m/s` edge as Open-Meteo, so the trigger remains unmet.
+- **Trigger:** The first vendor whose unit spread outgrows one hardcoded factor. TWC serves metric
+  and reuses the same inline `km/h → m/s` edge as Open-Meteo, so the trigger stayed unmet there —
+  falsifying the beeline prediction that placed this at 0122. The next plausible pull is the
+  [Mongo obs source](./01-0130-mongo-obs-source.md)'s align, whose pinned collector fixtures
+  ([#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own))
+  reveal the native units of the per-provider forecast fields and station payloads. If those prove
+  already canonical, this ticket slides again behind the next producer with a differing native unit.
 - **Outcome:** Shared verified native-to-canonical conversion edges.
+- **Position note:** renumbered 0122 → 0129 (2026-08-19) to sit just ahead of its first plausible
+  customer; 0127/0128 were consumed by the docs gate and mover.
 
 ## Parent PRD
 

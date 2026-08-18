@@ -48,7 +48,7 @@ than working around it.
 | Offering identity vs operator policy | [ADR-0005](../../adr/0005-build-time-composition.md), ticket | **Identity → `OfferingDef.name`** (duration, a catalogue row, boot-checked). **Policy → `OfferingDef.settings`** (cadence). First use of `settings`, wired at [composition.py:94](../../../src/meteoscape/nodes/composition.py) and unused since. |
 | `SecretSlot` | [catalog/providers.py](../../../src/meteoscape/nodes/catalog/providers.py) | First shipped manifest to declare one. The seam is already built and guarded; this exercises it. |
 | Run identity (`AtomicOrigin.issue_time`) | [ADR-0003](../../adr/0003-provenance-and-origin.md) | **Stretched, knowingly.** TWC publishes no run schedule, so Δ is our polling interval → [#18](../../concerns.md#18-clock-anchored-footprint-fidelity). |
-| Canonical units | [parameters.md](../../parameters.md) | **No *new* conversion edge** — `units=m` reuses the inline km/h→m/s Open-Meteo already declares, so [010](../../tickets/01-0122-unit-conversion-edge.md)'s trigger (a shared *catalogue*) stays unmet. |
+| Canonical units | [parameters.md](../../parameters.md) | **No *new* conversion edge** — `units=m` reuses the inline km/h→m/s Open-Meteo already declares, so [010](../../tickets/01-0129-unit-conversion-edge.md)'s trigger (a shared *catalogue*) stays unmet. |
 | Tick semantics | [#48](../../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick) | **Not repaired here.** TWC happens to match the lattice; Open-Meteo does not → [0126](../../tickets/01-0126-tick-convention-declaration.md). |
 | MCP edge contract | [edge/mcp.md](../../edge/mcp.md) | **Compatible addition, not unchanged** *(corrected 2026-08-17)*. Same six parameters, same payload shape — but this is the first leaf declaring wider than it delivers, so the warm in-gap `capability-mismatch` becomes reachable. The edge record already names TWC as what makes it live. |
 | Reach composition on sample-Z | [ADR-0007](../../adr/0007-capability-carries-its-domain.md) (2026-08-17 amendment) | **Depended on, not touched.** `Z_1_5M` vs `Z_2M` composes only under the Parameter's allowance; [0118](../../tickets/done/01-0118-sample-level-allowance.md) landed the fold change — **verified post-landing**: all six parameter pairs compose, Open-Meteo's domain dominating T. |
@@ -79,7 +79,7 @@ pages, not the payload, are the only evidence for what the numbers mean.
    The cost is one conversion, and it is **already built**: `TapTable._converted` branches on the
    *declared* unit (`if var.unit == "km/h"`, [timeline.py:444](../../../src/meteoscape/nodes/providers/timeline.py)),
    so declaring `"km/h"` converts for free through the same inline edge Open-Meteo uses. **No new edge
-   is added**, so [010](../../tickets/01-0122-unit-conversion-edge.md)'s trigger — a shared *catalogue* of
+   is added**, so [010](../../tickets/01-0129-unit-conversion-edge.md)'s trigger — a shared *catalogue* of
    edges — stays unmet.
    **Risk this accepts:** since TWC reports no units, the conversion fires on our declaration alone. If
    the request's `units` were ever wrong, values would be silently divided by 3.6. Parity is the only

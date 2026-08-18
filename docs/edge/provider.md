@@ -637,7 +637,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   composition rather than the request path.
 - [#10 — Parameter conventions](../concerns.md#10-parameter-conventions) — canonical units are converted
   *at the leaf*, so the lossless-vs-degrading conversion-quality signal surfaces here first
-  ([unit-conversion catalogue](../tickets/01-0122-unit-conversion-edge.md)).
+  ([unit-conversion catalogue](../tickets/01-0129-unit-conversion-edge.md)).
 
 ## Roadmap
 
