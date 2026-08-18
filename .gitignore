@@ -4,3 +4,6 @@
 tests/parity/_artifacts/
 tmp/
 .idea/
+
+# Operator env (Settings reads it; carries METEOSCAPE_TWC_API_KEY)
+.env
