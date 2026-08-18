@@ -40,7 +40,7 @@ Dream can and should include crisp distilled oneiric shapes (random languages, d
 
 Is about separating seeds from sand, seeing the forest behind the trees and converting noise to signal, separate samskara and vasana. The dream picture is the input for this stage and the outcome is those principles, lessons, habits, insights, predictions or other patterns.
 
-The insights should come up in simple language, not code/arch talk. Simple but precise.
+The insights should come up in simple english language, not code/arch talk. Simple but precise.
 
 
 ## Output 

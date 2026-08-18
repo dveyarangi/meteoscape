@@ -11,6 +11,10 @@ Ask the questions one at a time, waiting for feedback on each question before co
 
 If a *fact* can be found by exploring the codebase, look it up rather than asking me. The *decisions*, though, are mine - put each one to me and wait for my answer.
 
+Consider /impact when discussing or providing recommendations.
+
+Do not generalize from one shape. Preserve a seam. Generalize only when a second materially different shape forces the same concept.
+
 Do not enact the plan until I confirm we have reached a shared understanding.
 </what-to-do>
 
