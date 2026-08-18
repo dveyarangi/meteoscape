@@ -164,6 +164,44 @@ already splits them by Z level. Open: whether the cell-side declaration belongs 
 
 → queued as [tick-convention declaration](./tickets/01-0126-tick-convention-declaration.md).
 
+## 49. Spanning asks serve the primary; max-reach is unbuilt policy
+
+**Kind:** product/flow (decided v1 shape; the escape is unbuilt) · **Refs:**
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md),
+[ADR-0002](./adr/0002-data-model.md), [#29](#29-narrated-reach-what-a-profile-promises),
+[#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold),
+[#20](#20-provider-multi-resolution-offerings-offering-aware-selection),
+[0115.0040](./tickets/done/01-0115.0040-reservoir-retention-pipeline.md)
+
+**Decided 2026-08-17: v1 always serves the primary's shape.** Under intersective snapped admission
+a window spanning past the priority winner's reach still admits it, and the winner answers with its
+own clipped span, disclosed through `valid_time`. With TWC primary (~10 d) under a composed ~16 d
+reach, every default ask serves ~10 d. A per-request or per-profile "serve the window whole"
+preference was considered and **rejected as a reconciler knob**, because the mechanism cannot
+exist there: the root Reservoir's refill deliberately opens T
+([store.py:199](../src/meteoscape/nodes/store.py) — `quantize` overrides the ask with `ANY`; the
+natural-fetch-unit decision of 0115), so **the bounded window is destroyed before producer
+selection ever runs** and ordering-by-window would be dead code on the product path.
+
+**The unbuilt policy this defers — "max reach":** serving the composed span via a non-primary
+producer. Its live consequence today, derived from the code path and not yet executed end-to-end:
+once the primary is configured, **a tail ask past the primary's holdings cannot reach the
+longer-reaching backstop through the root store at all** — retention sees the composed (rolling,
+long-horizon) declared axis as unsatisfied, refills with open T, priority buys the primary *again*
+(one redundant metered call), holdings still end short, and the serving seam answers
+`capability-mismatch`
+([reservoir.py:112-128](../src/meteoscape/nodes/reservoir.py), [:146-153](../src/meteoscape/nodes/reservoir.py)).
+The narrated horizon (composed, [#29](#29-narrated-reach-what-a-profile-promises)'s upper bound)
+therefore over-promises the tail whenever primary ≠ dominant.
+
+Candidate mechanisms, deliberately unchosen: the root refill keeping the ask's T bounds for
+*selection* while the winner's own source-Reservoir still fetches natural (touches 0115's
+boundless-answer licence); narration re-scoped to the primary's reach (moves producer knowledge to
+the edge, which [#29](#29-narrated-reach-what-a-profile-promises) resists); offering/reach-aware
+selection ([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)). Trigger: real
+demand for the beyond-primary tail — or the [ledger](./tickets/02-0124-vendor-call-ledger.md)
+pricing the redundant tail-ask refetch.
+
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
@@ -365,7 +403,7 @@ The failure that exposure ends in stays guarded at the fold, where the invariant
 disagreeing lattices, no network and no store.
 
 Graded responses, cheapest first — decide at the first billed provider
-([011](./tickets/01-0120-twc-provider.md)):
+([011](./tickets/done/01-0120-twc-provider.md)):
 
 1. **Accept per-provider** — the divergence is recorded as that provider's economy choice.
 2. **Detect and narrate** — assembly compares `AtomicOrigin.issue_time` across the assembled
@@ -568,7 +606,7 @@ serve-vs-refetch trigger ([reservoir.py:126](../src/meteoscape/nodes/reservoir.p
 5-minute vendor expiry would set the polling interval to 5 minutes and spend the allotment the
 configured Δ exists to conserve. **Splitting those two roles is the real prerequisite** for any
 provider-real freshness signal — the escape is not a per-provider declaration but that split. Wanted
-by the faster-nowcast case, not by v1 → [TWC provider](./tickets/01-0120-twc-provider.md).
+by the faster-nowcast case, not by v1 → [TWC provider](./tickets/done/01-0120-twc-provider.md).
 
 → queued for measurement by the [vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md).
 
@@ -869,6 +907,12 @@ extension** so it is not mistaken for a config change: it lands with the catalog
 ([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
 set to prove it.
 
+**A window-aware ordering step was considered and rejected (2026-08-17):** letting `select` prefer
+a candidate that serves the snapped window whole cannot work on the product path — the retention
+flow opens T before selection runs, so the reconciler never sees the window. The "cannot score
+geometry" limit above thus stands for a deeper reason than interface narrowness →
+[#49](#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
+
 ## 29. Narrated reach: what a profile promises
 
 **Kind:** surface/product seam · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md) (the mechanism), [#30](#30-response-membership-under-runtime-degraded-fallback), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
@@ -918,6 +962,16 @@ Producer selection lands near the same place from the other direction: the narra
 spatially-dominant source's own horizon. That is a coherent product promise ("this surface serves N
 days") rather than a leaked policy boundary — the difference is that it is stated as **what the
 surface delivers**, not as **where quality changes**.
+
+**The dominant and the primary split at the priority flip (2026-08-17).** That paragraph was written
+while the T-dominant source (Open-Meteo) was also priority-first. With TWC primary, the narration
+follows the dominant (~16 d) while the default ask — a *spanning* window under intersective snapped
+admission — goes to the primary, which serves its ~10 d clipped, disclosed through `valid_time`.
+Verified against the fold and `serves` before 0120. **Decided: v1 always serves the primary's
+shape** ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)); narration stays the upper
+bound this concern already states, now over-promising the tail whenever primary ≠ dominant — the
+unbuilt max-reach policy and the tail's actual behavior are
+[#49](#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy)'s.
 
 A `max`-over-parameters boundary was likewise rejected: a `max` fold is **existential** ("*something*
 reaches this far"), unusable until you know *which*, and it **over-promises**. Existential facts need

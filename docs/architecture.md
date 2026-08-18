@@ -119,7 +119,7 @@ Mode is the Domain's shape ([ADR-0002](./adr/0002-data-model.md)), and which sha
 | only a region, wanting a continuous field | **Continuous** (`region`) | a field — no materializing surface in v1 |
 | nothing, deferring to the producer | **`ANY`** (the Snapped member without bounds — not a separate axis kind) | the producer's native cells (may be multi-domain) |
 
-Admission follows the mode: enumerable and continuous request axes admit by containment; a snapped axis — like the vantage Z aperture — admits by **intersection**, the winner serving the servable part ([#13](./concerns.md#13-candidate-admission-containment-vs-intersection), scoped). Per axis, what is real:
+Admission follows the mode: enumerable and continuous request axes admit by containment; a snapped axis — like the vantage Z aperture — admits by **intersection**, the winner serving the servable part ([#13](./concerns.md#13-candidate-admission-containment-vs-intersection), scoped). Admission alone does not predict what the product path serves, because the root `Reservoir`'s refill opens T before selection runs: a window spanning past the priority winner's reach is still answered by **that winner's own clipped shape**, and an ask wholly past it answers `capability-mismatch` rather than falling through to a longer-reaching backstop — the unbuilt max-reach policy ([ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#49](./concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy)). Per axis, what is real:
 
 - **T** — both are built: enumerable is what the MCP edge issues, and **Snapped-T** is the
   window-fitting mode a live rolling window needs when the caller cannot know the servable edge.
@@ -322,7 +322,9 @@ rejected splits); this section fixes the roles.
   canonical `ParameterDef`s stay off it — Capability + `ParameterTable` own those). Catalogue is an
   architectural role, not a directory rule; secrets are an injected map, not a catalogue.
 - **`ProfileConfig`** (operator, per profile) — `OfferingDef` declarations, `CalculatorDef`s,
-  root `StoreSpec`, and `ArbiterPolicy`. Offering names are explicit; catalogue validation occurs
+  root `StoreSpec`, and `ArbiterPolicy`. An omitted offering name resolves to the manifest's
+  declared `default_offering` at the binder — vendor defaults are plugin-side, never config's
+  ([ADR-0005](./adr/0005-build-time-composition.md)); catalogue validation occurs
   during composition.
   A non-materialized Source carries its `StoreSpec` (catalogue default, operator override); a
   materialized provider wires storeless — a store configured for one is a `CompositionError`

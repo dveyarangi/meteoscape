@@ -46,7 +46,7 @@ flowchart TB
 ```mermaid
 flowchart LR
   subgraph impl [provider impl - code]
-    M["ProviderManifest: offerings, secret, build / expand"]
+    M["ProviderManifest: offerings, default offering, secret, build / expand"]
   end
   CAT["ProviderCatalog: impl-id → Manifest"]
   OD["OfferingDef: impl + name? + priority + secret_ref + settings + store?"]
@@ -92,6 +92,16 @@ Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) �
   declarations (`OfferingDef`s), calculator enablements (`CalculatorDef`s), root-store binding, and Arbiter
   policy. Enablement refers to catalogue entries; it does not duplicate plugin declarations, carry
   live instances, or author `SourceKey`.
+- **Vendor defaults are plugin-side; core config carries no vendor knowledge.** A
+  manifest may declare its **`default_offering`**; an `OfferingDef` with `name=None` resolves to it
+  at the binder, falling through to `expand` only when the manifest declares no default. Vendor
+  policy defaults (a polling cadence, say) are `build`'s — the fallback it applies when the opaque
+  `OfferingDef.settings` mapping omits the key. The core config layer carries only enablement
+  plumbing — which impls are enabled, priorities, secret material, opaque `settings` overrides —
+  and never imports a vendor module: a plugin can register a manifest but cannot extend `Settings`,
+  so any vendor default or vocabulary in core config forecloses out-of-tree providers
+  ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)). The enforcing invariant and
+  its guard live in the provider edge record ([edge/provider.md](../edge/provider.md)).
 - **Two symmetrical binders produce weave inputs.**
   `SourceBinder(ProviderCatalog).build(OfferingDef…)` → `SourceRegistry` (live providers + priority +
   source store knobs; needs secrets/clock), keyed by **`SourceKey (provider, dataset)`**.

@@ -47,8 +47,8 @@ X/Y footprint, not Z.
 
 | ParameterId | native Z declaration | kind | vantage `[0,10]` |
 |---|---|---|---|
-| `air_temperature` | sample @ `2 m` `above_ground` | sample | ✓ membership |
-| `relative_humidity` | sample @ `2 m` | sample | ✓ |
+| `air_temperature` | sample @ screen height, per producer — `2 m` Open-Meteo, `1.5 m` TWC, composing under the [allowance](#sample-level-allowance) | sample | ✓ membership |
+| `relative_humidity` | sample @ screen height, per producer — `2 m` / `1.5 m` as above | sample | ✓ |
 | `wind_u` / `wind_v` | sample @ `10 m` (v1 single level) | sample | ✓ |
 | `precipitation` | surface flux @ `0 m` | sample | ✓ |
 | `wind_speed` / `wind_direction` | derived — inherit u/v carriage | sample | ✓ |
@@ -62,15 +62,13 @@ X/Y footprint, not Z.
 ## Sample-level allowance
 
 A Parameter with a **sample**-level Z may declare an **allowance**: the band of levels its consumers
-accept as interchangeable *(decided 2026-08-17; the composition rule it feeds is
-[ADR-0007](./adr/0007-capability-carries-its-domain.md)'s)*. Fallback is accepted quality
+accept as interchangeable. Fallback is accepted quality
 degradation — a 2 m temperature answering where the alternative measures at 1.5 m is that
 degradation — and it is accepted the way everything else here is: by declaring its bound once, per
-Parameter, rather than negotiating it per vendor. Two declared sample levels compose iff **equal**
-(a tie — the band is a licence, never a constraint) or **both** lie inside the band; an unequal
-pair not both inside is a genuine incomparability and fails the build. Leaves
+Parameter, rather than negotiating it per vendor. Leaves
 still declare their **native** level, never widened — the allowance bounds the *comparison*, not the
-declaration.
+declaration. What the band licenses at the composition fold is
+→ [ADR-0007: composition rules](./adr/0007-capability-carries-its-domain.md#composition-rules).
 
 | ParameterId | allowance | source |
 |---|---|---|

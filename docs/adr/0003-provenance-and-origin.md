@@ -83,20 +83,16 @@ A(now) = floor(now - L, Δ)      # latest run whose publication (r + L) has alre
   choice, and a vendor whose series begins later than its boundary is declared **early** rather than
   off-phase. The resulting leading-edge over-declaration is absorbed by retention, not by the
   declaration
-  ([ADR-0002 § the two predicates](./0002-data-model.md#the-two-predicates-admission-and-retention),
-  [0119](../tickets/done/01-0119-live-window-edge-tolerance.md)).
+  ([ADR-0002 § the two predicates](./0002-data-model.md#the-two-predicates-admission-and-retention)).
 
   **The cadence must not exceed `max_lead`** — because the polling promise must be keepable, not
-  because anything becomes unservable *(justification corrected 2026-08-17; the earlier "the held
-  window falls entirely behind `now` and nothing meets a live request" account predates
-  [0119](../tickets/done/01-0119-live-window-edge-tolerance.md), whose retention predicate quietly
-  refills exactly that window)*. What actually breaks is governance: those rescue refills are vendor
+  because anything becomes unservable: a held window that falls behind `now` is quietly refilled by
+  the retention predicate. What actually breaks is governance: those rescue refills are vendor
   calls the cadence never scheduled, so `max_lead` — not Δ — starts driving spend (measured: a 5 h
   window under a 12 h cadence buys 5 calls/day where the cadence promises 2), and each one serves
   data before the `expiration` the edge narrated, making `exp` false in the direction it promises.
   A cadence longer than the window is therefore an incoherent configuration, refused at
-  construction. TWC's `hourly_6hour` offering (`max_lead = 5h`) against a 12 h default is exactly
-  this trap → [011](../tickets/01-0120-twc-provider.md).
+  construction.
 
 Each run reigns over `[A + L, A + Δ + L]`, so runs tile with no gap or overlap, and flooring makes `A` a
 **step function** — no boundary flicker. A provider may supply conservative defaults for `{Δ, L}`;

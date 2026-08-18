@@ -12,8 +12,6 @@ the woven root's; a Calculator's input reach is its scoped Arbiter's. There is n
 artifact, no reach rule, and no build-time pass that recomputes what the capability tree already
 composes.
 
-Replaces *"Reach is an inner bound, selected — not folded"*.
-
 ## Reach is tight
 
 Reach is an inner bound in form — every point it names is servable — and **tight in every profile that
@@ -166,8 +164,8 @@ without it a future reader will re-propose the fold.
 - **Dominance is per-axis extent containment, not `Domain.matches`.** `matches` is the request-side
   admission test and `VantageAxis` specialises it to intersection, so reusing it would silently make
   dominance mean "overlaps".
-- **Sample levels compose by Allowance, not containment** *(2026-08-17, triggered by TWC's 1.5 m
-  screen height against Open-Meteo's 2 m)*. Where both candidates declare a count-1 **sample** cell,
+- **Sample levels compose by Allowance, not containment.** Where both candidates declare a count-1
+  **sample** cell,
   containment degenerates to point equality — `[2,2]` neither contains nor is contained by
   `[1.5,1.5]`, though both are ordinary screen heights — so the exact-fit question is the wrong one.
   Fallback is *accepted quality degradation*: serving one screen level for another is that
@@ -192,10 +190,9 @@ without it a future reader will re-propose the fold.
 - **Config narrows candidates; it never declares geometry.** `OfferingSpec` carries no geometry,
   deliberately; declaring reach outright was rejected as a second source of truth that can drift.
 - **The X/Y-first preference stays decided-but-unbuilt.** v1's body is containment plus the
-  sample-level Allowance arm above; since 0118 a regional provider is no longer the *only*
-  incomparable configuration (an out-of-band sample level also refuses, and a shipped test
-  exercises it), but it remains the only one whose resolution would need an axis **preference** —
-  the sample-level case resolves by Parameter declaration, not by ranking axes.
+  sample-level Allowance arm above. A regional provider is the incomparable configuration whose
+  resolution would need an axis **preference**; an out-of-band sample level instead resolves by
+  Parameter declaration and fails the build.
 
 ## Consequences
 
@@ -205,10 +202,9 @@ without it a future reader will re-propose the fold.
   the parameter and producers, the `Calculator` node its calculator and inputs — so no rule raises
   something generic for another layer to translate. `CompositionError` itself lives in `errors.py` as
   a Tier-0 leaf.
-- **`Provider.footprints` is removed.** It existed only so a build-time reader could see geometry the
-  `Capability` interpreted privately; the capability now publishes it.
-- **The standalone reach resolver and its rule are removed**, and one of
-  [#34](../concerns.md#34-producer-dag-walking-is-duplicated)'s three DAG walks with them. Calculator
+- **Provider geometry has one public home:** the `Capability` publishes it; there is no second
+  `Provider.footprints` accessor.
+- **There is no standalone reach resolver or reach rule.** Calculator
   **wiring** validation (unproducible inputs, cycles) is unaffected — it is not geometry and runs as
   `weave`'s precondition (its first step).
 - **The composite forms gain producer identity** so composition can name conflicts.
@@ -217,9 +213,9 @@ without it a future reader will re-propose the fold.
   its own composition; the union is contiguous and therefore representable when it does.
 - **The surface reads reach off the root's capability**, so nothing needs to be threaded from the
   composition root to the edge.
-- **[#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) is now live, not
-  hypothetical** — the domain *is* inside the algebra. What that concern guards against is the request
-  path routing on it; `serves` remains the sole admission authority.
+- **The domain is inside the algebra.**
+  [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) guards against request-path
+  routing on it; `serves` remains the sole admission authority.
 
 ## Rejected alternatives
 

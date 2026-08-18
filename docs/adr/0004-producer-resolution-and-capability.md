@@ -19,6 +19,13 @@ same shape. The abstraction these are shapes of is the
   Coverage. There is **no separate per-parameter "Selector" type**; a single-parameter selection is the
   degenerate case. The **top** Arbiter (the best view's child) spans all servable parameters; each
   Calculator holds its **own** scoped one (below).
+  **A spanning window is answered by the priority winner's own clipped shape**:
+  intersective snapped admission means a higher-priority producer admits a window it can only
+  partly serve, and it wins it — disclosed through `valid_time`. A "serve the window whole"
+  preference was considered and rejected as a reconciler knob: the retention flow opens T before
+  selection runs, so no ordering policy can see the window. Serving the composed span via a
+  non-primary is the unbuilt **max-reach policy** →
+  [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
 
 - **Two combine axes, and they are not symmetric.** A Coverage combines along two axes. The **parameter
   axis** holds **orthogonal** `ParameterData` (temperature ≠ humidity): putting them side by side is
@@ -165,7 +172,7 @@ same shape. The abstraction these are shapes of is the
   a between-levels wind-interpolation Calculator declaring the `(10, 80) m` cell. A no-total vendor
   therefore omits under vantage *unless* such a Calculator is woven in.
 
-- **Resamplers are a registry** The `ParameterDef` carries a resampler
+- **Resamplers are a registry.** The `ParameterDef` carries a resampler
   **selector** (derived from scale × statistic × extent, not hand-set); the **implementations**
   (linear / angular / area-weighted / categorical) live in a catalogue looked up at
   homogenization, deferred with the Resampler choice ([#5](../concerns.md#5-read-time-homogenization-fidelity)).

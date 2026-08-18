@@ -78,8 +78,8 @@ Python application author constructing and calling Meteoscape without a server),
 
 | Provider | Key | Priority | Notes |
 |---|---|---|---|
-| **Open-Meteo** | keyless | **primary** | global, free; exercises the keyless path |
-| **The Weather Company (TWC)** | API key | fallback | exercises secrets-injection seam; same point-plus-series shape as the primary; access verified (reverted to TWC 2026-08-08 — the 2026-08-02 swap to Visual Crossing rested on TWC access being unverified, which no longer holds) |
+| **Open-Meteo** | keyless | **backstop** | global, free; exercises the keyless path; what key-absent degrade serves on |
+| **The Weather Company (TWC)** | API key | **primary** | exercises secrets injection; same point-plus-series shape as Open-Meteo |
 
 - Priority order **is** the quality policy (the `priority` reconciler selects, never combines).
   Reconfigurable via Arbiter config.
@@ -181,8 +181,8 @@ the per-parameter provenance `expiration`.
   overlap** resolves as **`capability-mismatch`**. Admission on a snapped T axis is
   **intersective**; enumerable requests keep whole-request `Domain`-containment. The Arbiter still
   picks the highest-priority admitted provider and **falls back wholesale** — one winner serves the
-  whole (possibly shorter) window, single-origin; no splicing along `valid_time` in v1. Delivery
-  state of the mode lives in the [delivery status](./tickets/README.md). The temporal footprint each Capability tests is a
+  whole (possibly shorter) window, single-origin; no splicing along `valid_time` in v1. The temporal
+  footprint each Capability tests is a
   **clock-anchored window** around the run anchor (the provider's cadence,
   [ADR-0003](./adr/0003-provenance-and-origin.md)), realized by the `FootprintDomain`'s continuous
   T axis ([ADR-0002](./adr/0002-data-model.md)); the concrete per-provider `{Δ, L, max_lead}` are
@@ -298,11 +298,7 @@ lifts **without a contract change** — see the seams in
    `sel.domain`**. `valid_time` stays hourly-aligned (identity). Parameter-specific Resamplers
    stay deferred ([concern #5](./concerns.md#5-read-time-homogenization-fidelity)).
 
-   *Corrected 2026-08-10 (0117 align):* this bullet used to say **nearest** store cell, contradicting
-   the *enclosing* wording above and [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)'s
-   `quantize` (containing cell's tick; the glossary reserves *round* against it). The two denote the
-   same cell under v1's shape — point-shaped provider records and a sparse store that holds only cells
-   already asked for — so *enclosing* is the accurate word and nothing behavioural turns on it.
+   Under v1's point-shaped provider records and sparse store, the enclosing cell is unambiguous.
    Selecting among several candidate cells becomes real with a gridded provider or a populated
    lattice → [#5](./concerns.md#5-read-time-homogenization-fidelity).
 5. **Retentive `Store`, single-origin timelines**: wired in both positions; a **fully fresh** repeat is

@@ -250,7 +250,7 @@ classDiagram
 - **Grid alignment is per storing node and per axis, and splits into two opposite-extent steps.** A
   `Reservoir`'s `Store` **`quantize`s** a request for **retention** — **per axis**: an axis with a
   declared lattice resolves to the **containing cell** and is emitted as that cell's **tick**, a
-  pinned point (2026-08-09). **The coalescing lives in the Holding key, not in the ask**: nearby points
+  pinned point. **The coalescing lives in the Holding key, not in the ask**: nearby points
   share a tick and therefore one Holding, which is the enclosure that matters, while the ask itself
   stays a point — a span-shaped member would claim a point-measured value holds across the whole
   cell (an ∃ relabeled as ∀) and would graze the neighbouring cell every time a downstream store
@@ -335,7 +335,7 @@ classDiagram
 - **Request Z carries the mode as an axis kind: `VantageAxis` = vantage, `RegularAxis` cell = exact.**
   The near-surface bundle **request** is a vantage
   aperture, and its cell survives as the served Coverage's Z cell by closed projection, offsets
-  absorbed into its `bounds`).* A **`VantageAxis`** — a single-cell **`IntervalAxis`** that overrides
+  absorbed into its `bounds`. A **`VantageAxis`** — a single-cell **`IntervalAxis`** that overrides
   `matches` with overlap — is **vantage mode**: the asker's position/acceptance window (`[0, ~10 m]`
   for the default bundle), authored at the edge (the consumer owns the tolerance). An **exact** Z cell
   is **cell-addressing mode** — a count-1 `RegularAxis` for a precise level (`{2 m}`) or an
@@ -386,13 +386,15 @@ The two kinds answer retention oppositely, which is the whole reason the predica
   something larger and a wider ask really is unanswered until more is fetched. Archive and observation
   sources get this by inheriting the default, rather than by being remembered.
 
-**A corollary to declare rather than discover:** since a rolling producer's Holding is refreshed only
-on expiry, its cadence must not exceed its `max_lead` — otherwise the held window can fall entirely
-behind `now` between refreshes and the producer goes blind.
+**A corollary to declare rather than discover:** a rolling producer's cadence must not exceed its
+`max_lead`. Not because anything goes blind — the predicate above quietly refills a window that has
+fallen behind — but because those rescue refills are vendor calls the cadence never scheduled;
+the guard's full justification is
+[ADR-0003's](./0003-provenance-and-origin.md#run-identity-fetch-buckets-and-freshness--the-cadence).
 
 This is why the pair lives on the `Axis` rather than in its consumer: **only the axis knows how its
 own extent moves.** A consumer branching on axis kind would restate that knowledge somewhere it can
-drift → [live-window edge tolerance](../tickets/done/01-0119-live-window-edge-tolerance.md).
+drift.
 
   Every miss is an honest per-parameter omission (`capability-mismatch` reason at the edge). The
   response always rides `sel.domain` (closed projection): the served Z cell is the requested window,
@@ -438,9 +440,8 @@ drift → [live-window edge tolerance](../tickets/done/01-0119-live-window-edge-
   does **not** restate its own `ParameterId` (the `ranges` map key) and carries **no** descriptors at
   all. Under the **canonical-mono-unit invariant** (*Parameters* below) every fact that interprets the
   numbers — `quantity`, `extent_scaling`, `unit`, `statistic` — is *entailed by the parameter's
-  identity*, so it has exactly one home, the `ParameterDef`. The optional vertical **Allowance**
-  (added 2026-08-17 with [ADR-0007](./0007-capability-carries-its-domain.md)'s sample-level
-  composition rule) is id-entailed the same way — the band of interchangeable sample levels is a
+  identity*, so it has exactly one home, the `ParameterDef`. The optional vertical **Allowance** is
+  id-entailed the same way — the band of interchangeable sample levels is a
   fact of the parameter, never of a producer; concrete v1 bands live in
   [parameters.md § Sample-level allowance](../parameters.md#sample-level-allowance). A tableless reader interprets the slice
   through the Coverage's own **`capability`** (`capability.served[pid][0].canonical_unit` /
@@ -639,9 +640,8 @@ drift → [live-window edge tolerance](../tickets/done/01-0119-live-window-edge-
 - **Unit polymorphism inside the algebra (per-slice or requestable units).** Rejected: it would push
   unit awareness into Capability matching, the Arbiter's fold, and every Calculator. Canonicalizing at
   the Provider edge and converting for presentation at the surface edge keeps the interior unit-blind.
-- **Provenance as a per-`ParameterData` attribute.** Rejected: origin varies by *both* parameter and
-  geometry point, and the Arbiter assembles one Coverage from many sources, so provenance is a
-  Coverage-level plane (above), not a field on each slice.
+- **Provenance as a per-`ParameterData` attribute.**
+  → [ADR-0003: provenance placement and rationale](./0003-provenance-and-origin.md#considered-options).
 - **NaN sentinel for nodata.** Rejected: only works for float-valued data and conflates "no data" with a
   legitimate not-a-number value.
 - **A literal `CellIntegration` peer enum beside `CellStatistic`.** Rejected: integration is

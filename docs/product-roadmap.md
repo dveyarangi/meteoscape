@@ -6,9 +6,9 @@ gaps, and a staged roadmap from v1 to a possible hosted cloud competitor.
 
 ## Purpose and sequencing authority
 
-Meteoscape's primary purpose (recorded at the 2026-08-08 align) is to unify its author's
-weather-handling experience — from consumer, research, and mission-critical projects — into one
-framework. Generality is therefore the deliverable, and the guarded risk is not overengineering but
+Meteoscape's primary purpose is to unify its author's weather-handling experience — from consumer,
+research, and mission-critical projects — into one framework. Generality is therefore the
+deliverable, and the guarded risk is not overengineering but
 **single-instance abstraction lock-in**: an abstraction settled with only one concrete shape
 pressing on it. The phases below are a **sketch of plausible product directions — a menu, not
 demand-driven commitments or sequential gates**. Execution sequencing belongs to the
@@ -339,10 +339,8 @@ Explicit non-goals:
 
 ### Priority candidate after v1: local-station validation and bias correction
 
-**Scheduled 2026-08-08** as the head of release 02 — the Mongo obs source (`02-0130`), the
-forecast-run archive source (`02-0134`), and the correction calculator (`02-0140`); see the
-[delivery status](./tickets/README.md). It draws the station source from Phase 2 and verification
-from Phase 6:
+This workstream draws the station source from Phase 2 and verification from Phase 6. Its delivery
+sequencing lives in the [delivery status](./tickets/README.md):
 
 - Project the operator's Collector database (station registry + hourly observations) as an
   observation source.
@@ -359,10 +357,8 @@ Why it ranks this high:
 - Validation ships value on its own; bias correction is a strictly later step,
   since correcting an unmeasured bias is unfalsifiable.
 
-The lead-time question this section used to carry ("can past forecasts be retrieved, or must
-history be accumulated first?") is **answered**: the operator's Collector has been accumulating
-multi-provider forecasts (issue-slot keyed) and observations continuously, so the pairing data
-already exists and grows without Meteoscape doing anything.
+The operator's Collector continuously accumulates issue-slot-keyed multi-provider forecasts and
+observations, so pairing data already exists and grows independently of Meteoscape.
 
 **Division of labor with the first embedder.** Meteoscape serves *data products*: normalized live
 forecasts, observation series, forecast-run archives, and — staged — bias statistics and corrected
@@ -394,25 +390,14 @@ Core scope:
 - Additional provider plugins such as NWS, KNMI, TWC, Tomorrow.io, or regional
   public services.
 - Basic self-host packaging and operational docs.
-- ~~Optional REST surface if demand appears.~~ **Demand appeared (2026-08-10):** REST is the
-  operator deployment's own shape, and is [scheduled](./tickets/02-0165-rest-surface.md) — near the
-  end of the current beeline, after the embedding surface, which the deployment uses first.
+- REST surface as the operator deployment shape, after the embedding surface establishes the
+  shared product boundary.
 - Local/regional station provider interface (optional in this phase).
 
-**Scheduled out of this phase by the 2026-08-10 beeline align** (see the
-[delivery status](./tickets/README.md)): TWC arrives not as one more provider plugin but as the
-**primary**, which pulls fallback, unit conversion, and config/secrets forward with it; "cache
-hit/miss and provider metrics" splits into a Source-seam
-[vendor-call ledger](./tickets/02-0124-vendor-call-ledger.md) plus its
-[budget governor](./tickets/02-0155-vendor-budget-governor.md), separate from the Gateway's
-caller-facing metering; and "retention tuning" gains a
-[persisting substrate](./tickets/02-0145-persisting-store.md).
-
-**Widening the TWC licence beyond one endpoint.** The deployment holds an
-**Enterprise** licence covering far more than the hourly forecast that
-[011](./tickets/01-0120-twc-provider.md) consumes — roughly 80 products across utility, core,
-enhanced current conditions, enhanced forecast, lifestyle indices, history on demand, and aviation.
-Going further is several distinct product and architecture steps:
+**Widening the TWC licence beyond one endpoint.** The deployment holds an **Enterprise** licence
+covering far more than the current hourly forecast endpoint — roughly 80 products across utility,
+core, enhanced current conditions, enhanced forecast, lifestyle indices, history on demand, and
+aviation. Going further is several distinct product and architecture steps:
 
 1. **More of the same shape** — other point-plus-series forecast endpoints (intraday, 15-minute,
    nowcast). Cheapest: new offering rows and tap tables behind the existing `TimelineProvider`.
