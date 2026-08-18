@@ -50,8 +50,8 @@ subset of it.
 **Outcomes** — errors are `ToolError` texts with three stable category prefixes, per the
 [error taxonomy](../architecture.md#failure-nodata-and-availability): `bad-request:` (caller
 must change the input), `capability-mismatch:` (well-formed but unservable — raised only when
-*nothing* is admitted), `runtime-failure:` (an upstream producer fault; fails the whole
-request).
+*nothing* is admitted), `runtime-failure:` (an upstream producer fault after every admitted
+candidate has been tried; fails the whole request).
 
 ## Invariants
 
@@ -78,9 +78,15 @@ request).
   `test_beyond_footprint_raises_without_projecting`) — Arbiter-level; the wire-level assertion
   gap is noted in the
   [error-taxonomy ticket](../tickets/01-0190-error-taxonomy-partial-success.md).
-- `runtime-failure` is whole-request: no partial response survives an upstream fault (fallback
-  is Roadmap 1) — *validated by:* `test_tool_error_prefixes` in
-  [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
+- A child's `runtime-failure` falls through to the next admitted candidate; the request fails
+  whole only when every candidate has faulted or none of the rest admit (**compatible** — a
+  request that used to fail may now succeed). No partial response survives exhaustion —
+  *validated by:* `test_faulting_priority_0_falls_through_to_priority_1`,
+  `test_all_candidates_fault_names_parameter_producers_and_last_fault`,
+  `test_no_remaining_candidate_admits_is_exhaustion_not_omission` in
+  [test_arbiter.py](../../tests/deterministic/nodes/test_arbiter.py), and
+  `test_primary_429_falls_through_to_backstop` in
+  [test_e2e_forecast.py](../../tests/deterministic/test_e2e_forecast.py).
 - Per-parameter provenance (`source`, `exp`) is always present on served parameters —
   *validated by:* serializer tests in
   [test_mcp_app.py](../../tests/deterministic/api/test_mcp_app.py).
@@ -152,7 +158,7 @@ request).
   narrated horizon is one number for the whole globe (a `min` fold over the served menu); the
   per-location truth is the deferred capabilities-introspection tool.
 - [#30 — Response membership under degraded fallback](../concerns.md#30-response-membership-under-runtime-degraded-fallback)
-  — membership semantics at this edge shift when fallback lands (Roadmap 1).
+  — fall-through is delivered; membership on exhaustion (omit vs fail-whole) stays here (Roadmap 3).
 - [#36 — Unserved and uncomparable are indistinguishable](../concerns.md#36-unserved-and-uncomparable-are-indistinguishable)
   — the edge-local reading of silent omission: the caller cannot tell why a parameter is
   absent, and today neither can the engine (Roadmap 3).
@@ -163,8 +169,9 @@ request).
 
 ## Roadmap
 
-1. Provider fallback — upstream faults stop failing the whole request —
-   [second-provider fallback](../tickets/01-0121-second-provider-fallback.md).
+1. **Delivered (compatible)** — a child's `runtime-failure` falls through to the next admitted
+   candidate; the request fails whole only on exhaustion —
+   [second-provider fallback](../tickets/done/01-0121-second-provider-fallback.md).
 2. Per-parameter assembly — one response, different winning sources per parameter —
    [per-parameter selection](../tickets/01-0170-per-parameter-selection.md).
 3. Absence reasons and partial success under fault —

@@ -428,7 +428,7 @@ The composite that resolves competing producers per Parameter under a Reconciler
 _Avoid_: Selector, dispatcher, router, resolver, Gateway
 
 **Reconciler**:
-The per-Parameter policy for combining an Arbiter's competing producers — it both ranks them and composes the Reach the combination publishes, since how producers combine is what the combination serves. As built it orders candidates and the Arbiter picks the first admitted (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
+The per-Parameter policy for combining an Arbiter's competing producers — it both ranks them and composes the Reach the combination publishes, since how producers combine is what the combination serves. As built it orders candidates and the Arbiter picks the first admitted, re-selecting past any that fault mid-request (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
 _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 
 **Provider**:

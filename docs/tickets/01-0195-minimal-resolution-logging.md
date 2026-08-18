@@ -38,7 +38,7 @@ the wider concern. It must not alter `Coverage`, `ParameterData`, or MCP respons
 
 - [Retentive store](./done/01-0115-retentive-store-freshness.md) — creates the hit/refill behavior to
   observe.
-- [Second-provider fallback](./01-0121-second-provider-fallback.md) — creates candidate fall-through.
+- [Second-provider fallback](./done/01-0121-second-provider-fallback.md) — creates candidate fall-through.
 - [Per-parameter selection](./01-0170-per-parameter-selection.md) — creates multi-winner resolution.
 - [Errors and partial success](./01-0190-error-taxonomy-partial-success.md) — completes the outcome
   categories the log must distinguish.

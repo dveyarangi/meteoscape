@@ -246,8 +246,11 @@ same shape. The abstraction these are shapes of is the
   The **slot** and the one-Arbiter shape are settled; the **fold interface** is deferred. Catalogue →
   [#6](../concerns.md#6-reconciler-catalogue); the widening and its cost →
   [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold). Per-candidate
-  **fall-through on a runtime fault** (*not* on nodata, which is a successful gap) rides the same
-  widening; the implemented selection path still propagates `RuntimeFailure` for the whole request.
+  **fall-through on a runtime fault** (*not* on nodata, which is a successful gap) does **not** ride
+  this widening: it re-enters selection and projects the next admitted candidate whole — the
+  `priority` reconciler's meaning. Exhaustion still fails the whole request; per-parameter omission
+  of a faulted parameter remains [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
+  / [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
 - **The `reconciler` is declared config, defaulting to `priority`** — **not inferred** from geometry.
   Point / timeline producers fully overlap on one location, so they engage no spatial machinery: the
@@ -415,9 +418,11 @@ fault** (an exception that triggers per-cell / per-candidate fall-through), and 
 producer can serve — is **omitted** from the record; how that absence surfaces at the request edge is the
 request-level contract, whose canonical home is
 [architecture: Failure, nodata, and availability](../architecture.md#failure-nodata-and-availability).
-The implemented selection path still propagates `RuntimeFailure` for the whole request; the widening
-required for per-candidate fall-through and per-parameter omission is tracked in
-[#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold).
+The implemented `priority` path falls through a child's `RuntimeFailure` to the next admitted
+candidate and still fails the whole request on exhaustion; the widening required for per-parameter
+omission is tracked in
+[#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold) /
+[#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
 ## Why
 

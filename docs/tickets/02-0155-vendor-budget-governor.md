@@ -2,7 +2,7 @@
 
 - **Status:** Planned (own align precedes) — minted at the 2026-08-10 beeline align.
 - **Depends on:** [vendor-call ledger](./02-0124-vendor-call-ledger.md) (the counter this gives
-  authority to), [004 — Second-provider fallback](./01-0121-second-provider-fallback.md) (where a
+  authority to), [004 — Second-provider fallback](./done/01-0121-second-provider-fallback.md) (where a
   refused call sends the request instead)
 - **Outcome:** A configured vendor budget stops the deployment from spending past it — the request
   falls through to the backstop rather than failing.
@@ -16,7 +16,7 @@ context: [architecture § Source](../architecture.md#source).
 
 The **second slice of the ledger** — the same injected object, now consulted before a vendor call is
 issued. Budget exhausted ⇒ the Source raises a `runtime-failure` **without an HTTP call**, and
-[004](./01-0121-second-provider-fallback.md)'s fall-through routes the request to Open-Meteo for
+[004](./done/01-0121-second-provider-fallback.md)'s fall-through routes the request to Open-Meteo for
 free. The governor and the relief valve are one mechanism:
 
 ```

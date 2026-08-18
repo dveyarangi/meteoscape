@@ -5,7 +5,7 @@
 - **Status:** Partial
 - **Depends on:** [002c — Provider nodata mask](./done/01-0030.0020-provider-nodata-mask.md),
   [003c — Request shaping](./done/01-0110-request-shaping.md),
-  [004 — Second-provider fallback](./01-0121-second-provider-fallback.md)
+  [004 — Second-provider fallback](./done/01-0121-second-provider-fallback.md)
 - **Outcome:** Per-parameter absence reasons and capable-but-faulting partial results.
 
 ## Parent PRD

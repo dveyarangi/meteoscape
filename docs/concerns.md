@@ -894,11 +894,14 @@ reconciler also cannot score geometry.
 **Consequence — a combining reconciler cannot be dropped into this signature.** `tile` / `consensus` /
 `feather` need the resolved contributions, so the Arbiter must project **all** admitted producers and
 hand their values to the reconciler — a second, wider method (shape: `fold(parameter, contributions) →
-ParameterData`), not another `select` implementation. Three claims in the design language depend on that
+ParameterData`), not another `select` implementation. Claims in the design language that depend on that
 widening and are **not true of the current build**: (1) the per-cell fold itself; (2) the
 **gap-filler** story (a low-priority whole-coverage producer filling where a hi-res one does not reach —
-the hi-res producer simply wins the whole parameter under the implemented interface); (3) **runtime-fault fall-through** to the
-next candidate and per-parameter partial success.
+the hi-res producer simply wins the whole parameter under the implemented interface); (3) **per-parameter
+partial success**. **Wholesale runtime-fault fall-through does *not* depend on this widening** — it
+re-enters selection and projects the next admitted candidate whole, entirely within the narrow
+interface → queued as [0121](./tickets/done/01-0121-second-provider-fallback.md). *(Corrected 2026-08-18;
+earlier text bundled fall-through into the widening-dependent list.)*
 
 Not a v1 gap: v1 ships only `priority`, and point/timeline producers fully overlap, so selection *is*
 the whole job and the narrow interface is exactly sufficient. This concern records the **cost of the

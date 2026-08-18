@@ -2,18 +2,18 @@
 
 **Last updated:** 2026-08-18
 
-**Current stage:** the [doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) and the
-[mechanical record mover](./done/01-0128-mechanical-record-moves.md) are delivered (2026-08-18), ending
-six sessions of manual link/encoding sweeps. Next is
-[second-provider fallback](./01-0121-second-provider-fallback.md): a metered primary's 429 is on the
-default path, and today it still fails the whole request.
+**Current stage:** [second-provider fallback](./done/01-0121-second-provider-fallback.md) is
+delivered (2026-08-18) — a metered primary's fault no longer fails the request. Next is
+[unit-conversion catalogue](./01-0122-unit-conversion-edge.md) if TWC's native units create the
+spread its trigger waits for, else [config and graceful degrade](./01-0123-config-secrets-degrade.md),
+which owns key-absent as the *degraded* mode.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
 Python, a REST surface, and provider quota monitoring.* What changed:
 
 - **TWC becomes the primary**, not a spare — which pulls
-  [fallback](./01-0121-second-provider-fallback.md), [unit conversion](./01-0122-unit-conversion-edge.md),
+  [fallback](./done/01-0121-second-provider-fallback.md), [unit conversion](./01-0122-unit-conversion-edge.md),
   and [config/secrets](./01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
   0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
   resilience polish.
@@ -61,7 +61,7 @@ dependency, which is ordering, not blockage.
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. Known Open-Meteo precipitation hour-label error → [#48](../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick). |
 | Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
 | Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
-| Second provider and fallback | Partial | **TWC is the configured primary** ([TWC provider](./done/01-0120-twc-provider.md)) with Open-Meteo the backstop; a spanning ask serves the primary's clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). Fall-through on fault does not exist yet — a `runtime-failure` fails the whole request → [second-provider fallback](./01-0121-second-provider-fallback.md). |
+| Second provider and fallback | Available | **TWC is the configured primary** ([TWC provider](./done/01-0120-twc-provider.md)) with Open-Meteo the backstop; a spanning ask serves the primary's clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). A child's `runtime-failure` falls through wholesale to the next admitted producer; exhaustion still fails the whole request → [second-provider fallback](./done/01-0121-second-provider-fallback.md). |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. A declared live window is an estimate — rolling retention is horizon-satisfied, static by containment ([live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md)). |
 | Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./02-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
@@ -105,7 +105,7 @@ work `Maint`. What those columns mean is
 | 0120 | [TWC provider — as primary](./done/01-0120-twc-provider.md) | — | Done | snapped request mode, provider parity checks, sample-level allowance | TWC is the primary producer, with offering-specific horizons, keyed startup, and a live parity check. Spanning asks serve its clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). |
 | 0127 | [Doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) | Maint | Done | — | CI fails when a live document's relative link or heading anchor stops resolving, when any tracked file carries a BOM, control character, or listed invisible codepoint, when a code comment's doc pointer (concern, ADR, or `.md` path) no longer resolves, or when the queue and the ticket folders disagree; historical records stay exempt from link gating. *Row sits where the work happens; 0121–0126 left no free integer, so the position is the nearest free slot.* |
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
-| 0121 | [Second-provider fallback](./01-0121-second-provider-fallback.md) | — | Planned | TWC provider | Wholesale priority fallback across two producers. |
+| 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
 | 0122 | [Unit-conversion catalogue](./01-0122-unit-conversion-edge.md) | — | Planned | core canonical parameters | Shared verified native-to-canonical conversion edges. |
 | 0123 | [Config and graceful degrade](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Complete key-present/key-absent provider construction behavior. |
 | 02-0124 | [Vendor-call ledger (meter)](./02-0124-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and graceful degrade | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on request results. |
@@ -155,7 +155,7 @@ This section records only how it landed here.
 | 003a | [profile reach](./done/01-0040-profile-reach.md) |
 | 003b | [capability carries its domain](./done/01-0060-capability-domain.md) — **but before 2026-07-21 this id meant request shaping** |
 | 003c | [request shaping](./done/01-0110-request-shaping.md) |
-| 004 | [second-provider fallback](./01-0121-second-provider-fallback.md) |
+| 004 | [second-provider fallback](./done/01-0121-second-provider-fallback.md) |
 | 005 | [per-parameter selection](./01-0170-per-parameter-selection.md) |
 | 006 | [retentive store](./done/01-0115-retentive-store-freshness.md) |
 | 007 | [off-grid homogenization](./done/01-0117-off-grid-homogenization.md) |
