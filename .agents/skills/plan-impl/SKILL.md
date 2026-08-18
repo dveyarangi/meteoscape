@@ -7,13 +7,15 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - If the ticket at hand is too coarse to yield a single unambiguous RFC, stop planning and decompose it into sub-tickets via /to-tickets first; then plan the first child.
 
-- Repeated invocations are validation passes over the same RFC. Re-read the ticket, RFC, durable docs, and relevant code; challenge the plan against new evidence and amend it in place. Do not create a replacement RFC merely because the plan changed before implementation.
-
 - An RFC implements a ticket — no ticketless RFCs. If the task at hand has no ticket, create it first per the [to-tickets skill](../to-tickets/SKILL.md); its behavior-altitude rule governs the criteria (shape stays in the RFC).
 
 - Establish implementation scope, pinpoint and mention affected boundaries, contracts, ownership. Present main code shapes - especially ones that represent documented boundaries. Present code flows.
 
 - Detect implementation challenges and use /align skill to resolve them with user.
+
+
+- Do not select implementation shapes just because "that how it is usually done" or based on first idea. Promote simplicity, look for elegant solutions, prefer removing over expanding, prefer conciseness over verbosity.
+
 
 - If you see a concern, first check deeper how the existing architecture documentation describes it - it most probably already does. Read architecture.md, ADRs and concerns.md for this.
 
@@ -33,6 +35,8 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - If planned code includes a temporary solution that is dissolved by future development, add RFC instruction to append TODO comment to code that flags this. Otherwise code changes can start relying or considering the temporal code, which can be hard to disentangle later.
 
+- Repeated invocations are validation passes over the same RFC. Re-read the ticket, RFC, durable docs, and relevant code; challenge the plan against new evidence and amend it in place. Do not create a replacement RFC merely because the plan changed before implementation.
+
 - As an additional pass, try to explain things to yourself simply, as if you are teaching the architecture, and being asked reasonable question and look for areas that evade simple or common-sense explanation.
 
 - Validate the RFC adversarially on every pass:
@@ -43,6 +47,8 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
   - Check that every new promise names how it will be validated, and that the stages collectively prove the ticket's acceptance criteria.
 
 - Repeat validation until no load-bearing ambiguity, contradiction, or unverified assumption remains. The RFC may permit multiple equivalent local implementations when they preserve the same documented shape and proof.
+
+- If repeated validation keep bringing up gaps, take a step back and look at what causes this oscillation. The architecture, ADRs, tickets are not carved in stone, they can have real contradictions or inconsistencies that cause it. Look into the core reasons and /align on them again if needed.
 
 - Overall, always consider future development and potential code reuse when selecting code shapes.
 
