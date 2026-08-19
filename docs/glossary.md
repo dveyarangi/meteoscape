@@ -267,11 +267,11 @@ The available Calculator plugin declarations, keyed by function identity. → [A
 _Avoid_: CalculatorRegistry, live Calculator map, DerivationCatalog
 
 **CalculatorManifest**:
-A Calculator plugin's function and invocation constraints. → [ADR-0005](./adr/0005-build-time-composition.md)
+A Calculator plugin's function, its co-produced output group and inputs, and its invocation constraints — the calculator's product row, as OfferingSpec is a Provider's. → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: Calculator instance, data-flow edge, DerivationManifest
 
 **CalculatorDef**:
-A profile enablement of one calculator — its function identity, co-produced output group, inputs, priority, and retention choice (the calculator peer of `OfferingDef`). → [ADR-0005](./adr/0005-build-time-composition.md)
+A profile's selection and policy for one calculator — function identity, priority, retention choice; the co-produced output group and inputs are the manifest's declaration, never the def's (the calculator peer of `OfferingDef`). → [ADR-0005](./adr/0005-build-time-composition.md)
 _Avoid_: CalculatorSpec, Calculator, RegisteredCalculator, DerivationSpec
 
 **CalculatorKey**:

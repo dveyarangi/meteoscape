@@ -21,11 +21,12 @@ open decision.
 **De facto today — explicitly *not* promised:**
 
 - The package root exports only `SourceKey` and `main`.
-- The only usable composition path is `server.compose(profile, providers, calculators, vars,
-  clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, the raw operator-vars map
-  (sliced per-impl at the binder — [ADR-0005](../adr/0005-build-time-composition.md) 2026-08-19
-  amendment), and a `Clock` (the `StoreFactory` is built from that clock inside, so one clock is
-  structural); requests then run `Gateway.resolve(Selection) → Coverage`.
+- The only usable composition path is `server.compose(profile, providers, calculators, secrets,
+  clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, an `impl_id`-keyed
+  **secrets map** (an embedder may fill it from a vault; `secrets_from_env` is the env convenience
+  the shipped root uses — [ADR-0005](../adr/0005-build-time-composition.md) 2026-08-19 amendment),
+  and a `Clock` (the `StoreFactory` is built from that clock inside, so one clock is structural);
+  requests then run `Gateway.resolve(Selection) → Coverage`.
   Every name in that sentence is an internal type an embedder must import from internal modules.
 
 **Open** (all at #39): the smallest stable facade and lifecycle; whether construction is

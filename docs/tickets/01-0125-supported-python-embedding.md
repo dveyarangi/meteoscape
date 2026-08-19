@@ -64,8 +64,9 @@ and errors — the v1-tail gates that the 2026-08-08 align **dissolved** when it
 live-equivalence rule (see the header). The list survived the align as stale text and is removed
 here (2026-08-10). Those tickets now merely *widen* what both surfaces serve; none gates this one.
 
-In queue order the surface still lands after [008 — config, secrets,
-degradation](./01-0123-config-secrets-degrade.md), which is ordering, not blocking.
+In queue order the surface still lands after
+[008 — config and secrets](./done/01-0123-config-secrets-degrade.md), which is ordering, not
+blocking.
 
 The Coverage-contract point-exactness invariant (off-grid X/Y reported at the request, values from
 the enclosing store cell) is already true and guarded by

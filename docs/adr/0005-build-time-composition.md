@@ -20,7 +20,7 @@ flowchart TB
     PT[ParameterTable]
   end
   subgraph deploy [Deployment]
-    Sec[operator vars]
+    Sec[secrets map]
     Settings --> PC0[ProfileConfig]
     Decl[declared profile data] --> PC0
   end
@@ -45,12 +45,18 @@ flowchart TB
 *Amended 2026-08-19 (0123 align):* `ProfileConfig` is assembled **at the composition root** from a
 module-level profile declaration beside the catalogues plus `Settings`' knobs; `Settings` alone no
 longer projects it, and there is no global default profile — each root declares its own. The
-"secrets map" is now the **raw operator vars** (`Settings`' unconsumed `METEOSCAPE_*` values),
-passed to `compose` whole and sliced per-impl at the binder via each manifest's `SecretSlot` name
-and impl prefix. **A declared keyed offering with an unfilled slot refuses the boot** (`CompositionError`)
+secrets map is keyed by `impl_id` and filled by reading the env names each declared `SecretSlot`
+derives (`secrets_from_env` in config; `secret_slots` over the catalogue) — a lookup, never a
+namespace sweep, and a non-env caller supplies the same map directly. **A declared keyed offering with an unfilled slot refuses the boot** (`CompositionError`)
 — no boot-degrade mechanism. Vendor-specific profile declarations (a keyed primary) are deployment
-attachments at the embedding edge, never the shipped root's shape →
-[config/secrets ticket](../tickets/01-0123-config-secrets-degrade.md).
+attachments at the embedding edge, never the shipped root's shape. **A def selects and ranks; it
+never restates a manifest's declarations** — the calculator I/O group is `CalculatorManifest`'s
+row (as `OfferingSpec` is the provider's); the builtin modules export id constants as profile
+handles (defs stay plain strings) and `priority` defaults to `0` — safe because the `priority`
+reconciler resolves equal priorities by bind order (stable sort, its standing contract;
+[ADR-0004](./0004-producer-resolution-and-capability.md)); a weave-time tie refusal was built and
+removed 2026-08-19 as contradicting that contract
+→ [config/secrets ticket](../tickets/done/01-0123-config-secrets-degrade.md).
 
 ### Plugin binding
 
@@ -60,7 +66,7 @@ flowchart LR
     M["ProviderManifest: offerings, default offering, secret, build / expand"]
   end
   CAT["ProviderCatalog: impl-id → Manifest"]
-  OD["OfferingDef: impl + name? + priority + secret_ref + settings + store?"]
+  OD["OfferingDef: impl + name? + priority + settings + store?"]
   M --> CAT
   CAT -->|validate + dispatch| SB[SourceBinder.build]
   OD --> SB
@@ -70,10 +76,10 @@ flowchart LR
 ```mermaid
 flowchart LR
   subgraph cimpl [calculator impl - code]
-    CM["CalculatorManifest: formula + constraints"]
+    CM["CalculatorManifest: formula + outputs + inputs"]
   end
   CCAT["CalculatorCatalog: fn-id → Manifest"]
-  CSpec["CalculatorDef: fn_id + outputs + inputs + priority + name? + stored?"]
+  CSpec["CalculatorDef: fn_id + priority + name? + stored?"]
   CM --> CCAT
   CCAT -->|validate + resolve| CB[CalculatorBinder.build]
   CSpec --> CB
@@ -108,7 +114,8 @@ Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) �
   at the binder, falling through to `expand` only when the manifest declares no default. Vendor
   policy defaults (a polling cadence, say) are `build`'s — the fallback it applies when the opaque
   `OfferingDef.settings` mapping omits the key. The core config layer carries only enablement
-  plumbing — which impls are enabled, priorities, secret material, opaque `settings` overrides —
+  plumbing — which impls are enabled, priorities, secret material (`settings` are declared on the
+  def at a composition root, never spelled through env) —
   and never imports a vendor module: a plugin can register a manifest but cannot extend `Settings`,
   so any vendor default or vocabulary in core config forecloses out-of-tree providers
   ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)). The enforcing invariant and

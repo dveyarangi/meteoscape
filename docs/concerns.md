@@ -837,7 +837,7 @@ filled default catalogues live**, how **built-in vs optional** plugins are parti
 
 ~~The composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
 `server.py`) and injects both into `compose`.~~ **Partially discharged 2026-08-19
-([0123](./tickets/01-0123-config-secrets-degrade.md)): the membership lists left the root** — the
+([0123](./tickets/done/01-0123-config-secrets-degrade.md)): the membership lists left the root** — the
 shipped sets live plugin-side as `nodes/providers/builtin.py` / `nodes/calculators/builtin.py`
 (each exporting `CATALOG`), the first *named shipped set* in this concern's own vocabulary;
 `server.py` imports availability and declares only its enablement. `catalog/` stays faces-only —
@@ -1269,18 +1269,18 @@ A Calculator whose input **no producer serves** is a build-time
 `CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so
 an unwired input must fail loudly at build, not surface as an accidental runtime `capability-mismatch`.
 This is strict and correct for v1, where every Calculator input (`wind_u` / `wind_v`) comes from
-Open-Meteo — the always-on keyless primary — so the strict check can never collide with graceful
-degrade.
+declared producers and there is no boot-degrade: a keyed offering with an unfilled slot refuses
+startup, so the strict check has no optional-provider customer today.
 
 **The collision is a future question.** If a Calculator input were served *only* by an **optional**
-provider (one that degrades away on a missing secret), the strict rule would fail the build where
-graceful degrade intends the server to start without that capability. Two resolutions, undecided:
+provider (one that degrades away on a missing secret — a story that waits on
+[#26](#26-provider--calculator-plugin-scaffolding)), the strict rule would fail the build where
+optional-plugin degrade intends the server to start without that capability. Two resolutions, undecided:
 (a) **fail the build** — force the operator to drop the Calculator or keep the provider; matches
 "Calculator = promise". (b) **drop the unsatisfiable Calculator** like a degraded provider and narrate
 the reduced set; matches "optional provider = availability". No v1 driver.
 
-**Related, broader:** an operator wants to assert a composition *serves what they expect* — but
-graceful degrade deliberately won't hard-fail on a missing *provider* parameter, so this is an opt-in
+**Related, broader:** an operator wants to assert a composition *serves what they expect* — an opt-in
 "validate my profile serves {…}" mode, not a hard rule. A product-side want, not v1 → [ideas](./ideas.md).
 
 ## 37. Storeless materialized producers and read-back homogenization

@@ -77,19 +77,17 @@ is one no existing shape covers, a wrapper too.
   `test_omitted_name_resolves_to_manifest_default` in
   [test_composition.py](../../tests/deterministic/nodes/test_composition.py) and the
   `SourceKey.dataset` pins in [test_server.py](../../tests/deterministic/test_server.py).
-  **A declared `SecretSlot` is an optionality declaration, not just a name.** Absent value → the
-  offering is never enabled and the server starts without it (graceful degrade is `Settings`' policy;
-  the binder itself stays strict, so a def that *does* reach it must be complete). An author declaring
-  a secret is therefore declaring the provider optional — and if a Calculator's only input came from it,
-  that collision is [#35](../concerns.md#35-calculator-satisfiability-vs-optional-provider-degrade).
-  **The seam is built and guarded, not prospective** — resolution, injection, and the dangling-ref
-  failure are live in [composition.py](../../src/meteoscape/nodes/composition.py) and *validated by:*
-  `test_secret_ref_reaches_build` / `test_dangling_secret_ref_raises`; Open-Meteo's `build`
-  receives `secret_value` and discards it as keyless. **TWC declares a secret slot**
-  (`SecretSlot("twc_api_key")`): its `build` refuses a `None` value
+  **A `SecretSlot` is a name, not an optionality declaration.** It is what an operator env name is
+  derived from (`METEOSCAPE_<IMPL>_<SLOT>`, in config's `secrets_from_env`); the binder receives an
+  `impl_id`-keyed secrets map and only enforces the policy — an unfilled slot of a *declared*
+  offering refuses the boot (`CompositionError` naming the impl, the slot, and the derived env
+  var). A non-env caller supplies the same map with no env spelling at all. *Validated by:*
+  `test_secret_reaches_build_via_derived_name` / `test_missing_slot_secret_refuses_naming_the_env_var`
+  in [test_composition.py](../../tests/deterministic/nodes/test_composition.py). Open-Meteo's `build`
+  receives `secret_value` and discards it as keyless. **TWC declares** `SecretSlot("api_key")`: its
+  `build` refuses a `None` value
   (*validated by:* `test_build_requires_a_secret` in
-  [test_twc.py](../../tests/deterministic/nodes/providers/test_twc.py)), and key-absent means the
-  offering is never emitted, per the optionality reading above.
+  [test_twc.py](../../tests/deterministic/nodes/providers/test_twc.py)).
   `expand` — one manifest yielding several Providers — is likewise **unexercised**
   (`test_expand_name_none_not_implemented`); under the split it raises an unanswered question, several
   Probes behind one wrapper or several wrappers, which interacts with
@@ -478,7 +476,7 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   [test_domain.py](../../tests/deterministic/manifold/test_domain.py).
 - `build` runs **once at composition** with an injected `Clock` and `ParameterTable`; the clock is never
   threaded through `project`, so a rolling declaration reads it where ADR-0003 put it — *validated by:*
-  `test_one_offering_binds_to_registry` / `test_secret_ref_reaches_build` in
+  `test_one_offering_binds_to_registry` / `test_secret_reaches_build_via_derived_name` in
   [test_composition.py](../../tests/deterministic/nodes/test_composition.py),
   `test_provenance_authored_from_cadence_and_clock` in
   [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py).
@@ -511,15 +509,13 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   vendor-specific — the default offering, policy defaults such as a polling cadence, endpoint
   facts, vendor vocabulary — lives in the plugin: the manifest (its `default_offering`), `build`'s
   interpretation of the opaque `OfferingDef.settings` mapping (fallback defaults included), and
-  the Probe. Core `Settings` carries only generic enablement plumbing — which impls are enabled,
-  priorities, secret material, pass-through `settings` overrides — holds **no vendor default or
-  vendor-vocabulary value**, and imports no vendor module (in either direction: the leaf importing
+  the Probe. Core `Settings` carries only the store/retention knobs (secrets are read by derived
+  name, never swept) — it holds **no vendor default or vendor-vocabulary value**, and
+  imports no vendor module (in either direction: the leaf importing
   config's types is the one legal arrow). This is what keeps a provider plugin definable out of
   tree ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)): a plugin can register a
-  manifest; it can never add a `Settings` field. The v1 vendor-*named* fields (`twc_api_key`,
-  `open_meteo_enabled`) are acknowledged enablement plumbing whose generic form is tracked by the
-  [config/secrets ticket](../tickets/01-0123-config-secrets-degrade.md); they name a vendor but carry
-  no vendor default or semantics — *validated by:* `test_config_imports_nothing_from_nodes` in
+  manifest; it can never add a `Settings` field. *Validated by:*
+  `test_config_imports_nothing_from_nodes` and `test_settings_fields_embed_no_builtin_impl_id` in
   [test_config.py](../../tests/deterministic/test_config.py).
 - **A leaf serves the modes its declarations imply, and writes no mode code.** A snapped ask is answered
   on the leaf's own lattice within the bounds — mid-hour bounds floored onto its ticks before any vendor

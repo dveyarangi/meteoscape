@@ -222,7 +222,7 @@ The **dashed frame** is the
 another selectable producer behind its own scoped Arbiter
 → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 
-A **shared kernel** underpins all of the above (off-diagram): the **Coverage model**, the **conversion library + provider shape wrappers**, the **error taxonomy**, **typed config + secrets injection**, the **catalogues + binders**, the **Weaver**, and the **composition root**.
+A **shared kernel** underpins all of the above (off-diagram): the **Coverage model**, the **conversion library + provider shape wrappers**, the **error taxonomy**, **typed config + secret injection**, the **catalogues + binders**, the **Weaver**, and the **composition root**.
 
 ### Reservoir
 
@@ -326,6 +326,15 @@ rejected splits); this section fixes the roles.
   declared `default_offering` at the binder — vendor defaults are plugin-side, never config's
   ([ADR-0005](./adr/0005-build-time-composition.md)); catalogue validation occurs
   during composition.
+  **A def selects and ranks; it never restates what a manifest declares** (2026-08-19): the
+  calculator I/O group lives on `CalculatorManifest`, mirroring `OfferingSpec` as the product
+  row. The builtin catalogue modules export each impl/fn **id as a named constant** beside the
+  map, so profiles select by handle without retyping names (defs stay plain-string fields; no
+  coercion machinery), and `priority` defaults to `0` — safe because the `priority` reconciler's
+  standing contract resolves equal priorities by **bind order** (stable sort;
+  [ADR-0004](./adr/0004-producer-resolution-and-capability.md)): the ordered declaration *is* the
+  tie-break. A weave-time tie refusal was built and removed 2026-08-19 as contradicting that
+  contract.
   A non-materialized Source carries its `StoreSpec` (catalogue default, operator override); a
   materialized provider wires storeless — a store configured for one is a `CompositionError`
   ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). Same
@@ -350,7 +359,8 @@ rejected splits); this section fixes the roles.
   clock while its `Reservoir` judged freshness on another is therefore unrepresentable, not merely
   discouraged; the `Weaver` keeps taking a factory, because observing store allocation is a
   weave-level concern.
-  Holds no catalogue; **does not interpret priority** (that is the reconciler).
+  Holds no catalogue; **does not rank** (that is the reconciler — whose contract resolves equal
+  priorities by bind order, stable sort).
   `Producer` unification + memoized Calculator wiring →
   [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **Composition root** — `server.py`: `compose(profile, providers, calculators, secrets, clock) → Gateway`
@@ -358,24 +368,31 @@ rejected splits); this section fixes the roles.
   `Weaver(StoreFactory(clock), clock).weave` → Gateway), including the single-clock factory
   construction. Graph shape, allocation positions, and ranking remain the Weaver's and Reconciler's.
   `weave`'s first step is **`validate_calculators`** — reading only the `ProfileDef`,
-  it rejects a graph whose Calculator inputs are unproducible (or whose calculators cycle) *before* any
-  `Store` is allocated, since declaring a Calculator is a promise the composition must be able to keep.
+  it rejects a graph whose Calculator inputs are unproducible (or whose calculators cycle) *before*
+  any `Store` is allocated, since declaring a Calculator is a promise the composition must be able
+  to keep.
   As the Weaver's precondition it runs on every weave path, so no caller can forget it. **Geometry needs no pass of its own** —
   each node's `Capability` composes its `Domain` as the graph is built, so an unresolvable one fails at
   weave ([ADR-0007](./adr/0007-capability-carries-its-domain.md)), and the surface reads the profile's
   Reach off the woven root. Catalogues are module-level data, and the **profile declaration is
   module-level data beside them** — the root is the de-facto embedding attachment, and there is no
   global default profile, only profiles: `server.py` declares the MCP product's own. `main()`
-  assembles `ProfileConfig` from that declaration plus `Settings`' knobs; the **raw operator vars**
-  (the unconsumed `METEOSCAPE_*` values `Settings` collects) ride into `compose` whole and are
-  sliced per-impl only at the binder — each impl's secret by its manifest's `SecretSlot` name,
-  the remaining same-prefix vars as `settings` overrides, env names **derived from the known impl
-  set, never parsed**. **Key-absent refuses**: a declared keyed offering whose secret slot is
+  assembles `ProfileConfig` from that declaration plus `Settings`' knobs, and passes a
+  **secrets map** (`impl_id` → value) to `compose`. **Env carries secrets and the typed scalars,
+  nothing structured**: the secrets map is filled by *reading the names the declared
+  `SecretSlot`s derive* — never by sweeping the namespace — so config owns the env spelling and
+  the binder owns only the policy (an unfilled slot refuses). Two operator-visible rules ride
+  that read: an **empty value counts as absent** (a blank `.env` line does not enable an
+  offering), and **the process environment wins over the `.env` file**, as it does for the typed
+  fields. Per-offering `settings` are declared
+  on the `OfferingDef` at a composition root; a config file may fill the same field later
+  ([0125](./tickets/01-0125-supported-python-embedding.md)). A non-env caller (an embedder with a
+  vault) supplies the same impl-keyed map directly. **Key-absent refuses**: a declared keyed offering whose secret slot is
   unfilled is a
   `CompositionError` — no boot-degrade mechanism exists. A vendor-primary profile declaration is a
   *deployment attachment* at the embedding edge, never the shipped root's official shape; the
   public server's profile is vendor-neutral
-  ([config/secrets ticket](./tickets/01-0123-config-secrets-degrade.md)).
+  ([config/secrets ticket](./tickets/done/01-0123-config-secrets-degrade.md)).
   Build-time failures are **`CompositionError`**
   (binders / Arbiter policy / composition well-formedness), distinct from the request-path taxonomy in
   `errors.py`.

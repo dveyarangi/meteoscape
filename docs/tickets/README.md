@@ -2,11 +2,11 @@
 
 **Last updated:** 2026-08-18
 
-**Current stage:** [second-provider fallback](./done/01-0121-second-provider-fallback.md) is
-delivered (2026-08-18) — a faulting producer no longer fails the request. Next is
-[config and secrets](./01-0123-config-secrets-degrade.md) (aligned and planned 2026-08-19):
-generic secret/override machinery, profile declarations at composition roots, and — **re-cut at
-that align** — the public server's profile goes vendor-neutral (Open-Meteo, keyless).
+**Current stage:** [config and secrets](./done/01-0123-config-secrets-degrade.md) is delivered
+(2026-08-19): profiles are declared data at composition roots, availability lives in builtin
+catalogues, a def selects and ranks but never restates what a manifest declares, and a secret is
+read only at the name its declared `SecretSlot` derives. **The public server's profile is now
+vendor-neutral** (Open-Meteo, keyless).
 *TWC-as-primary is a temporary [pilot-deployment](../pilot-requirements.md) configuration, never
 the repo's official shape*; that deployment is the [embedding edge](../edge/embedding.md)'s first
 client, and a declared keyed offering without its secret **refuses** startup (no degrade mode). The
@@ -20,7 +20,7 @@ Python, a REST surface, and provider quota monitoring.* What changed:
 
 - **TWC becomes the primary**, not a spare — which pulls
   [fallback](./done/01-0121-second-provider-fallback.md), [unit conversion](./01-0129-unit-conversion-edge.md),
-  and [config/secrets](./01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
+  and [config/secrets](./done/01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
   0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
   resilience polish.
 - **Four tickets minted**: the [vendor-call ledger](./01-0124-vendor-call-ledger.md) and its
@@ -72,14 +72,14 @@ dependency, which is ordering, not blockage.
 | Canonical v1 parameter set | Done | Six provider-served parameters and two derived wind views; nodata serializes as JSON `null`. Known Open-Meteo precipitation hour-label error → [#48](../concerns.md#48-a-tap-cannot-declare-where-its-value-sits-relative-to-the-tick). |
 | Derived wind | Done | `wind_speed` and `wind_direction` are derived from `wind_u` and `wind_v`; direction is nodata below the calm floor ([parameters](../parameters.md)). |
 | Free request windows | Available | `start`/`end` ISO datetimes served as `bounds ∩ the live window`; day-anchored Open-Meteo shelf; out-of-range bounds yield the servable part; reach narrated floored to whole days. |
-| Second provider and fallback | Available | TWC is composed as primary by the **v1 plumbing wiring — a deployment configuration 0123 removes from the public shape** (2026-08-19 align: the shipped profile becomes Open-Meteo alone; TWC-primary is a private deployment's declaration at the embedding edge). A spanning ask serves the primary's clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). A child's `runtime-failure` falls through wholesale to the next admitted producer; exhaustion still fails the whole request → [second-provider fallback](./done/01-0121-second-provider-fallback.md). |
+| Second provider and fallback | Available | TWC-primary is a private deployment's declaration at the embedding edge; the shipped profile is Open-Meteo alone. A spanning ask serves the primary's clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). A child's `runtime-failure` falls through wholesale to the next admitted producer; exhaustion still fails the whole request → [second-provider fallback](./done/01-0121-second-provider-fallback.md). |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. A declared live window is an estimate — rolling retention is horizon-satisfied, static by containment ([live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md)). |
 | Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./01-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
 | Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./01-0124-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./01-0155-vendor-budget-governor.md) later gives it authority to refuse. |
 | REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./01-0165-rest-surface.md) as the operator deployment shape and part of the v1 bee-line. |
 | Off-grid homogenization | Available | An off-grid point is answered **at the requested point**, read back from the **enclosing** store cell with the **identity** Resampler. Guarded by Reservoir and e2e tests; the MCP edge states the fidelity floor (one cell ⇒ identical values). |
-| Configured keyed-provider startup | Available | Today's v1 plumbing: key-present composes TWC as primary, key-absent starts Open-Meteo alone. **After [0123](./01-0123-config-secrets-degrade.md)**: the public profile is keyless Open-Meteo; a profile declaring a keyed offering without its secret refuses startup (no degrade mode); vendor-named `Settings` fields dissolve into the generic form. |
+| Configured keyed-provider startup | Available | The public profile is keyless Open-Meteo; a profile declaring a keyed offering without its secret refuses startup (no degrade mode). Vendor-named `Settings` fields are gone; a secret is read at `METEOSCAPE_<IMPL>_<SLOT>`, and env carries nothing structured. |
 
 ## Delivery map
 
@@ -117,7 +117,7 @@ work `Maint`. What those columns mean is
 | 0127 | [Doc-corpus integrity gate](./done/01-0127-docs-integrity-gate.md) | Maint | Done | — | CI fails when a live document's relative link or heading anchor stops resolving, when any tracked file carries a BOM, control character, or listed invisible codepoint, when a code comment's doc pointer (concern, ADR, or `.md` path) no longer resolves, or when the queue and the ticket folders disagree; historical records stay exempt from link gating. *Row sits where the work happens; 0121–0126 left no free integer, so the position is the nearest free slot.* |
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
-| 0123 | [Config and secrets](./01-0123-config-secrets-degrade.md) | — | Partial | TWC provider | Generic secret/override machinery; vendor-neutral public profile; a declared keyed offering without its secret refuses startup. |
+| 0123 | [Config and secrets](./done/01-0123-config-secrets-degrade.md) | — | Done | TWC provider | Generic secret machinery: profiles declare at composition roots, catalogue handles are ids, calculator I/O lives on its manifest, and a secret is read only at the name its declared `SecretSlot` derives. The public profile is vendor-neutral; a declared keyed offering without its secret refuses startup. |
 | 0124 | [Vendor-call ledger (meter)](./01-0124-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and graceful degrade | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on request results. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — | A supported Python package boundary resolves the same v1 forecast product as MCP without a protocol server and exposes expected failures through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
@@ -174,7 +174,7 @@ This section records only how it landed here.
 | 005 | [per-parameter selection](./02-0170-per-parameter-selection.md) |
 | 006 | [retentive store](./done/01-0115-retentive-store-freshness.md) |
 | 007 | [off-grid homogenization](./done/01-0117-off-grid-homogenization.md) |
-| 008 | [config and graceful degrade](./01-0123-config-secrets-degrade.md) |
+| 008 | [config and graceful degrade](./done/01-0123-config-secrets-degrade.md) |
 | 009 | [errors and partial success](./02-0190-error-taxonomy-partial-success.md) |
 | 010 | [unit-conversion catalogue](./01-0129-unit-conversion-edge.md) |
 | 011 | [TWC provider](./done/01-0120-twc-provider.md) — Visual Crossing 2026-08-02 → 2026-08-08, TWC before and after |

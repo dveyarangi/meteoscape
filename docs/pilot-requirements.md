@@ -16,7 +16,7 @@ purpose ([product roadmap](./product-roadmap.md)).
   path, never the repo's official shape* — the shipped server's profile is vendor-neutral (keyless
   Open-Meteo). The TWC-primary declaration lives in this deployment's own composition root behind
   the embedding edge; a declared keyed offering without its secret refuses startup
-  ([0123](./tickets/01-0123-config-secrets-degrade.md), 2026-08-19 resolutions).
+  ([0123](./tickets/done/01-0123-config-secrets-degrade.md), 2026-08-19 resolutions).
 - **Station observations** from the operator's Collector database —
   [Mongo obs source](./tickets/01-0130-mongo-obs-source.md), read-only, per-parameter provenance;
   the Collector schema is a dependency meteoscape does not own
