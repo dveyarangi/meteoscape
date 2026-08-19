@@ -79,7 +79,7 @@ surface](../tickets/01-0125-supported-python-embedding.md); its own align select
 contract before implementation. They are the expected shape of the work, not commitments.
 
 **First client identified (2026-08-19, 0123 align): the
-[pilot deployment](../pilot-deployment.md).** Its TWC-primary profile declaration is deployment
+[pilot deployment](../pilot-requirements.md).** Its TWC-primary profile declaration is deployment
 configuration and must never be the public repo's official shape, so it lives in its own
 composition root behind this edge. Whether that root is a temporary parallel setup or a separate
 project is selected at 0125's align, alongside the facade.

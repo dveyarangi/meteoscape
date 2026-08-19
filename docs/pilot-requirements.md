@@ -37,3 +37,12 @@ the TWC-primary composition exists only as **embedder-shaped tests** and the opt
 composite — proven, not shipped. 0125's align selects the durable home: a temporary parallel
 setup in-tree, or a separate project embedding meteoscape. Until that decision, nothing in the
 public shape may present this deployment's configuration as the product's default.
+
+**Sequencing (2026-08-19):** the bee-line runs on the Open-Meteo path until the correction
+workstream — the [ledger](./tickets/01-0124-vendor-call-ledger.md) meters vendor-agnostically and
+the [tick convention](./tickets/01-0126-tick-convention-declaration.md) reads the in-tree TWC
+declarations, so neither needs TWC live. TWC goes live with this deployment's root at the
+embedding surface, ahead of the [Mongo sources](./tickets/01-0130-mongo-obs-source.md) whose
+consumer that root is; it is first *wanted* at the
+[correction calculator](./tickets/01-0140-correction-calculator.md), whose product point is
+correcting the primary this deployment serves.

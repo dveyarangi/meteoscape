@@ -7,7 +7,7 @@ delivered (2026-08-18) — a faulting producer no longer fails the request. Next
 [config and secrets](./01-0123-config-secrets-degrade.md) (aligned and planned 2026-08-19):
 generic secret/override machinery, profile declarations at composition roots, and — **re-cut at
 that align** — the public server's profile goes vendor-neutral (Open-Meteo, keyless).
-*TWC-as-primary is a temporary [pilot-deployment](../pilot-deployment.md) configuration, never
+*TWC-as-primary is a temporary [pilot-deployment](../pilot-requirements.md) configuration, never
 the repo's official shape*; that deployment is the [embedding edge](../edge/embedding.md)'s first
 client, and a declared keyed offering without its secret **refuses** startup (no degrade mode). The
 [unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger was
