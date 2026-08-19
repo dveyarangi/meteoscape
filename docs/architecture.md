@@ -363,8 +363,20 @@ rejected splits); this section fixes the roles.
   As the Weaver's precondition it runs on every weave path, so no caller can forget it. **Geometry needs no pass of its own** —
   each node's `Capability` composes its `Domain` as the graph is built, so an unresolvable one fails at
   weave ([ADR-0007](./adr/0007-capability-carries-its-domain.md)), and the surface reads the profile's
-  Reach off the woven root. Catalogues are module-level data;
-  `Settings` projects `ProfileConfig` in `main()`. Build-time failures are **`CompositionError`**
+  Reach off the woven root. Catalogues are module-level data, and the **profile declaration is
+  module-level data beside them** — the root is the de-facto embedding attachment, and there is no
+  global default profile, only profiles: `server.py` declares the MCP product's own. `main()`
+  assembles `ProfileConfig` from that declaration plus `Settings`' knobs; the **raw operator vars**
+  (the unconsumed `METEOSCAPE_*` values `Settings` collects) ride into `compose` whole and are
+  sliced per-impl only at the binder — each impl's secret by its manifest's `SecretSlot` name,
+  the remaining same-prefix vars as `settings` overrides, env names **derived from the known impl
+  set, never parsed**. **Key-absent refuses**: a declared keyed offering whose secret slot is
+  unfilled is a
+  `CompositionError` — no boot-degrade mechanism exists. A vendor-primary profile declaration is a
+  *deployment attachment* at the embedding edge, never the shipped root's official shape; the
+  public server's profile is vendor-neutral
+  ([config/secrets ticket](./tickets/01-0123-config-secrets-degrade.md)).
+  Build-time failures are **`CompositionError`**
   (binders / Arbiter policy / composition well-formedness), distinct from the request-path taxonomy in
   `errors.py`.
 

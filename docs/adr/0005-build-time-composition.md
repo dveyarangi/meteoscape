@@ -20,8 +20,9 @@ flowchart TB
     PT[ParameterTable]
   end
   subgraph deploy [Deployment]
-    Sec[secrets map]
+    Sec[operator vars]
     Settings --> PC0[ProfileConfig]
+    Decl[declared profile data] --> PC0
   end
   PC0 --> OD[OfferingDefs]
   PC0 --> CS[CalculatorDefs]
@@ -40,6 +41,16 @@ flowchart TB
   PD --> Weaver
   Weaver --> M[profile Manifold]
 ```
+
+*Amended 2026-08-19 (0123 align):* `ProfileConfig` is assembled **at the composition root** from a
+module-level profile declaration beside the catalogues plus `Settings`' knobs; `Settings` alone no
+longer projects it, and there is no global default profile — each root declares its own. The
+"secrets map" is now the **raw operator vars** (`Settings`' unconsumed `METEOSCAPE_*` values),
+passed to `compose` whole and sliced per-impl at the binder via each manifest's `SecretSlot` name
+and impl prefix. **A declared keyed offering with an unfilled slot refuses the boot** (`CompositionError`)
+— no boot-degrade mechanism. Vendor-specific profile declarations (a keyed primary) are deployment
+attachments at the embedding edge, never the shipped root's shape →
+[config/secrets ticket](../tickets/01-0123-config-secrets-degrade.md).
 
 ### Plugin binding
 

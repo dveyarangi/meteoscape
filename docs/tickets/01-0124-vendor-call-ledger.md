@@ -11,9 +11,10 @@
 
 ## Parent
 
-The release-01 bee-line makes a metered TWC primary observable before it becomes budget-governed
-([delivery status](./README.md)). The durable architectural context is
-[architecture § Source](../architecture.md#source).
+The release-01 bee-line makes a metered keyed provider observable before it becomes
+budget-governed ([delivery status](./README.md)) — *TWC-as-primary being a private deployment's
+declaration at the embedding edge, not the public shape (re-framed 2026-08-19)*. The durable
+architectural context is [architecture § Source](../architecture.md#source).
 
 ## Why this is not a Gateway concern
 

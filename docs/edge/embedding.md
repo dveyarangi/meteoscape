@@ -21,11 +21,11 @@ open decision.
 **De facto today — explicitly *not* promised:**
 
 - The package root exports only `SourceKey` and `main`.
-- The only usable composition path is `server.compose(profile, providers, calculators, secrets,
-  clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, a secrets map, and a
-  `Clock` (the `StoreFactory` is built from that clock inside, so one clock is structural —
-  [ADR-0005](../adr/0005-build-time-composition.md)); requests then run
-  `Gateway.resolve(Selection) → Coverage`.
+- The only usable composition path is `server.compose(profile, providers, calculators, vars,
+  clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, the raw operator-vars map
+  (sliced per-impl at the binder — [ADR-0005](../adr/0005-build-time-composition.md) 2026-08-19
+  amendment), and a `Clock` (the `StoreFactory` is built from that clock inside, so one clock is
+  structural); requests then run `Gateway.resolve(Selection) → Coverage`.
   Every name in that sentence is an internal type an embedder must import from internal modules.
 
 **Open** (all at #39): the smallest stable facade and lifecycle; whether construction is
@@ -78,6 +78,12 @@ Tentative — the Phase-1 stages below are owned by the [supported Python embedd
 surface](../tickets/01-0125-supported-python-embedding.md); its own align selects the still-open
 contract before implementation. They are the expected shape of the work, not commitments.
 
+**First client identified (2026-08-19, 0123 align): the
+[pilot deployment](../pilot-deployment.md).** Its TWC-primary profile declaration is deployment
+configuration and must never be the public repo's official shape, so it lives in its own
+composition root behind this edge. Whether that root is a temporary parallel setup or a separate
+project is selected at 0125's align, alongside the facade.
+
 1. Facade and lifecycle selected, with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context —
@@ -90,6 +96,9 @@ contract before implementation. They are the expected shape of the work, not com
 4. `0.x` compatibility policy — supported import paths, deprecation mechanics, embedded ↔
    protocol consistency — with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
+   Ships with **dev-docs-style narration** of the supported surface (stated 2026-08-19): until
+   then the profile-author contract lives on the config types' docstrings and this record's
+   de-facto section, deliberately un-promoted.
 5. Third-party plugin authoring — select how an embedding host *supplies* manifests
    ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)); how a Provider is *authored*
    is its own edge, [edge/provider.md](./provider.md).

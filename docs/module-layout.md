@@ -34,11 +34,15 @@ src/meteoscape/
 │   │   ├── paramtable.py      # ParameterTable — ParameterId → ParameterDef; StaticParameterTable.core()
 │   │   ├── providers.py       # OfferingSpec, SecretSlot, ProviderManifest, ProviderCatalog
 │   │   └── calculators.py     # CalculatorManifest, CalculatorCatalog
-│   └── providers/
-│       ├── base.py            # Provider: project + capability + source_key (its geometry is published by the Capability, ADR-0007); Transport/FetchRequest
-│       ├── timeline.py        # point+series shape: TimelineProvider (all algebra) + TimelineProbe/TimelineDelivery/TapTable (the vendor seam)
-│       ├── normalization.py   # shared native→canonical conversion edges (scale factors, quantity transforms)
-│       └── <vendor>.py        # one vendor's Probe + tap table + cadence + ProviderManifest — declarations, no algebra
+│   ├── providers/
+│   │   ├── base.py            # Provider: project + capability + source_key (its geometry is published by the Capability, ADR-0007); Transport/FetchRequest
+│   │   ├── timeline.py        # point+series shape: TimelineProvider (all algebra) + TimelineProbe/TimelineDelivery/TapTable (the vendor seam)
+│   │   ├── normalization.py   # shared native→canonical conversion edges (scale factors, quantity transforms)
+│   │   ├── <vendor>.py        # one vendor's Probe + tap table + cadence + ProviderManifest — declarations, no algebra
+│   │   └── builtin.py         # the shipped provider set — CATALOG: ProviderCatalog; availability is a system prop, the first named set (#26)
+│   └── calculators/
+│       ├── wind.py            # wind_uv kernel + its CalculatorManifest
+│       └── builtin.py         # the shipped calculator set — CATALOG: CalculatorCatalog
 │
 └── api/                       # gateway + mcp_app
 

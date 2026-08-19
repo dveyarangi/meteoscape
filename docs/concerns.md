@@ -835,15 +835,17 @@ file owns the unresolved part — what enforces coverage and what routes selecti
 filled default catalogues live**, how **built-in vs optional** plugins are partitioned, and how
 `compose` takes both catalogues symmetrically.
 
-The composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
-`server.py`) and injects both into `compose`. That works while the shipped set is tiny. When
-optional providers/calculators arrive, the root should select among **named shipped sets** (e.g.
-builtin vs extended) without owning the membership lists, and `catalog/` should stay faces-only —
-not import every concrete plugin.
+~~The composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
+`server.py`) and injects both into `compose`.~~ **Partially discharged 2026-08-19
+([0123](./tickets/01-0123-config-secrets-degrade.md)): the membership lists left the root** — the
+shipped sets live plugin-side as `nodes/providers/builtin.py` / `nodes/calculators/builtin.py`
+(each exporting `CATALOG`), the first *named shipped set* in this concern's own vocabulary;
+`server.py` imports availability and declares only its enablement. `catalog/` stays faces-only —
+the builtin modules import concrete plugins, the catalogue types never do.
 
-Open: module home for shipped sets (`nodes/calculators/builtin` peer for providers?); whether
-optional plugins are second maps, entry-point discovery, or install extras; keep enablement in
-`Settings` / `ProfileConfig` separate from availability. No v1 blocker — mark before the second
+Open: whether optional plugins are second maps, entry-point discovery, or install extras; how
+`compose` selects among multiple named sets symmetrically; enablement in `ProfileConfig` stays
+separate from availability. No v1 blocker — mark before the second
 optional calculator or a non-default provider packaging story forces an ad-hoc split.
 
 ## 27. Stored-calculator store binding
@@ -1303,6 +1305,32 @@ materialized; the storeless path exists only in fakes. Deferred to the same trig
 language — glossary *Source* and [architecture](./architecture.md) (guiding principles, §Source)
 define a Source as `Reservoir(store, Provider, clock)`, which a real storeless producer no longer is; those
 sites widen then, not before.
+
+**Widened 2026-08-19 (0123 align):** the concern covers **any storeless producer**, not only
+materialized ones — a fast in-house live source (the coming observation providers) may legitimately
+want neither retention nor call economy, so "storeless" is profile policy, not a materialization
+corollary. Recorded for the placement decision, so accidental verbatim does not decide it:
+
+- The algebra's own registers side with self-honoring: [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)'s
+  result-shape law and [architecture §Reservoir](./architecture.md#reservoir)'s "homogenization is
+  not leaf-only: every producer's answer must honour `sel.domain`". The sampling engine already has
+  one shared home (`manifold/sampling.py` behind `Coverage.project` —
+  [walking skeleton](./tickets/done/01-0020-walking-skeleton.md): "no second verb"), so placement
+  decides *who invokes the engine under which licensed kernel*, never who owns resampling. A
+  storeless producer's claim floor is its **native lattice** (enclosing native cell, identity
+  kernel), exactly as the store cell is the Source's ([RFC 0016](./rfc/done/0016-20260810-off-grid-homogenization.md)).
+- [Architecture §Provider](./architecture.md#provider-leaf-manifold)'s "aligned-crop strength"
+  sentence is **descriptive prose hardened from an m4 implementation fact** (the leaf trims via
+  `resample`), not a decided prohibition on leaf-side relabel — v1's point-timeline leaves already
+  serve arbitrary X/Y by design (vendor-side interpolation). Do not read it as an invariant.
+- The binder's `store is None ⇔ materialized` biconditional is **enforced correlation, not
+  information**: `wire_source` wires by store presence alone; the two refusals behind it are policy
+  guards — an uncached *metered* vendor buys a call per request
+  ([0119](./tickets/done/01-0119-live-window-edge-tolerance.md)'s pathology) and bypasses the
+  [ledger](./tickets/01-0124-vendor-call-ledger.md)'s metering seam at the Source, and a store on an
+  already-local dataset mirrors it uselessly. Loosening re-states those guards over capability and
+  metering facts (error for metered-uncached, at most a warning for mirror-waste); it does not
+  delete them.
 
 ## 38. Calculator admittance is fixed pointwise-total
 

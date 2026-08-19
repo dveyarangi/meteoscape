@@ -9,8 +9,10 @@
 
 ## Parent
 
-The release-01 bee-line requires a metered TWC primary to stop spending at an operator-set budget
-([delivery status](./README.md)). Durable context: [architecture § Source](../architecture.md#source).
+The release-01 bee-line requires a metered keyed provider to stop spending at an operator-set
+budget ([delivery status](./README.md)) — *TWC-as-primary being a private deployment's
+declaration at the embedding edge, not the public shape (re-framed 2026-08-19)*. Durable context:
+[architecture § Source](../architecture.md#source).
 
 ## What to build
 
