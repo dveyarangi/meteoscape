@@ -40,7 +40,7 @@ If the code can be clarified directly, improve the code instead of adding a comm
 Good comments explain reasoning, not mechanics.
 
 ```python
-# We prefer freshness over provider priority here because stale cold-risk data is dangerous.
+# We prefer freshness over provider priority here because stale severe-weather data is dangerous.
 ```
 
 ```python
@@ -162,13 +162,13 @@ Good TODOs should be actionable, specific, and easy to search.
 
 
 ## # @hotpath
-Hotpath comment may appear at method or code block.
-It means that this is important root flow of the program and deserves better comments inside. Do not delete comments inside hotpath blocks, but you can finetune or trim them when overexplaining
+Hotpath comment `# @hotpath` may appear at method or code block.
+It means that this is important root flow of the program and deserves better comments inside. Do not delete comments inside hotpath blocks, but you can finetune or trim them when overexplaining.
 
 
 ## Avoid Comment Apologies
 
-Do not use comments to excuse unclear code.
+Do not use comments to excuse unclear code. Either make it clear, mark it with TODO or explain why the shape is chosen:
 
 Bad:
 
@@ -194,7 +194,7 @@ Prefer comments above:
 * invariants
 * dangerous assumptions
 
-Avoid dense line-by-line comments.
+Avoid dense line-by-line comments, unless on hotpath and tell a story.
 
 ## Final Checklist
 
@@ -218,4 +218,4 @@ Bad comments narrate syntax.
 
 Write comments for the maintainer who understands the language, but does not yet understand the context.
 
-If architecture entry/decision/description already exists, prefer link to docs instead of restating it.
+If architecture entry/decision/description already exists, prefer link to docs instead elaborating on it.
