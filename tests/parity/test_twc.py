@@ -15,11 +15,11 @@ from fastmcp import Client
 
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Metronome
-from meteoscape.config import ArbiterPolicy, OfferingDef, ProfileConfig, Settings
+from meteoscape.config import ArbiterPolicy, OfferingDef, ProfileConfig
 from meteoscape.nodes.calculators import builtin as calculators
 from meteoscape.nodes.calculators.wind import CALM_SPEED_FLOOR
 from meteoscape.nodes.providers import builtin as providers
-from meteoscape.server import CALCULATORS, compose
+from meteoscape.server import CALCULATORS, ROOT_STORE, compose
 from parity.comparison import (
     Absolute,
     CalmRule,
@@ -67,12 +67,11 @@ def _twc_api_key(cli_key: str | None) -> str:
 
 async def _forecast_payload(api_key: str) -> dict[str, Any]:
     clock = Metronome()
-    settings = Settings(_env_file=None)
     gateway = compose(
         ProfileConfig(
             (OfferingDef(impl="twc", priority=0),),
             CALCULATORS,
-            settings.root_store(),
+            ROOT_STORE,
             ArbiterPolicy(),
         ),
         providers.CATALOG,

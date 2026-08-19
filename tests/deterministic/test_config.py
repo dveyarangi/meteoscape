@@ -1,34 +1,21 @@
-"""Settings holds the typed knobs; secrets are read by derived name — not a sweep."""
+"""Profile types and the env spelling: secrets are read by derived name — nothing else is."""
 
 from __future__ import annotations
 
 import ast
-from datetime import timedelta
 from pathlib import Path
 
 import pytest
 
-from fakes import pinned_settings
 from meteoscape.config import (
     CalculatorDef,
     OfferingDef,
-    Settings,
-    StoreSpec,
     secret_env_name,
     secrets_from_env,
 )
 
 _CONFIG = Path(__file__).resolve().parents[2] / "src" / "meteoscape" / "config.py"
 _SLOTS = {"twc": "api_key", "open-meteo": "api_key"}
-
-
-def test_root_store_projects_knobs() -> None:
-    settings = pinned_settings()
-    assert settings.root_store() == StoreSpec(
-        spatial_step=0.0001,
-        retention_interval=timedelta(days=14),
-    )
-    assert pinned_settings(store_spatial_step=0.5).root_store().spatial_step == 0.5
 
 
 def test_secret_env_name_is_the_operator_spelling() -> None:
@@ -83,18 +70,15 @@ def test_config_imports_nothing_from_nodes() -> None:
     assert not leaked, f"config.py imports vendor modules: {leaked}"
 
 
-def test_settings_fields_embed_no_builtin_impl_id() -> None:
+def test_config_module_names_no_builtin_impl() -> None:
+    """Vendor-config purity, now that no typed field exists to name a vendor: the module's own
+    source carries no builtin impl or fn id."""
     from meteoscape.nodes.calculators import builtin as calculators
     from meteoscape.nodes.providers import builtin as providers
 
-    tokens = {impl_id.replace("-", "_") for impl_id in (*providers.CATALOG, *calculators.CATALOG)}
-    leaked = [
-        f"{field} embeds {token}"
-        for field in Settings.model_fields
-        for token in tokens
-        if token in field
-    ]
-    assert not leaked, leaked
+    source = _CONFIG.read_text(encoding="utf-8")
+    leaked = [ident for ident in (*providers.CATALOG, *calculators.CATALOG) if ident in source]
+    assert not leaked, f"config.py names vendor ids: {leaked}"
 
 
 def test_defs_take_builtin_handles_as_plain_ids_and_default_priority() -> None:

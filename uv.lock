@@ -625,7 +625,7 @@ dependencies = [
     { name = "httpx" },
     { name = "numpy" },
     { name = "pydantic" },
-    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
     { name = "sentry-sdk" },
     { name = "xarray" },
 ]
@@ -647,7 +647,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "numpy", specifier = ">=2.5.0" },
     { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pydantic-settings", specifier = ">=2.14.2" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "sentry-sdk", specifier = ">=2.63.0" },
     { name = "xarray", specifier = ">=2026.4.0" },
 ]

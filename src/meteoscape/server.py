@@ -8,6 +8,7 @@ Availability lives in the builtin catalogues; this root declares only enablement
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import timedelta
 
 from .api.gateway import Gateway
 from .api.mcp_app import build_mcp_app
@@ -17,7 +18,7 @@ from .config import (
     CalculatorDef,
     OfferingDef,
     ProfileConfig,
-    Settings,
+    StoreSpec,
     secrets_from_env,
 )
 from .nodes.calculators import builtin as calculators
@@ -33,6 +34,12 @@ from .observability import init_observability
 # The public server's profile — vendor-neutral, keyless; no global default exists (ADR-0005).
 OFFERINGS: tuple[OfferingDef, ...] = (OfferingDef(providers.OPEN_METEO),)
 CALCULATORS: tuple[CalculatorDef, ...] = (CalculatorDef(calculators.WIND_UV),)
+ROOT_STORE = StoreSpec(
+    # The best-view lattice: ~11 m cells, the fidelity floor the MCP edge publishes (one cell =>
+    # identical values), and a 14-day eviction bound. Profile data, declared with the profile.
+    spatial_step=0.0001,
+    retention_interval=timedelta(days=14),
+)
 
 
 def compose(
@@ -59,10 +66,9 @@ def compose(
 
 def main() -> None:
     init_observability()
-    settings = Settings()
     clock = Metronome()
     gateway = compose(
-        ProfileConfig(OFFERINGS, CALCULATORS, settings.root_store(), ArbiterPolicy()),
+        ProfileConfig(OFFERINGS, CALCULATORS, ROOT_STORE, ArbiterPolicy()),
         providers.CATALOG,
         calculators.CATALOG,
         secrets_from_env(secret_slots(providers.CATALOG)),

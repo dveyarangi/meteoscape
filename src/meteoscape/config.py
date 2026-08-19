@@ -1,8 +1,8 @@
-"""Typed settings - generic residue, injected at construction.
+"""Profile declaration types, and the env spelling for secrets.
 
-`ProfileConfig` is assembled at a composition root, not projected from `Settings`.
-`Settings` holds the store/retention knobs; secrets are read by derived name.
-`nodes/` receive plain values from `server.py`, never this type.
+A profile — offerings, calculators, root store, arbiter policy — is *declared* at a composition
+root, never projected from env: env carries secrets alone. `secret_env_name` / `secrets_from_env`
+are the one home of that spelling. `nodes/` receive plain values from a root, never a config object.
 See docs/architecture.md (Config, binders, Weaver) and ADR-0005.
 """
 
@@ -13,10 +13,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
 
 from dotenv import dotenv_values
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _ENV_PREFIX = "METEOSCAPE_"
 _ENV_FILE = ".env"
@@ -79,35 +77,6 @@ class ProfileConfig:
     calculators: tuple[CalculatorDef, ...]
     root_store: StoreSpec
     arbiter: ArbiterPolicy
-
-
-class Settings(BaseSettings):
-    """Operator env: the typed knobs, and nothing else.
-
-    Profile enumeration lives at a composition root; secrets are read by derived name
-    (`secrets_from_env`), never swept out of the namespace.
-    """
-
-    model_config = SettingsConfigDict(env_prefix=_ENV_PREFIX, env_file=_ENV_FILE, extra="ignore")
-
-    store_spatial_step: float = 0.0001
-    """Best-view store grid step in degrees — the cache lattice / fidelity floor. v1 default ~11 m:
-    near a per-point cache — repeat requests hit, and sharing reaches only points falling inside one
-    ~11 m cell — trading spatial cache sharing for a tight source-point offset under the identity Resampler,
-    which reports the enclosing cell's value unchanged at the requested point."""
-
-    retention_interval: timedelta = timedelta(days=14)
-    """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""
-
-    def __init__(self, _env_file: str | Path | None = _ENV_FILE, **data: Any) -> None:
-        """Declares `_env_file` so a caller can read the process env alone (tests, embedders)."""
-        super().__init__(_env_file=_env_file, **data)
-
-    def root_store(self) -> StoreSpec:
-        return StoreSpec(
-            spatial_step=self.store_spatial_step,
-            retention_interval=self.retention_interval,
-        )
 
 
 def secret_env_name(impl_id: str, slot: str) -> str:

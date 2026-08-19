@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from meteoscape.clock import Clock, StoppedClock
-from meteoscape.config import OfferingDef, Settings, StoreSpec
+from meteoscape.config import OfferingDef, StoreSpec
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
@@ -40,12 +39,6 @@ from meteoscape.nodes.store import Store, StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, ParameterId
 
 STOPPED = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
-
-
-def pinned_settings(**kwargs: Any) -> Settings:
-    """`Settings` isolated from a developer `.env`; init kwargs still override env fields."""
-    kwargs.setdefault("_env_file", None)
-    return Settings(**kwargs)
 
 
 TWC_PRIMARY_OFFERINGS: tuple[OfferingDef, ...] = (

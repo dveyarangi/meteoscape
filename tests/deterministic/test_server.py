@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from fakes import STOPPED, TWC_PRIMARY_OFFERINGS, fake_catalog, pinned_settings
+from fakes import STOPPED, TWC_PRIMARY_OFFERINGS, fake_catalog
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
 from meteoscape.config import (
@@ -15,7 +15,6 @@ from meteoscape.config import (
     CalculatorDef,
     OfferingDef,
     ProfileConfig,
-    Settings,
     StoreSpec,
 )
 from meteoscape.identity import SourceKey
@@ -24,11 +23,11 @@ from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.nodes.composition import CompositionError, SourceBinder
 from meteoscape.nodes.providers import builtin as providers
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_SPEED
-from meteoscape.server import CALCULATORS, OFFERINGS, compose
+from meteoscape.server import CALCULATORS, OFFERINGS, ROOT_STORE, compose
 
 
-def _public_profile(settings: Settings) -> ProfileConfig:
-    return ProfileConfig(OFFERINGS, CALCULATORS, settings.root_store(), ArbiterPolicy())
+def _public_profile() -> ProfileConfig:
+    return ProfileConfig(OFFERINGS, CALCULATORS, ROOT_STORE, ArbiterPolicy())
 
 
 def test_compose_advertises_enabled_offerings() -> None:
@@ -59,9 +58,8 @@ def test_compose_rejects_unproducible_calculator_input() -> None:
 
 
 def test_public_profile_boots_keyless_on_open_meteo() -> None:
-    settings = pinned_settings()
     gateway = compose(
-        _public_profile(settings),
+        _public_profile(),
         providers.CATALOG,
         calculators.CATALOG,
         {},
@@ -82,10 +80,9 @@ def test_public_profile_boots_keyless_on_open_meteo() -> None:
 
 
 def test_public_compose_and_forecast_hourly_registered() -> None:
-    settings = pinned_settings()
     clock = StoppedClock(datetime(2026, 7, 11, tzinfo=UTC))
     gateway = compose(
-        _public_profile(settings),
+        _public_profile(),
         providers.CATALOG,
         calculators.CATALOG,
         {},
@@ -101,11 +98,10 @@ def test_public_compose_and_forecast_hourly_registered() -> None:
 
 
 def test_embedder_profile_composes_twc_as_primary() -> None:
-    settings = pinned_settings()
     profile = ProfileConfig(
         TWC_PRIMARY_OFFERINGS,
         CALCULATORS,
-        settings.root_store(),
+        ROOT_STORE,
         ArbiterPolicy(),
     )
     secrets = {"twc": "secret"}
@@ -146,9 +142,8 @@ def test_embedder_profile_without_the_key_refuses() -> None:
 
 def test_leftover_env_var_is_inert() -> None:
     """Env carries secrets and scalars only — a stale var reaches no `build` (0123 align)."""
-    settings = pinned_settings()
     gateway = compose(
-        _public_profile(settings),
+        _public_profile(),
         providers.CATALOG,
         calculators.CATALOG,
         {"open_meteo_enabled": "true", "open_meteo_cadence_hours": "3"},
@@ -158,9 +153,8 @@ def test_leftover_env_var_is_inert() -> None:
 
 
 def test_leftover_twc_key_is_inert_on_the_public_profile() -> None:
-    settings = pinned_settings()
     gateway = compose(
-        _public_profile(settings),
+        _public_profile(),
         providers.CATALOG,
         calculators.CATALOG,
         {"twc": "secret"},
