@@ -68,11 +68,12 @@ uv run pytest
 uv run meteoscape
 ```
 
-Configuration is via environment / typed settings (Pydantic Settings): the store knobs, plus one
-secret per keyed provider at `METEOSCAPE_<IMPL>_<SLOT>`. The shipped server profile is
-vendor-neutral — keyless Open-Meteo — and a profile that declares a keyed offering without its
-secret refuses to start. Per-offering settings are declared in code, on the profile at a
-composition root; see [`.env.example`](./.env.example) and the
+The environment carries **secrets only** — one per keyed provider, at
+`METEOSCAPE_<IMPL>_<SLOT>`. Everything else about a deployment is declared in code at its
+composition root: which offerings and calculators to compose, in what priority, and the root
+store's shape. The shipped server profile is vendor-neutral — keyless Open-Meteo — and a profile
+that declares a keyed offering without its secret refuses to start. See
+[`.env.example`](./.env.example) and the
 [config/secrets ticket](./docs/tickets/done/01-0123-config-secrets-degrade.md). A missing
 `SENTRY_DSN` disables error reporting without failing startup.
 

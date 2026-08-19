@@ -326,15 +326,14 @@ rejected splits); this section fixes the roles.
   declared `default_offering` at the binder — vendor defaults are plugin-side, never config's
   ([ADR-0005](./adr/0005-build-time-composition.md)); catalogue validation occurs
   during composition.
-  **A def selects and ranks; it never restates what a manifest declares** (2026-08-19): the
+  **A def selects and ranks; it never restates what a manifest declares**: the
   calculator I/O group lives on `CalculatorManifest`, mirroring `OfferingSpec` as the product
   row. The builtin catalogue modules export each impl/fn **id as a named constant** beside the
   map, so profiles select by handle without retyping names (defs stay plain-string fields; no
   coercion machinery), and `priority` defaults to `0` — safe because the `priority` reconciler's
   standing contract resolves equal priorities by **bind order** (stable sort;
   [ADR-0004](./adr/0004-producer-resolution-and-capability.md)): the ordered declaration *is* the
-  tie-break. A weave-time tie refusal was built and removed 2026-08-19 as contradicting that
-  contract.
+  tie-break.
   A non-materialized Source carries its `StoreSpec` (catalogue default, operator override); a
   materialized provider wires storeless — a store configured for one is a `CompositionError`
   ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)). Same
@@ -377,22 +376,20 @@ rejected splits); this section fixes the roles.
   Reach off the woven root. Catalogues are module-level data, and the **profile declaration is
   module-level data beside them** — the root is the de-facto embedding attachment, and there is no
   global default profile, only profiles: `server.py` declares the MCP product's own. `main()`
-  assembles `ProfileConfig` from that declaration plus `Settings`' knobs, and passes a
-  **secrets map** (`impl_id` → value) to `compose`. **Env carries secrets and the typed scalars,
+  assembles `ProfileConfig` **wholly from that declaration** — offerings, calculators, arbiter
+  policy, and the root `StoreSpec` alike — and passes a **secrets map** (`impl_id` → value) to
+  `compose`. There is no typed env-config object: the root store is profile data (it sets the
+  fidelity floor the MCP edge publishes), so it is declared beside the profile rather than tuned
+  from the environment. **Env carries secrets and the typed scalars,
   nothing structured**: the secrets map is filled by *reading the names the declared
   `SecretSlot`s derive* — never by sweeping the namespace — so config owns the env spelling and
   the binder owns only the policy (an unfilled slot refuses). Two operator-visible rules ride
   that read: an **empty value counts as absent** (a blank `.env` line does not enable an
   offering), and **the process environment wins over the `.env` file**, as it does for the typed
-  fields. Per-offering `settings` are declared
-  on the `OfferingDef` at a composition root; a config file may fill the same field later
-  ([0125](./tickets/01-0125-supported-python-embedding.md)). A non-env caller (an embedder with a
-  vault) supplies the same impl-keyed map directly. **Key-absent refuses**: a declared keyed offering whose secret slot is
-  unfilled is a
-  `CompositionError` — no boot-degrade mechanism exists. A vendor-primary profile declaration is a
-  *deployment attachment* at the embedding edge, never the shipped root's official shape; the
-  public server's profile is vendor-neutral
-  ([config/secrets ticket](./tickets/done/01-0123-config-secrets-degrade.md)).
+  fields. Per-offering `settings` are declared on the `OfferingDef` at a composition root; a
+  non-env caller (an embedder with a vault) supplies the same impl-keyed map directly.
+  **Key-absent refuses**: a declared keyed offering whose secret slot is unfilled is a
+  `CompositionError` — no boot-degrade mechanism exists.
   Build-time failures are **`CompositionError`**
   (binders / Arbiter policy / composition well-formedness), distinct from the request-path taxonomy in
   `errors.py`.

@@ -58,12 +58,14 @@ Python application author constructing and calling Meteoscape without a server),
     that I control the quality policy without code changes.
 12. As an operator, I want the TWC API key injected via config at construction, so that secrets never
     live in code or globals.
-13. As an operator, I want the server to start and serve on Open-Meteo alone when the TWC key is absent,
-    so that a missing optional secret degrades gracefully instead of failing startup.
+13. As an operator, I want a declared keyed offering without its secret to fail startup with a
+    configuration error, so that explicit deployment intent is never silently weakened.
 14. As an operator, I want a fully-fresh repeat request served from cache without any provider call, so
     that I minimize latency and provider usage.
-15. As an operator, I want the store grid step and retention interval to be configurable, so that I can
-    tune cache sharing and memory bounds for my deployment.
+15. *(Superseded 2026-08-20 — the store grid step is the fidelity floor the MCP edge publishes, so
+    it is profile data declared at a composition root, not an env knob; env carries secrets alone.
+    A config file may restore file-level tuning → 0125.)* ~~As an operator, I want the store grid step and retention interval to be configurable, so that I can
+    tune cache sharing and memory bounds for my deployment.~~
 
 **Embedder**
 
@@ -78,16 +80,15 @@ Python application author constructing and calling Meteoscape without a server),
 
 | Provider | Key | Priority | Notes |
 |---|---|---|---|
-| **Open-Meteo** | keyless | **backstop** | global, free; exercises the keyless path; what key-absent degrade serves on |
-| **The Weather Company (TWC)** | API key | **primary** | exercises secrets injection; same point-plus-series shape as Open-Meteo |
+| **Open-Meteo** | keyless | **backstop** | global, free; exercises the shipped keyless path |
+| **The Weather Company (TWC)** | API key | **primary** | private deployment choice; exercises secrets injection; same point-plus-series shape as Open-Meteo |
 
 - Priority order **is** the quality policy (the `priority` reconciler selects, never combines).
   Reconfigurable via Arbiter config.
-- **Missing TWC key → graceful degrade**: `Settings` never enables the offering (no `OfferingDef` is
-  emitted), so the server starts and serves with Open-Meteo alone. Degrade is **enablement policy,
-  owned by `Settings`**; the binder itself is **strict** — every def that reaches it is explicit
-  operator intent, and it either binds or startup fails (`CompositionError`, build-time only — never a
-  request-path taxonomy error).
+- **Missing declared secret → startup refusal**: every `OfferingDef` is explicit operator intent.
+  A keyed offering whose declared `SecretSlot` is unfilled fails composition (`CompositionError`,
+  build-time only — never a request-path taxonomy error). The shipped server profile declares only
+  keyless Open-Meteo; a private deployment that declares TWC must supply its key.
 - At least one core parameter is declared by **only one** provider's `Capability`, so the
   per-parameter capability filter is actually exercised (see acceptance §3).
 
@@ -254,9 +255,11 @@ lifts **without a contract change** — see the seams in
 
 ### Config & secrets
 
-- One typed config (Pydantic Settings): the enabled **`OfferingDef`s** (v1 degenerate case — one per
-  provider, offering `name` **always named**, e.g. Open-Meteo `best_match`), provider secrets (TWC key), and
-  per-`SourceKey` priority. Secrets **injected at construction**, never read from globals.
+- ~~One typed config (Pydantic Settings): the enabled **`OfferingDef`s**, provider secrets, and
+  per-`SourceKey` priority.~~ *(Re-cut 2026-08-20 — the profile, priorities included, is declared
+  at a composition root; there is no typed env-config object, and env carries one secret per keyed
+  offering at a derived name → [0123](./tickets/done/01-0123-config-secrets-degrade.md).)* Secrets
+  are **injected at construction**, never read from globals.
 - **Cache / grid config**: the `Store`s' **spatial step** (best-view configurable — *not* hardcoded;
   coarser = more cache sharing, more interpolation; the Source's is a configured `StoreSpec` guess)
   and **hourly** time step; cache **TTL = `expiration`**
@@ -306,8 +309,9 @@ lifts **without a contract change** — see the seams in
    TTL = `expiration`). A parameter's **time window is single-origin** — a
    temporal miss or extension refetches the **whole window** from one provider, and a primary failure
    serves the **entire window** from the fallback (or errors), **never** an A-then-B `valid_time` splice.
-6. **Secrets**: TWC's key is injected via typed config at construction; absent key → graceful
-   degrade to Open-Meteo only.
+6. **Secrets**: TWC's key is injected at construction; declaring TWC without its key fails startup
+   with `CompositionError`. The shipped keyless profile starts without a TWC secret because it does
+   not declare TWC.
 7. **Errors** map correctly to MCP `bad-request` / `capability-mismatch` / `runtime-failure`.
 8. **Tests**: unit + integration with mocked HTTP transport (per the TDD skill); provider tests mock
    the transport, not the provider.

@@ -10,8 +10,8 @@ module placement and responsibilities, not milestone status.
 ```text
 src/meteoscape/
 ├── __init__.py                # re-exports SourceKey (from identity) + main
-├── server.py                  # thin entrypoint: catalogues + Settings → ProfileConfig → SourceBinder + CalculatorBinder → ProfileDef → weave → Gateway
-├── config.py                  # Settings (typed knobs) + OfferingDef + CalculatorDef + ProfileConfig; secret_env_name / secrets_from_env — the env spelling; never handed to nodes as Settings
+├── server.py                  # thin entrypoint: catalogues + declared profile (OFFERINGS/CALCULATORS/ROOT_STORE) + secrets → ProfileConfig → binders → ProfileDef → weave → Gateway
+├── config.py                  # profile declaration types (StoreSpec, OfferingDef, CalculatorDef, ArbiterPolicy, ProfileConfig) + secret_env_name / secrets_from_env — the one home of the env spelling; no typed env-config object
 ├── observability.py           # Sentry init seam (no-op without a DSN)
 ├── errors.py                  # error taxonomy: capability-mismatch / runtime / bad-request + build-time CompositionError (pure leaf; Tier-0 so manifold and nodes each author their own composition errors — ADR-0007)
 ├── clock.py                   # Clock protocol + Metronome + StoppedClock; injected by SourceBinder.build
@@ -48,7 +48,7 @@ src/meteoscape/
 
 # Dependency rule: errors, parameters, clock, identity ← manifold ← nodes ; api → manifold + parameters ; server.py composes all.
 # Catalogue is a role: parameters.py is the vocabulary leaf; provider/calculator/parameter-table catalogues live in nodes/catalog/ above manifold with their cohesive plugin manifests.
-# Injection (never the Settings type):
+# Injection (plain values only):
 #   SourceBinder(ProviderCatalog).build(defs, secrets, clock, parameters) → SourceRegistry  # secrets: impl_id → value
 #   CalculatorBinder(CalculatorCatalog).build(defs, parameters) → CalculatorRegistry  # keyed by CalculatorKey; resolves output ParameterDefs from the manifest
 #   validate_calculators(ProfileDef) → None  # raises CompositionError; weave's first step / precondition (owns the cycle guard)

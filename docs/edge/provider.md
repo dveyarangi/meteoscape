@@ -509,13 +509,13 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   vendor-specific — the default offering, policy defaults such as a polling cadence, endpoint
   facts, vendor vocabulary — lives in the plugin: the manifest (its `default_offering`), `build`'s
   interpretation of the opaque `OfferingDef.settings` mapping (fallback defaults included), and
-  the Probe. Core `Settings` carries only the store/retention knobs (secrets are read by derived
-  name, never swept) — it holds **no vendor default or vendor-vocabulary value**, and
+  the Probe. The core config module declares profile *types* and the secret spelling only — no
+  typed env-config object, no vendor default or vendor-vocabulary value — and
   imports no vendor module (in either direction: the leaf importing
   config's types is the one legal arrow). This is what keeps a provider plugin definable out of
   tree ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)): a plugin can register a
-  manifest; it can never add a `Settings` field. *Validated by:*
-  `test_config_imports_nothing_from_nodes` and `test_settings_fields_embed_no_builtin_impl_id` in
+  manifest; it can never add a core config field. *Validated by:*
+  `test_config_imports_nothing_from_nodes` and `test_config_module_names_no_builtin_impl` in
   [test_config.py](../../tests/deterministic/test_config.py).
 - **A leaf serves the modes its declarations imply, and writes no mode code.** A snapped ask is answered
   on the leaf's own lattice within the bounds — mid-hour bounds floored onto its ticks before any vendor

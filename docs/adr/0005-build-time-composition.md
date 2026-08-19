@@ -19,10 +19,9 @@ flowchart TB
     CC[CalculatorCatalog]
     PT[ParameterTable]
   end
-  subgraph deploy [Deployment]
-    Sec[secrets map]
-    Settings --> PC0[ProfileConfig]
-    Decl[declared profile data] --> PC0
+  subgraph deploy [Composition root]
+    Sec[secrets map - env or host]
+    Decl[declared profile: offerings, calculators, root StoreSpec, arbiter] --> PC0[ProfileConfig]
   end
   PC0 --> OD[OfferingDefs]
   PC0 --> CS[CalculatorDefs]
@@ -42,9 +41,9 @@ flowchart TB
   Weaver --> M[profile Manifold]
 ```
 
-*Amended 2026-08-19 (0123 align):* `ProfileConfig` is assembled **at the composition root** from a
-module-level profile declaration beside the catalogues plus `Settings`' knobs; `Settings` alone no
-longer projects it, and there is no global default profile — each root declares its own. The
+`ProfileConfig` is assembled **at the composition root** from a module-level profile declaration
+beside the catalogues — root `StoreSpec` included, so **env carries secrets alone**; there is no global default profile — each root
+declares its own. The
 secrets map is keyed by `impl_id` and filled by reading the env names each declared `SecretSlot`
 derives (`secrets_from_env` in config; `secret_slots` over the catalogue) — a lookup, never a
 namespace sweep, and a non-env caller supplies the same map directly. **A declared keyed offering with an unfilled slot refuses the boot** (`CompositionError`)
@@ -54,9 +53,7 @@ never restates a manifest's declarations** — the calculator I/O group is `Calc
 row (as `OfferingSpec` is the provider's); the builtin modules export id constants as profile
 handles (defs stay plain strings) and `priority` defaults to `0` — safe because the `priority`
 reconciler resolves equal priorities by bind order (stable sort, its standing contract;
-[ADR-0004](./0004-producer-resolution-and-capability.md)); a weave-time tie refusal was built and
-removed 2026-08-19 as contradicting that contract
-→ [config/secrets ticket](../tickets/done/01-0123-config-secrets-degrade.md).
+[ADR-0004](./0004-producer-resolution-and-capability.md)).
 
 ### Plugin binding
 
@@ -116,7 +113,7 @@ Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) �
   `OfferingDef.settings` mapping omits the key. The core config layer carries only enablement
   plumbing — which impls are enabled, priorities, secret material (`settings` are declared on the
   def at a composition root, never spelled through env) —
-  and never imports a vendor module: a plugin can register a manifest but cannot extend `Settings`,
+  and never imports a vendor module: a plugin can register a manifest but cannot extend the core config module,
   so any vendor default or vocabulary in core config forecloses out-of-tree providers
   ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)). The enforcing invariant and
   its guard live in the provider edge record ([edge/provider.md](../edge/provider.md)).
