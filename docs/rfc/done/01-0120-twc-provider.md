@@ -101,7 +101,7 @@ pages, not the payload, are the only evidence for what the numbers mean.
 9. **Types matter for parity and for the units choice:** `temperature` and `qpf` are **Decimal**;
    `relativeHumidity`, `cloudCover`, `windSpeed`, `windDirection` are **Integer**.
 
-### Confirmed by the live capture (2026-08-11, seven durations, the pilot site)
+### Confirmed by the live capture (2026-08-11, seven durations, pilot site)
 
 Stage 0 ran; every declaration below rested on vendor prose until it did.
 
@@ -424,7 +424,7 @@ failure this avoided.
 
 Run by the operator against the live key (which never reached this session) for **all seven
 durations** at the pilot site, `units=m` — see [Confirmed by the live
-capture](#confirmed-by-the-live-capture-2026-08-11-seven-durations-pilot). It answered more than
+capture](#confirmed-by-the-live-capture-2026-08-11-seven-durations-pilot-site). It answered more than
 intended: the flat envelope, all seven `max_lead` values, the next-whole-hour start (⇒ 0119), the
 per-tick expiry (⇒ fact 8 corrected), and the wind quantization premise.
 

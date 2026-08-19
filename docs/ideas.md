@@ -37,9 +37,9 @@ product/feature ideas that haven't earned a decision yet.
 
 ## Vendor products
 
-- **TWC Cold-risk Potential Index** (`Lifestyle Indices → Cold-risk Potential Index - Daypart`, `v2LIFP`).
-  Treat it as a comparison baseline after station-vs-forecast bias is measurable, not as a feature
-  to expose before its forecast inputs can be evaluated →
+- **TWC Lifestyle Indices** (daypart index products, `v2LI*`). Treat any of them as a comparison
+  baseline after station-vs-forecast bias is measurable, not as features to expose before their
+  forecast inputs can be evaluated →
   [correction workstream](./tickets/01-0140-correction-calculator.md).
 
 ## Freshness

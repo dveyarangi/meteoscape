@@ -7,6 +7,7 @@ so that each fact has one owner.
 |---|---|
 | Why does the product exist, and where is it going? | [Product roadmap](./product-roadmap.md) |
 | What must v1 demonstrate? | [v1 requirements](./v1-requirements.md) |
+| What does the pilot deployment require, and where does its configuration live? | [Pilot deployment](./pilot-deployment.md) — deployment configuration is never the public shape; its commercial identity stays out of the repo |
 | What are the durable system boundaries and decisions? | [Architecture](./architecture.md), [ADRs](./adr), and [glossary](./glossary.md) |
 | What is implemented, ready, or next? | [delivery status](./tickets/README.md) |
 | What does an individual work item require? | [Active tickets](./tickets) |
