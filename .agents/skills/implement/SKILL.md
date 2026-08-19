@@ -14,16 +14,15 @@ Make methods behind main architectural boundaries clear - they should read almos
 
 The code should read as a story. Make sure the main process appears first in the file, where possible, and main boundaries' implementation reads through entities, interfaces and submethods used as nouns, adjectives and verbs.
 
-
 In case of temporary code added as intermediate scaffolding that is going to change/go away in future iteration, mark it so in docstrings.
 
 Make sure the errors follow error rules.
 
-Make sure comments follow /improve-comments rules
+Make sure to read and follow /improve-comments rules. Make sure to mark the TODOs (shapes that are temporary, hotpaths that may need optimization or other pending actions)
 
 Run typechecking and single tests files regularly, and the full test suite once in the end.
 
 Do not move the RFC to Done at the end of your work, it will be done by later skills:
 Once done, if relevant, and unless you need to take a break, use /review-impl and /sync-arch to review the work.
 
-Do not commit your work until requested.
+Do not commit your work until explicitly approved by user.
