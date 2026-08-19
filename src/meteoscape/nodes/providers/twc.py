@@ -230,7 +230,10 @@ def build(
 ) -> Provider:
     """Catalogue `build` face — composes the shape with this vendor's Probe and declarations."""
     if secret_value is None:
-        raise CompositionError("twc requires an API key; declare secret_ref on the offering")
+        raise CompositionError("twc requires an API key; set METEOSCAPE_TWC_API_KEY")
+    unknown = sorted(key for key in settings if key != "cadence_hours")
+    if unknown:
+        raise CompositionError(f"twc unknown settings keys: {', '.join(unknown)}")
     duration = _DURATIONS[spec.name]
     hours = settings.get("cadence_hours", DEFAULT_CADENCE_HOURS)
     if not isinstance(hours, int) or isinstance(hours, bool) or hours <= 0:
@@ -270,7 +273,7 @@ MANIFEST = ProviderManifest(
         name: OfferingSpec(name=name, parameters=_CANONICAL_IDS, store=_STORE)
         for name in _DURATIONS
     },
-    secret=SecretSlot("twc_api_key"),
+    secret=SecretSlot("api_key"),
     build=build,
     default_offering=DEFAULT_OFFERING,
 )

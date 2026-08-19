@@ -10,9 +10,11 @@ from fastmcp import Client
 
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Metronome
-from meteoscape.config import Settings
+from meteoscape.config import ArbiterPolicy, ProfileConfig, Settings
+from meteoscape.nodes.calculators import builtin as calculators
 from meteoscape.nodes.calculators.wind import CALM_SPEED_FLOOR
-from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
+from meteoscape.nodes.providers import builtin as providers
+from meteoscape.server import CALCULATORS, OFFERINGS, compose
 from parity.comparison import (
     Absolute,
     CalmRule,
@@ -49,13 +51,14 @@ def _window(valid_times: list[str]) -> tuple[datetime, datetime]:
     return start, end
 
 
-async def _forecast_payload(settings: Settings) -> dict[str, Any]:
+async def _forecast_payload() -> tuple[dict[str, Any], Settings]:
+    settings = Settings(_env_file=None)
     clock = Metronome()
     gateway = compose(
-        settings.profile(),
-        PROVIDER_CATALOG,
-        CALCULATOR_CATALOG,
-        settings.secrets(),
+        ProfileConfig(OFFERINGS, CALCULATORS, settings.root_store(), ArbiterPolicy()),
+        providers.CATALOG,
+        calculators.CATALOG,
+        {},
         clock,
     )
     app = build_mcp_app(gateway, clock)
@@ -63,28 +66,26 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
         result = await client.call_tool("forecast_hourly", _REQUEST)
     payload = result.data
     assert isinstance(payload, dict)
-    return payload
+    return payload, settings
 
 
 @pytest.mark.asyncio
 async def test_open_meteo_parity() -> None:
-    # TODO (temporary): goes with the vendor-named fields when generic secret injection replaces
-    # them (docs/edge/provider.md vendor-config-purity); the init override isolates this check from a
-    # local TWC key.
-    settings = Settings(open_meteo_enabled=True, twc_api_key=None)
     request_desc = f"forecast_hourly lat={_LAT} lon={_LON} default window UTC"
     payload: dict[str, Any] | None = None
     raw: RawEvidence | None = None
     report = None
+    settings: Settings | None = None
     for _ in range(ATTEMPTS):
-        payload = await _forecast_payload(settings)
+        payload, settings = await _forecast_payload()
         start, end = _window(payload["valid_time"])
         reference, raw = fetch_reference(_LAT, _LON, start, end)
         report = compare(payload, reference, SPEC)
         if report.ok:
             return
 
-    assert payload is not None and raw is not None and report is not None
+    assert payload is not None and raw is not None and report is not None and settings is not None
+    secrets: dict[str, str] = {}
     evidence = write_evidence(
         "open-meteo",
         {
@@ -94,7 +95,7 @@ async def test_open_meteo_parity() -> None:
             "reference_response": raw.body,
             "diff": report,
         },
-        settings.secrets(),
+        secrets,
     )
     pytest.fail(
         format_summary(
@@ -102,6 +103,6 @@ async def test_open_meteo_parity() -> None:
             request_desc,
             report,
             evidence,
-            secrets=settings.secrets(),
+            secrets=secrets,
         )
     )

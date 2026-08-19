@@ -36,4 +36,9 @@ def wind_from_uv(
     }
 
 
-MANIFEST = CalculatorManifest(fn_id="wind_uv", fn=wind_from_uv)
+MANIFEST = CalculatorManifest(
+    fn_id="wind_uv",
+    fn=wind_from_uv,
+    outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+    inputs=frozenset({WIND_U, WIND_V}),
+)

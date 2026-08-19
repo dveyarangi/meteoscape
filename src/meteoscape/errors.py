@@ -40,8 +40,8 @@ class RuntimeFailure(MeteoscapeError):
 
 class CompositionError(Exception):
     """Build-time failure - a misconfigured profile the server refuses to start with: unknown catalogue
-    entry, dangling secret, duplicate key, missing StoreSpec, or a reach that cannot compose (sheared
-    footprints, non-separable geometry).
+    entry, missing secret for a declared slot, duplicate key, missing StoreSpec, or a reach that
+    cannot compose (sheared footprints, non-separable geometry).
 
     A Tier-0 leaf so every layer that composes can raise it - the reconciler naming a parameter, a
     derived capability naming its calculator - rather than one translating another's error. Outside the

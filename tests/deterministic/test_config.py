@@ -1,4 +1,4 @@
-"""Settings projects ProfileConfig (OfferingDefs + secrets) from env scalars."""
+"""Settings holds the typed knobs; secrets are read by derived name — not a sweep."""
 
 from __future__ import annotations
 
@@ -6,67 +6,69 @@ import ast
 from datetime import timedelta
 from pathlib import Path
 
+import pytest
+
 from fakes import pinned_settings
 from meteoscape.config import (
-    ArbiterPolicy,
     CalculatorDef,
     OfferingDef,
-    ProfileConfig,
+    Settings,
     StoreSpec,
+    secret_env_name,
+    secrets_from_env,
 )
-from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
 
-_OM = OfferingDef(impl="open-meteo", priority=1)
-_TWC = OfferingDef(impl="twc", priority=0, secret_ref="twc_api_key")
-_WIND = CalculatorDef(
-    outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
-    inputs=frozenset({WIND_U, WIND_V}),
-    fn_id="wind_uv",
-    priority=0,
-)
 _CONFIG = Path(__file__).resolve().parents[2] / "src" / "meteoscape" / "config.py"
+_SLOTS = {"twc": "api_key", "open-meteo": "api_key"}
 
 
-def test_defaults_emit_open_meteo_backstop() -> None:
+def test_root_store_projects_knobs() -> None:
     settings = pinned_settings()
-    assert settings.offerings() == (_OM,)
-    assert settings.calculators() == (_WIND,)
-    assert settings.secrets() == {}
-
-
-def test_open_meteo_disabled_emits_no_offerings() -> None:
-    settings = pinned_settings(open_meteo_enabled=False)
-    assert settings.offerings() == ()
-
-
-def test_twc_key_adds_primary_offering() -> None:
-    settings = pinned_settings(open_meteo_enabled=False, twc_api_key="secret")
-    assert settings.offerings() == (_TWC,)
-    assert settings.secrets() == {"twc_api_key": "secret"}
-    assert settings.offerings()[0].name is None
-    assert settings.offerings()[0].settings == {}
-
-
-def test_open_meteo_and_twc_together() -> None:
-    settings = pinned_settings(twc_api_key="secret")
-    assert settings.offerings() == (_TWC, _OM)
-    assert settings.offerings()[0].priority == 0
-    assert settings.offerings()[1].priority == 1
-    assert settings.offerings()[1].name is None
-
-
-def test_profile_projects_root_store_and_open_meteo() -> None:
-    settings = pinned_settings()
-    profile = settings.profile()
-    assert profile == ProfileConfig(
-        offerings=(_OM,),
-        calculators=(_WIND,),
-        root_store=StoreSpec(
-            spatial_step=0.0001,
-            retention_interval=timedelta(days=14),
-        ),
-        arbiter=ArbiterPolicy(),
+    assert settings.root_store() == StoreSpec(
+        spatial_step=0.0001,
+        retention_interval=timedelta(days=14),
     )
+    assert pinned_settings(store_spatial_step=0.5).root_store().spatial_step == 0.5
+
+
+def test_secret_env_name_is_the_operator_spelling() -> None:
+    assert secret_env_name("open-meteo", "api_key") == "METEOSCAPE_OPEN_METEO_API_KEY"
+
+
+def test_secrets_read_env_over_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("METEOSCAPE_TWC_API_KEY=fromfile\nMETEOSCAPE_OPEN_METEO_API_KEY=file\n")
+    monkeypatch.setenv("METEOSCAPE_TWC_API_KEY", "fromenv")
+    monkeypatch.delenv("METEOSCAPE_OPEN_METEO_API_KEY", raising=False)
+    secrets = secrets_from_env(_SLOTS, env_file=env_file)
+    assert secrets == {"twc": "fromenv", "open-meteo": "file"}
+
+
+def test_only_declared_slots_are_read(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No namespace sweep: a var no declared slot names is never collected."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("METEOSCAPE_TWC_API_KEY=k\nMETEOSCAPE_TWC_CADENCE_HOURS=3\n")
+    monkeypatch.delenv("METEOSCAPE_TWC_API_KEY", raising=False)
+    monkeypatch.delenv("METEOSCAPE_TWC_CADENCE_HOURS", raising=False)
+    assert secrets_from_env({"twc": "api_key"}, env_file=env_file) == {"twc": "k"}
+
+
+def test_empty_secret_is_absent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A blank .env line does not fill the slot."""
+    env_file = tmp_path / ".env"
+    env_file.write_text("METEOSCAPE_TWC_API_KEY=\n")
+    monkeypatch.delenv("METEOSCAPE_TWC_API_KEY", raising=False)
+    assert secrets_from_env({"twc": "api_key"}, env_file=env_file) == {}
+
+
+def test_secret_stays_a_raw_string(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("METEOSCAPE_TWC_API_KEY", "123")
+    assert secrets_from_env({"twc": "api_key"}, env_file=None) == {"twc": "123"}
+
+
+def test_no_env_file_reads_environ_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("METEOSCAPE_TWC_API_KEY", raising=False)
+    assert secrets_from_env({"twc": "api_key"}, env_file=None) == {}
 
 
 def test_config_imports_nothing_from_nodes() -> None:
@@ -79,3 +81,29 @@ def test_config_imports_nothing_from_nodes() -> None:
             imported.append(node.module)
     leaked = [name for name in imported if "nodes" in name.split(".")]
     assert not leaked, f"config.py imports vendor modules: {leaked}"
+
+
+def test_settings_fields_embed_no_builtin_impl_id() -> None:
+    from meteoscape.nodes.calculators import builtin as calculators
+    from meteoscape.nodes.providers import builtin as providers
+
+    tokens = {impl_id.replace("-", "_") for impl_id in (*providers.CATALOG, *calculators.CATALOG)}
+    leaked = [
+        f"{field} embeds {token}"
+        for field in Settings.model_fields
+        for token in tokens
+        if token in field
+    ]
+    assert not leaked, leaked
+
+
+def test_defs_take_builtin_handles_as_plain_ids_and_default_priority() -> None:
+    from meteoscape.nodes.calculators import builtin as calculators
+    from meteoscape.nodes.providers import builtin as providers
+
+    offering = OfferingDef(providers.OPEN_METEO)
+    assert offering.impl == "open-meteo"
+    assert offering.priority == 0
+    recipe = CalculatorDef(calculators.WIND_UV)
+    assert recipe.fn_id == "wind_uv"
+    assert recipe.priority == 0

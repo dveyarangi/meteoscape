@@ -286,6 +286,12 @@ def test_build_requires_a_secret() -> None:
         _build(secret=None)
 
 
+def test_build_rejects_unknown_settings_keys() -> None:
+    with pytest.raises(CompositionError, match="enabled") as exc:
+        _build(settings={"cadence_hours": 6, "enabled": True})
+    assert "cadence_hours" not in str(exc.value)
+
+
 def test_declared_window_opens_on_the_current_hour() -> None:
     clock = StoppedClock(datetime(2026, 7, 11, 13, 30, tzinfo=UTC))
     from meteoscape.nodes.providers.twc import MANIFEST

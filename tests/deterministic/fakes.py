@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from meteoscape.clock import Clock, StoppedClock
-from meteoscape.config import Settings, StoreSpec
+from meteoscape.config import OfferingDef, Settings, StoreSpec
 from meteoscape.errors import RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef, RollingAxis
@@ -34,6 +34,7 @@ from meteoscape.nodes.catalog.providers import (
     ProviderManifest,
     SecretSlot,
 )
+from meteoscape.nodes.providers import builtin as builtin_providers
 from meteoscape.nodes.providers.base import Provider
 from meteoscape.nodes.store import Store, StoreFactory
 from meteoscape.parameters import AIR_TEMPERATURE, ParameterId
@@ -42,14 +43,15 @@ STOPPED = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
 
 
 def pinned_settings(**kwargs: Any) -> Settings:
-    """`Settings` with vendor slots taken from kwargs, not `.env`.
-
-    Init overrides env, so a local `METEOSCAPE_TWC_API_KEY` cannot silently enable TWC.
-    TODO (temporary): goes with the vendor-named fields when generic secret injection replaces
-    them (docs/edge/provider.md vendor-config-purity).
-    """
-    kwargs.setdefault("twc_api_key", None)
+    """`Settings` isolated from a developer `.env`; init kwargs still override env fields."""
+    kwargs.setdefault("_env_file", None)
     return Settings(**kwargs)
+
+
+TWC_PRIMARY_OFFERINGS: tuple[OfferingDef, ...] = (
+    OfferingDef(builtin_providers.TWC, priority=0),
+    OfferingDef(builtin_providers.OPEN_METEO, priority=1),
+)
 
 
 _CADENCE = CadenceDef(

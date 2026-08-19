@@ -12,7 +12,7 @@ import respx
 
 from fakes import STOPPED, core_parameters, snapped_point_domain
 from meteoscape.api.mcp_app import serialize_coverage
-from meteoscape.errors import CapabilityMismatch, RuntimeFailure
+from meteoscape.errors import CapabilityMismatch, CompositionError, RuntimeFailure
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Coverage, Selection
@@ -36,9 +36,11 @@ from meteoscape.nodes.providers.open_meteo import (
     BASE_URL,
     BEST_MATCH,
     CADENCE,
+    MANIFEST,
     PROVIDER_ID,
     TAPS,
     OpenMeteoProbe,
+    build,
 )
 from meteoscape.nodes.providers.timeline import (
     HOURLY_STEP,
@@ -710,3 +712,10 @@ async def test_httpx_transport_non_json_is_runtime_failure() -> None:
     transport = HttpxTransport(BASE_URL)
     with pytest.raises(RuntimeFailure, match="non-JSON"):
         await transport.fetch(FetchRequest(path="/v1/forecast", params={}))
+
+
+def test_build_rejects_unknown_settings_keys() -> None:
+    spec = MANIFEST.offerings[BEST_MATCH]
+    with pytest.raises(CompositionError, match="enabled") as exc:
+        build(spec, {"enabled": True}, None, STOPPED, core_parameters())
+    assert "open-meteo" in str(exc.value)

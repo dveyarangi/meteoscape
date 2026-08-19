@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 
 from ...clock import Clock
 from ...config import StoreSpec
-from ...errors import RuntimeFailure
+from ...errors import CompositionError, RuntimeFailure
 from ...identity import SourceKey
 from ...manifold.cadence import CadenceDef
 from ...manifold.domain import Interval
@@ -236,7 +236,9 @@ def build(
     parameters: ParameterTable,
 ) -> Provider:
     """Catalogue `build` face — composes the shape with this vendor's Probe and declarations."""
-    del settings, secret_value  # keyless; no offering settings in v1
+    if settings:
+        raise CompositionError(f"open-meteo unknown settings keys: {', '.join(sorted(settings))}")
+    del secret_value  # keyless
     return TimelineProvider(
         probe=OpenMeteoProbe(HttpxTransport(BASE_URL)),
         taps=TAPS,

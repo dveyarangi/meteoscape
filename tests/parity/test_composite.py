@@ -7,6 +7,7 @@ be forced to fault.
 
 from __future__ import annotations
 
+import os
 from datetime import timedelta
 from typing import Any
 
@@ -16,9 +17,10 @@ from fastmcp import Client
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Metronome
 from meteoscape.config import ArbiterPolicy, CalculatorDef, OfferingDef, ProfileConfig, StoreSpec
+from meteoscape.nodes.calculators import builtin as calculators
 from meteoscape.nodes.catalog.providers import ProviderCatalog, ProviderManifest
-from meteoscape.parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V
-from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
+from meteoscape.nodes.providers import builtin as providers
+from meteoscape.server import compose
 
 _LAT = 52.52
 _LON = 13.41
@@ -45,42 +47,28 @@ def _manifests(order: tuple[str, ...], catalog: ProviderCatalog) -> list[Provide
 
 
 def _secrets(request: pytest.FixtureRequest, manifests: list[ProviderManifest]) -> dict[str, str]:
-    secrets: dict[str, str] = {}
+    collected: dict[str, str] = {}
     for manifest in manifests:
         if manifest.secret is None:
             continue
-        slot = manifest.secret.name
-        option = f"--{slot.replace('_', '-')}"
-        try:
-            value = request.config.getoption(option)
-        except ValueError:
-            value = None
-        if not value:
-            pytest.skip(f"composite parity needs {slot}: pass {option}; it is not present")
-        assert isinstance(value, str)
-        secrets[slot] = value
-    return secrets
-
-
-def _profile(order: tuple[str, ...], manifests: list[ProviderManifest]) -> ProfileConfig:
-    offerings = tuple(
-        OfferingDef(
-            impl=impl,
-            priority=index,
-            secret_ref=manifest.secret.name if manifest.secret is not None else None,
+        value = request.config.getoption("--twc-api-key") or os.environ.get(
+            "METEOSCAPE_TWC_API_KEY"
         )
-        for index, (impl, manifest) in enumerate(zip(order, manifests, strict=True))
-    )
+        if not value:
+            pytest.skip(
+                "composite parity needs a key: pass --twc-api-key or set METEOSCAPE_TWC_API_KEY; "
+                "neither is present"
+            )
+        assert isinstance(value, str)
+        collected[manifest.impl_id] = value
+    return collected
+
+
+def _profile(order: tuple[str, ...]) -> ProfileConfig:
+    offerings = tuple(OfferingDef(impl=impl, priority=index) for index, impl in enumerate(order))
     return ProfileConfig(
         offerings=offerings,
-        calculators=(
-            CalculatorDef(
-                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
-                inputs=frozenset({WIND_U, WIND_V}),
-                fn_id="wind_uv",
-                priority=0,
-            ),
-        ),
+        calculators=(CalculatorDef(calculators.WIND_UV),),
         root_store=StoreSpec(spatial_step=0.0001, retention_interval=timedelta(days=14)),
         arbiter=ArbiterPolicy(),
     )
@@ -88,7 +76,7 @@ def _profile(order: tuple[str, ...], manifests: list[ProviderManifest]) -> Profi
 
 async def _forecast_payload(profile: ProfileConfig, secrets: dict[str, str]) -> dict[str, Any]:
     clock = Metronome()
-    gateway = compose(profile, PROVIDER_CATALOG, CALCULATOR_CATALOG, secrets, clock)
+    gateway = compose(profile, providers.CATALOG, calculators.CATALOG, secrets, clock)
     app = build_mcp_app(gateway, clock)
     async with Client(app) as client:
         result = await client.call_tool("forecast_hourly", _REQUEST)
@@ -100,9 +88,8 @@ async def _forecast_payload(profile: ProfileConfig, secrets: dict[str, str]) -> 
 @pytest.mark.asyncio
 async def test_composite_serves_the_configured_priority_0(request: pytest.FixtureRequest) -> None:
     order = _order(request)
-    manifests = _manifests(order, PROVIDER_CATALOG)
-    secrets = _secrets(request, manifests)
-    payload = await _forecast_payload(_profile(order, manifests), secrets)
+    manifests = _manifests(order, providers.CATALOG)
+    payload = await _forecast_payload(_profile(order), _secrets(request, manifests))
 
     prefix = f"{manifests[0].provider_id}:"
     served = {name: block for name, block in payload.items() if name != "valid_time"}

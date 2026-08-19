@@ -30,9 +30,15 @@ capability, provenance authorship, and output well-formedness (ADR-0004)."""
 
 @dataclass(frozen=True)
 class CalculatorManifest:
-    """Cohesive calculator plugin face — formula plus declarative invocation constraints."""
+    """Cohesive calculator plugin face — formula plus the co-produced I/O group.
+
+    `outputs` / `inputs` are the kernel's own facts, mirroring `OfferingSpec` as the product row.
+    A `CalculatorDef` selects and ranks; it does not restate this group. See ADR-0004 / ADR-0005.
+    """
 
     fn_id: str
     fn: CombineFn
+    outputs: frozenset[ParameterId]
+    inputs: frozenset[ParameterId]
     # A method tag for SyntheticOrigin and further invocation constraints belong with the behavior;
     # the node reads them to stamp provenance. Catalogue rows remain settings, not data flow.

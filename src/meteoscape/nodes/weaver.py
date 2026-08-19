@@ -3,8 +3,9 @@
 `weave(ProfileDef)` allocates every `Store`, wraps sources and calculators as `Producer`s, constructs
 the `Reconciler` via `build_reconciler`, and builds `Arbiter(producers, reconciler)` under the
 best-view `Reservoir`. Calculators are memoized per `CalculatorKey` with a scoped input Arbiter
-(DAG). The Weaver never ranks — priority stays registry data the reconciler interprets. See
-docs/architecture.md ("Config, binders, Weaver") and ADR-0005 / ADR-0004.
+(DAG). The Weaver never ranks — priority stays registry data the reconciler interprets; equal
+priorities keep bind order (the reconciler's stable-sort contract).
+See docs/architecture.md ("Config, binders, Weaver") and ADR-0005 / ADR-0004.
 """
 
 from __future__ import annotations
@@ -18,7 +19,12 @@ from ..manifold.domain import AxisName
 from ..parameters import ParameterId
 from .arbiter import Arbiter, Producer, Reconciler, build_reconciler
 from .calculator import Calculator
-from .composition import CompositionError, ProfileDef, RegisteredSource, validate_calculators
+from .composition import (
+    CompositionError,
+    ProfileDef,
+    RegisteredSource,
+    validate_calculators,
+)
 from .reservoir import Reservoir
 from .store import StoreFactory
 

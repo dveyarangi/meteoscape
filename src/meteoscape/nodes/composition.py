@@ -19,7 +19,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..clock import Clock
-from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec
+from ..config import ArbiterPolicy, CalculatorDef, OfferingDef, StoreSpec, secret_env_name
 from ..errors import CompositionError  # re-exported from `errors`, the Tier-0 leaf that owns it
 from ..identity import CalculatorKey, SourceKey
 from ..manifold.capability import EnumerableCapability
@@ -27,7 +27,7 @@ from ..manifold.domain import Domain, Separable, as_separable
 from ..parameters import ParameterDef, ParameterId
 from .catalog.calculators import CalculatorCatalog, CalculatorManifest
 from .catalog.paramtable import ParameterTable
-from .catalog.providers import ProviderCatalog
+from .catalog.providers import ProviderCatalog, ProviderManifest
 from .providers.base import Provider
 
 
@@ -70,12 +70,15 @@ class SourceBinder:
         parameters: ParameterTable,
     ) -> SourceRegistry:
         """Instantiate producers per `OfferingDef`; derive `SourceKey` and resolve each Source store."""
-        sources: dict[SourceKey, RegisteredSource] = {}
+        resolved: list[tuple[OfferingDef, ProviderManifest]] = []
         for offering in defs:
             manifest = self.catalog.get(offering.impl)
             if manifest is None:
                 raise CompositionError(f"unknown provider impl {offering.impl!r}")
+            resolved.append((offering, manifest))
 
+        sources: dict[SourceKey, RegisteredSource] = {}
+        for offering, manifest in resolved:
             name = offering.name if offering.name is not None else manifest.default_offering
             if name is None:
                 raise NotImplementedError("OfferingDef expand (name=None) is not built yet")
@@ -84,11 +87,13 @@ class SourceBinder:
             if spec is None:
                 raise CompositionError(f"unknown offering {name!r} for impl {offering.impl!r}")
 
-            secret_value: str | None = None
-            if offering.secret_ref is not None:
-                if offering.secret_ref not in secrets:
-                    raise CompositionError(f"dangling secret_ref {offering.secret_ref!r}")
-                secret_value = secrets[offering.secret_ref]
+            secret_value = secrets.get(offering.impl)
+            if manifest.secret is not None and secret_value is None:
+                slot = manifest.secret.name
+                raise CompositionError(
+                    f"missing secret {slot!r} for impl {offering.impl!r} "
+                    f"(env: {secret_env_name(offering.impl, slot)})"
+                )
 
             provider = manifest.build(spec, offering.settings, secret_value, clock, parameters)
             key = SourceKey(provider=manifest.provider_id, dataset=spec.name)
@@ -152,13 +157,13 @@ class CalculatorBinder:
             if key in calculators:
                 raise CompositionError(f"duplicate CalculatorKey {key}")
             try:
-                outputs = {pid: parameters.get(pid) for pid in recipe.outputs}
+                outputs = {pid: parameters.get(pid) for pid in manifest.outputs}
             except KeyError as exc:
                 raise CompositionError(f"unknown calculator output {exc.args[0]!r}") from exc
             calculators[key] = RegisteredCalculator(
                 key=key,
                 outputs=outputs,
-                inputs=recipe.inputs,
+                inputs=manifest.inputs,
                 manifest=manifest,
                 priority=recipe.priority,
                 stored=recipe.stored,

@@ -10,16 +10,19 @@ import respx
 from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
-from fakes import pinned_settings, snapped_point_domain
+from fakes import TWC_PRIMARY_OFFERINGS, pinned_settings, snapped_point_domain
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Clock, StoppedClock
+from meteoscape.config import ArbiterPolicy, ProfileConfig
 from meteoscape.manifold.cadence import RollingAxis
 from meteoscape.manifold.core import Selection
 from meteoscape.manifold.domain import AxisName, FootprintDomain, GridDomain, RegularAxis
+from meteoscape.nodes.calculators import builtin as calculators
+from meteoscape.nodes.providers import builtin as providers
 from meteoscape.nodes.providers.open_meteo import BASE_URL, CADENCE
 from meteoscape.nodes.providers.twc import BASE_URL as TWC_BASE_URL
 from meteoscape.parameters import AIR_TEMPERATURE, WIND_DIRECTION, WIND_SPEED
-from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
+from meteoscape.server import CALCULATORS, OFFERINGS, compose
 
 _CLOCK = StoppedClock(datetime(2026, 7, 11, 12, 0, tzinfo=UTC))
 _HOURS = 168
@@ -42,21 +45,21 @@ def _compose_default(clock: Clock, *, store_spatial_step: float | None = None):
         else pinned_settings(store_spatial_step=store_spatial_step)
     )
     return compose(
-        settings.profile(),
-        PROVIDER_CATALOG,
-        CALCULATOR_CATALOG,
-        settings.secrets(),
+        ProfileConfig(OFFERINGS, CALCULATORS, settings.root_store(), ArbiterPolicy()),
+        providers.CATALOG,
+        calculators.CATALOG,
+        {},
         clock,
     )
 
 
 def _compose_both(clock: Clock):
-    settings = pinned_settings(twc_api_key="test-key")
+    settings = pinned_settings()
     return compose(
-        settings.profile(),
-        PROVIDER_CATALOG,
-        CALCULATOR_CATALOG,
-        settings.secrets(),
+        ProfileConfig(TWC_PRIMARY_OFFERINGS, CALCULATORS, settings.root_store(), ArbiterPolicy()),
+        providers.CATALOG,
+        calculators.CATALOG,
+        {"twc": "test-key"},
         clock,
     )
 

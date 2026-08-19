@@ -81,7 +81,12 @@ def _wind_registry(*, stored: bool = False) -> CalculatorRegistry:
                     WIND_DIRECTION: parameters.get(WIND_DIRECTION),
                 },
                 inputs=frozenset({WIND_U, WIND_V}),
-                manifest=CalculatorManifest(fn_id="wind_uv", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="wind_uv",
+                    fn=wind_from_uv,
+                    outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
+                    inputs=frozenset({WIND_U, WIND_V}),
+                ),
                 priority=0,
                 stored=stored,
             )
@@ -236,14 +241,24 @@ def test_calculator_cycle_raises() -> None:
                 key=a,
                 outputs={WIND_SPEED: parameters.get(WIND_SPEED)},
                 inputs=frozenset({WIND_DIRECTION}),
-                manifest=CalculatorManifest(fn_id="a", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="a",
+                    fn=wind_from_uv,
+                    outputs=frozenset({WIND_SPEED}),
+                    inputs=frozenset({WIND_DIRECTION}),
+                ),
                 priority=0,
             ),
             b: RegisteredCalculator(
                 key=b,
                 outputs={WIND_DIRECTION: parameters.get(WIND_DIRECTION)},
                 inputs=frozenset({WIND_SPEED}),
-                manifest=CalculatorManifest(fn_id="b", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="b",
+                    fn=wind_from_uv,
+                    outputs=frozenset({WIND_DIRECTION}),
+                    inputs=frozenset({WIND_SPEED}),
+                ),
                 priority=0,
             ),
         }

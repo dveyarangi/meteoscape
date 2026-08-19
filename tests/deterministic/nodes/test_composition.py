@@ -44,6 +44,8 @@ from meteoscape.parameters import (
 )
 
 _T0 = datetime(2026, 7, 11, 12, 0, tzinfo=UTC)
+_WIND_OUT = frozenset({WIND_SPEED, WIND_DIRECTION})
+_WIND_IN = frozenset({WIND_U, WIND_V})
 
 
 def _never_called(
@@ -155,7 +157,7 @@ def test_unknown_offering_name_raises() -> None:
         )
 
 
-def test_secret_ref_reaches_build() -> None:
+def test_secret_reaches_build_via_derived_name() -> None:
     built: list = []
     catalog = fake_catalog(secret=SecretSlot(name="api_key"), built=built)
     SourceBinder(catalog).build(
@@ -164,11 +166,10 @@ def test_secret_ref_reaches_build() -> None:
                 impl="fake",
                 name="default",
                 priority=0,
-                secret_ref="api_key",
                 settings={"region": "eu"},
             )
         ],
-        secrets={"api_key": "s3cret"},
+        secrets={"fake": "s3cret"},
         clock=STOPPED,
         parameters=core_parameters(),
     )
@@ -176,14 +177,31 @@ def test_secret_ref_reaches_build() -> None:
     assert built[0][1] == {"region": "eu"}
 
 
-def test_dangling_secret_ref_raises() -> None:
-    with pytest.raises(CompositionError, match="secret_ref"):
-        SourceBinder(fake_catalog()).build(
-            [OfferingDef(impl="fake", name="default", priority=0, secret_ref="missing")],
+def test_settings_are_not_spelled_through_env() -> None:
+    """Env carries secrets and scalars only; per-offering settings ride the def (0123 align)."""
+    built: list = []
+    catalog = fake_catalog(secret=SecretSlot(name="api_key"), built=built)
+    SourceBinder(catalog).build(
+        [OfferingDef(impl="fake", name="default", priority=0, settings={"region": "eu"})],
+        secrets={"fake": "s3cret"},
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    assert built[0][1] == {"region": "eu"}
+
+
+def test_missing_slot_secret_refuses_naming_the_env_var() -> None:
+    catalog = fake_catalog(secret=SecretSlot(name="api_key"))
+    with pytest.raises(CompositionError, match="METEOSCAPE_FAKE_API_KEY") as exc:
+        SourceBinder(catalog).build(
+            [OfferingDef(impl="fake", name="default", priority=0)],
             secrets={},
             clock=STOPPED,
             parameters=core_parameters(),
         )
+    message = str(exc.value)
+    assert "fake" in message
+    assert "api_key" in message
 
 
 def test_duplicate_source_key_raises() -> None:
@@ -226,18 +244,13 @@ def test_calculator_binder_empty() -> None:
 
 def test_calculator_binder_resolves_key_outputs_and_priority() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
+        "wind_uv": CalculatorManifest(
+            fn_id="wind_uv", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
     }
     parameters = core_parameters()
     bound = CalculatorBinder(catalog).build(
-        [
-            CalculatorDef(
-                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
-                inputs=frozenset({WIND_U, WIND_V}),
-                fn_id="wind_uv",
-                priority=0,
-            )
-        ],
+        [CalculatorDef("wind_uv")],
         parameters,
     )
     key = CalculatorKey(method="wind_uv", name="default")
@@ -255,18 +268,12 @@ def test_calculator_binder_resolves_key_outputs_and_priority() -> None:
 
 def test_calculator_binder_name_override() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
+        "wind_uv": CalculatorManifest(
+            fn_id="wind_uv", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
     }
     bound = CalculatorBinder(catalog).build(
-        [
-            CalculatorDef(
-                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
-                inputs=frozenset({WIND_U, WIND_V}),
-                fn_id="wind_uv",
-                priority=1,
-                name="variant",
-            )
-        ],
+        [CalculatorDef("wind_uv", priority=1, name="variant")],
         core_parameters(),
     )
     assert set(bound.calculators) == {CalculatorKey(method="wind_uv", name="variant")}
@@ -274,34 +281,28 @@ def test_calculator_binder_name_override() -> None:
 
 def test_calculator_binder_unknown_fn_id_raises() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
+        "wind_uv": CalculatorManifest(
+            fn_id="wind_uv", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
     }
     with pytest.raises(CompositionError, match="fn_id"):
         CalculatorBinder(catalog).build(
-            [
-                CalculatorDef(
-                    outputs=frozenset({WIND_SPEED}),
-                    inputs=frozenset({WIND_U, WIND_V}),
-                    fn_id="missing",
-                    priority=0,
-                )
-            ],
+            [CalculatorDef("missing")],
             core_parameters(),
         )
 
 
 def test_same_outputs_different_methods_are_distinct_keys() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
-        "wind_uv_alt": CalculatorManifest(fn_id="wind_uv_alt", fn=_never_called),
+        "wind_uv": CalculatorManifest(
+            fn_id="wind_uv", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
+        "wind_uv_alt": CalculatorManifest(
+            fn_id="wind_uv_alt", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
     }
-    outputs = frozenset({WIND_SPEED, WIND_DIRECTION})
-    inputs = frozenset({WIND_U, WIND_V})
     bound = CalculatorBinder(catalog).build(
-        [
-            CalculatorDef(outputs=outputs, inputs=inputs, fn_id="wind_uv", priority=0),
-            CalculatorDef(outputs=outputs, inputs=inputs, fn_id="wind_uv_alt", priority=1),
-        ],
+        [CalculatorDef("wind_uv"), CalculatorDef("wind_uv_alt", priority=1)],
         core_parameters(),
     )
     assert set(bound.calculators) == {
@@ -312,24 +313,13 @@ def test_same_outputs_different_methods_are_distinct_keys() -> None:
 
 def test_duplicate_calculator_key_raises() -> None:
     catalog = {
-        "wind_uv": CalculatorManifest(fn_id="wind_uv", fn=_never_called),
+        "wind_uv": CalculatorManifest(
+            fn_id="wind_uv", fn=_never_called, outputs=_WIND_OUT, inputs=_WIND_IN
+        ),
     }
     with pytest.raises(CompositionError, match="duplicate"):
         CalculatorBinder(catalog).build(
-            [
-                CalculatorDef(
-                    outputs=frozenset({WIND_SPEED}),
-                    inputs=frozenset({WIND_U, WIND_V}),
-                    fn_id="wind_uv",
-                    priority=0,
-                ),
-                CalculatorDef(
-                    outputs=frozenset({WIND_DIRECTION}),
-                    inputs=frozenset({WIND_U, WIND_V}),
-                    fn_id="wind_uv",
-                    priority=1,
-                ),
-            ],
+            [CalculatorDef("wind_uv"), CalculatorDef("wind_uv", priority=1)],
             core_parameters(),
         )
 
@@ -348,14 +338,16 @@ def _global() -> FootprintDomain:
     )
 
 
-def _source(dataset: str, pids: frozenset[ParameterId]) -> tuple[SourceKey, RegisteredSource]:
-    """A source serving `pids` — `validate_calculators` reads only which parameters are served."""
+def _source(
+    dataset: str, pids: frozenset[ParameterId], *, priority: int = 0
+) -> tuple[SourceKey, RegisteredSource]:
+    """A source serving `pids` — weave preconditions read only which parameters are served."""
     key = SourceKey(provider="test", dataset=dataset)
     table = core_parameters()
     capability = GranularCapability(reaches={pid: (table.get(pid), _global()) for pid in pids})
     return key, RegisteredSource(
         provider=FakeProvider(source_key=key, capability=capability),
-        priority=0,
+        priority=priority,
         store=SAMPLE_STORE,
     )
 
@@ -384,7 +376,9 @@ def _wind_calculator() -> CalculatorRegistry:
                     WIND_DIRECTION: parameters.get(WIND_DIRECTION),
                 },
                 inputs=frozenset({WIND_U, WIND_V}),
-                manifest=CalculatorManifest(fn_id="wind_uv", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="wind_uv", fn=wind_from_uv, outputs=_WIND_OUT, inputs=_WIND_IN
+                ),
                 priority=0,
             )
         }
@@ -402,14 +396,24 @@ def _cycle_calculators() -> CalculatorRegistry:
                 key=a,
                 outputs={WIND_SPEED: parameters.get(WIND_SPEED)},
                 inputs=frozenset({WIND_DIRECTION}),
-                manifest=CalculatorManifest(fn_id="a", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="a",
+                    fn=wind_from_uv,
+                    outputs=frozenset({WIND_SPEED}),
+                    inputs=frozenset({WIND_DIRECTION}),
+                ),
                 priority=0,
             ),
             b: RegisteredCalculator(
                 key=b,
                 outputs={WIND_DIRECTION: parameters.get(WIND_DIRECTION)},
                 inputs=frozenset({WIND_SPEED}),
-                manifest=CalculatorManifest(fn_id="b", fn=wind_from_uv),
+                manifest=CalculatorManifest(
+                    fn_id="b",
+                    fn=wind_from_uv,
+                    outputs=frozenset({WIND_DIRECTION}),
+                    inputs=frozenset({WIND_SPEED}),
+                ),
                 priority=0,
             ),
         }

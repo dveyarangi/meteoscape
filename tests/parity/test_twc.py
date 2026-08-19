@@ -7,6 +7,7 @@ producer disagrees.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import pytest
@@ -14,9 +15,11 @@ from fastmcp import Client
 
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import Metronome
-from meteoscape.config import Settings
+from meteoscape.config import ArbiterPolicy, OfferingDef, ProfileConfig, Settings
+from meteoscape.nodes.calculators import builtin as calculators
 from meteoscape.nodes.calculators.wind import CALM_SPEED_FLOOR
-from meteoscape.server import CALCULATOR_CATALOG, PROVIDER_CATALOG, compose
+from meteoscape.nodes.providers import builtin as providers
+from meteoscape.server import CALCULATORS, compose
 from parity.comparison import (
     Absolute,
     CalmRule,
@@ -53,27 +56,28 @@ SPEC = ParitySpec(
 )
 
 
-def _keyed_settings(cli_key: str | None) -> Settings:
-    """TWC as the only producer, so the payload under comparison can be nobody else's."""
-    settings = (
-        Settings(open_meteo_enabled=False, twc_api_key=cli_key)
-        if cli_key
-        else Settings(open_meteo_enabled=False)
-    )
-    if "twc_api_key" not in settings.secrets():
+def _twc_api_key(cli_key: str | None) -> str:
+    key = cli_key or os.environ.get("METEOSCAPE_TWC_API_KEY")
+    if not key:
         pytest.skip(
             "TWC parity needs a key: pass --twc-api-key or set METEOSCAPE_TWC_API_KEY; neither is present"
         )
-    return settings
+    return key
 
 
-async def _forecast_payload(settings: Settings) -> dict[str, Any]:
+async def _forecast_payload(api_key: str) -> dict[str, Any]:
     clock = Metronome()
+    settings = Settings(_env_file=None)
     gateway = compose(
-        settings.profile(),
-        PROVIDER_CATALOG,
-        CALCULATOR_CATALOG,
-        settings.secrets(),
+        ProfileConfig(
+            (OfferingDef(impl="twc", priority=0),),
+            CALCULATORS,
+            settings.root_store(),
+            ArbiterPolicy(),
+        ),
+        providers.CATALOG,
+        calculators.CATALOG,
+        {"twc": api_key},
         clock,
     )
     app = build_mcp_app(gateway, clock)
@@ -86,14 +90,14 @@ async def _forecast_payload(settings: Settings) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 async def test_twc_parity(request: pytest.FixtureRequest) -> None:
-    settings = _keyed_settings(request.config.getoption("--twc-api-key"))
-    api_key = settings.secrets()["twc_api_key"]
+    api_key = _twc_api_key(request.config.getoption("--twc-api-key"))
+    secrets = {"twc": api_key}
     request_desc = f"forecast_hourly lat={_LAT} lon={_LON} default window UTC"
     payload: dict[str, Any] | None = None
     raw: RawEvidence | None = None
     report = None
     for _ in range(ATTEMPTS):
-        payload = await _forecast_payload(settings)
+        payload = await _forecast_payload(api_key)
         reference, raw = fetch_reference(_LAT, _LON, duration=_DURATION, api_key=api_key)
         report = compare(payload, reference, SPEC)
         if report.ok:
@@ -110,7 +114,7 @@ async def test_twc_parity(request: pytest.FixtureRequest) -> None:
             "reference_response": raw.body,
             "diff": report,
         },
-        settings.secrets(),
+        secrets,
     )
     pytest.fail(
         format_summary(
@@ -118,6 +122,6 @@ async def test_twc_parity(request: pytest.FixtureRequest) -> None:
             request_desc,
             report,
             evidence,
-            secrets=settings.secrets(),
+            secrets=secrets,
         )
     )

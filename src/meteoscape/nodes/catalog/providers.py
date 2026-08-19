@@ -56,3 +56,12 @@ class ProviderManifest:
     default_offering: str | None = None
     """Catalogue row used when `OfferingDef.name` is omitted; `None` leaves an omitted name to the
     (unbuilt) expand path."""
+
+
+def secret_slots(catalog: ProviderCatalog) -> dict[str, str]:
+    """`impl_id` → declared `SecretSlot` name, for the impls that declare one."""
+    return {
+        impl_id: manifest.secret.name
+        for impl_id, manifest in catalog.items()
+        if manifest.secret is not None
+    }

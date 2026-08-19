@@ -1,19 +1,25 @@
-"""Typed settings - pure data, injected at construction.
+"""Typed settings - generic residue, injected at construction.
 
-`ProfileConfig` (operator enablement per profile), secrets, and cache/grid tuning. Secrets are
-injected, never read from globals downstream. `nodes/` receive plain values from `server.py`, never
-this type. The defaults encode v1's positions (TWC primary, Open-Meteo fallback).
+`ProfileConfig` is assembled at a composition root, not projected from `Settings`.
+`Settings` holds the store/retention knobs; secrets are read by derived name.
+`nodes/` receive plain values from `server.py`, never this type.
+See docs/architecture.md (Config, binders, Weaver) and ADR-0005.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
+from pathlib import Path
+from typing import Any
 
+from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .parameters import WIND_DIRECTION, WIND_SPEED, WIND_U, WIND_V, ParameterId
+_ENV_PREFIX = "METEOSCAPE_"
+_ENV_FILE = ".env"
 
 
 @dataclass(frozen=True)
@@ -26,34 +32,34 @@ class StoreSpec:
 
 @dataclass(frozen=True)
 class OfferingDef:
-    """Profile enablement declaration for one catalogue offering.
+    """What a profile may declare for one catalogue offering.
 
-    Points at `ProviderManifest` via `impl` (+ optional `name`); no raw `SourceKey`, no geometry.
-    `name=None` defers to the manifest's `default_offering`, or the expand path when the manifest
-    declares none. Optional `store` whole-spec-replaces the catalogue `StoreSpec` for
-    non-materialized Sources.
+    A def selects and ranks; it never restates what the plugin declares. `impl` and optional
+    `name` select a catalogue spec; omitted `name` uses the manifest's default offering.
+    `priority` ranks this producer on the shared scale with calculators (default 0). `settings`
+    overrides are opaque to everyone but the impl's `build`. `store` whole-spec-replaces the
+    catalogue `StoreSpec` for a non-materialized Source. The secret is the manifest's slot,
+    never this def's: declaring a keyed offering commits the profile to supplying that secret.
     """
 
     impl: str
-    priority: int
+    priority: int = 0
     name: str | None = None
-    secret_ref: str | None = None
     settings: Mapping[str, object] = field(default_factory=dict)
     store: StoreSpec | None = None
 
 
 @dataclass(frozen=True)
 class CalculatorDef:
-    """Profile enablement of one calculator — peer of `OfferingDef`.
+    """What a profile may declare for one catalogue calculator.
 
-    Points at a `CalculatorManifest` via `fn_id`; `outputs` is the co-produced output group.
-    `name=None` binder-defaults to `"default"`. Bound via `CalculatorBinder` before weave.
+    A def selects and ranks; it never restates what the plugin declares. `fn_id` selects a
+    manifest; `priority` ranks on the shared producer scale (default 0); `name` is the variant
+    (binder-defaults to `"default"`); `stored` is retention policy.
     """
 
-    outputs: frozenset[ParameterId]
-    inputs: frozenset[ParameterId]
     fn_id: str
-    priority: int
+    priority: int = 0
     name: str | None = None
     stored: bool = False
 
@@ -76,21 +82,13 @@ class ProfileConfig:
 
 
 class Settings(BaseSettings):
-    """Operator env scalars projected into a `ProfileConfig`.
+    """Operator env: the typed knobs, and nothing else.
 
-    TODO (temporary): the vendor-named fields and the `offerings` / `secrets` branches that name
-    vendors dissolve into generic enablement and secret injection
-    (docs/edge/provider.md vendor-config-purity;
-    docs/concerns.md#26-provider--calculator-plugin-scaffolding).
+    Profile enumeration lives at a composition root; secrets are read by derived name
+    (`secrets_from_env`), never swept out of the namespace.
     """
 
-    model_config = SettingsConfigDict(env_prefix="METEOSCAPE_", env_file=".env", extra="ignore")
-
-    open_meteo_enabled: bool = True
-    """Include the Open-Meteo producer. Keyless; off disables the backstop source."""
-
-    twc_api_key: str | None = None
-    """The Weather Company key (optional). Absent => serve on Open-Meteo alone."""
+    model_config = SettingsConfigDict(env_prefix=_ENV_PREFIX, env_file=_ENV_FILE, extra="ignore")
 
     store_spatial_step: float = 0.0001
     """Best-view store grid step in degrees — the cache lattice / fidelity floor. v1 default ~11 m:
@@ -101,41 +99,35 @@ class Settings(BaseSettings):
     retention_interval: timedelta = timedelta(days=14)
     """Time-based eviction bound (memory housekeeping; freshness is `expiration`, not this)."""
 
-    def offerings(self) -> tuple[OfferingDef, ...]:
-        """Enabled producer declarations. Omitted names resolve at the binder."""
-        defs: list[OfferingDef] = []
-        if self.twc_api_key is not None:
-            defs.append(OfferingDef(impl="twc", priority=0, secret_ref="twc_api_key"))
-        if self.open_meteo_enabled:
-            defs.append(OfferingDef(impl="open-meteo", priority=1))
-        return tuple(defs)
+    def __init__(self, _env_file: str | Path | None = _ENV_FILE, **data: Any) -> None:
+        """Declares `_env_file` so a caller can read the process env alone (tests, embedders)."""
+        super().__init__(_env_file=_env_file, **data)
 
-    def calculators(self) -> tuple[CalculatorDef, ...]:
-        """Derived-parameter recipes enabled for the default profile."""
-        return (
-            CalculatorDef(
-                outputs=frozenset({WIND_SPEED, WIND_DIRECTION}),
-                inputs=frozenset({WIND_U, WIND_V}),
-                fn_id="wind_uv",
-                priority=0,
-            ),
+    def root_store(self) -> StoreSpec:
+        return StoreSpec(
+            spatial_step=self.store_spatial_step,
+            retention_interval=self.retention_interval,
         )
 
-    def profile(self) -> ProfileConfig:
-        """v1 single best-view profile projected from env scalars."""
-        return ProfileConfig(
-            offerings=self.offerings(),
-            calculators=self.calculators(),
-            root_store=StoreSpec(
-                spatial_step=self.store_spatial_step,
-                retention_interval=self.retention_interval,
-            ),
-            arbiter=ArbiterPolicy(),
-        )
 
-    def secrets(self) -> Mapping[str, str]:
-        """Injected secret map keyed by `OfferingDef.secret_ref` names."""
-        out: dict[str, str] = {}
-        if self.twc_api_key is not None:
-            out["twc_api_key"] = self.twc_api_key
-        return out
+def secret_env_name(impl_id: str, slot: str) -> str:
+    """The env var an operator sets for one impl's secret — the one home of the spelling."""
+    return f"{_ENV_PREFIX}{impl_id.replace('-', '_').upper()}_{slot.upper()}"
+
+
+def secrets_from_env(
+    slots: Mapping[str, str], env_file: str | Path | None = _ENV_FILE
+) -> dict[str, str]:
+    """`impl_id` → secret value, read by derived name; empty or absent yields no entry.
+
+    Reads only the names the declared slots derive — never a scan of the namespace. `os.environ`
+    wins over the `.env` file, matching how the typed fields resolve.
+    """
+    from_file: Mapping[str, str | None] = dotenv_values(env_file) if env_file is not None else {}
+    secrets: dict[str, str] = {}
+    for impl_id, slot in slots.items():
+        name = secret_env_name(impl_id, slot)
+        value = os.environ.get(name) or from_file.get(name)
+        if value:
+            secrets[impl_id] = value
+    return secrets
