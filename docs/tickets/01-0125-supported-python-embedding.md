@@ -2,23 +2,11 @@
 
 - **Status:** Planned — its own embedding-edge align precedes implementation; this ticket assigns
   the Phase-1 delivery without preselecting the facade.
-- **Reaffirmed 2026-08-10 (beeline align):** embedding is the deployment's **first** consumption
-  shape; the [REST surface](./01-0165-rest-surface.md) follows later in the beeline rather than
-  replacing it. The two are siblings over the same `Gateway` seam, not a stack — an edge needs no
-  public facade, as the MCP edge already demonstrates — so REST does not depend on this ticket
-  mechanically. It is sequenced after it by decision, so the public failure hierarchy
-  ([#39](../concerns.md#39-python-embedding-surface-and-public-failures)) is settled here first;
-  expect REST's status-code mapping to reopen the *rendering* of those classes, which is normal.
-- **Moved up 2026-08-08 (align):** the first real embedder arrives with the local-station work (the
-  operator's application embeds meteoscape rather than running the MCP server), so this surface no
-  no longer waits for the former v1 tail. Consequence: the equivalence rule changes from "MCP-equivalent **v1**
-  semantics" (ship only when everything exposed is done) to **"equivalent to whatever is live"** —
-  the facade ships early and its capability grows as tickets land, exactly as the MCP surface already
-  does. The former dependency chain (off-grid homogenization, per-parameter selection, config,
-  errors) is thereby dissolved as a *gate*; those tickets now merely widen what both surfaces serve.
-  The ticket's own align (#39/#40) still precedes implementation.
-- **Outcome:** A documented, supported Python package boundary resolves the same v1 forecast product
-  as MCP without starting a protocol server, with expected failures exposed through public API.
+- **Depends on:** [Mongo obs source](./01-0124-mongo-obs-source.md) (the first non-HTTP,
+  past-facing source supplies lifecycle and construction evidence)
+- **Outcome:** A documented, supported Python package boundary resolves the same available forecast
+  product as MCP without starting a protocol server, with expected failures exposed through public
+  API.
 
 ## Parent
 
@@ -39,13 +27,19 @@ invariant break must not reach a product surface wearing a producer's fault. The
 `TODO(#39)` markers in `sampling.py`, `gateway.py`, `arbiter.py`, and `errors.py`.
 No existing internal type becomes public merely because it participates in today's composition path.
 
+Embedding is the pilot deployment's first consumption shape. It ships under **live equivalence**:
+the embedding and MCP surfaces expose the same weather behavior available when this ticket lands,
+and both widen as later capabilities land. The [REST surface](./01-0165-rest-surface.md) is a sibling
+over the `Gateway` seam, sequenced later so this ticket settles the public failure hierarchy first;
+REST may render those failures differently over HTTP.
+
 Then ship that contract end to end. An embedding host resolves the woven best-view profile without
 constructing or running FastMCP; the MCP and embedding surfaces expose equivalent weather semantics
 for equivalent requests, without requiring identical representations or shared adapter code.
 
 ## Acceptance criteria
 
-- [ ] A documented, supported package import resolves the complete v1 hourly forecast product
+- [ ] A documented, supported package import resolves the profile's available hourly forecast product
       headlessly, without constructing or starting an MCP, HTTP, or other protocol server.
 - [ ] Equivalent embedded and MCP requests against the same configured profile produce equivalent
       served windows, parameter membership, canonical values, provenance, nodata, and absence
@@ -56,22 +50,6 @@ for equivalent requests, without requiring identical representations or shared a
       guarded by packaging and integration tests.
 - [ ] The [Embedding Edge record](../edge/embedding.md) carries the shipped Contract and per-invariant
       validators; it no longer relies on de-facto internal imports.
-
-## Blocked by
-
-Nothing. This section previously listed off-grid homogenization, per-parameter selection, config,
-and errors — the v1-tail gates that the 2026-08-08 align **dissolved** when it adopted the
-live-equivalence rule (see the header). The list survived the align as stale text and is removed
-here (2026-08-10). Those tickets now merely *widen* what both surfaces serve; none gates this one.
-
-In queue order the surface still lands after
-[008 — config and secrets](./done/01-0123-config-secrets-degrade.md), which is ordering, not
-blocking.
-
-The Coverage-contract point-exactness invariant (off-grid X/Y reported at the request, values from
-the enclosing store cell) is already true and guarded by
-[007](./done/01-0117-off-grid-homogenization.md); this surface inherits it as an observable promise
-and its align does not re-decide it.
 
 ## Parent scope addressed
 

@@ -1,7 +1,7 @@
 # Vendor budget governor
 
 - **Status:** Planned (own align precedes) — minted at the 2026-08-10 beeline align.
-- **Depends on:** [vendor-call ledger](./01-0124-vendor-call-ledger.md) (the counter this gives
+- **Depends on:** [vendor-call ledger](./01-0130-vendor-call-ledger.md) (the counter this gives
   authority to), [004 — Second-provider fallback](./done/01-0121-second-provider-fallback.md) (where a
   refused call sends the request instead)
 - **Outcome:** A configured vendor budget stops the deployment from spending past it — the request

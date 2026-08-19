@@ -1,9 +1,11 @@
 # Mongo obs source
 
-- **Status:** Planned — its own align precedes implementation; it settles the
+- **Status:** Ready (own align precedes) — it settles the
   [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)
   mitigations (fixtures-as-contract, schema version marker if cheap, ownership statement) and the
   observation-source semantics still open below.
+- **Depends on:** [config and secrets](./done/01-0123-config-secrets-degrade.md) (the connection
+  string uses the generic `SecretSlot` mechanism)
 - **Blocks:** [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) (shares
   the transport and registry), [correction calculator](./01-0140-correction-calculator.md).
 - **Outcome:** Hourly station observations from the operator's Collector database served through
@@ -26,6 +28,11 @@ inside "provider" happens here, not by pre-design. It maps the collector's two o
 canonical parameters, reads the `stations` registry and `state` freshness doc for capability, and
 serves past-facing windows: T reach ends at the newest retained observation, not at a forecast
 horizon.
+
+This source lands through the existing internal composition path and is tested through `Gateway`.
+It exposes no supported imports and declares no pilot composition root; the
+[embedding surface](./01-0125-supported-python-embedding.md) follows with this source's lifecycle,
+construction, and failure evidence in hand.
 
 New semantics this shape introduces (decided at this ticket's align, not before):
 
@@ -60,16 +67,6 @@ database.
       the Mongo client).
 - [ ] The align's resolutions (obs freshness semantics, station-located geometry resolution, #45
       mitigations) are recorded in their durable homes before implementation starts.
-
-## Blocked by
-
-- [supported Python embedding surface](./01-0125-supported-python-embedding.md) (active) — the
-  embedder is this source's first consumer; its align settles the construction/config experience
-  this source's offering plugs into.
-- [008 — config, secrets, degradation](./done/01-0123-config-secrets-degrade.md) — noted at the
-  2026-08-10 align: what this source concretely needs from "construction/config" is a **connection
-  string carried as a secret**, which is the same `SecretSlot` mechanism TWC ships and 008
-  completes. That makes the harder half of this dependency land well before the facade does.
 
 ## Parent scope addressed
 

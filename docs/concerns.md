@@ -199,7 +199,7 @@ Candidate mechanisms, deliberately unchosen: the root refill keeping the ask's T
 boundless-answer licence); narration re-scoped to the primary's reach (moves producer knowledge to
 the edge, which [#29](#29-narrated-reach-what-a-profile-promises) resists); offering/reach-aware
 selection ([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)). Trigger: real
-demand for the beyond-primary tail — or the [ledger](./tickets/01-0124-vendor-call-ledger.md)
+demand for the beyond-primary tail — or the [ledger](./tickets/01-0130-vendor-call-ledger.md)
 pricing the redundant tail-ask refetch.
 
 ## 5. Read-time homogenization fidelity
@@ -608,7 +608,7 @@ configured Δ exists to conserve. **Splitting those two roles is the real prereq
 provider-real freshness signal — the escape is not a per-provider declaration but that split. Wanted
 by the faster-nowcast case, not by v1 → [TWC provider](./tickets/done/01-0120-twc-provider.md).
 
-→ queued for measurement by the [vendor-call ledger](./tickets/01-0124-vendor-call-ledger.md).
+→ queued for measurement by the [vendor-call ledger](./tickets/01-0130-vendor-call-ledger.md).
 
 ## 11. Incremental synthetic recompute
 
@@ -725,9 +725,9 @@ from point cache hits, which is why the two stay separately owned.
 ## 45. The collector schema is a contract meteoscape depends on but does not own
 
 **Kind:** external-contract risk (2026-08-08 align) · **Refs:**
-[Mongo obs source](./tickets/01-0130-mongo-obs-source.md),
+[Mongo obs source](./tickets/01-0124-mongo-obs-source.md),
 [Mongo forecast-run archive source](./tickets/01-0134-forecast-run-archive-source.md) ·
-**→ queued as [mongo-obs-source](./tickets/01-0130-mongo-obs-source.md)** (its align settles the
+**→ queued as [mongo-obs-source](./tickets/01-0124-mongo-obs-source.md)** (its align settles the
 mitigations below)
 
 The collector (external repo) writes parsed documents in its own schema — common camelCase forecast
@@ -735,7 +735,7 @@ fields sparse per provider (`ibm`, `tomorrow`, `visualcrossing`), two obs schema
 station-network source carrying `raw` payload and `method`; legacy `ibm_hod`), a `stations`
 registry, and a `state` freshness doc, keyed `(base_time, time)` / `time`. The Mongo sources map
 this schema to canonical parameters, so a collector-side schema change silently breaks them.
-Mitigations to settle at the `01-0130` align: pinned integration fixtures (sampled real documents)
+Mitigations to settle at the Mongo obs source align: pinned integration fixtures (sampled real documents)
 as the contract test, a schema version marker in the collector if cheap, and a documented ownership
 statement (collector owns the schema; meteoscape adapts). The station network's obs `raw` payload
 preserves replayability; forecast documents carry no raw, so forecast decode fidelity is bounded by
@@ -1327,7 +1327,7 @@ corollary. Recorded for the placement decision, so accidental verbatim does not 
   information**: `wire_source` wires by store presence alone; the two refusals behind it are policy
   guards — an uncached *metered* vendor buys a call per request
   ([0119](./tickets/done/01-0119-live-window-edge-tolerance.md)'s pathology) and bypasses the
-  [ledger](./tickets/01-0124-vendor-call-ledger.md)'s metering seam at the Source, and a store on an
+  [ledger](./tickets/01-0130-vendor-call-ledger.md)'s metering seam at the Source, and a store on an
   already-local dataset mirrors it uselessly. Loosening re-states those guards over capability and
   metering facts (error for metered-uncached, at most a warning for mirror-waste); it does not
   delete them.

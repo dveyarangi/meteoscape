@@ -1,26 +1,27 @@
 # Vendor-call ledger (meter slice)
 
-- **Status:** Planned (own align precedes) — minted at the 2026-08-10 beeline align.
+- **Status:** Planned (own align precedes)
 - **Depends on:** [011 — TWC provider](./done/01-0120-twc-provider.md) (the first metered vendor, and the
-  reason this exists), [008 — Config, secrets, degradation](./done/01-0123-config-secrets-degrade.md)
-  (the construction path a ledger is injected through)
+  reason this exists), [config and secrets](./done/01-0123-config-secrets-degrade.md)
+  (the construction path a ledger is injected through),
+  [supported Python embedding surface](./01-0125-supported-python-embedding.md) (the pilot lifecycle
+  in which the metered primary becomes a real customer)
 - **Blocks:** [vendor budget governor](./01-0155-vendor-budget-governor.md) — the same object, given
   the authority to refuse.
-- **Outcome:** An operator can answer *"how many vendor calls did this deployment spend, against
-  which vendor, over what period"* — with no effect on what any request returns.
+- **Outcome:** An operator can answer how many vendor calls a deployment spent, against which
+  vendor, and over what period, with no effect on what any request returns.
 
 ## Parent
 
 The release-01 bee-line makes a metered keyed provider observable before it becomes
-budget-governed ([delivery status](./README.md)) — *TWC-as-primary being a private deployment's
-declaration at the embedding edge, not the public shape (re-framed 2026-08-19)*. The durable
-architectural context is [architecture § Source](../architecture.md#source).
+budget-governed ([delivery status](./README.md)). TWC-as-primary is the private
+[pilot deployment](../pilot-requirements.md)'s declaration at the embedding edge, not the public
+shape. The durable architectural context is [architecture § Source](../architecture.md#source).
 
 ## Why this is not a Gateway concern
 
-[architecture.md](../architecture.md) used to file *"vendor-API usage metering"* behind the
-**Gateway** caller-policy seam, alongside caller quotas and rate limits. The 2026-08-10 align split
-that sentence, because the Gateway cannot do this job:
+Vendor-call metering belongs at the **Source** seam, not the **Gateway** caller-policy seam. The
+Gateway cannot do this job:
 
 ```
    caller ──► Gateway ──────► profile root (Reservoir) ──► Arbiter ──► Source ──► Provider ──► VENDOR

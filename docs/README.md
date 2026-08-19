@@ -18,12 +18,12 @@ so that each fact has one owner.
 | Why was a past choice made? | Unlinked development-session records, [completed tickets](./tickets/done), and [resolved RFCs](./rfc/done) |
 
 Current delivery terms such as **Done**, **In progress**, **Ready**, **Partial**, **Planned**,
-**Blocked**, and **Next**
+and **Blocked**
 belong in the delivery status and active ticket headers. Product and contract documents describe
 targets and requirements; dated session, completed-ticket, and resolved-RFC records remain historical.
 
-An RFC plans one ticket's implementation and records the decisions taken to get there; once its ticket
-is closed it moves to [`rfc/done`](./rfc/done) and is kept as written. Durable contracts it settled
+An RFC plans one ticket's implementation and records the decisions taken to get there; once resolved,
+it moves to [`rfc/done`](./rfc/done) and is kept as written. Durable contracts it settled
 belong in the [architecture](./architecture.md) / [ADRs](./adr), not in the RFC.
 
 [`dreams/`](./dreams) is deliberately outside the table: it owns no fact. Each dream takes one knot

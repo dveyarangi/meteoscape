@@ -1,18 +1,14 @@
 # Delivery status
 
-**Last updated:** 2026-08-18
+**Last updated:** 2026-08-20
 
 **Current stage:** [config and secrets](./done/01-0123-config-secrets-degrade.md) is delivered
-(2026-08-19): profiles are declared data at composition roots, availability lives in builtin
-catalogues, a def selects and ranks but never restates what a manifest declares, and a secret is
-read only at the name its declared `SecretSlot` derives. **The public server's profile is now
-vendor-neutral** (Open-Meteo, keyless).
-*TWC-as-primary is a temporary [pilot-deployment](../pilot-requirements.md) configuration, never
-the repo's official shape*; that deployment is the [embedding edge](../edge/embedding.md)'s first
-client, and a declared keyed offering without its secret **refuses** startup (no degrade mode). The
-[unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger was
-falsified at TWC (metric, same inline edge), so the ticket moved behind its first plausible
-customer, just ahead of the Mongo sources (0122 → 0129, 2026-08-19).
+(2026-08-19). The shipped profile is keyless Open-Meteo; TWC-primary belongs to the private
+[pilot deployment](../pilot-requirements.md) at the [embedding edge](../edge/embedding.md). Next is
+the [Mongo observation source](./01-0124-mongo-obs-source.md)'s align and internal delivery; the
+[embedding surface](./01-0125-supported-python-embedding.md) follows with that second source shape
+as evidence. If the observation align reveals a real unit spread, the trigger-gated
+[unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of implementation.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
@@ -23,7 +19,7 @@ Python, a REST surface, and provider quota monitoring.* What changed:
   and [config/secrets](./done/01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
   0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
   resilience polish.
-- **Four tickets minted**: the [vendor-call ledger](./01-0124-vendor-call-ledger.md) and its
+- **Four tickets minted**: the [vendor-call ledger](./01-0130-vendor-call-ledger.md) and its
   [budget governor](./01-0155-vendor-budget-governor.md) (two slices — meter first, authority
   second), the [persisting SQLite Store](./01-0145-persisting-store.md), and the
   [REST surface](./01-0165-rest-surface.md).
@@ -76,10 +72,10 @@ dependency, which is ordering, not blockage.
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. A declared live window is an estimate — rolling retention is horizon-satisfied, static by containment ([live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md)). |
 | Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./01-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
-| Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./01-0124-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./01-0155-vendor-budget-governor.md) later gives it authority to refuse. |
+| Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./01-0130-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./01-0155-vendor-budget-governor.md) later gives it authority to refuse. |
 | REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./01-0165-rest-surface.md) as the operator deployment shape and part of the v1 bee-line. |
 | Off-grid homogenization | Available | An off-grid point is answered **at the requested point**, read back from the **enclosing** store cell with the **identity** Resampler. Guarded by Reservoir and e2e tests; the MCP edge states the fidelity floor (one cell ⇒ identical values). |
-| Configured keyed-provider startup | Available | The public profile is keyless Open-Meteo; a profile declaring a keyed offering without its secret refuses startup (no degrade mode). Vendor-named `Settings` fields are gone; a secret is read at `METEOSCAPE_<IMPL>_<SLOT>`, and env carries nothing structured. |
+| Configured keyed-provider startup | Available | The public profile is keyless Open-Meteo; a profile declaring a keyed offering without its secret refuses startup (no degrade mode). **Env carries secrets alone** — one per keyed offering at `METEOSCAPE_<IMPL>_<SLOT>`; there is no typed env-config object, and the profile (root store included) is declared at its composition root. |
 
 ## Delivery map
 
@@ -118,11 +114,11 @@ work `Maint`. What those columns mean is
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
 | 0123 | [Config and secrets](./done/01-0123-config-secrets-degrade.md) | — | Done | TWC provider | Generic secret machinery: profiles declare at composition roots, catalogue handles are ids, calculator I/O lives on its manifest, and a secret is read only at the name its declared `SecretSlot` derives. The public profile is vendor-neutral; a declared keyed offering without its secret refuses startup. |
-| 0124 | [Vendor-call ledger (meter)](./01-0124-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and graceful degrade | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on request results. |
-| 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | — | A supported Python package boundary resolves the same v1 forecast product as MCP without a protocol server and exposes expected failures through public API. |
+| 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (own align precedes) | config and secrets (its connection string is a secret) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. |
+| 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | Mongo obs source (lifecycle and construction evidence) | A documented, supported Python package boundary resolves the same available forecast product as MCP without starting a protocol server, with expected failures exposed through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
 | 0129 | [Unit-conversion catalogue](./01-0129-unit-conversion-edge.md) | — | Planned (trigger-gated) | core canonical parameters | Shared verified native-to-canonical conversion edges. Runs only if the Mongo aligns reveal a real unit spread; slides further otherwise. |
-| 0130 | [Mongo obs source](./01-0130-mongo-obs-source.md) | — | Planned (own align precedes) | embedding surface (its consumer's construction path); config and graceful degrade (its connection string is a secret) | Hourly station observations from the operator's Collector database are served through the projection algebra as a read-only private source, with per-parameter provenance. |
+| 0130 | [Vendor-call ledger (meter)](./01-0130-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and secrets, embedding surface (the pilot lifecycle) | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on what any request returns. |
 | 0134 | [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Archived forecast runs are served as distinct per-provider origins with run identity in provenance, without deciding cross-run combination. |
 | 0140 | [Correction calculator](./01-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | Per-source, per-parameter bias over paired forecast/observation history; correction remains gated on measured bias proving stable. |
 | 0145 | [Persisting SQLite Store](./01-0145-persisting-store.md) | — | Planned (own align precedes) | retentive store | Retained Holdings survive process restart and are shared across concurrent processes on one deployment, behind the existing `Store` face. |
@@ -156,6 +152,10 @@ This section records only how it landed here.
   trigger was falsified at TWC, so the ticket moved behind its first plausible customer — just
   ahead of the Mongo sources. 0127/0128 being consumed left 0129 the free integer. Documents
   citing 0122 predate the move and are left as written.
+- **Observation evidence before the public edge (2026-08-20).** The Mongo obs source moved
+  0130 → 0124 so its non-HTTP lifecycle, past-facing reach, and station geometry inform the
+  embedding contract. The vendor-call ledger moved 0124 → 0130, after the embedding surface gives
+  its metered pilot a real lifecycle. Historical records keep the positions current when written.
 
 ### Legacy ids
 
@@ -263,6 +263,17 @@ The sequence above remains useful, but its final boundary does not: **the bee-li
 The work named in steps 1–5 serves release 01. Step 6 is no longer a v1 tail; its four tickets move
 to release 02. Ticket positions remain unchanged because position is global across releases.
 
+### The 2026-08-20 source-evidence reorder
+
+The [Mongo obs source](./01-0124-mongo-obs-source.md) now precedes the
+[embedding surface](./01-0125-supported-python-embedding.md). It lands through internal composition
+without publishing a facade, so the first non-HTTP, past-facing, station-located source supplies
+real lifecycle and construction evidence before the Python boundary is selected. The
+[vendor-call ledger](./01-0130-vendor-call-ledger.md) follows embedding: its metered pilot is then a
+real consumer rather than a hypothetical one. If the observation align fires the
+[unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger, that work interrupts before
+observation implementation.
+
 ## Decisions still owned by tickets
 
 - [Supported Python embedding surface](./01-0125-supported-python-embedding.md): its own align selects
@@ -295,7 +306,7 @@ to release 02. Ticket positions remain unchanged because position is global acro
 - [010](./01-0129-unit-conversion-edge.md): build the shared conversion catalogue when a vendor exposes
   the first real multi-vendor spread. TWC reuses Open-Meteo's inline `km/h → m/s` edge, so the trigger
   remains unmet; the Mongo obs align's pinned collector fixtures are the next place it can fire.
-- [Vendor-call ledger](./01-0124-vendor-call-ledger.md): its own align selects what an entry is (one
+- [Vendor-call ledger](./01-0130-vendor-call-ledger.md): its own align selects what an entry is (one
   HTTP request vs one `Provider.project`), attribution granularity, the accounting period and where
   it is kept, the read-out channel, and whether failed calls count.
 - [Persisting Store](./01-0145-persisting-store.md): its own align selects the **substrate** and the

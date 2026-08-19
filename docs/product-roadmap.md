@@ -402,7 +402,7 @@ aviation. Going further is several distinct product and architecture steps:
 1. **More of the same shape** — other point-plus-series forecast endpoints (intraday, 15-minute,
    nowcast). Cheapest: new offering rows and tap tables behind the existing `TimelineProvider`.
 2. **Observations and history** — site-based and PWS observations, History on Demand. A past-facing
-   capability, adjacent to the [Mongo obs source](./tickets/01-0130-mongo-obs-source.md)'s shape and
+   capability, adjacent to the [Mongo obs source](./tickets/01-0124-mongo-obs-source.md)'s shape and
    the natural comparison for it.
 3. **Lifestyle indices** — new *parameters*, not new geometry: each index is a derived quantity with
    its own scale and statistic, which stresses the parameter catalogue and

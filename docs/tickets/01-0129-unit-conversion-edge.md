@@ -7,7 +7,7 @@
 - **Trigger:** The first vendor whose unit spread outgrows one hardcoded factor. TWC serves metric
   and reuses the same inline `km/h → m/s` edge as Open-Meteo, so the trigger stayed unmet there —
   falsifying the beeline prediction that placed this at 0122. The next plausible pull is the
-  [Mongo obs source](./01-0130-mongo-obs-source.md)'s align, whose pinned collector fixtures
+  [Mongo obs source](./01-0124-mongo-obs-source.md)'s align, whose pinned collector fixtures
   ([#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own))
   reveal the native units of the per-provider forecast fields and station payloads. If those prove
   already canonical, this ticket slides again behind the next producer with a differing native unit.

@@ -34,7 +34,7 @@ reachable by someone other than its owner:
 
 - **The Gateway's caller-policy seam stops being null.** Caller identity, authz, and rate-limiting
   become real for the first time — and this is where **caller** quota lives, the other meter from
-  the [vendor-call ledger](./01-0124-vendor-call-ledger.md)'s. Two meters, two layers: what a caller
+  the [vendor-call ledger](./01-0130-vendor-call-ledger.md)'s. Two meters, two layers: what a caller
   spends against us here, what we spend against a vendor there.
 - **A second serialization contract to keep equivalent** with MCP and the embedding surface — the
   same equivalence obligation [0125](./01-0125-supported-python-embedding.md) carries, now with a

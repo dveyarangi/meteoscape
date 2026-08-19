@@ -18,7 +18,7 @@ purpose ([product roadmap](./product-roadmap.md)).
   the embedding edge; a declared keyed offering without its secret refuses startup
   ([0123](./tickets/done/01-0123-config-secrets-degrade.md), 2026-08-19 resolutions).
 - **Station observations** from the operator's Collector database —
-  [Mongo obs source](./tickets/01-0130-mongo-obs-source.md), read-only, per-parameter provenance;
+  [Mongo obs source](./tickets/01-0124-mongo-obs-source.md), read-only, per-parameter provenance;
   the Collector schema is a dependency meteoscape does not own
   ([#45](./concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)).
 - **Forecast-run archives** with run identity —
@@ -27,7 +27,7 @@ purpose ([product roadmap](./product-roadmap.md)).
   [correction calculator](./tickets/01-0140-correction-calculator.md); correction ships only after
   measured bias proves stable.
 - **Vendor-spend visibility and control** for the metered primary —
-  [ledger](./tickets/01-0124-vendor-call-ledger.md), then
+  [ledger](./tickets/01-0130-vendor-call-ledger.md), then
   [governor](./tickets/01-0155-vendor-budget-governor.md).
 
 ## Where its composition lives
@@ -39,10 +39,10 @@ setup in-tree, or a separate project embedding meteoscape. Until that decision, 
 public shape may present this deployment's configuration as the product's default.
 
 **Sequencing (2026-08-19):** the bee-line runs on the Open-Meteo path until the correction
-workstream — the [ledger](./tickets/01-0124-vendor-call-ledger.md) meters vendor-agnostically and
+workstream — the [ledger](./tickets/01-0130-vendor-call-ledger.md) meters vendor-agnostically and
 the [tick convention](./tickets/01-0126-tick-convention-declaration.md) reads the in-tree TWC
 declarations, so neither needs TWC live. TWC goes live with this deployment's root at the
-embedding surface, ahead of the [Mongo sources](./tickets/01-0130-mongo-obs-source.md) whose
-consumer that root is; it is first *wanted* at the
+embedding surface, after the internal [Mongo observation source](./tickets/01-0124-mongo-obs-source.md)
+has supplied its lifecycle and construction evidence; it is first *wanted* at the
 [correction calculator](./tickets/01-0140-correction-calculator.md), whose product point is
 correcting the primary this deployment serves.

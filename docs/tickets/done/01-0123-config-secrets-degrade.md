@@ -29,7 +29,7 @@
 > - **It is the mechanism the private sources need.** A Mongo connection string is a secret carried
 >   the same way a vendor key is, so this ticket serves
 >   [01-0130](../01-0130-mongo-obs-source.md) as well as TWC — and it is the injection path the
->   [vendor-call ledger](../01-0124-vendor-call-ledger.md) is built behind.
+>   [vendor-call ledger](../01-0130-vendor-call-ledger.md) is built behind.
 
 ## Parent PRD
 

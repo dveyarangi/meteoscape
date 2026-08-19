@@ -476,7 +476,7 @@ parameter-absent "graceful degrade" (a different meaning). Scrub `secrets=` on `
   optional providers at boot). It stays open for a future optional-plugin story.
 - Storeless producers and self-homogenization — [#37](../../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)
   (widened this align); nothing here moves the binder's store rules.
-- The ledger rides this injection path next ([0124](../../tickets/01-0124-vendor-call-ledger.md));
+- The ledger rides this injection path next ([0124](../../tickets/01-0130-vendor-call-ledger.md));
   the Mongo connection string is the second slot consumer ([0130](../../tickets/01-0130-mongo-obs-source.md)).
 - No migration: the operator-visible key spelling is unchanged (`METEOSCAPE_TWC_API_KEY`), and a
   leftover `METEOSCAPE_OPEN_METEO_ENABLED` is simply inert (nothing but a declared impl's secret

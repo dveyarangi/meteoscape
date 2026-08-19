@@ -41,7 +41,7 @@ case, deliberately without opening #9's combination semantics.
   decide**: decline runless producers, or record the distinction explicitly so a reader can tell a
   run from a bucket.
 - Reuses the transport, registry read, and fixture-contract machinery of the
-  [Mongo obs source](./01-0130-mongo-obs-source.md).
+  [Mongo obs source](./01-0124-mongo-obs-source.md).
 
 **Out of scope:** cross-run folding, run-ensemble semantics, any as-of-time request vocabulary
 (#9); collector write paths; the live TWC provider (a different ticket and transport entirely).
@@ -64,7 +64,7 @@ case, deliberately without opening #9's combination semantics.
 
 ## Blocked by
 
-- [Mongo obs source](./01-0130-mongo-obs-source.md) (active) — shares transport, registry, and the
+- [Mongo obs source](./01-0124-mongo-obs-source.md) (active) — shares transport, registry, and the
   #45 contract machinery.
 
 ## Parent scope addressed
