@@ -77,6 +77,22 @@ def test_paired_close_cites_final_homes(tmp_path: Path) -> None:
     assert "[t](../../tickets/done/01-0001-t.md)" in _read(tmp_path, "docs/rfc/done/01-0001-t.md")
 
 
+def test_multiline_link_label_follows_a_moved_record(tmp_path: Path) -> None:
+    names = _corpus(
+        tmp_path,
+        {
+            "docs/tickets/01-0001-t.md": "# T",
+            "docs/tickets/README.md": "[a label that spans\ntwo lines](./01-0001-t.md)\n",
+        },
+    )
+    pairs = [("docs/tickets/01-0001-t.md", "docs/tickets/done/01-0001-t.md")]
+    move_doc.perform(tmp_path, names, pairs, move=_fs_move)
+
+    assert _read(tmp_path, "docs/tickets/README.md") == (
+        "[a label that spans\ntwo lines](./done/01-0001-t.md)\n"
+    )
+
+
 def test_only_link_paths_change(tmp_path: Path) -> None:
     body = (
         "# T\r\n\r\n- [x] done box\r\n- [ ] open box\r\n\r\n"

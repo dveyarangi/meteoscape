@@ -120,23 +120,34 @@ def _retarget(
 
 def _transformed(text: str, retargeted: Callable[[str], str | None]) -> str:
     """Every prose link retargeted; fenced blocks and inline code are illustrations, untouched."""
-    lines: list[str] = []
+    transformed: list[str] = []
+    prose: list[str] = []
     in_fence = False
-    for line in text.split("\n"):
+    for line in text.splitlines(keepends=True):
         if _FENCE.match(line):
+            transformed.append(_relinked_prose("".join(prose), retargeted))
+            prose.clear()
+            transformed.append(line)
             in_fence = not in_fence
-        if in_fence or not _LINK.search(line):
-            lines.append(line)
-            continue
-        code_spans = [m.span() for m in _CODE_SPAN.finditer(line)]
+        elif in_fence:
+            transformed.append(line)
+        else:
+            prose.append(line)
+    transformed.append(_relinked_prose("".join(prose), retargeted))
+    return "".join(transformed)
 
-        def relinked(m: re.Match[str], spans: list[tuple[int, int]] = code_spans) -> str:
-            inside_code = any(start <= m.start(2) < end for start, end in spans)
-            target = None if inside_code else retargeted(m.group(2))
-            return m.group(0) if target is None else m.group(1) + target + m.group(3)
 
-        lines.append(_LINK.sub(relinked, line))
-    return "\n".join(lines)
+def _relinked_prose(text: str, retargeted: Callable[[str], str | None]) -> str:
+    if not _LINK.search(text):
+        return text
+    code_spans = [m.span() for m in _CODE_SPAN.finditer(text)]
+
+    def relinked(m: re.Match[str], spans: list[tuple[int, int]] = code_spans) -> str:
+        inside_code = any(start <= m.start(2) < end for start, end in spans)
+        target = None if inside_code else retargeted(m.group(2))
+        return m.group(0) if target is None else m.group(1) + target + m.group(3)
+
+    return _LINK.sub(relinked, text)
 
 
 def _rewrite(
