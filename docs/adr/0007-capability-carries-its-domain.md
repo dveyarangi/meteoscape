@@ -216,6 +216,22 @@ without it a future reader will re-propose the fold.
 - **The domain is inside the algebra.**
   [#32](../concerns.md#32-footprint-aware-ranking-inside-the-algebra) guards against request-path
   routing on it; `serves` remains the sole admission authority.
+- **Accepted limitation — a store's plural holdings truncate to one reach.** A live store accumulates
+  Holdings at many spatial cells per parameter (two cities warm two cells in one store), but `reach(p)`
+  returns **one** `Domain` and no capability form carries disjoint multi-cell reaches. `MemoryStore`
+  advertises a `GranularCapability` whose per-parameter reach is the **latest-assimilated Holding's
+  domain** — honest membership, narrated geometry. This is safe because reach is
+  composition-and-narration, never request-path algebra: its only algebraic readers fold **producer**
+  capabilities (the Arbiter's `compose_domains` over members, a Calculator's contained-in-all over its
+  resolver), and the MCP edge narrates the root's reach — a store is never an Arbiter member, and the
+  `Reservoir` forwards its *child's* capability upward. The per-ask exact answer lives on
+  `store.project`'s returned `CoverageSet.capability`, where the ask pins one cell and plurality cannot
+  arise. A narrating reach with gaps is even natural for an archive store, whose holdings are plural by
+  design. **Revisit** when the first real multi-reach reader arrives — store hit/refill observability,
+  or the persisting/archive substrate
+  ([#44](../concerns.md#44-dedicated-live-archive-store-for-throughput)); that reader decides whether
+  to mint a plural-reach advertisement form (amending this ADR) or to read the Holding table through a
+  substrate-side face instead.
 
 ## Rejected alternatives
 

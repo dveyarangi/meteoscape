@@ -9,8 +9,9 @@
 ## Parent
 
 The release-01 bee-line requires every cache position to survive restart and redeploy
-([delivery status](./README.md)); this supersedes the predecessor
-[v1 requirements](../v1-requirements.md)' in-memory-only position. The durable design context is
+([delivery status](./README.md)) — [v1 requirements](../v1-requirements.md) carries it as the
+operator's story about retention surviving a restart, and no longer lists a persisting `Store` as out
+of scope. The durable design context is
 [ADR-0006](../adr/0006-materialization-granularity-and-store-shape.md) and
 [architecture § Store](../architecture.md#store--one-type-several-positions).
 

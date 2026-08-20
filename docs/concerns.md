@@ -72,7 +72,7 @@ ADR.
 
 ## 40. Composing servable requests at the embedding edge
 
-**Kind:** edge product seam (no v1 driver — the facade it would live on is unselected) ·
+**Kind:** edge product seam (driver arrives with the embedding surface's facade selection) ·
 **Refs:** [#39](#39-python-embedding-surface-and-public-failures),
 [Edge — Embedding surface](./edge/embedding.md), [ADR-0004](./adr/0004-producer-resolution-and-capability.md),
 [ADR-0007](./adr/0007-capability-carries-its-domain.md)
@@ -175,32 +175,18 @@ already splits them by Z level. Open: whether the cell-side declaration belongs 
 
 **Decided 2026-08-17: v1 always serves the primary's shape.** Under intersective snapped admission
 a window spanning past the priority winner's reach still admits it, and the winner answers with its
-own clipped span, disclosed through `valid_time`. With TWC primary (~10 d) under a composed ~16 d
+own clipped span, disclosed through `valid_time`. With a ~10 d primary under a composed ~16 d
 reach, every default ask serves ~10 d. A per-request or per-profile "serve the window whole"
-preference was considered and **rejected as a reconciler knob**, because the mechanism cannot
-exist there: the root Reservoir's refill deliberately opens T
-([store.py:199](../src/meteoscape/nodes/store.py) — `quantize` overrides the ask with `ANY`; the
-natural-fetch-unit decision of 0115), so **the bounded window is destroyed before producer
-selection ever runs** and ordering-by-window would be dead code on the product path.
+preference was **rejected as a reconciler knob**, because the mechanism cannot exist there: the root
+Reservoir's refill deliberately opens T ([store.py:199](../src/meteoscape/nodes/store.py) —
+`quantize` overrides the ask with `ANY`; the natural-fetch-unit decision of 0115), so **the bounded
+window is destroyed before producer selection ever runs**.
 
-**The unbuilt policy this defers — "max reach":** serving the composed span via a non-primary
-producer. Its live consequence today, derived from the code path and not yet executed end-to-end:
-once the primary is configured, **a tail ask past the primary's holdings cannot reach the
-longer-reaching backstop through the root store at all** — retention sees the composed (rolling,
-long-horizon) declared axis as unsatisfied, refills with open T, priority buys the primary *again*
-(one redundant metered call), holdings still end short, and the serving seam answers
-`capability-mismatch`
-([reservoir.py:112-128](../src/meteoscape/nodes/reservoir.py), [:146-153](../src/meteoscape/nodes/reservoir.py)).
-The narrated horizon (composed, [#29](#29-narrated-reach-what-a-profile-promises)'s upper bound)
-therefore over-promises the tail whenever primary ≠ dominant.
-
-Candidate mechanisms, deliberately unchosen: the root refill keeping the ask's T bounds for
-*selection* while the winner's own source-Reservoir still fetches natural (touches 0115's
-boundless-answer licence); narration re-scoped to the primary's reach (moves producer knowledge to
-the edge, which [#29](#29-narrated-reach-what-a-profile-promises) resists); offering/reach-aware
-selection ([#20](#20-provider-multi-resolution-offerings-offering-aware-selection)). Trigger: real
-demand for the beyond-primary tail — or the [ledger](./tickets/01-0130-vendor-call-ledger.md)
-pricing the redundant tail-ask refetch.
+**What stays open** is the escape — serving the composed span via a non-primary producer — and the
+tail-ask consequence that comes with it: a metered call bought for an answer that cannot satisfy the
+ask, and a narrated horizon ([#29](#29-narrated-reach-what-a-profile-promises)'s composed upper
+bound) that over-promises the tail whenever primary ≠ dominant.
+→ queued as [max-reach-tail-serving](./tickets/02-0180-max-reach-tail-serving.md)
 
 ## 5. Read-time homogenization fidelity
 
@@ -301,34 +287,27 @@ pure refactor, no contract change. The trigger has not fired: `sub_lattice_offse
 **Kind:** room-left (types / hot path) · **Refs:** [ADR-0002](./adr/0002-data-model.md)
 
 `RegularAxis` is one type over `Coordinate = float | datetime` and `Step = float | timedelta`.
-`sub_lattice_offset` (and axis arithmetic) pays an `isinstance` crawl on every call to branch float
-tolerance vs exact `timedelta` math. The lasting fix is **split types** (spatial vs temporal regular
-axes) so dispatch is structural, not runtime — not a pair of private helpers that paper over the union.
-**Trigger status (revised 2026-08-02): [m4](./tickets/done/01-0100-snapped-t-request-mode.md) does not fire
-it.** The snap arithmetic ended up on `RegularAxis.clip`, which is coordinate-generic —
-`(bound − anchor) / step` is a plain `float` for `timedelta`s and floats alike, and `anchor + i·step`
-types alike — so it is one expression with no `isinstance` branch, unlike `sub_lattice_offset` beside
-it. The standing consequence is narrower than previously recorded and worth keeping precise:
-**snapped X/Y needs a float phase-tolerance decision inside `clip`** (the reason
-`sub_lattice_offset` carries `LATTICE_TOLERANCE`; a bound landing on a tick can floor to the tick
-before it), which this split is one way to state statically. m4's T path never meets it, because
-`timedelta` arithmetic is exact.
+`sub_lattice_offset` pays an `isinstance` crawl on every call to branch float tolerance vs exact
+`timedelta` math. The lasting fix is **split types** (spatial vs temporal regular axes) so dispatch is
+structural, not runtime — not a pair of private helpers that paper over the union.
+
+`RegularAxis.clip` is *not* a driver: `(bound − anchor) / step` is a plain `float` for `timedelta`s and
+floats alike, and `anchor + i·step` types alike, so it stays one branch-free expression for both
+coordinate kinds. The standing consequence is narrower and worth keeping precise: **snapped X/Y needs a
+float phase-tolerance decision inside `clip`** — a bound landing on a tick can floor to the tick before
+it — which this split is one way to state statically. `quantize`'s spatial snap delegates there and the
+tolerance lives in **index space** (fraction of a step), reconciled with `LATTICE_TOLERANCE` as one
+shared policy and pinned by a boundary-point test. The T path never meets it: `timedelta` arithmetic is
+exact.
+
 **Constraint on the split itself:** it would double every request-facing axis kind (`SelectableAxis`:
 regular / vantage / snapped), so when it lands it must stay **invisible to request authors** — one
 constructor name per kind with coordinate-kind autodetection, or facade builders absorbing it
-([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape). Expected
-internal toucher: [006](./tickets/done/01-0115-retentive-store-freshness.md)'s `quantize` — which is also the
-third lattice-arithmetic site that would fire
-[#22](#22-lattice-helpers-vs-domain--sampling-module-split), now that `RegularAxis.clip` is the second.
-**006 touched it (2026-08-08 align) and chose reuse over split:** `quantize`'s spatial snap — the
-first live float-lattice snap — delegates to `RegularAxis.clip`, which gains the float boundary
-tolerance in **index space** (fraction of a step), keeping `clip` one branch-free expression for
-both coordinate kinds. The constant is reconciled with `LATTICE_TOLERANCE` as one shared policy
-(no second tolerance minted), pinned by a boundary-point test. Evidence for this split's eventual
-"state it statically" argument, but the split itself stays deferred; the snapped member's temporal
-narrowing bites only on *bounds* — a bounded spatial snapped member stays a type error, while the
-boundless (`ANY`) form is axis-generic — and `quantize` authors pinned cells plus boundless
-members, never a bounded spatial one.
+([#39](#39-python-embedding-surface-and-public-failures) owns the embedder-visible shape).
+
+**Trigger:** a **bounded spatial snapped member**, which is a type error today. The snapped member's
+temporal narrowing bites only on *bounds*, the boundless (`ANY`) form is axis-generic, and `quantize`
+authors pinned cells plus boundless members — so nothing yet needs the union stated statically.
 
 ## 42. Two request representations, so resolution cannot be a method
 
@@ -1263,7 +1242,7 @@ diverge, the indirection costs more than it saves.
 
 ## 35. Calculator satisfiability vs optional-provider degrade
 
-**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [v1-requirements](./v1-requirements.md) (graceful degrade)
+**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [config and secrets](./tickets/done/01-0123-config-secrets-degrade.md) (boot-degrade removed)
 
 A Calculator whose input **no producer serves** is a build-time
 `CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so
@@ -1352,33 +1331,6 @@ capability form or a manifest-declared mode, not a flag threaded into one member
 
 **Trigger to revisit:** the first calculator whose kernel is not pointwise-total (partial-input blend,
 temporal extrapolator, subregion-valid downscaler). No v1 driver.
-
-## 47. A store's capability narrates; plural holdings truncate to one reach
-
-**Kind:** accepted v1 limitation · **Refs:**
-[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
-[ADR-0007](./adr/0007-capability-carries-its-domain.md),
-[#44](#44-dedicated-live-archive-store-for-throughput),
-[minimal resolution logging](./tickets/02-0195-minimal-resolution-logging.md)
-
-A live store accumulates Holdings at many spatial cells per parameter (two requests for two cities
-warm two cells, one store), but the `Capability` protocol's `reach(p)` returns **one** `Domain`,
-and no capability form carries disjoint multi-cell reaches. v1 accepts the truncation:
-`MemoryStore.capability` is a `GranularCapability` whose per-parameter reach is the
-**latest-assimilated Holding's domain** — honest membership, narrated geometry.
-
-This is safe because `reach` is composition-and-narration, never request-path algebra: its only
-algebraic readers fold **producer** capabilities (the Arbiter's `compose_domains` over members, a
-Calculator's contained-in-all over its resolver), and the MCP edge narrates the root's reach — a
-store is never an Arbiter member, and the `Reservoir` forwards its *child's* capability upward.
-The per-ask exact answer lives on `store.project`'s returned `CoverageSet.capability`, where the
-ask pins one cell and plurality cannot arise. A narrating reach with gaps is even natural for an
-archive store, whose holdings are plural by design.
-
-**Revisit** when the first real multi-reach reader arrives — store hit/refill observability
-([0195](./tickets/02-0195-minimal-resolution-logging.md)) or the persisting/archive substrate
-(#44). That reader decides whether to mint a plural-reach advertisement form (ADR-0007 amendment)
-or read the Holding table through a substrate-side face instead.
 
 ## 46. Composition-failure attribution is paid inside geometry
 

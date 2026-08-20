@@ -67,11 +67,12 @@ ticket+RFC close goes in one invocation); the guards then prove the move →
 
 ## Deployment form
 
-**No container in v1.** v1 is a **local stdio MCP server** (FastMCP; HTTP/remote transport
-deferred per [`v1-requirements.md`](./v1-requirements.md)) — an MCP client launches the process
-over stdio, so there is no long-running network service for a `Dockerfile`/`docker-compose` to
-host. Containerization is revisited when the HTTP transport seam is built. Deployment
-configuration is out of scope.
+**No container yet.** The shipped surface today is a **local stdio MCP server** (FastMCP) — an MCP
+client launches the process over stdio, so there is no long-running network service for a
+`Dockerfile`/`docker-compose` to host. HTTP is v1 scope
+([`v1-requirements.md`](./v1-requirements.md) — the operator reaches the engine as a service), so
+containerization is revisited when the [REST surface](./tickets/01-0165-rest-surface.md) builds that
+transport seam. Deployment configuration stays out of scope.
 
 ## Observability
 

@@ -22,8 +22,8 @@ the only provider that declares it, while the rest come from the primary. This e
 per-parameter, not per-request.
 
 **Decision to resolve in this ticket (HITL):** which specific core parameter is single-provider for the
-demo (config-driven `Capability`). See `docs/v1-requirements.md` (Providers, Open / TBD during build)
-and `docs/architecture.md` (Arbiter, Capability).
+demo (config-driven `Capability`). See `docs/architecture.md` (Arbiter, Capability) and
+`docs/parameters.md` for what each parameter's declaration carries.
 
 ## Acceptance criteria
 

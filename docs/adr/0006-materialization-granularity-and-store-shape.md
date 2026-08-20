@@ -60,7 +60,7 @@ plane. The capability/matching half is
   which is why an archive substrate takes no clock at all. Its `capability` **narrates holdings**: honest parameter membership, and a
   per-parameter reach that truncates plural holdings to the latest-assimilated Holding's geometry —
   safe because `reach` is composition-and-narration over *producers* and a store is never composed
-  ([#47](../concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach)).
+  ([ADR-0007: Consequences](./0007-capability-carries-its-domain.md#consequences)).
 
 - **`quantize` is per-axis: snap where a lattice is declared, identity where none is, `ANY` where the
   Holding spans the axis wholly.** Each axis with a declared lattice resolves to its **containing cell**

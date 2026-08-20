@@ -11,8 +11,9 @@
 ## Parent
 
 The release-01 bee-line makes the operator's REST deployment shape part of v1
-([delivery status](./README.md)); this supersedes the predecessor
-[v1 requirements](../v1-requirements.md)' explicit HTTP deferral. Durable context:
+([delivery status](./README.md)) — [v1 requirements](../v1-requirements.md) carries it as the
+operator's story about reaching the engine as a service, and HTTP transport is no longer deferred.
+Durable context:
 [product roadmap](../product-roadmap.md) ("optional REST surface if demand appears" — demand
 appeared, 2026-08-10) and [architecture § Gateway](../architecture.md#gateway--caller-policy-boundary).
 

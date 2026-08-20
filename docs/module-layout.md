@@ -5,7 +5,7 @@ Implementation-level layout for `src/meteoscape/`. Kept out of the
 folder-per-role — see each module's inline note and the dependency rule below. This document owns
 module placement and responsibilities, not milestone status.
 
-**Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices live in [`v1-requirements.md`](./v1-requirements.md).*
+**Stack:** Python · async (I/O-bound throughout; the Provider contract is async) · typed settings + validation · an async HTTP client (provider fetch) · an MCP SDK (the first surface). *Concrete library choices and their pins live in [`pyproject.toml`](../pyproject.toml).*
 
 ```text
 src/meteoscape/

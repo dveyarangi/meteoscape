@@ -5,10 +5,14 @@
 **Current stage:** [config and secrets](./done/01-0123-config-secrets-degrade.md) is delivered
 (2026-08-19). The shipped profile is keyless Open-Meteo; TWC-primary belongs to the private
 [pilot deployment](../pilot-requirements.md) at the [embedding edge](../edge/embedding.md). Next is
-the [Mongo observation source](./01-0124-mongo-obs-source.md)'s align and internal delivery; the
-[embedding surface](./01-0125-supported-python-embedding.md) follows with that second source shape
-as evidence. If the observation align reveals a real unit spread, the trigger-gated
-[unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of implementation.
+the [Mongo observation source](./01-0124-mongo-obs-source.md)'s align, which also settles
+[composition lifetime](./01-0116-composition-lifetime.md) — the obs source is the first producer to
+hold a connection between requests, and nothing in `src` owns a resource that outlives a call today.
+That seam builds first, then the source; the
+[embedding surface](./01-0125-supported-python-embedding.md) follows with the second source shape and
+a chosen teardown contract as evidence. If the observation align reveals a real unit spread, the
+trigger-gated [unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of
+implementation.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
@@ -32,10 +36,12 @@ Python, a REST surface, and provider quota monitoring.* What changed:
   a station's coordinates already answers at that point. What 007 adds is the seam the identity
   Resampler lives in.
 
-**Release boundary corrected 2026-08-18.** The bee-line is v1, not work occurring ahead of the old
-v1 tail. Its tickets therefore serve release 01; the four tickets above move to release 02. The
-existing [v1 requirements](../v1-requirements.md) describe the predecessor scope and are no longer
-the authority for open-ticket release membership while their replacement is aligned.
+**Release boundary corrected 2026-08-18, contract re-cut 2026-08-20.** The bee-line is v1, not work
+occurring ahead of the old v1 tail. Its tickets therefore serve release 01; the four tickets above
+move to release 02. The [v1 requirements](../v1-requirements.md) were re-cut against that boundary on
+2026-08-20 and are again the authority for the release contract; per-item criteria stay here. The
+re-cut also minted [forecast correction](./01-0142-forecast-correction.md) — the release's headline
+criterion, which had no ticket.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md)
@@ -114,17 +120,20 @@ work `Maint`. What those columns mean is
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
 | 0123 | [Config and secrets](./done/01-0123-config-secrets-degrade.md) | — | Done | TWC provider | Generic secret machinery: profiles declare at composition roots, catalogue handles are ids, calculator I/O lives on its manifest, and a secret is read only at the name its declared `SecretSlot` derives. The public profile is vendor-neutral; a declared keyed offering without its secret refuses startup. |
-| 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (own align precedes) | config and secrets (its connection string is a secret) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. |
+| 0116 | [Composition lifetime and shutdown](./01-0116-composition-lifetime.md) | Maint | Ready (align rides the Mongo obs source's) | config and secrets | A composed graph can be shut down, and a producer holding a long-lived resource releases it on that shutdown; the server and any embedder use the same one way to do it. *Row sits where the work happens; 0123–0124 are adjacent and 0122 is spent, so the position is the nearest free slot before its origin.* |
+| 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (own align precedes) | config and secrets (its connection string is a secret), composition lifetime (the connection it holds) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | Mongo obs source (lifecycle and construction evidence) | A documented, supported Python package boundary resolves the same available forecast product as MCP without starting a protocol server, with expected failures exposed through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
 | 0129 | [Unit-conversion catalogue](./01-0129-unit-conversion-edge.md) | — | Planned (trigger-gated) | core canonical parameters | Shared verified native-to-canonical conversion edges. Runs only if the Mongo aligns reveal a real unit spread; slides further otherwise. |
 | 0130 | [Vendor-call ledger (meter)](./01-0130-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and secrets, embedding surface (the pilot lifecycle) | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on what any request returns. |
 | 0134 | [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Archived forecast runs are served as distinct per-provider origins with run identity in provenance, without deciding cross-run combination. |
 | 0140 | [Correction calculator](./01-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | Per-source, per-parameter bias over paired forecast/observation history; correction remains gated on measured bias proving stable. |
+| 0142 | [Forecast correction](./01-0142-forecast-correction.md) | — | Planned (own align precedes) | correction calculator (the measured bias and its stability criteria) | A requested parameter can be served bias-corrected, carrying synthetic provenance recording the correction's lineage and method. Opens only on stable measured bias. |
 | 0145 | [Persisting SQLite Store](./01-0145-persisting-store.md) | — | Planned (own align precedes) | retentive store | Retained Holdings survive process restart and are shared across concurrent processes on one deployment, behind the existing `Store` face. |
 | 0155 | [Vendor budget governor](./01-0155-vendor-budget-governor.md) | — | Planned (own align precedes) | vendor-call ledger, second-provider fallback | A configured vendor budget stops spending past its limit; the request falls through to the backstop rather than failing. |
 | 0165 | [REST surface](./01-0165-rest-surface.md) | — | Planned (own align + Edge record precede) | embedding surface (by decision, not mechanically) | Meteoscape is reachable over HTTP with the same weather semantics as MCP and the embedding surface. |
 | 02-0170 | [Per-parameter selection](./02-0170-per-parameter-selection.md) | — | Planned | second-provider fallback | One response assembled from different winning providers by parameter. |
+| 02-0180 | [Max-reach tail serving](./02-0180-max-reach-tail-serving.md) | — | Planned (trigger-gated) | second-provider fallback, vendor-call ledger | A window reaching past the priority winner's holdings is served by a longer-reaching producer instead of being declined, and the redundant metered call on that path stops. |
 | 02-0190 | [Errors and partial success](./02-0190-error-taxonomy-partial-success.md) | — | Partial | provider nodata mask, request shaping, second-provider fallback | Per-parameter absence reasons and capable-but-faulting partial results. |
 | 02-0195 | [Minimal resolution logging](./02-0195-minimal-resolution-logging.md) | — | Planned (own align precedes) | retentive store, second-provider fallback, per-parameter selection, errors and partial success | Operators can inspect structured producer-choice, fall-through, and Store hit/refill evidence without changing the weather data product. |
 | 02-0200 | [Artifact conventions sweep](./02-0200-artifact-conventions-sweep.md) | Maint | Planned (own align precedes) | edge records | Canonical artifact-conventions registry: full doc roster classified (normative vs descriptive, granularity, lifecycle), skills slimmed to reference it. |
@@ -152,6 +161,13 @@ This section records only how it landed here.
   trigger was falsified at TWC, so the ticket moved behind its first plausible customer — just
   ahead of the Mongo sources. 0127/0128 being consumed left 0129 the free integer. Documents
   citing 0122 predate the move and are left as written.
+- **Two mints against exhausted gaps (2026-08-20).**
+  [Composition lifetime](./01-0116-composition-lifetime.md) is a prerequisite carved out of the Mongo
+  obs source, so it sorts before it — but 0123/0124 are adjacent and 0122 is spent by the
+  unit-catalogue renumber below, so it takes 0116, the nearest free slot on the correct side, and its
+  row sits where the work happens. [Max-reach tail serving](./02-0180-max-reach-tail-serving.md) was
+  pulled out of [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy)
+  and takes the ordinary split between 0170 and 0190.
 - **Observation evidence before the public edge (2026-08-20).** The Mongo obs source moved
   0130 → 0124 so its non-HTTP lifecycle, past-facing reach, and station geometry inform the
   embedding contract. The vendor-call ledger moved 0124 → 0130, after the embedding surface gives

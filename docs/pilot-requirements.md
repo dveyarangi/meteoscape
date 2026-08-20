@@ -10,6 +10,13 @@ weather-resolution engine behind it, and the alerting decision layer above it is
 concern. The pilot is a *candidate use case* exercising the framework, not the framework's
 purpose ([product roadmap](./product-roadmap.md)).
 
+This document owns **declaration**: which offerings this deployment enables at which priority, which
+secrets it supplies, where its composition root lives, and when it goes live. What the framework can
+*do* — and how that is verified in this repository — is [v1 requirements](./v1-requirements.md)'. The
+test for which side a sentence belongs on: **does it survive a second deployment?** If yes it is v1's;
+if no it is this document's. v1's scope is driven by what this deployment needs, which is why the line
+is worth stating rather than assuming.
+
 ## What this deployment declares that the public shape does not
 
 - **TWC as the primary producer, Open-Meteo as backstop.** *Temporary state of this deployment's

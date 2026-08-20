@@ -30,7 +30,7 @@ Eight `ParameterDef`s: **6 canonical** (provider-served, post-normalization) + *
 The agent-facing **product is 6**: air temperature, precipitation, wind **speed**, wind **direction**,
 relative humidity, cloud cover (total). Wind is **canonical as u/v components** (both `linear`, so linear interpolation of u/v
 *is* correct wind interpolation); providers deliver native speed/direction and a tap's `decode` converts to
-u/v on ingest ([v1-requirements §Parameters](./v1-requirements.md)).
+u/v on ingest ([ADR-0002](./adr/0002-data-model.md)).
 
 ## Vertical carriage
 

@@ -39,7 +39,7 @@ tails) is judged worth doing but **low priority**, and needs three widenings thi
 → [#30](../concerns.md#30-response-membership-under-runtime-degraded-fallback).
 
 See `docs/architecture.md` (Failure, nodata, and availability; Error taxonomy) and
-`docs/v1-requirements.md` (Errors, acceptance §7).
+`docs/edge/mcp.md` (Contract — Outcomes), which owns the surface's error categories.
 
 ## Acceptance criteria
 

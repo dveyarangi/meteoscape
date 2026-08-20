@@ -10,8 +10,9 @@
 
 ## Parent
 
-[`docs/v1-requirements.md`](../v1-requirements.md) — embedder user stories 16–17 and acceptance
-criteria 10–11.
+[`docs/v1-requirements.md`](../v1-requirements.md) — the embedder's stories (a supported package
+surface, and failures through a documented public contract), and "the surfaces agree", which this
+ticket makes testable by supplying the second surface.
 
 ## What to build
 
