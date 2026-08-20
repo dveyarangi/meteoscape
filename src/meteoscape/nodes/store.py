@@ -62,7 +62,7 @@ class Store(Manifold, Writable, Protocol):
     Holds sampled Coverages in whole assimilable Holdings (a Holding is replaced atomically, so it carries
     one origin); the only `assimilate` target. Its `capability` *narrates* holdings — plural cells
     per parameter truncate to one reach
-    (docs/concerns.md#47-a-stores-capability-narrates-plural-holdings-truncate-to-one-reach);
+    (docs/adr/0007-capability-carries-its-domain.md#consequences);
     the per-ask exact answer is `project`'s. Its
     lattices stay private — consumed by `quantize`, the holdings query, and read-back; never exposed
     as a node `domain`. `quantize` authors the refill fetch-order (ADR-0006).
@@ -167,7 +167,8 @@ class MemoryStore:
 
     @property
     def capability(self) -> Capability:
-        """Holdings narration (#47): honest membership; reach truncates plural cells to the
+        """Holdings narration (docs/adr/0007-capability-carries-its-domain.md#consequences):
+        honest membership; reach truncates plural cells to the
         latest-assimilated Holding's domain. Interim — unused on the request path (the gate reads
         `project`'s returned `CoverageSet.capability`); recomputed on read until a multi-reach
         reader forces a maintained sparse form.

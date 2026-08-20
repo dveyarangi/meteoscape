@@ -237,7 +237,8 @@ async def test_reassimilation_replaces_the_whole_unit() -> None:
 @pytest.mark.asyncio
 async def test_plural_holdings_narrate_the_latest_assimilated() -> None:
     """One parameter at two cells: membership stays honest, reach truncates to the newest Holding's
-    domain (#47 — the per-ask exact answer is `project`'s, not the narration's)."""
+    domain (docs/adr/0007-capability-carries-its-domain.md#consequences — the per-ask exact answer is
+    `project`'s, not the narration's)."""
     store = _timeline_store()
     older = _native(lon=10.2, lat=45.3)
     newer = _native(lon=20.2, lat=45.3)
@@ -339,7 +340,8 @@ async def test_stale_holdings_are_returned_as_data() -> None:
 @pytest.mark.asyncio
 async def test_project_selects_only_the_asked_cell() -> None:
     """Two cities warm two cells; an ask at one returns that Holding alone — the per-ask exact
-    answer #47's narration cannot give."""
+    answer the truncating narration cannot give
+    (docs/adr/0007-capability-carries-its-domain.md#consequences)."""
     store = _timeline_store()
     here = _native(lon=10.2, lat=45.3)
     there = _native(lon=20.2, lat=45.3)
