@@ -5,14 +5,7 @@ description: Grilling session that challenges current plan against the existing 
 
 <what-to-do>
 
-Begin every alignment with a **necessity gate**. Name the present customer or trigger, the
-observable problem, and why existing behaviour cannot satisfy it. An accepted requirement or ADR
-passes the gate by citation; do not reopen its decision. When the evidence is clear, state it
-briefly and proceed. When it is weak or missing, recommend narrowing, postponing, or eliminating
-the work and resolve that question before exploring its design.
-
-This gate decides whether design begins. [/impact](../impact/SKILL.md) traces the consequences after
-the need is established.
+Begin every alignment with a **necessity gate**: name the present customer, the observable problem, and why existing behaviour cannot satisfy it. An accepted requirement or ADR passes by citation. Weak evidence means narrow, postpone, or eliminate — settle that before exploring design. The gate fires late too: a mechanism whose name will not settle is evidence it should not exist. [/impact](../impact/SKILL.md) traces consequences once the need holds.
 
 Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer. If there are alternatives, show pros/cons/tradeoffs between them.
 

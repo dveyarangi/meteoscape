@@ -21,6 +21,8 @@ There is no need to add low level details, instead look for architectural seams 
 
 Do not add any implementation details to architecture, unless are critical for non-trivial solution record.
 
+Check `./docs/concerns.md` the same way: a concern the implementation has since answered is a finding — the file still claims open pressure that code resolved. Retire it to its owning ADR or architecture section rather than leaving it standing.
+
 For Edge records specifically (format: align skill's EDGE-FORMAT.md): code must not contradict a promise in a `Status: Normative` record, and each invariant's named validator test must still exist and still assert that promise — a missing or drifted validator is a finding, as is a promise marked **⚠ unguarded** in a Normative record.
 
 If there is a tradeoff, doubt or unresolved concern about the task, or if the code is out of sync with architecture in a major way, use /align skill to align with user.

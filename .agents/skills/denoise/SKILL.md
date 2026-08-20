@@ -9,7 +9,7 @@ description: >-
 
 Scope: the topic in context, or the entire codebase on user request. Learn where this repo already treats each fact as
 authoritative; follow that layering — do not invent one. Out of scope: code structure, reorganizing where facts live.
-Always explore `architecture.md`, `glossary.md` and relevant ADRs too.
+Always explore `architecture.md`, `glossary.md`, `concerns.md` and relevant ADRs too.
 
 **Unwrinkle.** Cross-explore for contradictions, under or overstatements, redundancies or other misalignments between docs; make sure different architecture docs are aligned with each other.
 In case of load-bearing or rippling contradiction, ask user about resolution, explaining the context and providing ways to amend with recommendation. Use `/align` skill if decision is multi-step.
@@ -26,6 +26,11 @@ you got here. Remove superseded paths, unchosen alternatives, completed
 migration notes. Keep a rejection only when it is load-bearing (structural
 constraint or guardrail). Delete evolution prose; do not link it.
 Note that future development/planned extension prose can stay in docs/code where is relevant. But session/ticket references should not appear in code docstrings.
+
+**Concerns.** Sweep `concerns.md` whole, not only the entries in context. An entry stating a decision
+or an accepted limitation belongs in its owning ADR; an entry carrying its own revision history
+states what is true now; a dead trigger or a stale ref retires. [/align](../align/SKILL.md) owns the
+retirement rule — this skill supplies the occasion.
 
 **Inline code docs.** Docstrings describe what *this unit* does — not pasted
 domain definitions.
