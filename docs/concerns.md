@@ -248,27 +248,23 @@ horizon edge at 002). Composites (`Union` / `Derived`) and the Arbiter inherit
 correctness unchanged — blast radius stays behind the Capability facet. Until then, engine
 `NotImplementedError` is an internal assert that `serves` over-promised, not the normal edge path.
 
-**Not closed by [007](./tickets/done/01-0117-off-grid-homogenization.md)** (corrected 2026-08-10; this
-paragraph used to read "registry at 007"). 007 gives the **identity** Resampler its own home — the
-enclosing cell answering for a point it already contains, with no value transfer. It adds no Resampler
-*registry* and does not touch `serves`, so the admit-then-fail gap survives it untouched. **Trigger to
-revisit:** the first request that is genuinely off-phase or on a different step from what a producer
-declares — a coarsened store lattice ([#5](#5-read-time-homogenization-fidelity)'s step question), a
-caller-facing resolution knob ([#15](#15-coarser-grid-resampling-and-aggregation-semantics)), or a
-provider whose native step differs from the store's.
-
-**Narrowed at [m4](./tickets/done/01-0100-snapped-t-request-mode.md) (2026-07-26).** The sampler used to report
-one `None` for two unrelated situations; m4 split them, because leaf assembly now crops through
-`resample` on every request. Only *off-phase or a different step* remains this concern's — genuinely
-unimplementable by index arithmetic, still an internal assert. *A target running past the source's
-end* is a **shortfall**: the crop is well-defined over the overlap and short by a known count, which
-callers can diagnose (a vendor delivered less than it declared) and
+**What remains is off-phase or a different step** — genuinely unimplementable by index arithmetic,
+still an internal assert. *A target running past the source's end* is **not** this concern: that is a
+**shortfall**, well-defined over the overlap and short by a known count, which callers can diagnose (a
+vendor delivered less than it declared) and
 [#30](#30-response-membership-under-runtime-degraded-fallback) can eventually pad.
 
-**Family note (0119, 2026-08-17).** [Live-window edge tolerance](./tickets/done/01-0119-live-window-edge-tolerance.md)
-is the same *admitted-by-extent then unserved* family — a declared window that over-reaches delivery —
-but does not narrow this concern: its off-phase / different-step case stays open. 0119 repaired the
-retention predicate and the in-gap serving seam; it did not deepen `serves`.
+Nothing has narrowed it. The **identity** Resampler gained its own home — the enclosing cell answering
+for a point it already contains, with no value transfer — but that adds no Resampler *registry* and
+does not touch `serves`. The live-window repair is the same *admitted-by-extent then unserved* family,
+a different member: it fixed the retention predicate and the in-gap serving seam rather than deepening
+`serves`.
+
+**Trigger to revisit:** the first request genuinely off-phase or on a different step from what a
+producer declares — a coarsened store lattice ([#5](#5-read-time-homogenization-fidelity)'s step
+question), a caller-facing resolution knob
+([#15](#15-coarser-grid-resampling-and-aggregation-semantics)), or a provider whose native step
+differs from the store's.
 
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
@@ -777,8 +773,7 @@ what stays invisible is the *request-path* skip, which is
 
 ## 41. Parity evidence is unenforced and unrouted
 
-**Kind:** room-left (evidence routing) · **Refs:** [m3](./tickets/done/01-0080-provider-parity-checks.md),
-[edge/provider.md](./edge/provider.md), [cicd.md](./cicd.md)
+**Kind:** room-left (evidence routing) · **Refs:** [edge/provider.md](./edge/provider.md), [cicd.md](./cicd.md)
 
 Every live Provider parity check is opt-in and hand-invoked. Three links between a Provider and its
 evidence have no mechanism, only prose:
@@ -881,8 +876,7 @@ widening and are **not true of the current build**: (1) the per-cell fold itself
 the hi-res producer simply wins the whole parameter under the implemented interface); (3) **per-parameter
 partial success**. **Wholesale runtime-fault fall-through does *not* depend on this widening** — it
 re-enters selection and projects the next admitted candidate whole, entirely within the narrow
-interface → queued as [0121](./tickets/done/01-0121-second-provider-fallback.md). *(Corrected 2026-08-18;
-earlier text bundled fall-through into the widening-dependent list.)*
+interface → queued as [second-provider fallback](./tickets/done/01-0121-second-provider-fallback.md).
 
 Not a v1 gap: v1 ships only `priority`, and point/timeline producers fully overlap, so selection *is*
 the whole job and the narrow interface is exactly sufficient. This concern records the **cost of the
@@ -947,14 +941,11 @@ spatially-dominant source's own horizon. That is a coherent product promise ("th
 days") rather than a leaked policy boundary — the difference is that it is stated as **what the
 surface delivers**, not as **where quality changes**.
 
-**The dominant and the primary split at the priority flip (2026-08-17).** That paragraph was written
-while the T-dominant source (Open-Meteo) was also priority-first. With TWC primary, the narration
-follows the dominant (~16 d) while the default ask — a *spanning* window under intersective snapped
-admission — goes to the primary, which serves its ~10 d clipped, disclosed through `valid_time`.
-Verified against the fold and `serves` before 0120. **Decided: v1 always serves the primary's
-shape** ([ADR-0004](./adr/0004-producer-resolution-and-capability.md)); narration stays the upper
-bound this concern already states, now over-promising the tail whenever primary ≠ dominant — the
-unbuilt max-reach policy and the tail's actual behavior are
+**The dominant and the priority winner need not be the same source**, and that is where the promise
+strains: narration follows the dominant, while a *spanning* default ask goes to the priority winner,
+which serves its own clipped shape disclosed through `valid_time`. The narrated reach therefore
+over-promises the tail whenever primary ≠ dominant — the decided serving shape and the unbuilt
+max-reach escape are
 [#49](#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy)'s.
 
 A `max`-over-parameters boundary was likewise rejected: a `max` fold is **existential** ("*something*
@@ -1045,8 +1036,8 @@ the terminus: it carries the same information a padded tail would, minus the amb
 The interim cost is payload, not correctness. A server-side **strict mode** is declined — an
 explicit-absence response lets a strict client enforce all-or-nothing with one `if`.
 
-**Where padding will be written** (named at [m4](./tickets/done/01-0100-snapped-t-request-mode.md), 2026-07-26).
-Leaf assembly crops values through `resample`, and the sampler now distinguishes a **shortfall** — the
+**Where padding would be written.**
+Leaf assembly crops values through `resample`, and the sampler distinguishes a **shortfall** — the
 requested geometry running past what was delivered — from a crop it cannot do at all
 ([#21](#21-serves-extent-vs-project-crop-ability)). That shortfall branch is the one site where a
 padded tail would be filled: `present=False` with `nan` values, over a known count. It is the
@@ -1074,18 +1065,12 @@ still what gates turning it on, and the reason channel is still the prerequisite
 succeeded; it has no value there), plus a *slice-extraction* need ("which intervals are useful?") that
 is introspection/metadata, not response shape. Filed here only so it is not mistaken for this concern.
 
-**Declared-edge trim (003c align 2026-07-25; mechanism built at
-[m4](./tickets/done/01-0100-snapped-t-request-mode.md)).** A stated request window yields
-its servable part in one round trip: the edge issues a **Snapped-T** request (caller bounds as raw
-instants; the edge fills an omitted `end` from the folded reach end read live — a hint the
-intersection trims harmlessly when stale — and an omitted `start` from now) and **resolution**
-serves `bounds ∩ the winner's live window` on the winner's own lattice;
-only a zero-overlap window resolves `capability-mismatch` (intersective admission). An edge-side
-clamp was adopted first and superseded the same day — its reviews kept finding artifacts of
-simulating resolution at the edge (clock races, per-input ordering rules); the trail is in the
-003c ticket and RFC 0008. Membership at the **declared** edge is thus *trim by the winner*, while
-this concern's runtime-degraded case is unchanged (a fault after admission still drops the
-parameter whole with a reason). **Two-fetch divergence under snapped (judged 2026-08-05, 003c's
+**Declared-edge trim.** A stated request window yields its servable part in one round trip; the
+mechanism is [Edge — MCP: Contract](./edge/mcp.md#contract)'s, which owns it. An **edge-side clamp**
+is rejected — simulating resolution at the edge reintroduces clock races and per-input ordering
+rules. Membership at the **declared** edge is therefore *trim by the winner*, while this concern's
+runtime-degraded case is unchanged: a fault after admission still drops the parameter whole with a
+reason. **Two-fetch divergence under snapped (judged 2026-08-05, 003c's
 re-stage align):** a mixed direct+derived request resolves through two winners and two vendor
 fetches whose grounded T lattices can diverge (an hour roll between the fetches, or a vendor length
 change) → loud whole-request `runtime-failure` at the Arbiter's closed-projection check. Accepted
@@ -1242,7 +1227,7 @@ diverge, the indirection costs more than it saves.
 
 ## 35. Calculator satisfiability vs optional-provider degrade
 
-**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [config and secrets](./tickets/done/01-0123-config-secrets-degrade.md) (boot-degrade removed)
+**Kind:** composition policy · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [architecture § Config, binders, Weaver](./architecture.md#config-binders-weaver) (key-absent refuses; no boot-degrade exists)
 
 A Calculator whose input **no producer serves** is a build-time
 `CompositionError` naming the calculator + input: declaring a Calculator is an operator **promise**, so
@@ -1264,10 +1249,11 @@ the reduced set; matches "optional provider = availability". No v1 driver.
 
 ## 37. Storeless materialized producers and read-back homogenization
 
-**Kind:** deferred seam (placement) · **Refs:** [m2](./tickets/done/01-0070-dissolve-node-countable.md), [#5](#5-read-time-homogenization-fidelity), [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
+**Kind:** deferred seam (placement) · **Refs:** [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md), [#5](#5-read-time-homogenization-fidelity)
 
-[m2](./tickets/done/01-0070-dissolve-node-countable.md) dissolves node-`Countable`: a materialized provider
-(archive bundle, climatological normals, static fields) *is* its own store, so it wires **storeless** —
+Nodes are not `Countable` ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)): a
+materialized provider (archive bundle, climatological normals, static fields) *is* its own store, so
+it wires **storeless** —
 no `Reservoir(store, provider, clock)` mirroring data that is already local. That removes the node whose
 read-back would have homogenized an off-grid request, and
 [architecture §Reservoir](./architecture.md#reservoir) is explicit that homogenization is **not**
@@ -1343,9 +1329,8 @@ contract by pushing identity and prose into geometry helpers:
 
 - `split_extents(left_key: object, …, z_allowance=None) -> str` and
   `first_incomparable(Sequence[tuple[object, Separable]], z_allowance=None)` accept opaque keys and
-  render prose inside `manifold/domain.py` — since
-  [0118](./tickets/done/01-0118-sample-level-allowance.md) including the allowance sentence
-  (`z level … outside allowance […]`). They also compute the
+  render prose inside `manifold/domain.py`, including the allowance sentence
+  (`z level … outside allowance […]`, [parameters.md](./parameters.md#sample-level-allowance)). They also compute the
   incomparable pair twice: once to find it and again to describe its axes.
 - The shared `require_separable` (`nodes/composition.py`) authors one sentence skeleton with
   caller-supplied identities; parallel `_names` one-liners remain in `nodes/arbiter.py` and
@@ -1357,10 +1342,10 @@ contract by pushing identity and prose into geometry helpers:
 expected regional/global nesting is described in
 [ADR-0007](./adr/0007-capability-carries-its-domain.md#why-per-axis-folding-is-invalid)), and the
 separability guard waits on a curvilinear domain ([#12](#12-curvilinear-domains)). The
-**sample-level refusal became reachable at
-[0118](./tickets/done/01-0118-sample-level-allowance.md)** — an out-of-band level renders the band
-sentence from inside geometry, with tests pinning the prose — which grows this concern's surface
-without deciding the diagnostic's shape; the real regional configuration should still decide it.
+**sample-level refusal is reachable** — an out-of-band level renders the band sentence
+([parameters.md](./parameters.md#sample-level-allowance)) from inside geometry, with tests pinning the
+prose — which grows this concern's surface without deciding the diagnostic's shape; the real regional
+configuration should still decide it.
 
 **Candidate resolutions** — both replace `UnionCapability.members` with an unkeyed collection:
 
