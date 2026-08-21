@@ -1,12 +1,11 @@
 """Provider leaf Manifold: the composable fetch pipeline.
 
 A vendor-specific leaf that contributes native, normalized Coverages: a vendor `Probe` (auth / HTTP /
-endpoints / envelope) behind a shape wrapper that owns the geometry, with a `Clock` injected at build.
+endpoints / envelope) behind a shape wrapper that owns the algebra, with a `Clock` injected at build.
 Stateless, no storage, no children; authors the Coverage's provenance (a single-fetch `Uniform` plane)
-at fetch. Its `capability` is a stable `GranularCapability` leaf built once from the cadence + clock:
-per-parameter footprints with static spatial / Z bounds and a clock-anchored `RollingAxis` on
-`valid_time` that rolls with the run anchor (ADR-0003 / ADR-0004). See docs/architecture.md
-("Provider").
+at fetch. `capability` is published by the shape-family member, never built on this ABC — a rolling
+member freezes a `GranularCapability` from cadence and clock; a member whose facts are fetched
+republishes after a refresh (ADR-0003 / ADR-0004). See docs/architecture.md ("Provider").
 
 Also hosts the shared HTTP fetch seam (`Transport` / `FetchRequest` / `HttpxTransport`) used by
 vendor leaves.

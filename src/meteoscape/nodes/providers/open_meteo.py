@@ -1,8 +1,8 @@
 """Open-Meteo vendor leaf — its `Probe`, its declarations, and the catalogue `MANIFEST`.
 
 Serves the 6 canonical parameters as a point plus an hourly series, so it contributes a
-`TimelineProbe` and a tap table to the shape in [timeline.py](./timeline.py) and no algebra of its
-own: one query out, one envelope parsed, everything geometric decided by what is declared here.
+`TimelineProbe` and a tap table to `RollingTimeline` and no algebra of its own: one query out, one
+envelope parsed, everything geometric decided by what is declared here.
 """
 
 from __future__ import annotations
@@ -36,9 +36,9 @@ from .timeline import (
     Z_COLUMN,
     Z_SURFACE,
     PointSeriesTap,
+    RollingTimeline,
     TapTable,
     TimelineDelivery,
-    TimelineProvider,
     VendorVar,
     passthrough,
     pointwise,
@@ -239,7 +239,7 @@ def build(
     if settings:
         raise CompositionError(f"open-meteo unknown settings keys: {', '.join(sorted(settings))}")
     del secret_value  # keyless
-    return TimelineProvider(
+    return RollingTimeline(
         probe=OpenMeteoProbe(HttpxTransport(BASE_URL)),
         taps=TAPS,
         step=HOURLY_STEP,

@@ -1,15 +1,16 @@
-"""Point+timeline provider shape — the `Provider` a whole family of vendors is served by.
+"""Point+timeline provider family — one algebra, members that differ in geometry.
 
 A timeline producer delivers a single X/Y point and a regular T series; only Z varies per parameter.
-`TimelineProvider` implements that shape and owns every algebraic step, while the vendor arrives as an
-injected `TimelineProbe` that builds one request and parses one envelope. Other provider shapes
-(gridded NWP, soundings) are a deferred seam — they add a wrapper beside this one, never a Probe.
+`TimelineProvider` holds every algebraic step; a member answers where it lives, how a request grounds,
+how it signs, and how it refreshes fetched facts. The vendor arrives as an injected `TimelineProbe`.
+A genuinely new delivery shape (gridded NWP, a swath) adds a wrapper beside this family, never a Probe.
 
 The contract both halves answer to is docs/edge/provider.md.
 """
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -50,14 +51,12 @@ GLOBAL_LATITUDES = Interval(-90.0, 90.0)
 """The whole-globe reach a worldwide point API declares by saying nothing; a regional one overrides."""
 
 
-class TimelineProvider(Provider):
-    """A point plus a series, from whichever vendor delivers one — the shape, not the endpoint.
+class TimelineProvider(Provider, ABC):
+    """The point-plus-series algebra — fetch, interpret, tick check, grid build, crop.
 
-    Owns every algebraic step, so a producer of this shape contributes declarations and a
-    `TimelineProbe` and no algebra of its own — the property that keeps snap arithmetic out of every
-    vendor leaf after the first. Its constructor arguments are **per-offering** facts, carrying one
-    offering's worth in v1
-    (docs/concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
+    A member contributes the geometry it publishes, how a request grounds onto it, how an answer
+    is signed, and an await-able refresh that a producer with fixed facts does nothing in.
+    Cadence, clock, and spatial reach are one member's facts.
     """
 
     def __init__(
@@ -66,31 +65,15 @@ class TimelineProvider(Provider):
         probe: TimelineProbe,
         taps: TapTable,
         step: timedelta,
-        cadence: CadenceDef,
-        clock: Clock,
         parameters: ParameterTable,
         source_key: SourceKey,
-        longitudes: Interval[float] = GLOBAL_LONGITUDES,
-        latitudes: Interval[float] = GLOBAL_LATITUDES,
     ) -> None:
         self._probe = probe
         self._taps = taps
         self._step = step
-        self._cadence = cadence
-        self._clock = clock
         self._parameters = parameters
         self._source_key = source_key
         self._source = source_key.provider
-        self._footprints = _declare_footprints(
-            taps,
-            step=step,
-            cadence=cadence,
-            clock=clock,
-            parameters=parameters,
-            longitudes=longitudes,
-            latitudes=latitudes,
-        )
-        self._capability = GranularCapability(reaches=self._footprints)
 
     async def project(self, selection: Selection) -> Manifold:
         """One vendor call, answered either at the geometry the ask pinned or at this producer's own.
@@ -108,7 +91,10 @@ class TimelineProvider(Provider):
         boundless = open_axes(selection.domain)
         # One Probe call whatever the tap count, so the whole table is the natural fetch unit here.
         engaged = self._taps if boundless else self._taps.engaged_by(selection.parameters)
-        wanted = self._resolve(selection.domain, engaged)
+        # Refresh after the parameter guards so an unservable ask never buys I/O, and before
+        # resolve so grounding reads facts the refresh just settled.
+        await self.refresh()
+        wanted = self.resolve(selection.domain, self._engaged_ids(engaged))
         longitude, latitude = self._point_of(wanted)
         delivery = await self._probe.retrieve(
             longitude=longitude,
@@ -121,7 +107,15 @@ class TimelineProvider(Provider):
         # raises — so an empty delivery cannot arrive here. It is unasserted rather than unreachable
         # by luck; if a later shape makes it reachable it needs its own `RuntimeFailure`, because the
         # fold below would report a vendor returning nothing as `CapabilityMismatch`.
-        records = self._interpret(delivery, engaged, longitude=longitude, latitude=latitude)
+        # Stamp after retrieve: today's interpret-time clock read. Stamping first would move
+        # fetched_at / expiration by retrieve latency.
+        records = self._interpret(
+            delivery,
+            engaged,
+            longitude=longitude,
+            latitude=latitude,
+            provenance=Uniform(self.stamp(wanted)),
+        )
         answer = self._answered_geometry(records, selection)
         group = CoverageSet(tuple(records))
         if boundless:
@@ -129,31 +123,28 @@ class TimelineProvider(Provider):
         return await self._delivered(group, answer, selection.parameters)
 
     @property
-    def capability(self) -> GranularCapability:
-        return self._capability
-
-    @property
     def source_key(self) -> SourceKey:
         return self._source_key
 
-    # --- Resolution: what the declarations answer with, before anything is fetched ---
+    async def refresh(self) -> None:
+        """Bring fetched facts up to date. Fixed-facts members inherit this no-op."""
 
-    def _resolve(self, request: Domain, taps: TapTable) -> GridDomain:
-        """The pre-fetch `ground`: what this producer's own declared geometry answers the request with.
+    @abstractmethod
+    def resolve(self, request: Domain, parameters: Sequence[ParameterId]) -> GridDomain:
+        """The geometry this producer answers `request` with — its own `ground` call(s).
 
-        One fetch carries one geometry on every bounded axis; boundless axes license per-footprint
-        difference, which the fold validates while answering the bounded shape.
+        `parameters` arrives deduped in declaration order.
         """
-        try:
-            wanted = agreed_geometry(
-                (ground(request, self._footprints[tap.produces][1]) for tap in taps),
-                request=request,
-            )
-        except ValueError as exc:
-            raise CapabilityMismatch(f"{self._source} cannot serve this selection: {exc}") from exc
-        # `ground` builds a grid; v1 mints no other enumerable representation.
-        assert isinstance(wanted, GridDomain)
-        return wanted
+
+    @abstractmethod
+    def stamp(self, wanted: GridDomain) -> Provenance:
+        """The origin plane for one fetch, given the geometry resolved for it."""
+
+    def _engaged_ids(self, taps: TapTable) -> tuple[ParameterId, ...]:
+        """Declaration order, each parameter once — `agreed_geometry` returns `members[0]`."""
+        return tuple(dict.fromkeys(tap.produces for tap in taps))
+
+    # --- Resolution: the point and window the vendor face is handed ---
 
     def _point_of(self, wanted: GridDomain) -> tuple[float, float]:
         """The one point the timeline is drawn at, as the vendor face takes it."""
@@ -169,10 +160,10 @@ class TimelineProvider(Provider):
         The clamp to the live window, the floor of both bounds onto this producer's ticks,
         end-inclusivity, and the raced-empty decline are all one `clip` inside `ground`.
 
-        Reading the window off a single resolution is sound only because this shape takes **one**
-        `CadenceDef`, so every footprint's T materializes identically — including a boundless T, which
-        every footprint grounds into the same live window. A shape carrying per-parameter cadences
-        loses that guarantee and must fold its own window here.
+        Reading the window off a single resolution is sound only because this family answers with
+        **one** T on every footprint — including a boundless T, which every footprint grounds into
+        the same window. A shape carrying per-parameter windows loses that guarantee and must fold
+        its own window here.
         """
         span = wanted.axis(AxisName.T).extent
         if not isinstance(span.lower, datetime) or not isinstance(span.upper, datetime):
@@ -188,6 +179,7 @@ class TimelineProvider(Provider):
         *,
         longitude: float,
         latitude: float,
+        provenance: Uniform,
     ) -> Sequence[CoverageRecord]:
         """The vendor's account as native records: canonical values on the geometry delivered.
 
@@ -199,7 +191,6 @@ class TimelineProvider(Provider):
             raise RuntimeFailure(f"{self._source} declares reported units but delivered none")
         values = taps.interpret(delivery, source=self._source)
         valid_time = self._lattice_of(delivery.valid_time)
-        provenance = Uniform(self._stamp())
         records: list[CoverageRecord] = []
         for z_spec, group in taps.by_level().items():
             domain = GridDomain(
@@ -237,15 +228,6 @@ class TimelineProvider(Provider):
             if tick != ticks[0] + self._step * i:
                 raise RuntimeFailure(f"{self._source} delivered a series off its declared step")
         return RegularAxis(AxisName.T, ticks[0], self._step, len(ticks), True)
-
-    def _stamp(self) -> Provenance:
-        """One fetch, one plane: the run this answer came from, and when it goes stale (ADR-0003)."""
-        now = self._clock.now()
-        return Provenance(
-            origin=AtomicOrigin(self._source_key, self._cadence.anchor(now)),
-            fetched_at=now,
-            expiration=self._cadence.expiration(now),
-        )
 
     # --- The answer: the geometry this fetch answers with, and the fold onto it ---
 
@@ -294,6 +276,82 @@ class TimelineProvider(Provider):
             raise RuntimeFailure(f"{self._source} delivered less than it declared: {exc}") from exc
 
 
+class RollingTimeline(TimelineProvider):
+    """A continuous footprint whose window rides the clock forward.
+
+    Open-Meteo and TWC are this member: whole-plane reach, rolling cadence, run-stamped provenance.
+    Constructor arguments are **per-offering** facts, carrying one offering's worth in v1
+    (docs/concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection).
+    """
+
+    def __init__(
+        self,
+        *,
+        probe: TimelineProbe,
+        taps: TapTable,
+        step: timedelta,
+        cadence: CadenceDef,
+        clock: Clock,
+        parameters: ParameterTable,
+        source_key: SourceKey,
+        longitudes: Interval[float] = GLOBAL_LONGITUDES,
+        latitudes: Interval[float] = GLOBAL_LATITUDES,
+    ) -> None:
+        super().__init__(
+            probe=probe,
+            taps=taps,
+            step=step,
+            parameters=parameters,
+            source_key=source_key,
+        )
+        self._cadence = cadence
+        self._clock = clock
+        self._footprints = _declare_footprints(
+            taps,
+            step=step,
+            cadence=cadence,
+            clock=clock,
+            parameters=parameters,
+            longitudes=longitudes,
+            latitudes=latitudes,
+        )
+        self._capability = GranularCapability(reaches=self._footprints)
+
+    @property
+    def capability(self) -> GranularCapability:
+        return self._capability
+
+    def resolve(self, request: Domain, parameters: Sequence[ParameterId]) -> GridDomain:
+        """The pre-fetch `ground`: what this producer's own declared geometry answers the request with.
+
+        One fetch carries one geometry on every bounded axis; boundless axes license per-footprint
+        difference, which the fold validates while answering the bounded shape.
+        """
+        try:
+            wanted = agreed_geometry(
+                (ground(request, self._footprints[parameter][1]) for parameter in parameters),
+                request=request,
+            )
+        except ValueError as exc:
+            raise CapabilityMismatch(f"{self._source} cannot serve this selection: {exc}") from exc
+        # `ground` builds a grid; v1 mints no other enumerable representation.
+        assert isinstance(wanted, GridDomain)
+        return wanted
+
+    def stamp(self, wanted: GridDomain) -> Provenance:
+        """One fetch, one plane: the run this answer came from, and when it goes stale (ADR-0003).
+
+        The resolved place is the scatter member's to name; a rolling run reads the clock.
+        """
+        del wanted
+        now = self._clock.now()
+        return Provenance(
+            origin=AtomicOrigin(self._source_key, self._cadence.anchor(now)),
+            fetched_at=now,
+            expiration=self._cadence.expiration(now),
+        )
+
+
 def _declare_footprints(
     taps: TapTable,
     *,
@@ -308,7 +366,7 @@ def _declare_footprints(
 
     The `Capability` widens these to `Domain` — it is the abstract advertisement, and a producer
     declaring curvilinear geometry advertises through the same field
-    (#12 in docs/concerns.md, source role). The wrapper keeps the narrow map because it
+    (#12 in docs/concerns.md, source role). The rolling member keeps the narrow map because it
     *knows* what it built, and resolution reads it back at that type.
     """
     footprints: dict[ParameterId, tuple[ParameterDef, FootprintDomain]] = {}

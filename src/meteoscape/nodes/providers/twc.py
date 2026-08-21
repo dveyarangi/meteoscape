@@ -6,7 +6,8 @@ these pages — not the payload — are the only evidence for what the numbers m
 - portfolio: https://docs.google.com/document/d/1pXDXkT4wd4I77LxkBnltQ7tKG4GlOsDeRUPdaDDtAW8
 - enterprise hourly: https://twcapi.co/v3FODHE
 
-Same point-plus-hourly-series shape as Open-Meteo, so this leaf adds no wrapper.
+Same point-plus-hourly-series shape as Open-Meteo, so this leaf adds no wrapper — it composes
+`RollingTimeline`.
 """
 
 from __future__ import annotations
@@ -41,9 +42,9 @@ from .timeline import (
     Z_COLUMN,
     Z_SURFACE,
     PointSeriesTap,
+    RollingTimeline,
     TapTable,
     TimelineDelivery,
-    TimelineProvider,
     VendorVar,
     passthrough,
     pointwise,
@@ -255,7 +256,7 @@ def build(
             f"twc {spec.name}: cadence_hours={hours} exceeds this offering's horizon "
             f"{duration.max_lead}; choose a smaller cadence_hours"
         ) from exc
-    return TimelineProvider(
+    return RollingTimeline(
         probe=TwcProbe(HttpxTransport(BASE_URL), duration=duration.segment, api_key=secret_value),
         taps=TAPS,
         step=HOURLY_STEP,

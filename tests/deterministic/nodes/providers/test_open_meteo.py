@@ -49,8 +49,8 @@ from meteoscape.nodes.providers.timeline import (
     Z_10M,
     Z_COLUMN,
     Z_SURFACE,
+    RollingTimeline,
     TimelineDelivery,
-    TimelineProvider,
 )
 from meteoscape.parameters import (
     AIR_TEMPERATURE,
@@ -74,9 +74,9 @@ class _CapturingTransport:
         return self._response
 
 
-def _provider(transport: Transport) -> TimelineProvider:
+def _provider(transport: Transport) -> RollingTimeline:
     """The shipped composition — the timeline shape carrying this vendor's Probe and declarations."""
-    return TimelineProvider(
+    return RollingTimeline(
         probe=OpenMeteoProbe(transport),
         taps=TAPS,
         step=HOURLY_STEP,
@@ -166,6 +166,15 @@ async def test_selection_maps_to_forecast_request() -> None:
     assert request.params["start_hour"] == "2026-07-11T12:00"
     assert request.params["end_hour"] == "2026-07-11T15:00"
     assert request.params["timezone"] == "UTC"
+
+
+@pytest.mark.asyncio
+async def test_rolling_refresh_issues_no_transport_call() -> None:
+    """Fixed-facts refresh is a no-op: a request still costs exactly one vendor fetch."""
+    transport: Transport = _CapturingTransport(_canned_hourly(hours=4))
+    provider = _provider(transport)
+    await provider.project(_selection(hours=4))
+    assert len(transport.requests) == 1
 
 
 def _snapped_selection(*, start: datetime, end: datetime) -> Selection:

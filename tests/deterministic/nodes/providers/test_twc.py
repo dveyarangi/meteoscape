@@ -32,8 +32,8 @@ from meteoscape.nodes.providers.timeline import (
     Z_10M,
     Z_COLUMN,
     Z_SURFACE,
+    RollingTimeline,
     TimelineDelivery,
-    TimelineProvider,
 )
 from meteoscape.nodes.providers.twc import (
     PROVIDER_ID,
@@ -107,8 +107,8 @@ def _provider(
     duration: str = "10day",
     clock: StoppedClock = STOPPED,
     cadence: CadenceDef | None = None,
-) -> TimelineProvider:
-    return TimelineProvider(
+) -> RollingTimeline:
+    return RollingTimeline(
         probe=TwcProbe(transport, duration=duration, api_key="secret"),
         taps=TAPS,
         step=HOURLY_STEP,
