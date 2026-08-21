@@ -17,8 +17,9 @@ validators rather than a separate surface — and for one promise below, the *on
 
 ### Implemented face
 
-An author ships a **vendor `Probe`** plus a **catalogue face** — and, only when the producer's geometry
-is one no existing shape covers, a wrapper too.
+An author ships a **vendor `Probe`** plus a **catalogue face** — and, only when the producer's
+*delivery* shape is one no existing wrapper covers, a wrapper too. A new geometry of a delivery
+shape that already exists adds a family member, not a second wrapper.
 
 - **`Provider`** ([base.py](../../src/meteoscape/nodes/providers/base.py)) — `async project(Selection)
   -> Manifold`, `capability -> Capability`, `source_key -> SourceKey`. Stateless, no storage, no
@@ -26,19 +27,25 @@ is one no existing shape covers, a wrapper too.
   to `project` ([architecture §Provider](../architecture.md#provider-leaf-manifold)) — and those
   declarations are what resolve every request, so what exactly must be declared is
   [Resolution](#resolution--how-a-request-becomes-an-answer-geometry).
-- **The shape wrapper** implements `Provider` for a family of producers that share a *geometric* shape
-  — `TimelineProvider` for the point-plus-hourly-series family. It owns everything algebraic: both
-  `ground` calls, `agreed_geometry`, unit verification, `decode`, Z grouping, capability construction,
-  provenance stamping, the aligned crop, and the `ValueError → CapabilityMismatch` translation. A new
-  producer of an existing shape adds **no** wrapper: TWC consists of declarations plus a Probe, with
-  the probe-seam guard covering it unchanged.
-  A genuinely new geometry (gridded NWP, soundings —
-  a [deferred seam](../../src/meteoscape/nodes/providers/timeline.py)) adds one.
+- **The shape wrapper** implements `Provider` for a family of producers that share a *delivery* shape
+  — `TimelineProvider` for the point-plus-hourly-series family. The base owns every algebraic step:
+  `project`'s orchestration, unit verification, `decode`, Z grouping, the post-fetch `ground` /
+  `agreed_geometry`, the aligned crop, and that fold's `ValueError → CapabilityMismatch` translation.
+  A new producer of an existing geometry adds **no** wrapper: TWC consists of declarations plus a
+  Probe, composed into `RollingTimeline`, with the probe-seam guard covering it unchanged.
+  A genuinely new **delivery** shape (a gridded field, a swath —
+  a [deferred seam](../../src/meteoscape/nodes/providers/timeline.py)) adds a wrapper of its own.
+  A new **geometry** carried by a delivery shape that already exists adds a *member* of that
+  wrapper's family: the member answers only the four questions that differ — what geometry it
+  publishes per parameter (`capability`), how a request grounds onto it (`resolve`), how it signs
+  an answer (`stamp`), and how it refreshes facts it fetches rather than fixes (`refresh`)
+  ([architecture §Provider](../architecture.md#provider-leaf-manifold)).
+  The live member is **`RollingTimeline`** — a continuous footprint whose window rides the clock.
   **Its constructor arguments are the per-offering facts** — the tap table, the native `step`, the
-  `CadenceDef`, and the spatial reach (`longitudes` / `latitudes`, defaulting to whole-globe, which a
-  regional producer overrides). Open-Meteo passes one offering's worth as leaf module constants;
+  `CadenceDef`, `clock`, and the spatial reach (`longitudes` / `latitudes`, defaulting to whole-globe,
+  which a regional producer overrides). Open-Meteo passes one offering's worth as leaf module constants;
   TWC is offering-parameterized — per `spec.name` its `build` supplies a different `CadenceDef`
-  horizon and vendor duration path segment through the same wrapper. Two enabled durations therefore
+  horizon and vendor duration path segment through the same member. Two enabled durations therefore
   fetch genuinely different payloads
   ([#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)).
 - **The vendor `Probe`** is what an author actually writes: a `Protocol`, injected, inheriting nothing
@@ -59,7 +66,7 @@ is one no existing shape covers, a wrapper too.
   `test_wind_fetch_requests_shared_vendor_vars_once`), `by_level()` (the Z groups one native record
   each lands on), and `interpret`. It holds declarations and runs them; **anything needing a `Domain`
   belongs to the wrapper** — footprints included, since they are built from the tap table *together
-  with* the wrapper's cadence, clock, reach, and `ParameterTable`.
+  with* the member's cadence, clock, reach, and `ParameterTable`.
 - **Normalization has no object.** The role survives as *declaration plus generic machinery*: a leaf
   **declares** the tap table (vendor variables, expected unit tokens, `decode` functions) and the shape
   wrapper **executes** it. There is no `Normalizer` type to implement, and an author looking for one is
@@ -269,8 +276,10 @@ The fold is **`agreed_geometry`**, the carrier is **`CoverageSet`**, and `ANY` i
 snapped member** (`interval=None`). `SelectableAxis` gains no new kind; the licence keys on
 boundlessness inside the fold.
 
-**Two call sites, and what each grounds against.** The wrapper calls `ground` once before the vendor
-call and once after — never in between, and never anywhere else. Both ends are plural, so both fold:
+**Two call sites, and what each grounds against.** The member's `resolve` calls `ground` before the
+vendor call; the base calls it again after — never in between, and never anywhere else. Both ends are
+plural, so both fold. `refresh` sits after the parameter guards and before `resolve`; `stamp` runs
+after `retrieve`, matching the interpret-time clock read.
 
 ```python
 async def project(self, selection: Selection) -> Manifold:
@@ -278,16 +287,16 @@ async def project(self, selection: Selection) -> Manifold:
         raise CapabilityMismatch(...)                                               # settled before the wire
     boundless = open_axes(selection.domain)                                         # what the ask left to me
     taps   = self._taps if boundless else self._taps.engaged_by(selection.parameters)
-    wanted = agreed_geometry((ground(selection.domain, fp) for fp in footprints(taps)),
-                             request=selection.domain)                              # …against what I declare
+    await self.refresh()                                                            # no-op for fixed facts
+    wanted = self.resolve(selection.domain, engaged_ids(taps))                      # member; against what it declares
     (lon, lat), window = point_of(wanted), window_of(wanted)
 
     delivery = await self._probe.retrieve(longitude=lon, latitude=lat, over=window,
                                           variables=taps.variables)
 
-    records = interpret(delivery, taps, at=(lon, lat), stamped=self._stamp())       # units, decode, Z groups
+    records = interpret(delivery, taps, at=(lon, lat), provenance=Uniform(self.stamp(wanted)))
     answer  = agreed_geometry((ground(selection.domain, r.domain) for r in records),
-                              request=selection.domain)                             # …against what arrived
+                              request=selection.domain)                             # base; against what arrived
     group   = CoverageSet(records)
     return group if boundless else await group.project(Selection(answer, selection.parameters))
 ```
@@ -521,6 +530,15 @@ rather than fought (a run publishing between two reads is a legitimate mismatch,
   manifest; it can never add a core config field. *Validated by:*
   `test_config_imports_nothing_from_nodes` and `test_config_module_names_no_builtin_impl` in
   [test_config.py](../../tests/deterministic/test_config.py).
+- **A new geometry of this delivery shape adds a family member, not a sibling wrapper.** The algebra
+  lives once on `TimelineProvider`; a member answers only `capability`, `resolve`, `stamp`, and
+  `refresh`. Open-Meteo and TWC construct `RollingTimeline`. A member declaring a `ScatterDomain`
+  reach grounds a bounded-T request through its own `resolve`. A fixed-facts `refresh` costs no
+  vendor call. *Validated by:* `test_family_members_do_not_reimplement_the_algebra`,
+  `test_scatter_member_grounds_a_bounded_t_request` in
+  [test_timeline.py](../../tests/deterministic/nodes/providers/test_timeline.py), and
+  `test_rolling_refresh_issues_no_transport_call` in
+  [test_open_meteo.py](../../tests/deterministic/nodes/providers/test_open_meteo.py).
 - **A leaf serves the modes its declarations imply, and writes no mode code.** A snapped ask is answered
   on the leaf's own lattice within the bounds — mid-hour bounds floored onto its ticks before any vendor
   call, a wider delivery trimmed, a disjoint one declined — with no branch on request shape anywhere in

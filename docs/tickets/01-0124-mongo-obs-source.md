@@ -4,8 +4,11 @@
   [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)
   mitigations and the observation-source semantics are resolved inline below. This ticket is the
   decision record and the union of criteria; delivery is the
-  [scatter substrate](./done/01-0124.0010-scatter-substrate.md) and
-  [station serving](./01-0124.0020-mongo-obs-serving.md) slices. The align's impact trace also
+  [scatter substrate](./done/01-0124.0010-scatter-substrate.md),
+  [collector transport and decode](./01-0124.0020-collector-transport-and-decode.md), and
+  [station observation serving](./01-0124.0030-station-observation-serving.md) slices — with
+  [one timeline algebra, two geometries](./done/01-0114-timeline-shape-generalization.md) carved out
+  ahead of them, since the producer joins a family rather than forking one. The align's impact trace also
   found the dominance fold refuses obs+forecast composition over a shared parameter — that work is
   deliberately outside, at
   [obs+forecast reach composition](./01-0137-obs-forecast-reach-composition.md).
@@ -73,12 +76,16 @@ process from the documents themselves, unit from the addressing record) and norm
 declaration — divergence is visible evidence. Observation planes are run-free with `expiration`
 effectively ∞ — already ADR-0003's word; this source is its first implementer.
 
-**Resolved (2026-08-21 align): shape reuse, per the architecture's own rule** ("a new producer of a
+~~**Resolved (2026-08-21 align): shape reuse, per the architecture's own rule** ("a new producer of a
 known shape adds a Probe; a new geometry adds a wrapper"): a **sibling wrapper** beside
-`TimelineProvider` owns the scatter footprint, past-facing timing, and observation provenance;
-the `TimelineProbe` protocol (measured transport-neutral) and the `TapTable`/interpret machinery
-are reused verbatim, with the Mongo probe implementing `retrieve()` against the held client.
-`TimelineProvider` itself is not parameterized.
+`TimelineProvider` owns the scatter footprint, past-facing timing, and observation provenance.~~
+**Superseded 2026-08-22 (serving plan): a family member, not a sibling.** Measuring the sibling
+found ~160 of `TimelineProvider`'s ~243 lines identical for a station producer, so the algebra
+became a family base and the rolling behaviour `RollingTimeline`
+([one timeline algebra](./done/01-0114-timeline-shape-generalization.md)); the observation producer
+joins that family, answering only what differs. The `TimelineProbe` protocol (measured
+transport-neutral) and the `TapTable`/interpret machinery are still reused verbatim, with the Mongo
+probe implementing `retrieve()` against the held client.
 
 New semantics this shape introduces (decided at this ticket's align, not before):
 
@@ -169,8 +176,10 @@ The end-state union — each behavior box lives in exactly one child:
 
 - [x] The [scatter substrate](./done/01-0124.0010-scatter-substrate.md) lands (declared contracts,
       fake-tested) — 2026-08-21.
-- [ ] [Station serving](./01-0124.0020-mongo-obs-serving.md) lands (the source end to end in a
-      composition of its own).
+- [ ] [Collector transport and decode](./01-0124.0020-collector-transport-and-decode.md) lands (the
+      held connection and the pinned schema).
+- [ ] [Station observation serving](./01-0124.0030-station-observation-serving.md) lands (the
+      producer end to end in a composition of its own).
 - [x] The align's resolutions (obs freshness semantics, station-located geometry resolution, #45
       mitigations) are recorded in their durable homes before implementation starts —
       2026-08-21, this ticket plus [ADR-0003](../adr/0003-provenance-and-origin.md),

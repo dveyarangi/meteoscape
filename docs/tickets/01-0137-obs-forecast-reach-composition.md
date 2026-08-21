@@ -2,7 +2,7 @@
 
 - **Status:** Planned (own align precedes)
 - **Type:** HITL
-- **Depends on:** [Mongo obs source station serving](./01-0124.0020-mongo-obs-serving.md) (a real
+- **Depends on:** [station observation serving](./01-0124.0030-station-observation-serving.md) (a real
   scatter reach to compose beside the in-tree forecast reaches)
 - **Blocks:** [correction calculator](./01-0140-correction-calculator.md) — its scoped input fold
   meets the same incomparability, so it cannot build until this lands.
