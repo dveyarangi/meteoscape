@@ -26,10 +26,15 @@ open decision.
   **secrets map** (an embedder may fill it from a vault; `secrets_from_env` is the env convenience
   the shipped root uses — [ADR-0005](../adr/0005-build-time-composition.md) 2026-08-19 amendment),
   and a `Clock` (the `StoreFactory` is built from that clock inside, so one clock is structural);
-  requests then run `Gateway.resolve(Selection) → Coverage`.
-  Every name in that sentence is an internal type an embedder must import from internal modules.
+  requests then run `Gateway.resolve(Selection) → Coverage`, and the whole composition is released
+  through one `Gateway.aclose()` when the embedder is done with it
+  ([architecture § Gateway](../architecture.md#gateway--caller-policy-boundary)).
+  Every name in those sentences is an internal type an embedder must import from internal modules.
 
-**Open** (all at #39): the smallest stable facade and lifecycle; whether construction is
+What stays open at #39 is the *facade* around that path — whether the object carrying it is still
+called `Gateway`, and whether an embedder reaches it through `server.compose` at all.
+
+**Open** (all at #39): the smallest stable facade; whether construction is
 directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
 `Selection`, `Coverage`, or higher-level alternatives become public; what boundary is shared
 with server adapters; Selection-composition ergonomics (mode builders over hand-assembled axes —
@@ -85,8 +90,10 @@ configuration and must never be the public repo's official shape, so it lives in
 composition root behind this edge. Whether that root is a temporary parallel setup or a separate
 project is selected at 0125's align, alongside the facade.
 
-1. Facade and lifecycle selected, with the decision at
-   [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
+1. Facade selected, with the decision at
+   [#39](../concerns.md#39-python-embedding-surface-and-public-failures). **Lifecycle is not part of
+   this item** — [0116](../tickets/done/01-0116-composition-lifetime.md) built the release; what remains
+   here is the name and reachability of the object carrying it.
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context —
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 3. Request-composition ergonomics — `SelectionDomain` / mode builders become embedder vocabulary

@@ -23,7 +23,15 @@ type, construction pattern, or relationship to protocol adapters is selected by 
 
 **Open — facade shape:** the package root currently exports only `SourceKey` and `main`, while the
 usable `server.compose(...)` requires `ProfileConfig`, both plugin catalogues, a secrets map, and a
-`Clock`; it constructs the clock-sharing `StoreFactory` internally. Decide the smallest stable facade and lifecycle, including whether construction
+`Clock`; it constructs the clock-sharing `StoreFactory` internally. The **lifetime mechanism** is no
+longer open — a composed profile is released through one `aclose()` on what `compose` returns
+([architecture § Gateway](./architecture.md#gateway--caller-policy-boundary)) — which leaves one
+question here: whether the type keeps the name **`Gateway`** once it owns the composition's
+teardown rather than only fronting it. Its *placement* is settled —
+[0116](./tickets/done/01-0116-composition-lifetime.md) moves it out of `api/`, since surfaces consume the
+composition rather than provide it — but the name carries a blast radius across glossary,
+architecture, three Edge records, and ADR text, so it waits for this concern's ticket and sweeps the
+corpus once, against the published name. Decide the smallest stable facade and lifecycle, including whether construction
 is directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
 `Selection`, `Coverage`, or higher-level alternatives become public; and what, if any, boundary is
 shared with server adapters. These are options under investigation, not implied commitments.

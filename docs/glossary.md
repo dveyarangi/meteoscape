@@ -379,6 +379,10 @@ _Avoid_: Node-Countable, Enumerable, browsable, indexed
 The Manifold facet that accepts a producer's natural answer for holding (`assimilate`). → [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)
 _Avoid_: Materialized, Scratchboard, ManifoldCache
 
+**Closeable**:
+The facet of anything a composition builds that holds a resource outliving a single call, and so must be released when the composition is released (`aclose`). Not confined to Manifolds: a Store, a producer, and a future non-projecting participant declare it alike. → [architecture.md](./architecture.md#gateway--caller-policy-boundary)
+_Avoid_: Disposable, Stoppable, Collapsible (*collapse* reads as collapsing an axis); pool, connection (what a Closeable may hold, not what it is)
+
 **Store**:
 The Writable substrate owned by a Reservoir, holding independently replaceable per-Parameter Holdings on private lattices. → [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)
 _Avoid_: Cache, buffer, vault, pool
