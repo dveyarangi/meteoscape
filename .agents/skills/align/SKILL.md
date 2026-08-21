@@ -20,6 +20,10 @@ Do not enact the plan until I confirm we have reached a shared understanding.
 
 <supporting-info>
 
+## Good architecture
+
+Goal of architecture is to reduce work on creation and maintenance of the system.
+
 ## Domain awareness
 
 During codebase exploration, also look for existing documentation:

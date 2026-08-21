@@ -9,6 +9,7 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - An RFC implements a ticket — no ticketless RFCs. If the task at hand has no ticket, create it first per the [to-tickets skill](../to-tickets/SKILL.md); its behavior-altitude rule governs the criteria (shape stays in the RFC).
 
+
 - Consider and expose /impact when discussing or providing recommendations or approaches.
 
 - Establish implementation scope, pinpoint and mention affected boundaries, contracts, ownership. Present main code shapes - especially ones that represent documented boundaries. Present code flows.
@@ -19,6 +20,7 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - Do not select implementation shapes just because "that how it is usually done" or based on first idea. Promote simplicity, look for elegant solutions, prefer removing over expanding, prefer conciseness over verbosity.
 
+- Do not invent impl nouns or verbs that are not discussed or approved by user. Use existing vocabulary.
 
 - If you see a concern, first check deeper how the existing architecture documentation describes it - it most probably already does. Read architecture.md, ADRs and concerns.md for this.
 

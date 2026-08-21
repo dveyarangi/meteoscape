@@ -2,6 +2,10 @@
 
 `architecture.md` captures the **high-level architecture**. Unresolved concerns are intentionally **deferred** and listed at the end. Keep in mind that as the document evolves, deferred concerns may become part of the core document.
 
+## Good architecture
+
+Goal of architecture is to reduce work on creation and maintenance of the system.
+
 ## Diagrams — C4 in meaning, regular Mermaid in form
 
 Follow the [C4 model](https://c4model.com/) for the *levels of abstraction*, but render with **plain Mermaid `flowchart`** — **do not** use Mermaid's `C4Context` / `C4Container` / `C4Component` diagram types (their auto-layout is poor). Convey the C4 meaning with a labelled system-boundary `subgraph` and external nodes outside it:
