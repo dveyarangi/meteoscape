@@ -5,86 +5,103 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python 3.14](https://img.shields.io/badge/python-3.14-blue.svg)](https://www.python.org/)
 
-## What it is
+**One normalized weather forecast across configured providers, with provenance and freshness on
+every parameter.**
 
-Meteoscape is a **cross-provider weather access layer** for normalized, provenance-stamped weather
-answers. Its v1 target is to hide vendor heterogeneity, source selection, fallback, and freshness
-behind one small contract, surfaced over **MCP** so an AI agent can ask for weather without integrating
-each vendor itself.
+Meteoscape is a weather-resolution engine served through MCP. It translates vendor-specific data
+into canonical parameters, selects the best available source, falls back when a source fails,
+retains fresh results in process, and reports where each value came from.
 
-> **Current status:** early v1 development. `forecast_hourly` serves the full canonical v1
-> parameter set through TWC when configured, with Open-Meteo as the keyless backstop. Responses
-> include per-value provenance, expiration, nodata handling, free `start`/`end` windows, in-process
-> retention, off-grid read-back, and automatic fault fallback. The supported Python embedding
-> surface is still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
-> capability matrix and execution order.
+## Status
 
-## v1 target
+Meteoscape is under active v1 development. The shipped surface is a local stdio MCP server with one
+tool, `forecast_hourly`, backed by keyless Open-Meteo. A supported Python facade and an HTTP surface
+are planned but are not public APIs yet.
 
-- **One API, every vendor** — canonical units and geometry; integrate once, not once per vendor.
-- **Best-source selection with automatic fallback** — the best obtainable provider per
-  parameter, falling back on failure so a single vendor outage doesn't break the request.
-- **Caching & freshness** — a fresh repeat request is served from cache with no vendor call,
-  cutting latency and vendor API usage; every value carries an `expiration`.
-- **Provenance on every value** — which provider/run produced each parameter, and how fresh.
-- **Derived parameters, not just pass-through** — some parameters are computed rather than
-  relayed: v1 serves wind speed/direction from canonical wind components, so you get a
-  consistent answer no matter how each vendor represents wind. User-defined derivations
-  (dewpoint, heat index, …) are roadmap.
-- **MCP-native, embeddable** — one tool, `forecast_hourly`, returning an hourly point-forecast
-  `Timeline` for the core surface parameters (temperature, wind, precipitation, humidity, cloud
-  cover); the same capability is reachable headlessly through a supported Python embedding
-  surface, without running a protocol server.
+→ [Current capabilities and delivery status](./docs/tickets/README.md#available-today)
 
-Beyond v1, the work turns to **operator-private sources**: station observations and archived
-forecast runs projected read-only from an operator's own database, per-source/per-parameter bias
-validation against those observations, and — once measured bias proves stable — forecast
-correction. Further out: more source shapes (grids, file and FTP transports), user-defined derived
-parameters, and usage monitoring with quota/rate-limit control over vendor APIs. The
-[product roadmap](./docs/product-roadmap.md) carries the direction and the sequencing rule behind
-it.
+## Quick start
 
-**Under the hood.** Meteoscape is organized around a recursive **Manifold** algebra that gives
-normalization, selection, caching, and homogenization one uniform contract. See
-[`docs/architecture.md`](./docs/architecture.md) for the design and
-[`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 release contract. The
-[documentation map](./docs/README.md) identifies the owner of each kind of project information.
-
-## Setup
-
-Requires [uv](https://docs.astral.sh/uv/). It manages the Python toolchain and the virtualenv.
+You need [uv](https://docs.astral.sh/uv/) and Python 3.14 or newer.
 
 ```bash
-# install the pinned environment (including dev tooling)
 uv sync
+uv run meteoscape
+```
 
-# run checks
+This starts a stdio MCP server; it does not open a network port. Configure your MCP client to launch
+`uv run meteoscape` from the repository root. The shipped Open-Meteo profile requires no API key.
+
+## MCP tool
+
+```text
+forecast_hourly(latitude, longitude, parameters?, start?, end?)
+```
+
+- `latitude` and `longitude` select one point.
+- `parameters` optionally selects from `air_temperature`, `precipitation`, `relative_humidity`,
+  `cloud_cover`, `wind_speed`, and `wind_direction`. Omit it to request every served parameter.
+- `start` and `end` optionally bound the forecast window with ISO 8601 datetimes. Omit both to
+  request from now through the available horizon.
+
+Example arguments:
+
+```json
+{
+  "latitude": 32.0853,
+  "longitude": 34.7818,
+  "parameters": ["air_temperature", "precipitation", "wind_speed"]
+}
+```
+
+The response contains a shared hourly `valid_time` axis and one block per served parameter. Each
+block carries canonical-unit values plus `provenance.source` and `provenance.exp`, the freshness
+expiration. Missing readings are JSON `null`.
+
+→ [Complete MCP request, response, and error contract](./docs/edge/mcp.md#contract)
+
+## How it works
+
+1. Provider adapters translate vendor data into Meteoscape's canonical coverage model.
+2. The resolver admits compatible producers and applies the configured selection/fallback policy.
+3. Retentive reservoirs reuse fresh holdings and refill them when they expire.
+4. Surface adapters expose the resolved coverage without leaking vendor-specific semantics.
+
+The recursive abstraction behind these steps is the **Manifold**: projection produces another
+Manifold until a requested domain is sampled into a concrete Coverage.
+
+→ [Architecture](./docs/architecture.md) · [Glossary](./docs/glossary.md)
+
+## Configuration
+
+The shipped profile is declared in [`src/meteoscape/server.py`](./src/meteoscape/server.py). Profile
+composition belongs in code; environment variables carry secrets only. Keyed offerings read one
+secret at `METEOSCAPE_<IMPL>_<SLOT>` and refuse startup when that declared secret is missing.
+
+→ [Environment example](./.env.example) · [Configuration architecture](./docs/architecture.md#config-binders-weaver)
+
+## Development
+
+```bash
 uv run ruff check .
 uv run ruff format --check .
 uv run pyright
 uv run pytest
-
-# run the entry point
-uv run meteoscape
 ```
 
-The environment carries **secrets only** — one per keyed provider, at
-`METEOSCAPE_<IMPL>_<SLOT>`. Everything else about a deployment is declared in code at its
-composition root: which offerings and calculators to compose, in what priority, and the root
-store's shape. The shipped server profile is vendor-neutral — keyless Open-Meteo — and a profile
-that declares a keyed offering without its secret refuses to start. See
-[`.env.example`](./.env.example) and
-[architecture § Config, binders, Weaver](./docs/architecture.md#config-binders-weaver). A missing
-`SENTRY_DSN` disables error reporting without failing startup.
+Live provider parity checks are opt-in:
 
-## Requirements
+```bash
+uv run pytest tests/parity
+```
 
-- **Python 3.14+**
-- **[uv](https://docs.astral.sh/uv/)** for packaging and environment management
+## Documentation
 
-Runtime stack: Pydantic v2 · httpx · FastMCP · numpy · xarray · sentry-sdk. Tooling: ruff ·
-pyright · pytest · respx · hypothesis. See [`pyproject.toml`](./pyproject.toml) for exact pins
-and [`docs/cicd.md`](./docs/cicd.md) for the DevOps setup.
+- [Documentation map](./docs/README.md) — where each kind of project truth lives
+- [Product roadmap](./docs/product-roadmap.md) — direction and sequencing
+- [v1 requirements](./docs/v1-requirements.md) — release contract
+- [Canonical parameters](./docs/parameters.md) — quantities, units, and conventions
+- [Open concerns](./docs/concerns.md) — deliberately unresolved design seams
 
 ## License
 
