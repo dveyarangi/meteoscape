@@ -3,16 +3,16 @@
 **Authored:** 2026-08-20
 
 **Last amended:** 2026-08-21 — the store half's release proof defers to
-[0145](../tickets/01-0145-persisting-store.md), where a real `Closeable` store makes it natural;
+[0145](../../tickets/01-0145-persisting-store.md), where a real `Closeable` store makes it natural;
 `aclose()` empties its list before releasing, which retires two standing constraints; FastMCP's
 ref-counted lifespan and its un-entered-lifespan guard recorded (fact 3). Earlier the same day:
 `gateway.py` moved out of `api/` and absorbed the facet, answering the placement half of #39 while
 leaving the name to 0125.
 
-Implements [composition lifetime and shutdown](../tickets/01-0116-composition-lifetime.md), whose
+Implements [composition lifetime and shutdown](../../tickets/done/01-0116-composition-lifetime.md), whose
 align resolutions this plan takes as given; the durable contract is
-[architecture § Gateway](../architecture.md#gateway--caller-policy-boundary) and the
-[`Closeable`](../glossary.md) glossary entry.
+[architecture § Gateway](../../architecture.md#gateway--caller-policy-boundary) and the
+[`Closeable`](../../glossary.md) glossary entry.
 
 ## What is being built
 
@@ -23,8 +23,8 @@ back a `Gateway` with no way to let go of anything.
 After this ticket the graph still holds nothing: **no shipped producer or store is `Closeable`**.
 `MemoryStore` holds memory, and every Provider builds a per-call `httpx.AsyncClient`. The seam is
 built ahead of its first `Closeable` deliberately, because the two that arrive do so in tickets that
-must not each invent it — the [Mongo obs source](../tickets/01-0124-mongo-obs-source.md)'s pooled client and
-the [persisting Store](../tickets/01-0145-persisting-store.md)'s substrate connection. Every promise
+must not each invent it — the [Mongo obs source](../../tickets/01-0124-mongo-obs-source.md)'s pooled client and
+the [persisting Store](../../tickets/01-0145-persisting-store.md)'s substrate connection. Every promise
 below is therefore proven by fakes, which is what the ticket's criteria ask for.
 
 ## Load-bearing facts
@@ -36,7 +36,7 @@ Verified in code or in the driver's documentation; the plan depends on each.
    to mirror `src`, and `api/__init__.py`'s docstring, which claims the package *applies caller
    policy* — the one thing that leaves with `Gateway`. **Only `module-layout.md` names the
    placement** (`api/  # gateway + mcp_app`), which stage 4 rewrites; no other live document does.
-   The expensive part of the [#39](../concerns.md#39-python-embedding-surface-and-public-failures)
+   The expensive part of the [#39](../../concerns.md#39-python-embedding-surface-and-public-failures)
    question is the **rename** (glossary, architecture, three Edge records, ADR text, code, tests);
    the *placement* half is separable and cheap, and the align's reasoning already settled it —
    surfaces **consume** the composition, they do not provide it, so a type every surface receives is
@@ -50,7 +50,7 @@ Verified in code or in the driver's documentation; the plan depends on each.
 3. **FastMCP enters the lifespan inside the loop, and shields its exit from cancellation.**
    `run_stdio_async` wraps the whole run in `async with self._lifespan_manager()`
    (`fastmcp/server/mixins/transport.py:207`); the HTTP path does the same at `:299`, so
-   [0165](../tickets/01-0165-rest-surface.md) inherits a working hook. `FastMCP.__init__` takes
+   [0165](../../tickets/01-0165-rest-surface.md) inherits a working hook. `FastMCP.__init__` takes
    `lifespan` (`server.py:305`), the manager enters it and sets `_lifespan_result_set` — so yielding
    `None` is fine — and unwinds under `anyio.CancelScope(shield=True)`, whose comment names
    *"closing DB connections, flushing buffers"* as the reason. **Release therefore survives Ctrl-C**,
@@ -63,7 +63,7 @@ Verified in code or in the driver's documentation; the plan depends on each.
    a guard: `_lifespan_proxy` (`server.py:265-275`) raises when a custom lifespan exists but the
    manager was never entered, where the default one yields silently. Nothing here meets it —
    `app.get_tool` never runs the low-level server, and every `Client(app)` enters (fact 6) — and
-   [0165](../tickets/01-0165-rest-surface.md) inherits the guard along with the hook.
+   [0165](../../tickets/01-0165-rest-surface.md) inherits the guard along with the hook.
 4. **`Gateway(...)` is constructed at 9 test sites with one argument**, so what is added must be
    optional — varargs is, naturally; otherwise stage 1 goes red for reasons unrelated to what it
    proves.
@@ -190,7 +190,7 @@ layering rule.** `fastmcp` is imported by exactly one file in `src` today (`api/
 engine has no knowledge that a protocol server exists. `gateway.py` is imported by `server.py` and by
 every future embedder path, so anything *it* imports spreads with it. Putting a FastMCP-shaped
 function there would make the MCP framework a dependency of the engine — and
-[architecture § Embedding surface](../architecture.md#embedding-surface) promises a host application
+[architecture § Embedding surface](../../architecture.md#embedding-surface) promises a host application
 can use Meteoscape *"without starting MCP, HTTP, or any other server."* An embedder who never runs a
 protocol server would pull one in anyway. Fact 8 is the symptom; this is the cause.
 
@@ -198,7 +198,7 @@ Nor does a surface-agnostic wrapper rescue it: FastMCP passes the server positio
 "generic" helper would need `*_: object` in its signature purely to swallow that argument — leaving
 it FastMCP-shaped anyway, only implicitly, and wrapping two lines to do it.
 
-When [0165](../tickets/01-0165-rest-surface.md) lands it writes the same two lines against its own
+When [0165](../../tickets/01-0165-rest-surface.md) lands it writes the same two lines against its own
 hook; if a third surface ever arrives, the thing to extract is *surface lifespan wiring*, which
 belongs in `api/` and not next to the protocol.
 
@@ -207,7 +207,7 @@ No `on_shutdown` parameter and no catch. Two reasons, both narrowing:
 - **Propagation satisfies the criterion.** *"Reported and does not propagate as a request-path
   error"* — `aclose()` is not the request path, and a traceback naming what failed to release as the
   process exits is a report. The client has already disconnected; the consequence is nil.
-- **One surface is not a pattern.** [0165](../tickets/01-0165-rest-surface.md) will register its own
+- **One surface is not a pattern.** [0165](../../tickets/01-0165-rest-surface.md) will register its own
   lifespan over the same hook (fact 3). If a third surface arrives, factor then — not from one shape.
 
 `server.py` therefore does not change beyond assembling the list.
@@ -226,7 +226,7 @@ No `on_shutdown` parameter and no catch. Two reasons, both narrowing:
 - **A separate composition handle.** `Gateway` is permanently 1:1 with its graph, and the surface
   that must *perform* teardown is the one already holding it.
 - **`__aenter__` / `__aexit__`.** `contextlib.aclosing` supplies the with-form from stdlib.
-- **Per-allocator release.** A schedule-driven accumulator ([#44](../concerns.md#44-dedicated-live-archive-store-for-throughput))
+- **Per-allocator release.** A schedule-driven accumulator ([#44](../../concerns.md#44-dedicated-live-archive-store-for-throughput))
   belongs to neither allocator.
 
 ## Stages
@@ -269,7 +269,7 @@ holding without wiring release.
 
 *Not proved here:* that a **store** holding a resource is released through `compose`. `compose`
 builds its own `StoreFactory`, so a fake one can only arrive by rebinding the name or widening the
-signature — and both buy a proof [0145](../tickets/01-0145-persisting-store.md) gets for free, since
+signature — and both buy a proof [0145](../../tickets/01-0145-persisting-store.md) gets for free, since
 a real `SQLiteStore` reduces the test to *compose a profile declaring it, `aclose()`, assert the
 connection closed*, with no fake anywhere. A fake factory would also have to re-implement the
 recording it is meant to check, since overriding `create` is what skips it. Deferred deliberately —
@@ -293,7 +293,7 @@ once it also remembers them. The **dependency-rule line** gains `manifold ← ga
 import the composition rather than the reverse — so `gateway` and `nodes` are independent peers above
 `manifold`, not a tier between them.
 
-[`edge/embedding.md`](../edge/embedding.md)'s **de-facto section** gains the release half of the
+[`edge/embedding.md`](../../edge/embedding.md)'s **de-facto section** gains the release half of the
 composition path — it ends at `Gateway.resolve(Selection) → Coverage`, and an embedder's de-facto
 path now has a second verb. It names no module path, so the relocation needs nothing there.
 
@@ -316,7 +316,7 @@ so each is stated here rather than discovered later.
   composition's life. Nothing new is retained — the graph already holds them — but it is no longer a
   pure factory, and a subclass overriding `create` without calling `super()` collects nothing. True
   of the existing test doubles and harmless there; it would not be harmless in a production
-  substrate subclass — which is [0145](../tickets/01-0145-persisting-store.md)'s to meet, since it
+  substrate subclass — which is [0145](../../tickets/01-0145-persisting-store.md)'s to meet, since it
   brings the second substrate and owns the extension shape.
 - **Teardown is attempted once.** Emptying the list is what delivers the ticket's idempotence, and it
   has to be *our* list: `Closeable` is structural, so nothing's own `aclose()` can be required to
@@ -336,7 +336,7 @@ so each is stated here rather than discovered later.
   `RuntimeFailure`, i.e. as though the upstream were at fault. No distinct "this composition is
   closed" category exists. Not built here: it needs no mechanism for the shipped server, which closes
   once on the way out, and inventing a category before the public failure model is settled is exactly
-  what [#39](../concerns.md#39-python-embedding-surface-and-public-failures) owns — it already
+  what [#39](../../concerns.md#39-python-embedding-surface-and-public-failures) owns — it already
   inventories `runtime-failure` carrying faults that are not a producer's. Recorded so 0125 meets it
   as a known question rather than a surprise. The MCP surface has one concrete instance: because the
   lifespan is ref-counted (fact 3), a **second** `Client(app)` session against the same app re-enters
@@ -345,13 +345,13 @@ so each is stated here rather than discovered later.
   host reusing an app across sessions would.
 - **Calculators are not collected.** A `CalculatorManifest` supplies a plain `fn`, so no calculator
   holds anything today. A future stateful calculator plugin would need collecting at the same seam —
-  belongs with [#26](../concerns.md#26-provider--calculator-plugin-scaffolding), not here.
+  belongs with [#26](../../concerns.md#26-provider--calculator-plugin-scaffolding), not here.
 - **`runtime_checkable` checks method presence, not signature** — any object with an `aclose`
   attribute is `Closeable`. Accepted; the check runs once at build.
-- **The seam is unexercised by a real `Closeable` until [0124](../tickets/01-0124-mongo-obs-source.md).**
+- **The seam is unexercised by a real `Closeable` until [0124](../../tickets/01-0124-mongo-obs-source.md).**
   That is the point of building it first, but it means 0124's align should confirm the seam fits
   before its implementation rather than assuming it.
-- **A store's release is proven at [0145](../tickets/01-0145-persisting-store.md), not here.** Every
+- **A store's release is proven at [0145](../../tickets/01-0145-persisting-store.md), not here.** Every
   store the Weaver allocates is recorded, and `Gateway` releases what it is handed — but that a
   *store* holding a resource survives the whole path is checked where a real one exists and the test
   needs no fake. Until then the store half of `compose`'s collection is read, not run: dropping
@@ -360,18 +360,18 @@ so each is stated here rather than discovered later.
   now and may well be where store selection lands, but 0145 reserves the decision in as many words —
   *"No configuration, factory, registry, or public extension shape is selected ahead of this ticket's
   align"* — and building the factory inside is what makes one clock **structural** rather than
-  conventional, which both [`module-layout.md`](../module-layout.md) and
-  [`edge/embedding.md`](../edge/embedding.md) record as the reason it is built there. A shape chosen
+  conventional, which both [`module-layout.md`](../../module-layout.md) and
+  [`edge/embedding.md`](../../edge/embedding.md) record as the reason it is built there. A shape chosen
   against one substrate to serve one test is chosen for the wrong reason.
-- **`HttpxTransport` stays per-call** — [ticket Out of scope](../tickets/01-0116-composition-lifetime.md),
+- **`HttpxTransport` stays per-call** — [ticket Out of scope](../../tickets/done/01-0116-composition-lifetime.md),
   with its trigger.
 - **The `TODO` in `aclose()`** must name
-  [02-0195](../tickets/02-0195-minimal-resolution-logging.md): teardown failures surface only as the
+  [02-0195](../../tickets/02-0195-minimal-resolution-logging.md): teardown failures surface only as the
   group, because the logging boundary and sensitive-field policy are that ticket's, and a message
   must never carry a connection string. The
-  [doc-corpus gate](../tickets/done/01-0127-docs-integrity-gate.md) verifies the pointer resolves.
+  [doc-corpus gate](../../tickets/done/01-0127-docs-integrity-gate.md) verifies the pointer resolves.
 - **The `Gateway` *name*** — still open at
-  [#39](../concerns.md#39-python-embedding-surface-and-public-failures), and now the only part of
+  [#39](../../concerns.md#39-python-embedding-surface-and-public-failures), and now the only part of
   that question left, since this ticket answers the placement half. A caller-policy boundary that
   also owns the composition's shutdown is arguably misnamed; 0125 decides, because 0125 publishes it.
 

@@ -1,18 +1,21 @@
 # Delivery status
 
-**Last updated:** 2026-08-20
+**Last updated:** 2026-08-21
 
-**Current stage:** [config and secrets](./done/01-0123-config-secrets-degrade.md) is delivered
-(2026-08-19). The shipped profile is keyless Open-Meteo; TWC-primary belongs to the private
-[pilot deployment](../pilot-requirements.md) at the [embedding edge](../edge/embedding.md). Next is
-the [Mongo observation source](./01-0124-mongo-obs-source.md)'s align, which also settles
-[composition lifetime](./01-0116-composition-lifetime.md) — the obs source is the first producer to
-hold a connection between requests, and nothing in `src` owns a resource that outlives a call today.
-That seam builds first, then the source; the
-[embedding surface](./01-0125-supported-python-embedding.md) follows with the second source shape and
-a chosen teardown contract as evidence. If the observation align reveals a real unit spread, the
-trigger-gated [unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of
-implementation.
+**Current stage:** [composition lifetime](./done/01-0116-composition-lifetime.md) is delivered
+(2026-08-21). A composed profile is released through one `Gateway.aclose()`: `Gateway` left `api/`
+and now carries the `Closeable` facet, since every surface receives a composition and none provides
+one. Nothing shipped holds a resource yet — the seam was built ahead of its first holder so that
+holder would not invent it, which is the whole reason it preceded the source.
+
+Next is the [Mongo observation source](./01-0124-mongo-obs-source.md), whose align was deferred once
+0116 was carved out of it and now stands on its own: past-facing capability and freshness, how a
+request point meets a station, and [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)'s
+schema mitigations. It is the seam's first real holder, so its align should confirm the seam fits
+rather than assume it. The [embedding surface](./01-0125-supported-python-embedding.md) follows with
+the second source shape as evidence; its facade question keeps the `Gateway` **name**, the placement
+half having been answered. If the observation align reveals a real unit spread, the trigger-gated
+[unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of implementation.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
@@ -81,6 +84,7 @@ dependency, which is ordering, not blockage.
 | Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./01-0130-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./01-0155-vendor-budget-governor.md) later gives it authority to refuse. |
 | REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./01-0165-rest-surface.md) as the operator deployment shape and part of the v1 bee-line. |
 | Off-grid homogenization | Available | An off-grid point is answered **at the requested point**, read back from the **enclosing** store cell with the **identity** Resampler. Guarded by Reservoir and e2e tests; the MCP edge states the fidelity floor (one cell ⇒ identical values). |
+| Composition shutdown | Available | A composed profile is released through one `Gateway.aclose()` — total, idempotent, and reverse of construction; a failure to release is collected rather than propagated per holder, and surfaces as an `ExceptionGroup`. Nothing shipped holds a resource, so today it releases an empty set; the MCP server releases through FastMCP's lifespan, which is the only place teardown runs inside the server's own loop. |
 | Configured keyed-provider startup | Available | The public profile is keyless Open-Meteo; a profile declaring a keyed offering without its secret refuses startup (no degrade mode). **Env carries secrets alone** — one per keyed offering at `METEOSCAPE_<IMPL>_<SLOT>`; there is no typed env-config object, and the profile (root store included) is declared at its composition root. |
 
 ## Delivery map
@@ -120,7 +124,7 @@ work `Maint`. What those columns mean is
 | 0128 | [Mechanical record moves](./done/01-0128-mechanical-record-moves.md) | Maint | Done | doc-corpus integrity gate | Closing a ticket or RFC into `done/` and archiving a session into `history/` are performed by one mechanical mover that re-depths the moved record's links and rewrites every inbound reference, leaving nothing link-shaped to hand-edit; the integrity gate verifies each move. |
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
 | 0123 | [Config and secrets](./done/01-0123-config-secrets-degrade.md) | — | Done | TWC provider | Generic secret machinery: profiles declare at composition roots, catalogue handles are ids, calculator I/O lives on its manifest, and a secret is read only at the name its declared `SecretSlot` derives. The public profile is vendor-neutral; a declared keyed offering without its secret refuses startup. |
-| 0116 | [Composition lifetime and shutdown](./01-0116-composition-lifetime.md) | Maint | Ready (align rides the Mongo obs source's) | config and secrets | A composed graph can be shut down, and a producer holding a long-lived resource releases it on that shutdown; the server and any embedder use the same one way to do it. *Row sits where the work happens; 0123–0124 are adjacent and 0122 is spent, so the position is the nearest free slot before its origin.* |
+| 0116 | [Composition lifetime and shutdown](./done/01-0116-composition-lifetime.md) | Maint | Done | config and secrets | One `Gateway.aclose()` releases everything a composed profile opened — total, idempotent, LIFO, failures collected into an `ExceptionGroup`. Release is declared by the structural `Closeable` facet, so whatever holds nothing implements nothing; `Gateway` moved out of `api/` and carries it. The MCP surface releases through FastMCP's lifespan, the only place teardown can run inside the server's own loop. *Row sits where the work happens; 0123–0124 are adjacent and 0122 is spent, so the position is the nearest free slot before its origin.* |
 | 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (own align precedes) | config and secrets (its connection string is a secret), composition lifetime (the connection it holds) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | Mongo obs source (lifecycle and construction evidence) | A documented, supported Python package boundary resolves the same available forecast product as MCP without starting a protocol server, with expected failures exposed through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
@@ -162,7 +166,7 @@ This section records only how it landed here.
   ahead of the Mongo sources. 0127/0128 being consumed left 0129 the free integer. Documents
   citing 0122 predate the move and are left as written.
 - **Two mints against exhausted gaps (2026-08-20).**
-  [Composition lifetime](./01-0116-composition-lifetime.md) is a prerequisite carved out of the Mongo
+  [Composition lifetime](./done/01-0116-composition-lifetime.md) is a prerequisite carved out of the Mongo
   obs source, so it sorts before it — but 0123/0124 are adjacent and 0122 is spent by the
   unit-catalogue renumber below, so it takes 0116, the nearest free slot on the correct side, and its
   row sits where the work happens. [Max-reach tail serving](./02-0180-max-reach-tail-serving.md) was

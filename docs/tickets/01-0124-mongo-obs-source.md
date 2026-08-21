@@ -6,7 +6,7 @@
   observation-source semantics still open below.
 - **Depends on:** [config and secrets](./done/01-0123-config-secrets-degrade.md) (the connection
   string uses the generic `SecretSlot` mechanism),
-  [composition lifetime](./01-0116-composition-lifetime.md) (somewhere to hold and release the
+  [composition lifetime](./done/01-0116-composition-lifetime.md) (somewhere to hold and release the
   connection this source keeps between requests)
 - **Blocks:** [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) (shares
   the transport and registry), [correction calculator](./01-0140-correction-calculator.md).
@@ -48,7 +48,7 @@ New semantics this shape introduces (decided at this ticket's align, not before)
   adapts.
 - **Connection lifetime** — a Mongo client is a pool held across requests, not the per-call client
   every HTTP producer builds today. This align decides the seam;
-  [composition lifetime](./01-0116-composition-lifetime.md) builds it first and owns its criteria, so
+  [composition lifetime](./done/01-0116-composition-lifetime.md) builds it first and owns its criteria, so
   the shape is chosen here rather than invented inside this source's implementation.
 
 **Out of scope:** the forecast collections
