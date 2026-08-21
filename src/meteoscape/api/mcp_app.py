@@ -1,12 +1,15 @@
 """MCP surface adapter: protocol ↔ canonical — the first surface.
 
 Builds the FastMCP app and registers `forecast_hourly`. Translates a call into a canonical
-`Selection`, drives the Gateway, and serializes the returned Coverage (serialize only).
+`Selection`, drives the Gateway, and serializes the returned Coverage (serialize only). Also
+registers the shutdown hook that releases the composition it was handed - a surface drives the
+composition it receives, and it is the one that knows when the serving stops.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, timedelta
 
 from fastmcp import FastMCP
@@ -14,6 +17,7 @@ from fastmcp.exceptions import ToolError
 
 from ..clock import Clock
 from ..errors import BadRequest, CapabilityMismatch, RuntimeFailure
+from ..gateway import Gateway
 from ..manifold.capability import Capability
 from ..manifold.core import Coverage, Selection
 from ..manifold.domain import (
@@ -39,7 +43,6 @@ from ..parameters import (
     WIND_SPEED,
     ParameterId,
 )
-from .gateway import Gateway
 
 _HOUR = timedelta(hours=1)
 _SPATIAL_STEP = 1.0
@@ -72,7 +75,23 @@ def build_mcp_app(
     capability = gateway.best_view.capability
     menu = _exposed_menu(capability.parameters)
     served = ", ".join(sorted(menu)) or "(none)"
-    mcp: FastMCP = FastMCP("meteoscape")
+
+    @asynccontextmanager
+    async def lifespan(_server: FastMCP) -> AsyncIterator[None]:
+        """The composition lives exactly as long as the server serves.
+
+        This hook is the only place teardown can run inside the server's own loop — after `run()`
+        returns the loop is gone, and a client bound to it could no longer be closed. `_server` is
+        FastMCP's callback contract, not ours: the manager calls the lifespan with the server. A
+        teardown failure propagates uncaught: `aclose` is not the request path, the client has
+        already disconnected, and the traceback as the process exits is the report.
+        """
+        try:
+            yield
+        finally:
+            await gateway.aclose()
+
+    mcp: FastMCP = FastMCP("meteoscape", lifespan=lifespan)
     description = (
         "Hourly point forecast for a latitude/longitude. "
         f"Served parameters: {served}. "

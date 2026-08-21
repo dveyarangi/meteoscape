@@ -456,6 +456,15 @@ def test_factory_builds_global_xy_lattices_from_spatial_step() -> None:
     assert shape.axis(AxisName.Z) == SnappedAxis(AxisName.Z, None)
 
 
+def test_factory_remembers_every_store_it_allocated() -> None:
+    """The composition root releases what the graph opened, and the factory is the only place a
+    store is built — so it, not the woven graph, is where the roster comes from."""
+    factory = StoreFactory(STOPPED)
+    source_store = factory.create(SAMPLE_STORE, frozenset({AxisName.T}))
+    root_store = factory.create(SAMPLE_STORE, frozenset({AxisName.T, AxisName.Z}))
+    assert factory.created == (source_store, root_store)
+
+
 @pytest.mark.parametrize("step", [0.0, -0.1, 90.1])
 def test_factory_rejects_spatial_step_outside_open_closed_unit_interval(step: float) -> None:
     """Build-time refusal: `0 < step ≤ 90`, else the globe lattice is unbuildable."""

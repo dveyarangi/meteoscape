@@ -9,10 +9,10 @@ from fastmcp import Client
 from fastmcp.exceptions import ToolError
 
 from fakes import STOPPED, core_parameters, footprint_capability, point_timeline_domain
-from meteoscape.api.gateway import Gateway
 from meteoscape.api.mcp_app import build_mcp_app, build_selection, serialize_coverage
 from meteoscape.clock import StoppedClock
 from meteoscape.errors import BadRequest, CapabilityMismatch, RuntimeFailure
+from meteoscape.gateway import Gateway
 from meteoscape.identity import SourceKey
 from meteoscape.manifold.cadence import CadenceDef
 from meteoscape.manifold.capability import Capability, EnumerableCapability
@@ -384,6 +384,23 @@ async def test_narration_with_empty_menu_skips_horizon() -> None:
     description = tool.description or ""
     assert "(none)" in description
     assert "Horizon" not in description
+
+
+@pytest.mark.asyncio
+async def test_the_server_releases_its_composition_when_the_session_ends() -> None:
+    """Teardown must run *after* the session drains, so an in-flight request never meets a released
+    resource — which is why the lifespan is the outer context and a post-`run()` call would not do."""
+    released: list[str] = []
+
+    class _Closeable:
+        async def aclose(self) -> None:
+            released.append("provider")
+
+    app = build_mcp_app(Gateway(_RecordingView(_coverage()), [_Closeable()]), _CLOCK)
+    async with Client(app) as client:
+        await client.call_tool("forecast_hourly", {"latitude": 52.52, "longitude": 13.41})
+        assert released == []
+    assert released == ["provider"]
 
 
 @pytest.mark.asyncio

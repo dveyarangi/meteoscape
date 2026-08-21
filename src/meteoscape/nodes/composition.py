@@ -57,6 +57,15 @@ class SourceRegistry:
 
     sources: Mapping[SourceKey, RegisteredSource]
 
+    @property
+    def providers(self) -> tuple[Provider, ...]:
+        """Every bound provider, in binding order.
+
+        The composition root releases what the composition built, and a provider wrapped in a
+        `Reservoir` is still registered here — so release reads this, never the woven graph.
+        """
+        return tuple(source.provider for source in self.sources.values())
+
 
 class SourceBinder:
     def __init__(self, catalog: ProviderCatalog) -> None:

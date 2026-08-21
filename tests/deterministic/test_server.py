@@ -17,6 +17,7 @@ from meteoscape.config import (
     ProfileConfig,
     StoreSpec,
 )
+from meteoscape.gateway import Closeable
 from meteoscape.identity import SourceKey
 from meteoscape.nodes.calculators import builtin as calculators
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
@@ -39,6 +40,48 @@ def test_compose_advertises_enabled_offerings() -> None:
     )
     gateway = compose(profile, fake_catalog(), {}, {}, STOPPED)
     assert AIR_TEMPERATURE in gateway.best_view.capability.parameters
+
+
+def test_compose_releases_a_provider_that_holds_a_resource() -> None:
+    """The composition root hands its construction sites over; `aclose` lets go of what they hold.
+    No shipped producer holds anything yet, so a fake stands in until 0124 brings a pooled client."""
+    released: list[SourceKey] = []
+    profile = ProfileConfig(
+        offerings=(OfferingDef(impl="fake", name="default", priority=0),),
+        calculators=(),
+        root_store=StoreSpec(spatial_step=0.1, retention_interval=timedelta(days=14)),
+        arbiter=ArbiterPolicy(),
+    )
+    gateway = compose(profile, fake_catalog(release_log=released), {}, {}, STOPPED)
+    assert released == []  # composing acquires; only shutdown releases
+    asyncio.run(gateway.aclose())
+    assert released == [SourceKey(provider="fake", dataset="default")]
+
+
+def test_no_shipped_producer_holds_a_resource() -> None:
+    """Asked of the catalogue rather than of a composed `Gateway`: the claim is about what ships,
+    and it must fail the day a producer starts holding without wiring its release."""
+    # TWC's shortest offering has a 5 h horizon, which its 12 h default cadence exceeds — so
+    # enabling every offering at once needs one explicit knob.
+    settings: dict[str, dict[str, object]] = {"twc": {"cadence_hours": 1}}
+    every_offering = tuple(
+        OfferingDef(impl=impl_id, name=name, settings=settings.get(impl_id, {}))
+        for impl_id, manifest in providers.CATALOG.items()
+        for name in manifest.offerings
+    )
+    registry = SourceBinder(providers.CATALOG).build(
+        every_offering,
+        dict.fromkeys(providers.CATALOG, "secret"),
+        STOPPED,
+        StaticParameterTable.core(),
+    )
+    assert len(registry.sources) == len(every_offering)  # else the check below passes vacuously
+    closeable = [
+        key
+        for key, source in registry.sources.items()
+        if isinstance(source.provider, Closeable)  # every Provider builds a per-call client
+    ]
+    assert closeable == []
 
 
 def test_compose_rejects_unproducible_calculator_input() -> None:

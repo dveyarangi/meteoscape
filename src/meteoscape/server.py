@@ -10,7 +10,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import timedelta
 
-from .api.gateway import Gateway
 from .api.mcp_app import build_mcp_app
 from .clock import Clock, Metronome
 from .config import (
@@ -21,6 +20,7 @@ from .config import (
     StoreSpec,
     secrets_from_env,
 )
+from .gateway import Gateway
 from .nodes.calculators import builtin as calculators
 from .nodes.catalog.calculators import CalculatorCatalog
 from .nodes.catalog.paramtable import StaticParameterTable
@@ -53,7 +53,8 @@ def compose(
     parameters = StaticParameterTable.core()
     sources = SourceBinder(provider_catalog).build(profile.offerings, secrets, clock, parameters)
     calc_registry = CalculatorBinder(calculator_catalog).build(profile.calculators, parameters)
-    woven = Weaver(StoreFactory(clock), clock).weave(
+    stores = StoreFactory(clock)
+    woven = Weaver(stores, clock).weave(
         ProfileDef(
             sources=sources,
             calculators=calc_registry,
@@ -61,7 +62,11 @@ def compose(
             arbiter=profile.arbiter,
         )
     )
-    return Gateway(woven)
+    # Both construction sites, in construction order — reversed release then unwinds
+    # outermost-first (root store → calculator store → source store → provider). Dropping
+    # `stores.created` would break no test until docs/tickets/01-0145-persisting-store.md ships a
+    # store that holds something.
+    return Gateway(woven, sources.providers, stores.created)
 
 
 def main() -> None:

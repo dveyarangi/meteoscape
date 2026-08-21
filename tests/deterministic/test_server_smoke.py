@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
-from meteoscape.api.gateway import Gateway
 from meteoscape.api.mcp_app import build_mcp_app
 from meteoscape.clock import StoppedClock
+from meteoscape.gateway import Gateway
 from meteoscape.manifold.capability import UnionCapability
 from meteoscape.manifold.core import Manifold, Selection
 

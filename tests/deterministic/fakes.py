@@ -205,6 +205,27 @@ class FaultingProvider(FakeProvider):
         raise RuntimeFailure(self._message)
 
 
+class CloseableProvider(FakeProvider):
+    """A Provider holding a resource between requests, logging its own release.
+
+    Stands in for 0124's pooled Mongo client until that lands. It declares release by defining
+    `aclose` and importing nothing — the structural conformance the facet is built on.
+    """
+
+    def __init__(
+        self,
+        *,
+        source_key: SourceKey,
+        capability: Capability,
+        release_log: list[SourceKey],
+    ) -> None:
+        super().__init__(source_key=source_key, capability=capability)
+        self._release_log = release_log
+
+    async def aclose(self) -> None:
+        self._release_log.append(self.source_key)
+
+
 def coverage_record(
     *pids: ParameterId,
     domain: GridDomain,
@@ -250,8 +271,13 @@ def fake_catalog(
     secret: SecretSlot | None = None,
     default_offering: str | None = None,
     built: list[tuple[OfferingSpec, Mapping[str, object], str | None]] | None = None,
+    release_log: list[SourceKey] | None = None,
 ) -> ProviderCatalog:
-    """One-impl catalogue whose `build` yields a fake serving air temperature."""
+    """One-impl catalogue whose `build` yields a fake serving air temperature.
+
+    Pass `release_log` to make the built providers hold a resource: they satisfy `Closeable` and
+    append their key when released.
+    """
 
     record = built if built is not None else []
     specs = offerings or {
@@ -271,16 +297,17 @@ def fake_catalog(
     ) -> Provider:
         record.append((spec, settings, secret_value))
         key = SourceKey(provider=provider_id, dataset=spec.name)
-        if materialized:
-            return FakeProvider(
-                source_key=key,
-                capability=EnumerableCapability(
-                    domain=sample_lattice(count=2),
-                    parameters={pid: parameters.get(pid) for pid in spec.parameters},
-                ),
+        capability = (
+            EnumerableCapability(
+                domain=sample_lattice(count=2),
+                parameters={pid: parameters.get(pid) for pid in spec.parameters},
             )
-        capability = footprint_capability(clock, parameters, spec.parameters)
-        return FakeProvider(source_key=key, capability=capability)
+            if materialized
+            else footprint_capability(clock, parameters, spec.parameters)
+        )
+        if release_log is None:
+            return FakeProvider(source_key=key, capability=capability)
+        return CloseableProvider(source_key=key, capability=capability, release_log=release_log)
 
     return {
         impl_id: ProviderManifest(

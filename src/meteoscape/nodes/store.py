@@ -279,12 +279,25 @@ class MemoryStore:
 
 
 class StoreFactory:
-    """Allocates `MemoryStore`s: interprets `StoreSpec` into prepared lattices, validates the
-    step, and passes through the wiring-declared `deferred` axes (ADR-0006).
+    """Allocates `MemoryStore`s and remembers them: interprets `StoreSpec` into prepared lattices,
+    validates the step, and passes through the wiring-declared `deferred` axes (ADR-0006).
+
+    It keeps what it allocated because the composition root must release what the graph opened, and
+    this is the only place a store is built. It keeps rather than filters: whether a store holds
+    anything is the `Gateway`'s question, so nothing here knows the lifetime facet.
+
+    Consequence: a subclass overriding `create` without calling `super()` allocates stores nobody
+    can release.
     """
 
     def __init__(self, clock: Clock) -> None:
         self._clock = clock
+        self._created: list[Store] = []
+
+    @property
+    def created(self) -> tuple[Store, ...]:
+        """Every store allocated so far, in allocation order (inside-out: root store last)."""
+        return tuple(self._created)
 
     def create(self, spec: StoreSpec, deferred: frozenset[AxisName]) -> Store:
         if not 0 < spec.spatial_step <= 90:
@@ -295,7 +308,9 @@ class StoreFactory:
             AxisName.X: _global_spatial(AxisName.X, spec.spatial_step),
             AxisName.Y: _global_spatial(AxisName.Y, spec.spatial_step),
         }
-        return MemoryStore(grids, deferred, self._clock, spec.retention_interval)
+        store = MemoryStore(grids, deferred, self._clock, spec.retention_interval)
+        self._created.append(store)
+        return store
 
 
 def _global_spatial(name: AxisName, step: float) -> RegularAxis:
