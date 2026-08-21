@@ -208,8 +208,8 @@ class FaultingProvider(FakeProvider):
 class CloseableProvider(FakeProvider):
     """A Provider holding a resource between requests, logging its own release.
 
-    Stands in for 0124's pooled Mongo client until that lands. It declares release by defining
-    `aclose` and importing nothing — the structural conformance the facet is built on.
+    It declares release by defining `aclose` and importing nothing — the structural conformance the
+    facet is built on.
     """
 
     def __init__(

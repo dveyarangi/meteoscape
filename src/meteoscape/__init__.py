@@ -1,4 +1,4 @@
-"""Meteoscape - a manifold-based weather Coverage-resolution engine, served over MCP."""
+"""Meteoscape — a manifold-based weather Coverage-resolution engine."""
 
 from .identity import SourceKey
 from .server import main

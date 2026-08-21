@@ -366,7 +366,7 @@ async def test_winner_domains_that_differ_fail_the_whole_request() -> None:
         await arbiter.project(selection)
 
 
-# --- Fall-through on a child's RuntimeFailure (docs/tickets/done/01-0121-second-provider-fallback.md) ---
+# --- Fall-through on a child's RuntimeFailure (ADR-0004) ---
 
 
 def _materialized(*providers_and_priority: tuple[Provider, int]) -> SourceRegistry:

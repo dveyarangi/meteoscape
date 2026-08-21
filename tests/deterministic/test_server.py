@@ -43,8 +43,7 @@ def test_compose_advertises_enabled_offerings() -> None:
 
 
 def test_compose_releases_a_provider_that_holds_a_resource() -> None:
-    """The composition root hands its construction sites over; `aclose` lets go of what they hold.
-    No shipped producer holds anything yet, so a fake stands in until 0124 brings a pooled client."""
+    """The composition root hands its construction sites over; `aclose` releases their resources."""
     released: list[SourceKey] = []
     profile = ProfileConfig(
         offerings=(OfferingDef(impl="fake", name="default", priority=0),),
@@ -184,7 +183,7 @@ def test_embedder_profile_without_the_key_refuses() -> None:
 
 
 def test_leftover_env_var_is_inert() -> None:
-    """Env carries secrets and scalars only — a stale var reaches no `build` (0123 align)."""
+    """Env carries secrets and scalars only — an undeclared variable reaches no `build`."""
     gateway = compose(
         _public_profile(),
         providers.CATALOG,

@@ -1,4 +1,4 @@
-# MeteoScape
+# Meteoscape
 
 [![version](https://img.shields.io/badge/version-0.1.0-blue.svg)](./pyproject.toml)
 [![CI](https://github.com/dveyarangi/meteoscape/actions/workflows/ci.yml/badge.svg)](https://github.com/dveyarangi/meteoscape/actions/workflows/ci.yml)
@@ -7,7 +7,7 @@
 
 ## What it is
 
-MeteoScape is a **cross-provider weather access layer** for normalized, provenance-stamped weather
+Meteoscape is a **cross-provider weather access layer** for normalized, provenance-stamped weather
 answers. Its v1 target is to hide vendor heterogeneity, source selection, fallback, and freshness
 behind one small contract, surfaced over **MCP** so an AI agent can ask for weather without integrating
 each vendor itself.
@@ -15,8 +15,8 @@ each vendor itself.
 > **Current status:** early v1 development. `forecast_hourly` serves the full canonical v1
 > parameter set through TWC when configured, with Open-Meteo as the keyless backstop. Responses
 > include per-value provenance, expiration, nodata handling, free `start`/`end` windows, in-process
-> retention, and off-grid read-back. Automatic fault fallback and the supported Python embedding
-> surface are still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
+> retention, off-grid read-back, and automatic fault fallback. The supported Python embedding
+> surface is still ahead. See the [delivery status](./docs/tickets/README.md) for the authoritative
 > capability matrix and execution order.
 
 ## v1 target
@@ -44,7 +44,7 @@ parameters, and usage monitoring with quota/rate-limit control over vendor APIs.
 [product roadmap](./docs/product-roadmap.md) carries the direction and the sequencing rule behind
 it.
 
-**Under the hood.** MeteoScape is organized around a recursive **Manifold** algebra that gives
+**Under the hood.** Meteoscape is organized around a recursive **Manifold** algebra that gives
 normalization, selection, caching, and homogenization one uniform contract. See
 [`docs/architecture.md`](./docs/architecture.md) for the design and
 [`docs/v1-requirements.md`](./docs/v1-requirements.md) for the concrete v1 release contract. The
@@ -73,8 +73,8 @@ The environment carries **secrets only** — one per keyed provider, at
 composition root: which offerings and calculators to compose, in what priority, and the root
 store's shape. The shipped server profile is vendor-neutral — keyless Open-Meteo — and a profile
 that declares a keyed offering without its secret refuses to start. See
-[`.env.example`](./.env.example) and the
-[config/secrets ticket](./docs/tickets/done/01-0123-config-secrets-degrade.md). A missing
+[`.env.example`](./.env.example) and
+[architecture § Config, binders, Weaver](./docs/architecture.md#config-binders-weaver). A missing
 `SENTRY_DSN` disables error reporting without failing startup.
 
 ## Requirements

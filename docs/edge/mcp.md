@@ -80,7 +80,7 @@ candidate has been tried; fails the whole request).
   [error-taxonomy ticket](../tickets/02-0190-error-taxonomy-partial-success.md).
 - A child's `runtime-failure` falls through to the next admitted candidate; the request fails
   whole only when every candidate has faulted or none of the rest admit (**compatible** — a
-  request that used to fail may now succeed). No partial response survives exhaustion —
+  request may succeed through its backstop). No partial response survives exhaustion —
   *validated by:* `test_faulting_priority_0_falls_through_to_priority_1`,
   `test_all_candidates_fault_names_parameter_producers_and_last_fault`,
   `test_no_remaining_candidate_admits_is_exhaustion_not_omission` in
@@ -169,14 +169,11 @@ candidate has been tried; fails the whole request).
 
 ## Roadmap
 
-1. **Delivered (compatible)** — a child's `runtime-failure` falls through to the next admitted
-   candidate; the request fails whole only on exhaustion —
-   [second-provider fallback](../tickets/done/01-0121-second-provider-fallback.md).
-2. Per-parameter assembly — one response, different winning sources per parameter —
+1. Per-parameter assembly — one response, different winning sources per parameter —
    [per-parameter selection](../tickets/02-0170-per-parameter-selection.md).
-3. Absence reasons and partial success under fault —
+2. Absence reasons and partial success under fault —
    [error taxonomy and partial success](../tickets/02-0190-error-taxonomy-partial-success.md).
-4. **Echo the answered coordinate.** `serialize_coverage` reads `coverage.domain` but emits only the
+3. **Echo the answered coordinate.** `serialize_coverage` reads `coverage.domain` but emits only the
    T axis, so this surface drops the X/Y the answer is labelled at. The Coverage already carries them
    — this is a serialization gap of this surface alone, and it does not exist at the
    [embedding surface](./embedding.md), which hands the host the

@@ -2,72 +2,11 @@
 
 **Last updated:** 2026-08-22
 
-**Current stage:** the [scatter substrate](./done/01-0124.0010-scatter-substrate.md) is delivered
-(2026-08-21) — the first slice of the [Mongo observation source](./01-0124-mongo-obs-source.md),
-which was **aligned 2026-08-21 against the live collector database** and split on its impact trace.
-The algebra can now declare a station scatter and publish declared provenance over it:
-`ScatterDomain` admits exactly its member points (jointly, no epsilon), `AtomicOrigin` carries
-optional `authority` / `process` / `unit`, `Capability.origins` pairs sub-domains with the origins
-that would serve them *before* any request, an observation-shaped origin never expires, and a
-storeless non-materialized producer composes. Fake-tested ahead of its holder, the 0116 carve
-repeated.
-
-[One timeline algebra, two geometries](./done/01-0114-timeline-shape-generalization.md) followed
-(2026-08-22), carved when planning the serving slice measured the alternative: a sibling wrapper
-would have forked ~160 of `TimelineProvider`'s ~243 lines, since only four answers differ between a
-forecast and a station producer — where it lives, how a request lands, how it signs, and how it
-refreshes fetched facts. Those are the producer's own facts rather than a separable object, so the
-algebra is now a family base and the rolling behaviour `RollingTimeline`, with a guard test that
-fails if a member reimplements the algebra.
-
-Next is [collector transport and decode](./01-0124.0020-collector-transport-and-decode.md) — the held
-`AsyncMongoClient` behind `Closeable` (0116's first real holder), read-only by construction, both
-schemas through one canonical mapping, fixtures pinned from real documents — and
-[station observation serving](./01-0124.0030-station-observation-serving.md), which adds
-`ArchiveAxis` (a window whose lower is fixed and whose upper rides the clock; a rolling window
-cannot express it) and serves each place. The impact trace also found that the dominance fold refuses obs+forecast composition over a
-shared parameter, minting
-[obs+forecast reach composition](./01-0137-obs-forecast-reach-composition.md) ahead of the
-correction calculator, which now depends on it. The align confirmed the 0116 seam fits its
-first real holder (a pooled client plus a serving-path registry re-read, both released through one
-`aclose`), resolved the observation semantics inline in the ticket (storeless, exact-station
-admission over a `ScatterDomain`, clock-riding past-facing reach, holes as nodata), and minted
-[ADR-0003](../adr/0003-provenance-and-origin.md)'s origin-identity amendment and concern
-[#50](../concerns.md#50-observation-network-scale-station-grouping-and-discovery). Measured against
-real documents, the collector's units are already canonical — the
-[unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger did not fire and it slides
-behind its next plausible customer. The [embedding surface](./01-0125-supported-python-embedding.md)
-follows with the second source shape as evidence; its facade question keeps the `Gateway` **name**,
-the placement half having been answered.
-
-**Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
-*forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
-Python, a REST surface, and provider quota monitoring.* What changed:
-
-- **TWC becomes the primary**, not a spare — which pulls
-  [fallback](./done/01-0121-second-provider-fallback.md), [unit conversion](./01-0129-unit-conversion-edge.md),
-  and [config/secrets](./done/01-0123-config-secrets-degrade.md) up behind it (positions 0121–0123, was
-  0150/0160/0180). A metered primary that can 429 makes fall-through load-bearing rather than
-  resilience polish.
-- **Four tickets minted**: the [vendor-call ledger](./01-0130-vendor-call-ledger.md) and its
-  [budget governor](./01-0155-vendor-budget-governor.md) (two slices — meter first, authority
-  second), the [persisting SQLite Store](./01-0145-persisting-store.md), and the
-  [REST surface](./01-0165-rest-surface.md).
-- **Demoted off the beeline**: [per-parameter selection](./02-0170-per-parameter-selection.md),
-  [errors and partial success](./02-0190-error-taxonomy-partial-success.md),
-  [minimal resolution logging](./02-0195-minimal-resolution-logging.md), and the
-  [conventions sweep](./02-0200-artifact-conventions-sweep.md) — the former v1 tail.
-- **Unchanged at the head**: 007 stays first. Stations are off-grid points, so the correction
-  workstream reads through the same read-back — but it is not *blocked* on 007: pairing a forecast to
-  a station's coordinates already answers at that point. What 007 adds is the seam the identity
-  Resampler lives in.
-
-**Release boundary corrected 2026-08-18, contract re-cut 2026-08-20.** The bee-line is v1, not work
-occurring ahead of the old v1 tail. Its tickets therefore serve release 01; the four tickets above
-move to release 02. The [v1 requirements](../v1-requirements.md) were re-cut against that boundary on
-2026-08-20 and are again the authority for the release contract; per-item criteria stay here. The
-re-cut also minted [forecast correction](./01-0142-forecast-correction.md) — the release's headline
-criterion, which had no ticket.
+**Current stage:** the [scatter substrate](./done/01-0124.0010-scatter-substrate.md) and
+[shared timeline algebra](./done/01-0114-timeline-shape-generalization.md) are delivered. Next are
+[collector transport and decode](./01-0124.0020-collector-transport-and-decode.md) and
+[station observation serving](./01-0124.0030-station-observation-serving.md). The delivery map and
+recommended execution order below own the complete state and sequencing rationale.
 
 This is the source of truth for **what is implemented, what is in progress, what is ready, and what
 comes next** — across all open releases, in one queue. The [product roadmap](../product-roadmap.md)

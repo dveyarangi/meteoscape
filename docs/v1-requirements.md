@@ -1,20 +1,17 @@
 # v1 requirements
 
 The **release contract** for v1 (release 01): what the framework must be able to do, and how that is
-verified in this repository. Re-cut 2026-08-20 against the bee-line the
-[delivery status](./tickets/README.md) sequences.
+verified in this repository. The [delivery status](./tickets/README.md) owns sequencing.
 
 This document owns **capability** — what Meteoscape can do for anyone who runs it. What one
 deployment *declares* — which offerings at which priority, which secrets, where its composition root
-lives, and when it goes live — is [pilot requirements](./pilot-requirements.md)'. The test for which
+lives, and when it goes live — lives in [pilot requirements](./pilot-requirements.md). The test for which
 side a sentence belongs on: **does it survive a second deployment?** If yes it is this document's; if
 no it is the pilot's.
 
-It is deliberately **narrow**. Facts with a living owner are cited, never restated — the drift that
-made the previous cut wrong came from restating documents that move.
-
-Where the facts this document used to restate actually live — a subset of the
-[documentation map](./README.md), kept here because a reader arrives looking for them.
+It is deliberately **narrow**. Facts with a living owner are cited, never restated. The following
+subset of the [documentation map](./README.md) covers the facts a release-contract reader usually
+needs:
 
 | What you came for | Where it lives |
 |---|---|
@@ -143,15 +140,11 @@ a gap in it.
 - **Cross-run combination** → [#9](./concerns.md#9-cross-run-combination).
 - **User-defined derived parameters** beyond the wind views and correction — dewpoint, heat index, and
   the composable-DAG surface are [roadmap Phase 4](./product-roadmap.md).
-- **Place-name geocoding**, **CoverageJSON**, and a request `format` selector → `ideas.md`.
+- **Place-name geocoding**, **CoverageJSON**, and a request `format` selector →
+  [ideas](./ideas.md).
 - **Windowed statistics** and sub-hourly resolution →
   [#15](./concerns.md#15-coarser-grid-resampling-and-aggregation-semantics).
 - **A hosted cloud product** — [roadmap Phase 8](./product-roadmap.md).
-
-**No longer out of scope**, against the previous cut: archives, a persisting `Store`, HTTP transport,
-vendor quotas and rate limits, and **origin synthesis**. Correction is a method-bearing derivation, so
-it mints a synthetic origin and the edge serializer stops being pinned to the atomic path — the seam is
-already described by [ADR-0003](./adr/0003-provenance-and-origin.md) and needs no amendment to be used.
 
 ## Deferrals v1 records
 
@@ -178,4 +171,5 @@ Deferrals whose **precondition** is worth stating once, rather than rediscoverin
 - **Resampler sophistication** beyond v1's identity read-back — parameter-specific resamplers, accuracy
   bounds, and a provider `exact` capability →
   [#5](./concerns.md#5-read-time-homogenization-fidelity).
-- **A provider-real freshness signal**, versus the static cadence-model `{Δ, L}` estimate → `ideas.md`.
+- **A provider-real freshness signal**, versus the static cadence-model `{Δ, L}` estimate →
+  [ideas](./ideas.md).

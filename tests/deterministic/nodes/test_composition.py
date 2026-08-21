@@ -180,7 +180,7 @@ def test_secret_reaches_build_via_derived_name() -> None:
 
 
 def test_settings_are_not_spelled_through_env() -> None:
-    """Env carries secrets and scalars only; per-offering settings ride the def (0123 align)."""
+    """Env carries secrets and scalars only; per-offering settings ride the declaration."""
     built: list = []
     catalog = fake_catalog(secret=SecretSlot(name="api_key"), built=built)
     SourceBinder(catalog).build(

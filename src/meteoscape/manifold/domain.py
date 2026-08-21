@@ -681,7 +681,7 @@ class ScatterDomain(Domain):
     X/Y are never an axis product: a request is admitted only at a member place, exactly
     (no epsilon). Boundless (`ANY`) and boxed spatial asks decline — "all stations" waits on
     a scatter-shaped Coverage (#12). Not Separable: exposing `axis()` would falsely pass
-    `as_separable` and half-work through the 0137 folds. `points` order does not affect
+    `as_separable` and make per-axis composition appear valid. `points` order does not affect
     admission but does affect equality, and becomes the positional order of the Coverage a
     scatter will one day carry. ADR-0002; glossary ScatterDomain.
     """

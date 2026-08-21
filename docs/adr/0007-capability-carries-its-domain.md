@@ -6,7 +6,7 @@ status: accepted
 
 A **`Capability` publishes the `Domain` it serves, per parameter** — `reach(parameter) -> Domain`,
 alongside `parameters` and `serves` (and `origins`, the declared-provenance member owned by
-[ADR-0003](./0003-provenance-and-origin.md)'s origin-identity amendment). A Manifold's **Reach** *is* that domain — the member carries the
+[ADR-0003](./0003-provenance-and-origin.md)'s origin-identity contract). A Manifold's **Reach** *is* that domain — the member carries the
 glossary's name for the concept, leaving `domain` to the parameter-free enumerable field
 result-`Countable` forwards to. The profile's reach is
 the woven root's; a Calculator's input reach is its scoped Arbiter's. There is no separate reach

@@ -285,7 +285,7 @@ def test_regular_axis_clip_of_instants_keeps_only_ticks_inside_the_bounds() -> N
 
 
 def test_regular_axis_clip_is_coordinate_generic() -> None:
-    """One expression serves both coordinate kinds — m4 adds no temporal narrowing (concern #23)."""
+    """One expression serves both coordinate kinds; concern #23 owns any future type split."""
     degrees = RegularAxis(AxisName.X, 0.0, 1.0, 5, False)  # 0.0 … 4.0
     assert degrees.clip(Interval(1.0, 3.0)) == RegularAxis(AxisName.X, 1.0, 1.0, 3, False)
     assert degrees.clip(Interval(10.0, 20.0)) is None

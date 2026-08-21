@@ -93,9 +93,8 @@ def resample(coverage: Coverage, selection: Selection) -> CoverageRecord:
     if missing:
         raise ValueError(f"parameter(s) not held: {sorted(missing)}")
 
-    # TODO(#39): the three `NotImplementedError`s below are *unbuilt*, not producer faults, and they
-    # reach the surface uncategorized (#21 calls this "not even a clean mismatch"). They want the
-    # engine-side category #39 inventories; the class split is 0125's align, not a local fix.
+    # TODO(#39): the three `NotImplementedError`s below are *unbuilt*, not producer faults, and
+    # reach the surface uncategorized; #21 owns the capability over-promise behind this path.
     if not isinstance(selection.domain, EnumerableDomain):
         raise NotImplementedError("continuous selection requires Reservoir homogenization")
 

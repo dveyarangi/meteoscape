@@ -365,7 +365,8 @@ same shape. The abstraction these are shapes of is the
 
 - **Sources and Calculators unify as `Producer`s — the candidate the Arbiter selects over.** A
   **`Producer`** is a **neutral ranked candidate**: `{ node: Manifold, key: ProducerKey }` — a live
-  `Reservoir(store, Provider, clock)` (a Source) or a `Calculator` (maybe `Reservoir`-wrapped), paired with an
+  Provider (optionally `Reservoir`-wrapped as a retained Source) or a `Calculator` (also optionally
+  `Reservoir`-wrapped), paired with an
   identity (`ProducerKey = SourceKey | CalculatorKey`, keyed on the producing method/offering — never the
   output — so two calculators serving one output by different methods are **distinct competing producers**,
   identical to two providers competing for a parameter; keys →

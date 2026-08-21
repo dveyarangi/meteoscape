@@ -347,7 +347,7 @@ async def test_snapped_mixed_request_shares_one_vendor_geometry() -> None:
 async def test_history_window_is_capability_mismatch_with_no_vendor_call() -> None:
     """A well-formed window wholly before the live window: admission answers, nothing is fetched.
 
-    The edge never rejects on reach's word — the mismatch is intersective admission's (m4), so
+    The edge never rejects on Reach alone — the mismatch is intersective admission's, so
     the proof it happened at admission is that the vendor was never asked.
     """
     route = respx.get(url__startswith=f"{BASE_URL}/v1/forecast").mock(

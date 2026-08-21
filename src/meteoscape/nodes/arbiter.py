@@ -230,7 +230,7 @@ class Arbiter:
         for parameter in params:
             winner = self._first_admitted(parameter, selection, faulted)
             if winner is None:
-                # TODO(#30): 0190 dissolves this whole-request failure into per-parameter reasons.
+                # TODO(#30): dissolve this whole-request failure into per-parameter reasons.
                 names = ", ".join(str(key) for key in faulted)
                 raise RuntimeFailure(
                     f"{parameter} exhausted after {names} faulted: {last_fault}"
@@ -256,8 +256,7 @@ class Arbiter:
                 domain = result.domain
             elif result.domain != domain:
                 # TODO(#39): an engine invariant break wearing a producer's category — no producer
-                # faulted here. `RuntimeFailure` is kept because it is the only class that reaches
-                # the wire cleanly; the retraction is concern #39's inventory, 0125's align.
+                # faulted here. `RuntimeFailure` remains only because no engine-failure category exists.
                 # Guarded by `test_winner_domains_that_differ_fail_the_whole_request`.
                 raise RuntimeFailure("closed-projection invariant broken: winner domains differ")
             for pid in params:

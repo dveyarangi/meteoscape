@@ -62,8 +62,8 @@ def _family() -> list[type]:
 
     `__subclasses__` is direct-only and sees just what has been imported, so the guard would pass
     vacuously for a member living in its own module: importing the shipped set is what makes the
-    check real, and the recursion catches a member specialising another (a stamp-only variant of a
-    geometry — the shape 0134 contemplates).
+    check real, and the recursion catches a member specialising another, such as a stamp-only
+    geometry variant.
     """
     found: list[type] = []
     pending = list(TimelineProvider.__subclasses__())

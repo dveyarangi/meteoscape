@@ -38,7 +38,11 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
   supported consumers. The exact Python facade and its relationship to protocol adapters and
   internal composition remain open in [concern #39](./concerns.md#39-python-embedding-surface-and-public-failures).
 - **Deep modules, simple boundaries** — each component hides substantial complexity behind a small interface with a trivial test boundary.
-- **Composition over inheritance** — Manifolds compose: a Source is `Reservoir(store, Provider, clock)`; the best view is `Reservoir(store, Arbiter, clock)`, and an opt-in stored Calculator uses the same composite. The `Store` is one contract — a `Writable` Manifold with private lattices — used in every position. Providers compose shared conversion utilities.
+- **Composition over inheritance** — Manifolds compose: a retained Source is
+  `Reservoir(store, Provider, clock)`; the best view is `Reservoir(store, Arbiter, clock)`, and an
+  opt-in stored Calculator uses the same composite. A storeless Source presents its Provider
+  directly. The `Store` is one contract — a `Writable` Manifold with private lattices — used in
+  every retained position. Providers compose shared conversion utilities.
 - **Compose for behaviour, filter for coverage** — mint a *new composed Manifold* only when children differ in **behaviour**; differences only in **which `Domain` they cover** are the **Arbiter's capability filter**, not new nodes. See [ADR-0001](./adr/0001-manifold-algebra-and-composition.md).
 - **Reduction is a policy, not a special case** — the **Arbiter** decides the **selection/reduction policy**; **provider selection (the default `priority` reconciler) is one instance of Manifold reduction**, peer to `consensus` / `feather`. The architecture must not encode provider selection as a special case → [ADR-0004](./adr/0004-producer-resolution-and-capability.md).
 - **The served root is a task-oriented profile** — a *composed surface tree* that **resolves a requested view into a `Coverage` on a target `Domain`** under an **objective**. The best view is one profile; comparison, consensus, and verification are peer trees rather than contract changes. Some profiles may expose **diagnostics / traces as sidecars** — the **data product stays a `Coverage`** ([#14](./concerns.md#14-resolution-trace-and-observability)). The `Reservoir` only adds **retention**; the **Arbiter** carries the **policy**.
@@ -142,7 +146,8 @@ Three distinct outcomes, never conflated: **nodata** (a producer succeeded but h
 
 ## Major components
 
-Everything below the Gateway is one recursive shape: a **Manifold**, composed of other Manifolds. The "best" view and a Source are the *same* `Reservoir` type with different children.
+Everything below the Gateway is one recursive shape: a **Manifold**, composed of other Manifolds. The
+"best" view and a retained Source are the same `Reservoir` type with different children.
 
 ```mermaid
 flowchart TB
@@ -242,7 +247,7 @@ answer wider than the refill ask. Holdings that **still** do not meet the ask en
 refills and would otherwise reach it only when cold. Serving is restricted to the same admitted set,
 so retained data outside the child's current Capability is omitted rather than revived.
 
-Read-back homogenizes the surviving Holdings onto the request-derived answer geometry. For a Source,
+Read-back homogenizes the surviving Holdings onto the request-derived answer geometry. For a retained Source,
 that is also the fact→product boundary: native cells are relabelled below the Arbiter so every answer
 the Arbiter folds is already conformable. **Coverage-contract invariant:** an off-grid request returns
 a Coverage whose X/Y are the **requested** coordinates, carrying the enclosing store cell's values
@@ -252,7 +257,7 @@ replacement by [ADR-0003](./adr/0003-provenance-and-origin.md).
 
 The type has three graph positions, differing only by child and store shape:
 
-- **Source** = `Reservoir(store, Provider, clock)` (retains provider-native Holdings).
+- **Retained Source** = `Reservoir(store, Provider, clock)` (retains provider-native Holdings).
 - **Stored Calculator** = `Reservoir(store, Calculator, clock)` (opt-in materialization of a derived view).
 - **Best view** = `Reservoir(store, Arbiter, clock)` — a **task-oriented profile** that resolves the most suitable `Coverage` for a request under a policy/objective.
 
@@ -265,9 +270,21 @@ The **producer-resolution composite** the best view turns to — a **reducing Ma
 
 ### Source
 
-A `Reservoir(store, Provider, clock)` — the serve-or-fetch view of one provider's data; a **role, not a distinct type**. It **forwards** its Provider's **`Capability`** to the Arbiter unchanged (retention adds no capability; the `Store` grid is a fidelity floor, not a boundary), which lets it admit uncached-but-in-footprint requests: admission reads the forwarded footprint, while Store contents drive the serve-vs-refill split inside `project`. Its Provider returns native records with full **Provider-authored provenance**; the Source asks it **store-shaped** — one call, `ANY` on the axes its Holding spans wholly — so the answer arrives **multi-domain** and `assimilate` stores the records as identity (no resampling, no stamping).
+The provider-facing producer role, not a distinct type. A Source is either the Provider directly or,
+when the profile configures retention, `Reservoir(store, Provider, clock)`. The retained form forwards
+its Provider's **`Capability`** unchanged (retention adds no capability; the `Store` grid is a
+fidelity floor, not a boundary), so admission reads the forwarded footprint while Store contents
+drive the serve-vs-refill split. Its Provider returns native records with full Provider-authored
+provenance; the retained Source asks it **store-shaped** — one call, `ANY` on the axes its Holding
+spans wholly — so `assimilate` stores the multi-domain answer as identity. A storeless Source must
+honour the requested geometry itself →
+[#37](./concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 
-**Vendor-call metering belongs at this seam**: the Source is the last retention-aware node before a Provider, so it can distinguish a warm read from vendor spend. A future per-deployment ledger is injected alongside the `Clock`; the stateless Provider owns no counter. Budget state may refuse a call, but never moves `Capability`: capability states what a producer can serve, not whether policy currently permits the call.
+**Vendor-call metering belongs at this seam**: a retained Source is the last retention-aware node
+before a Provider, so it can distinguish a warm read from vendor spend; a storeless Source spends on
+every projection. A future per-deployment ledger is injected alongside the `Clock`; the stateless
+Provider owns no counter. Budget state may refuse a call, but never moves `Capability`: capability
+states what a producer can serve, not whether policy currently permits the call.
 
 ### Provider (leaf Manifold)
 

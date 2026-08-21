@@ -46,7 +46,7 @@ reads the footprint Domain's axis **`step`s**
 (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)) — never a free
 `native_resolution` string, and never a parallel provenance / Capability `Resolution` bag.
 
-**Origin identity and declared provenance (2026-08-21 amendment, Mongo obs source align).** An
+**Origin identity and declared provenance.** An
 atomic origin may carry three optional identity fields beyond its `SourceKey` — **`authority`**
 (who stands behind the values: a station network's owner, a WMO centre, a vendor), **`process`**
 (how they were made: model id and version, blend, instrument method, climatology base period), and
@@ -70,9 +70,10 @@ for a one-origin producer, one entry per instance for a scatter-shaped one (the
 not yet knowable — for a live vendor that includes `issue_time`, while an archive declaring
 retained runs may honestly carry it; the served stamp is authored at fetch, from the documents
 and the addressing that read them, and normally equals its declaration — divergence is visible
-evidence, never papered over. First filler: the
-[Mongo obs source](../tickets/01-0124-mongo-obs-source.md) — authority = the network, process =
-the method, unit = the station's name / network id.
+evidence, never papered over. For a station network, authority names the network, process names the
+method, and unit names the station in that authority's namespace →
+[pilot requirements](../pilot-requirements.md),
+[#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own).
 
 ## Run identity, Fetch buckets, and freshness — the cadence
 

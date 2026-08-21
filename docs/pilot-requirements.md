@@ -1,9 +1,9 @@
 # Pilot deployment
 
-**Status:** first client of the [embedding edge](./edge/embedding.md) — identified 2026-08-19 at
-the 0123 align. Its composition is **deployment configuration, deliberately outside the public
-shape**; this document is its one home in the corpus. The deployment's commercial identity is
-private and appears nowhere in this repository.
+**Status:** first client of the [embedding edge](./edge/embedding.md). Its composition is
+**deployment configuration, deliberately outside the public shape**; this document is its one home
+in the corpus. The deployment's commercial identity is private and appears nowhere in this
+repository.
 
 The deployment serves an operator's site-specific weather-alert product; meteoscape is the
 weather-resolution engine behind it, and the alerting decision layer above it is not meteoscape's
@@ -12,7 +12,8 @@ purpose ([product roadmap](./product-roadmap.md)).
 
 This document owns **declaration**: which offerings this deployment enables at which priority, which
 secrets it supplies, where its composition root lives, and when it goes live. What the framework can
-*do* — and how that is verified in this repository — is [v1 requirements](./v1-requirements.md)'. The
+*do* — and how that is verified in this repository — lives in
+[v1 requirements](./v1-requirements.md). The
 test for which side a sentence belongs on: **does it survive a second deployment?** If yes it is v1's;
 if no it is this document's. v1's scope is driven by what this deployment needs, which is why the line
 is worth stating rather than assuming.
@@ -22,8 +23,8 @@ is worth stating rather than assuming.
 - **TWC as the primary producer, Open-Meteo as backstop.** *Temporary state of this deployment's
   path, never the repo's official shape* — the shipped server's profile is vendor-neutral (keyless
   Open-Meteo). The TWC-primary declaration lives in this deployment's own composition root behind
-  the embedding edge; a declared keyed offering without its secret refuses startup
-  ([0123](./tickets/done/01-0123-config-secrets-degrade.md), 2026-08-19 resolutions).
+  the embedding edge; a declared keyed offering without its secret refuses startup →
+  [architecture § Config, binders, Weaver](./architecture.md#config-binders-weaver).
 - **Station observations** from the operator's Collector database —
   [Mongo obs source](./tickets/01-0124-mongo-obs-source.md), read-only, per-parameter provenance;
   the Collector schema is a dependency meteoscape does not own
@@ -39,17 +40,11 @@ is worth stating rather than assuming.
 
 ## Where its composition lives
 
-Until the embedding surface is supported ([0125](./tickets/01-0125-supported-python-embedding.md)),
+Until the [embedding surface](./tickets/01-0125-supported-python-embedding.md) is supported,
 the TWC-primary composition exists only as **embedder-shaped tests** and the opt-in parity
-composite — proven, not shipped. 0125's align selects the durable home: a temporary parallel
+composite — proven, not shipped. The embedding-surface work selects the durable home: a temporary parallel
 setup in-tree, or a separate project embedding meteoscape. Until that decision, nothing in the
 public shape may present this deployment's configuration as the product's default.
 
-**Sequencing (2026-08-19):** the bee-line runs on the Open-Meteo path until the correction
-workstream — the [ledger](./tickets/01-0130-vendor-call-ledger.md) meters vendor-agnostically and
-the [tick convention](./tickets/01-0126-tick-convention-declaration.md) reads the in-tree TWC
-declarations, so neither needs TWC live. TWC goes live with this deployment's root at the
-embedding surface, after the internal [Mongo observation source](./tickets/01-0124-mongo-obs-source.md)
-has supplied its lifecycle and construction evidence; it is first *wanted* at the
-[correction calculator](./tickets/01-0140-correction-calculator.md), whose product point is
-correcting the primary this deployment serves.
+The [delivery status](./tickets/README.md) owns sequencing. TWC goes live with this deployment's
+root at the embedding surface; the public server profile remains keyless Open-Meteo.

@@ -10,7 +10,7 @@ open decision.
 
 ## Contract
 
-**Decided** (resolved at #39, [architecture §Embedding surface](../architecture.md#embedding-surface)):
+**Established** ([architecture §Embedding surface](../architecture.md#embedding-surface)):
 
 - Meteoscape is a **supported headless Python library from Phase 1** — an embedding application
   uses its weather capabilities without starting MCP, HTTP, or any other server. A first-class
@@ -24,7 +24,7 @@ open decision.
 - The only usable composition path is `server.compose(profile, providers, calculators, secrets,
   clock) → Gateway`, requiring `ProfileConfig`, both plugin catalogues, an `impl_id`-keyed
   **secrets map** (an embedder may fill it from a vault; `secrets_from_env` is the env convenience
-  the shipped root uses — [ADR-0005](../adr/0005-build-time-composition.md) 2026-08-19 amendment),
+  the shipped root uses — [ADR-0005](../adr/0005-build-time-composition.md)),
   and a `Clock` (the `StoreFactory` is built from that clock inside, so one clock is structural);
   requests then run `Gateway.resolve(Selection) → Coverage`, and the whole composition is released
   through one `Gateway.aclose()` when the embedder is done with it
@@ -80,20 +80,15 @@ work is unstarted. Candidate promises waiting on #39's decisions:
 
 ## Roadmap
 
-Tentative — the Phase-1 stages below are owned by the [supported Python embedding
-surface](../tickets/01-0125-supported-python-embedding.md); its own align selects the still-open
-contract before implementation. They are the expected shape of the work, not commitments.
-
-**First client identified (2026-08-19, 0123 align): the
-[pilot deployment](../pilot-requirements.md).** Its TWC-primary profile declaration is deployment
+Tentative — the stages below are owned by the [supported Python embedding
+surface](../tickets/01-0125-supported-python-embedding.md). The
+[pilot deployment](../pilot-requirements.md)'s TWC-primary profile declaration is deployment
 configuration and must never be the public repo's official shape, so it lives in its own
 composition root behind this edge. Whether that root is a temporary parallel setup or a separate
-project is selected at 0125's align, alongside the facade.
+project is selected with the facade.
 
-1. Facade selected, with the decision at
-   [#39](../concerns.md#39-python-embedding-surface-and-public-failures). **Lifecycle is not part of
-   this item** — [0116](../tickets/done/01-0116-composition-lifetime.md) built the release; what remains
-   here is the name and reachability of the object carrying it.
+1. Facade selected, including the name and reachability of the composition handle, with the decision
+   at [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 2. Public failure contract — exception hierarchy, phase boundaries, actionable context —
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
 3. Request-composition ergonomics — `SelectionDomain` / mode builders become embedder vocabulary
@@ -104,9 +99,8 @@ project is selected at 0125's align, alongside the facade.
 4. `0.x` compatibility policy — supported import paths, deprecation mechanics, embedded ↔
    protocol consistency — with the decision at
    [#39](../concerns.md#39-python-embedding-surface-and-public-failures).
-   Ships with **dev-docs-style narration** of the supported surface (stated 2026-08-19): until
-   then the profile-author contract lives on the config types' docstrings and this record's
-   de-facto section, deliberately un-promoted.
+   Ships with **dev-docs-style narration** of the supported surface. Until then, the profile-author
+   contract lives on the config types' docstrings and this record's de-facto section.
 5. Third-party plugin authoring — select how an embedding host *supplies* manifests
    ([#26](../concerns.md#26-provider--calculator-plugin-scaffolding)); how a Provider is *authored*
    is its own edge, [edge/provider.md](./provider.md).

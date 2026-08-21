@@ -14,69 +14,22 @@ are written, ordered, and retired is owned by
 ## 39. Python embedding surface and public failures
 
 **Kind:** Phase-1 product boundary · **Refs:** [architecture §Embedding surface](./architecture.md#embedding-surface),
-[v1 requirements](./v1-requirements.md), [ADR-0005](./adr/0005-build-time-composition.md)
+[v1 requirements](./v1-requirements.md), [ADR-0005](./adr/0005-build-time-composition.md),
+[Edge — Embedding surface](./edge/embedding.md)
 
-**Resolved:** Meteoscape is a supported headless Python library from Phase 1, not only a protocol
-server. An embedding application can use its weather capabilities without starting MCP or HTTP.
-This is a first-class product surface, not documentation for internal imports. No facade, public
-type, construction pattern, or relationship to protocol adapters is selected by this decision.
+The supported embedding surface has no selected facade or public failure contract. The package root
+exports only `SourceKey` and `main`; the usable internal composition path requires profile types,
+both plugin catalogues, a secrets map, and a `Clock`. Select the smallest stable construction and
+request surface, whether its composition handle keeps the name `Gateway`, how third-party manifests
+enter, and which import paths and compatibility guarantees are public.
 
-**Open — facade shape:** the package root currently exports only `SourceKey` and `main`, while the
-usable `server.compose(...)` requires `ProfileConfig`, both plugin catalogues, a secrets map, and a
-`Clock`; it constructs the clock-sharing `StoreFactory` internally. The **lifetime mechanism** is no
-longer open — a composed profile is released through one `aclose()` on what `compose` returns
-([architecture § Gateway](./architecture.md#gateway--caller-policy-boundary)) — which leaves one
-question here: whether the type keeps the name **`Gateway`** once it owns the composition's
-teardown rather than only fronting it. Its *placement* is settled —
-[0116](./tickets/done/01-0116-composition-lifetime.md) moves it out of `api/`, since surfaces consume the
-composition rather than provide it — but the name carries a blast radius across glossary,
-architecture, three Edge records, and ADR text, so it waits for this concern's ticket and sweeps the
-corpus once, against the published name. Decide the smallest stable facade and lifecycle, including whether construction
-is directly exposed; how shipped and third-party manifests are supplied; whether `Gateway`,
-`Selection`, `Coverage`, or higher-level alternatives become public; and what, if any, boundary is
-shared with server adapters. These are options under investigation, not implied commitments.
-Selection-composition ergonomics belong here too: request axis kinds must be navigable by
-embedders (mode builders over hand-assembled axes) — the mode registry is
-[architecture §Request modes](./architecture.md#request-modes). If the
-[#23](#23-spatial-vs-temporal-regularaxis-types) spatial/temporal axis split lands, it must stay
-invisible at this surface: one axis name per kind (coordinate-kind autodetected) or absorbed by
-builders.
+The failure contract must distinguish bad input, capability mismatch, producer failure, build-time
+misconfiguration, unbuilt engine paths, and invariant breaks without reporting an engine defect as a
+producer fault. It must also define phase boundaries, actionable context, and what deliberately
+escapes uncaught. Request-building ergonomics are part of the same facade decision; capability-aware
+preflight remains bounded by [#40](#40-composing-servable-requests-at-the-embedding-edge).
 
-**Open — public failures:** the current categories describe different layers but do not form a
-documented embedding contract. Pydantic settings validation escapes separately; `CompositionError`
-does not inherit from `MeteoscapeError`; request-path failures do; and invariant bugs intentionally
-escape as ordinary exceptions (for example `Gateway.resolve` raising `TypeError` when a served root
-does not return a Coverage). Define the public exception hierarchy, phase boundaries, actionable
-context, and which internal failures are deliberately *not* caught.
-
-**Four classes share two wire categories.** *"Unbuilt" is not the same thing as a runtime bug, a
-composition error, or a capability error*, and the surface cannot tell them apart:
-
-| Class | Means | Today |
-|---|---|---|
-| **Capability** | no producer declares this | `CapabilityMismatch` → wire ✓ |
-| **Composition** | misconfigured profile, refused at build | `CompositionError`, outside `MeteoscapeError`; never reaches a request ✓ (hierarchy anomaly above) |
-| **Unbuilt** | the engine has no path for these inputs *yet* | `NotImplementedError` — **uncategorized on the request path**: `sampling.py`'s off-phase/non-identical-step crop, continuous selection, non-`GridDomain` lattice, and `PerPoint` provenance re-index |
-| **Invariant break** | an engine bug; neither request nor producer is at fault | `RuntimeFailure` at the Arbiter's closed-projection check (**miscategorized** — its own docstring says *a producer could not produce*); the `Reservoir`'s admission/read-back emptiness, grounding, child-answer, refill-landing, Holding-ownership, and geometry-shape guards; `Gateway.resolve`'s `TypeError` (uncategorized); and a population of bare `assert`s across arbiter / calculator / reservoir / store / timeline |
-
-**The rule this points at:** an engine invariant break must not reach a product surface wearing a
-*producer's* fault. `runtime-failure` should retract to what its docstring already claims — upstream
-faults — while *unbuilt* and *invariant break* surface as their own honest category (both are
-"ours, not yours", and they differ in whether a retry or a release fixes them). Deliberately **not**
-decided here: whether that is one class or two, where it sits in the hierarchy, and which internal
-failures stay uncaught by design. The architecture's
-[failure taxonomy](./architecture.md#failure-nodata-and-availability) reads today as if
-`runtime-failure` covers all of it; widening *that* sentence would bless the conflation, so it waits
-on this decision too. [#21](#21-serves-extent-vs-project-crop-ability) owns one of the leaks and is
-where the sampler's case is already called *"not even a clean mismatch"*.
-
-**Open — compatibility:** define what import paths and behavior are supported during `0.x`, how
-deprecations work, and what observable consistency is required between embedded and protocol use
-without presupposing shared facade or wiring. Delivery is assigned to the
-[supported Python embedding surface](./tickets/01-0125-supported-python-embedding.md); its own align
-resolves these decisions before implementation. Once they land, this concern moves into the Edge
-record and public API guide and, if the compatibility trade-off proves durable and surprising, an
-ADR.
+→ queued as [supported-python-embedding](./tickets/01-0125-supported-python-embedding.md).
 
 ## 40. Composing servable requests at the embedding edge
 
@@ -94,15 +47,14 @@ a perfectly faithful self-description.** It does not own the facade shape (#39) 
 fidelity gaps individually (each is linked below); the wider per-surface sweep is deliberately
 deferred to a later embedding-edge concern.
 
-**Arm 1 — the dissolution inventory.** Every raise site, classified by whether the edge can make
-it unrepresentable (sites verified 2026-07-25; m4's arrive with
-[RFC 0009](./rfc/done/0009-20260725-m4-snapped-t-request-mode.md)):
+**Arm 1 — the dissolution inventory.** Every current raise site, classified by whether the edge can
+make it unrepresentable:
 
 | Class | Cases | Dissolvable at the edge? |
 |---|---|---|
-| **Shape** — a representation the resolver cannot serve | a snapped member against non-`Separable` answering geometry, and *snapped against an axis that clips to no cells* (snapped X/Y today) — both now raised by `ground` in `domain.py` and translated by the wrapper, not written in any leaf | **Split, after m4's algebra.** The pure-representation half is dissolvable with no `Capability` read (the concrete case for a `SelectionDomain` builder) — and m4 shrank it: an all-enumerable `SelectionDomain` and a non-`GridDomain` assembly target are now simply *served*, not refused. But snapped-against-non-snappable is decided by the **producer's declared geometry**, so pre-empting it needs an Arm-2 read and can only be advisory — *except* the snapped X/Y instance, which is settled by the request alone: `SnappedAxis` carries temporal bounds, and those never meet a spatial axis, so a builder can make it unrepresentable with no read at all. |
-| **Coverage** — geometry outside what any producer admits | `Arbiter.project`'s *"no producer admits any requested parameter"*; 003c's empty resolved parameter set | **Partially** — pre-emptable against published reach, but only as far as Arm 2 allows, so advisory at best. Note m4's Snapped-T already dissolves the *T-window* instance by construction: an overlapping window is trimmed rather than refused. |
-| **Runtime / race** — true when asked, false when served | m4's raced-empty window (admission passed, the rolling window moved before the fetch, so nothing survives the clip); m4's *requested taps or delivered records grounding differently* (one fetch answers one geometry); m4's **divergent winner domains** (one request, two winners, two independent vendor fetches whose derived T axes disagree → the Arbiter's closed-projection `RuntimeFailure`); a producer that is down ([#30](#30-response-membership-under-runtime-degraded-fallback)) | **No** — these belong to the answer, not the request. A helper that claimed to prevent them would be lying. |
+| **Shape** — a representation the resolver cannot serve | a snapped member against non-`Separable` answering geometry, and snapped against an axis that clips to no cells | Pure representation errors are dissolvable without a `Capability` read. Producer-dependent snapping is only advisory; snapped X/Y is request-invalid because temporal bounds cannot address a spatial axis. |
+| **Coverage** — geometry outside what any producer admits | `Arbiter.project` finds no producer admitting any requested parameter | Partially pre-emptable against published Reach, within Arm 2's limits. An overlapping Snapped-T window is already trimmed rather than refused. |
+| **Runtime / race** — true when asked, false when served | a rolling window moves before fetch; requested taps or delivered records ground differently; winner domains diverge; a producer is down ([#30](#30-response-membership-under-runtime-degraded-fallback)) | No — these belong to the answer, not the request. |
 
 **Arm 2 — what a helper may trust about `Capability`.** A builder validating against capability
 inherits capability's own inaccuracies, in both directions — each already owned elsewhere; what is
@@ -131,8 +83,8 @@ new here is that they bound what the edge can promise:
 - **Whether pre-flight validation is public API at all**, versus letting the request run and reading
   a reason — which presumes #14's trace exists and is actionable.
 - **Whether declaration fidelity deserves its own check**: a conformance harness comparing a
-  provider's declared footprint against what it actually serves (the [m3](./tickets/done/01-0080-provider-parity-checks.md)
-  parity shape, aimed at declarations rather than values) would convert several Arm 2 unknowns into
+  provider's declared footprint against what it actually serves, parallel to Provider parity but
+  aimed at declarations rather than values, would convert several Arm 2 unknowns into
   tested facts.
 
 **Trigger:** #39's facade selection — a request-composition helper is part of choosing the public
@@ -178,42 +130,24 @@ already splits them by Z level. Open: whether the cell-side declaration belongs 
 [ADR-0004](./adr/0004-producer-resolution-and-capability.md),
 [ADR-0002](./adr/0002-data-model.md), [#29](#29-narrated-reach-what-a-profile-promises),
 [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold),
-[#20](#20-provider-multi-resolution-offerings-offering-aware-selection),
-[0115.0040](./tickets/done/01-0115.0040-reservoir-retention-pipeline.md)
+[#20](#20-provider-multi-resolution-offerings-offering-aware-selection)
 
-**Decided 2026-08-17: v1 always serves the primary's shape.** Under intersective snapped admission
-a window spanning past the priority winner's reach still admits it, and the winner answers with its
-own clipped span, disclosed through `valid_time`. With a ~10 d primary under a composed ~16 d
-reach, every default ask serves ~10 d. A per-request or per-profile "serve the window whole"
-preference was **rejected as a reconciler knob**, because the mechanism cannot exist there: the root
-Reservoir's refill deliberately opens T ([store.py:199](../src/meteoscape/nodes/store.py) —
-`quantize` overrides the ask with `ANY`; the natural-fetch-unit decision of 0115), so **the bounded
-window is destroyed before producer selection ever runs**.
-
-**What stays open** is the escape — serving the composed span via a non-primary producer — and the
-tail-ask consequence that comes with it: a metered call bought for an answer that cannot satisfy the
-ask, and a narrated horizon ([#29](#29-narrated-reach-what-a-profile-promises)'s composed upper
-bound) that over-promises the tail whenever primary ≠ dominant.
+The priority winner serves its own clipped span even when the composed reach extends farther. The
+root Reservoir opens T before producer selection, so a reconciler never sees the bounded window and
+cannot implement a "serve the window whole" preference. Open: how a profile instead serves the
+composed span through a non-primary producer without buying a primary call that cannot satisfy the
+ask or narrating a horizon the selected source will not reach.
 → queued as [max-reach-tail-serving](./tickets/02-0180-max-reach-tail-serving.md)
 
 ## 5. Read-time homogenization fidelity
 
 **Kind:** edge-isolated · **Refs:** [ADR-0001](./adr/0001-manifold-algebra-and-composition.md), [ADR-0002](./adr/0002-data-model.md)
 
-**Mechanism resolved (required by v1):** every `Reservoir` `quantize`s a request for retention and
-**homogenizes** the stored cells onto the requested `Domain` at read, so `project(sel)` honours
-`sel.domain` — the pipeline, single-origin Holdings, and same-run fusion live in
+The retention and read-back mechanism, including selection of the enclosing stored cell, lives in
 [ADR-0001 §materialization](./adr/0001-manifold-algebra-and-composition.md),
-[ADR-0003](./adr/0003-provenance-and-origin.md), and [architecture §Reservoir](./architecture.md#reservoir).
-On-grid reads degenerate to a **lossless crop**; the open question is the off-grid Resampler.
-
-**Two separable steps** (sharpened at the 2026-08-10 0117 align): **which cell answers** — the
-**enclosing** one, fixed by `quantize`'s fold in
-[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md) — and **how that cell's value
-reaches the answer point**, which is the Resampler this concern owns. v1 settles the first and carries
-**identity** for the second. Selecting *among* candidate cells is not a v1 question at all: provider
-records are point-shaped and the store is a sparse cache, so exactly one cell can answer. It becomes
-real with a gridded provider or a populated lattice.
+[ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md), and
+[architecture §Reservoir](./architecture.md#reservoir). This concern owns how that cell's value
+reaches the answer point beyond the identity Resampler.
 
 **What's open is fidelity:** the **Resampler choice** per field axis — the registry's
 implementations (nearest / linear / cubic; **conservative / area-weighted** for extensive
@@ -276,15 +210,13 @@ differs from the store's.
 
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
-**Kind:** room-left (module layout) · **→ queued as
-[domain-module-carve](./tickets/01-0131-domain-module-carve.md)** (both the thin `lattice.py` this
-entry prescribed and the wider axes/domain navigation cut; closes into
-[module-layout](./module-layout.md) when it lands)
+**Kind:** room-left (module layout) · **Refs:** [module layout](./module-layout.md)
 
-Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by
-`domain.py`; `sampling.py` consumes it one-way. **The trigger fired** (measured 2026-08-21): the
-third consumer this entry named — store grids — exists at `store.py:39,221,237`, and `domain.py`
-now carries non-lattice geometry (the scatter form) beside the lattice math at 858 lines.
+Lattice index arithmetic and axis/domain geometry share `domain.py`, while `sampling.py` and Store
+grids consume the lattice helpers. The split must preserve the one-way dependency from sampling and
+storage into geometry.
+
+→ queued as [domain-module-carve](./tickets/01-0131-domain-module-carve.md).
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
@@ -315,17 +247,15 @@ authors pinned cells plus boundless members — so nothing yet needs the union s
 
 ## 42. Two request representations, so resolution cannot be a method
 
-**Kind:** room-left (request vocabulary) · **Refs:** [ADR-0002 §Domain & Selection](./adr/0002-data-model.md#domain--selection),
-[RFC 0009 decision 6](./rfc/done/0009-20260725-m4-snapped-t-request-mode.md), [Edge — Provider](./edge/provider.md),
+**Kind:** room-left (request vocabulary) · **Refs:**
+[ADR-0002 §Domain & Selection](./adr/0002-data-model.md#domain--selection),
+[Edge — Provider](./edge/provider.md),
 [#39](#39-python-embedding-surface-and-public-failures)
 
 The request side of every seam admits **two representations**: an `EnumerableDomain` (the author already
-knows the coordinates) and a `SelectionDomain` (at least one member gives bounds only). Both are legal
-and both have authors — the MCP edge builds exact windows today, and 006's store refill authors
-store-shaped ones — so `ground` is a **function that dispatches on representation once**, in the module
-that owns representations, and every caller's call site stays unconditional. Its enumerable arm returns
-the request unchanged; its third arm rejects a *declared* geometry (a footprint is what one grounds
-*against*), which is the class of malformed call the dispatch exists to catch.
+knows the coordinates) and a `SelectionDomain` (at least one member gives bounds only). Both are legal,
+so `ground` dispatches on representation in the module that owns them. Its enumerable arm returns the
+request unchanged; a declared footprint is only something to ground against.
 
 **The end-state this leaves room for: one request representation.** A `SelectionDomain` whose members may
 each be exact or snapped already subsumes the enumerable case — an all-pinned one grounds to itself, by
@@ -343,27 +273,16 @@ would become unrepresentable rather than tested. That is the same *make it unrep
 - **A crop target is coordinates, not bounds.** `resample` takes a `Selection` whose domain must be
   enumerable. One request representation means either it stops taking a `Selection`, or the grounded
   result is re-wrapped into one on every crop.
-- **Two authors would have to move together** — the edge ([003c](./tickets/done/01-0110-request-shaping.md)) and
-  006's refill — and store keys are stated in enumerable terms, so 006's quantize-then-key path would be
-  restated too.
+- **Request authors and crop targets would have to move together.** Store keys remain stated in
+  enumerable terms even when refill requests contain boundless members.
 
 This is about the *request* side only; `Coverage.domain` stays enumerable regardless
 ([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
 
-**Trigger:** whichever comes next — **006** authoring refill requests (a second in-tree exact-request
-author is what makes the split load-bearing rather than incidental) or #39's request-composition
-helper, which cannot avoid choosing *which* type embedders are handed. **003c fired first (2026-08-05
-re-stage align) and recorded: the split stays** — the edge authors a `SelectionDomain`, `ground`
-remains a function, and narrowing waits for the second author, now next in the queue.
-**006 fired second (2026-08-08 align) and dissolved its own premise:** refill's ask carries `ANY`
-on T and Z, which has no coordinate list by definition, so refill *cannot* author an
-`EnumerableDomain` — it authors a `SelectionDomain` (pinned X/Y members plus boundless snapped
-members, the `ANY` form 006 enables; the `SelectableAxis` union itself is unchanged). No second enumerable author appeared: both in-tree request authors now speak
-`SelectionDomain`, and the enumerable request shape's remaining author is the internal crop target
-(`resample`) — already listed above as a cost of narrowing. That mildly *supports* the
-one-representation end-state without forcing it; the remaining trigger is #39's request-composition
-helper. Until it fires, the whole cost is one `isinstance` pair in `domain.py`. Resolution moves
-into ADR-0002, which owns the request vocabulary.
+**Trigger:** [#39](#39-python-embedding-surface-and-public-failures)'s request-composition helper,
+which must choose what type embedders receive. Both in-tree request authors use `SelectionDomain`;
+the remaining `EnumerableDomain` request role is the internal crop target. Until the public surface
+forces the choice, the cost is one representation dispatch in `domain.py`.
 
 ## 43. Narrow-answering providers re-open mixed-request run divergence
 
@@ -385,8 +304,7 @@ The failure that exposure ends in stays guarded at the fold, where the invariant
 `test_winner_domains_that_differ_fail_the_whole_request` (`test_arbiter.py`), two canned winners on
 disagreeing lattices, no network and no store.
 
-Graded responses, cheapest first — decide at the first billed provider
-([011](./tickets/done/01-0120-twc-provider.md)):
+Graded responses, cheapest first — decide at the first narrow-answering billed provider:
 
 1. **Accept per-provider** — the divergence is recorded as that provider's economy choice.
 2. **Detect and narrate** — assembly compares `AtomicOrigin.issue_time` across the assembled
@@ -457,8 +375,7 @@ yet the per-cell **gap-filler** ("a whole-coverage producer joins the set at low
 **partial** producers in the set — i.e. **intersection** admission (footprint ∩ request ≠ ∅). Under strict
 containment a partial-coverage producer is filtered out, so spatial gap-fill and any `valid_time` splicing
 **cannot occur**. **v1 relies on containment for enumerable requests** — wholesale fallback, "select,
-never combine", no horizon splicing. **A scoped, mode-local position is built
-([m4](./tickets/done/01-0100-snapped-t-request-mode.md))**: a **Snapped-T** request admits by
+never combine", no horizon splicing. The scoped, mode-local rule is that a **Snapped-T** request admits by
 non-empty T intersection and the single winner serves `bounds ∩ its window` — no per-cell fold, no
 splicing, reconciler untouched ([ADR-0004](./adr/0004-producer-resolution-and-capability.md) carries the
 mode-dependent admission language). The general question stays open: when coverage reconcilers
@@ -611,18 +528,17 @@ identity and the priority-first band walk), [ADR-0002](./adr/0002-data-model.md)
 field). Provider `exact` and native-coarse-as-distinct-origin remain with
 [#5](#5-read-time-homogenization-fidelity) / [#15](#15-coarser-grid-resampling-and-aggregation-semantics).
 
-**Related limitation, recorded 2026-08-02, narrowed 2026-08-08:** a leaf cannot serve, in one call, two
+**Related limitation:** a leaf cannot serve, in one call, two
 parameters whose declared reaches **differ on a *bounded* snapped axis** — `agreed_geometry` refuses it,
 because one `project` answers with one geometry on every bounded axis (ADR-0001). A vendor offering 16
 days of temperature but 5 of precipitation therefore declines a mixed snapped request with
 `capability-mismatch`. **This does not dissolve.** The licence for a multi-domain answer is
-**boundlessness**, not the store: an ask that leaves the axis open (the retentive store's refill shape,
-landed at [0115.0020](./tickets/done/01-0115.0020-multidomain-carrier-timeline.md)) licenses the difference,
+**boundlessness**, not the store: an ask that leaves the axis open licenses the difference,
 while an ask that *states* bounds is still answered identically on them or not at all. So what 006
 supplies is a second kind of ask, not a repair of this one — and this stays the per-parameter cousin of
 this concern's per-offering question → [edge/provider.md](./edge/provider.md).
 
-**The leaf side is unbuilt too, recorded 2026-08-03.** A second offering is not only an algebra
+**The leaf side is unbuilt too.** A second offering is not only an algebra
 question: the v1 leaf is **not offering-parameterized**. Three per-offering facts sit as module
 constants in [open_meteo.py](../src/meteoscape/nodes/providers/open_meteo.py) — the tap table, the
 `CadenceDef`, and the series step — and `build` forwards only `spec.name`, which reaches `SourceKey`
@@ -641,8 +557,7 @@ and nothing else. Three consequences, the first silent and therefore the sharpes
 
 So the additive boundary is narrower than the config surface suggests: richer `dataset` values and
 more `OfferingDef`s are additive, while the leaf gains a model token in its query and turns its
-declarations into per-offering rows keyed by `spec.name`. The wrapper extraction
-([m4](./tickets/done/01-0100-snapped-t-request-mode.md)) made those declarations constructor
+declarations into per-offering rows keyed by `spec.name`. Those declarations are constructor
 arguments, which is where the rows attach → [edge/provider.md](./edge/provider.md).
 
 **Open (additive build; v1 unaffected — one offering per provider, `contains`-only):** populate
@@ -688,8 +603,7 @@ contract is **clockless and freshness-blind** (freshness is the reader's policy)
 store — whose Holdings are valuable *because* they are stale — implements the same face with no
 carve-outs.
 
-**Narrowed 2026-08-10 (beeline align): a persisting retention *cache* is not this.** The stance
-above is about **history**, and the distinction that carries it is derivability:
+**A persisting retention cache is not this concern.** The distinction is derivability:
 
 | | Retention cache | Archive |
 |---|---|---|
@@ -698,32 +612,25 @@ above is about **history**, and the distinction that carries it is derivability:
 | Read shape | point lookups | bulk / analytical scans |
 | Owner | [persisting Store](./tickets/01-0145-persisting-store.md) (rung 2, ticketed) | this concern (rung 3) |
 
-So persisting the cache is a substrate choice inside a contract that already permits it
-(ADR-0006: implementations vary by substrate and persistence behind one face) and claims nobody's
-data; it does not overturn the stance, and this concern keeps only the archive rung. The substrate
-ladder as a whole is tabulated in the [persisting Store](./tickets/01-0145-persisting-store.md)
-ticket. Note rung 3 is **not a bigger rung 2** — bulk analytical reads are a different access shape
-from point cache hits, which is why the two stay separately owned.
+Persisting the cache is a substrate choice already permitted by ADR-0006 and claims nobody's data;
+this concern owns only the archive rung. Bulk analytical reads are a different access shape from
+point cache hits, so an archive is not merely a larger retention cache.
 
 ## 45. The collector schema is a contract meteoscape depends on but does not own
 
-**Kind:** external-contract risk (2026-08-08 align) · **Refs:**
+**Kind:** external-contract risk · **Refs:**
 [Mongo obs source](./tickets/01-0124-mongo-obs-source.md),
 [Mongo forecast-run archive source](./tickets/01-0134-forecast-run-archive-source.md) ·
-**→ queued as [mongo-obs-source](./tickets/01-0124-mongo-obs-source.md)** (its align settles the
-mitigations below)
+**→ queued as [mongo-obs-source](./tickets/01-0124-mongo-obs-source.md)**
 
 The collector (external repo) writes parsed documents in its own schema — common camelCase forecast
-fields sparse per provider (`ibm`, `tomorrow`, `visualcrossing`), two obs schemas (a regional
-station-network source carrying `raw` payload and `method`; legacy `ibm_hod`), a `stations`
-registry, and a `state` freshness doc, keyed `(base_time, time)` / `time`. The Mongo sources map
-this schema to canonical parameters, so a collector-side schema change silently breaks them.
-Mitigations belong to the queued ticket: pinned integration fixtures (sampled real documents)
-as the contract test, a schema version marker in the collector if cheap, and a documented ownership
-statement (collector owns the schema; meteoscape adapts). Two asks stay outside this repository's
-reach, which is why the risk does not retire with the ticket: the version marker, and a
-**per-station** latest-observation time — the `state` doc reports one per source type and covers
-only some of them, so admission cannot read the true end of a station's data
+fields sparse per provider, two observation document shapes, a station registry, and a source-level
+freshness document. The Mongo sources map that external schema to canonical parameters, so a
+collector-side schema change can silently break them. The queued source owns pinned integration
+fixtures and explicit adapter ownership.
+
+Two external signals remain unavailable: a schema version and a **per-station** latest-observation
+time. Source-level freshness cannot declare the true end of each station's data
 ([#29](#29-narrated-reach-what-a-profile-promises), backward reach). The station network's obs `raw` payload
 preserves replayability; forecast documents carry no raw, so forecast decode fidelity is bounded by
 the collector's own parsing. The station network's *endpoint* is out of meteoscape's scope
@@ -835,31 +742,21 @@ Open: whether coverage becomes a deterministic guard (cheap, and the reader guar
 rides the automation; what selects an affected Provider without depending on branch names; and whether
 the boundary policy needs a *signal* before it needs an improvement.
 
-**Not this concern:** *building* scheduled execution and changed-file routing. That is delivery
-sequencing, recorded in [m3](./tickets/done/01-0080-provider-parity-checks.md)'s follow-on section. This
-file owns the unresolved part — what enforces coverage and what routes selection.
+**Not this concern:** building scheduled execution and changed-file routing. This entry owns only
+what enforces Provider coverage and what signal routes test selection.
 
 ## 26. Provider / calculator plugin scaffolding
 
 **Kind:** room-left (composition) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md),
 [architecture §Config, binders, Weaver](./architecture.md#config-binders-weaver)
 
-→ [ADR-0005: plugin binding](./adr/0005-build-time-composition.md#plugin-binding). Open: **where the
-filled default catalogues live**, how **built-in vs optional** plugins are partitioned, and how
-`compose` takes both catalogues symmetrically.
-
-~~The composition root assembles maps by hand (`PROVIDER_CATALOG` / `CALCULATOR_CATALOG` in
-`server.py`) and injects both into `compose`.~~ **Partially discharged 2026-08-19
-([0123](./tickets/done/01-0123-config-secrets-degrade.md)): the membership lists left the root** — the
-shipped sets live plugin-side as `nodes/providers/builtin.py` / `nodes/calculators/builtin.py`
-(each exporting `CATALOG`), the first *named shipped set* in this concern's own vocabulary;
-`server.py` imports availability and declares only its enablement. `catalog/` stays faces-only —
-the builtin modules import concrete plugins, the catalogue types never do.
-
-Open: whether optional plugins are second maps, entry-point discovery, or install extras; how
-`compose` selects among multiple named sets symmetrically; enablement in `ProfileConfig` stays
-separate from availability. No v1 blocker — mark before the second
+The shipped provider and calculator sets live plugin-side in parallel `builtin.py` modules;
+`server.py` declares only enablement. Open: whether optional plugins are second catalogues,
+entry-point discovery, or install extras; how `compose` selects among multiple named sets
+symmetrically; enablement in `ProfileConfig` stays separate from availability. Decide before the second
 optional calculator or a non-default provider packaging story forces an ad-hoc split.
+
+→ [ADR-0005: plugin binding](./adr/0005-build-time-composition.md#plugin-binding).
 
 ## 27. Stored-calculator store binding
 
@@ -912,9 +809,8 @@ ParameterData`), not another `select` implementation. Claims in the design langu
 widening and are **not true of the current build**: (1) the per-cell fold itself; (2) the
 **gap-filler** story (a low-priority whole-coverage producer filling where a hi-res one does not reach —
 the hi-res producer simply wins the whole parameter under the implemented interface); (3) **per-parameter
-partial success**. **Wholesale runtime-fault fall-through does *not* depend on this widening** — it
-re-enters selection and projects the next admitted candidate whole, entirely within the narrow
-interface → queued as [second-provider fallback](./tickets/done/01-0121-second-provider-fallback.md).
+partial success**. Wholesale runtime-fault fall-through does not depend on this widening: it
+re-enters selection and projects the next admitted candidate whole within the narrow interface.
 
 Not a v1 gap: v1 ships only `priority`, and point/timeline producers fully overlap, so selection *is*
 the whole job and the narrow interface is exactly sufficient. This concern records the **cost of the
@@ -923,10 +819,8 @@ extension** so it is not mistaken for a config change: it lands with the catalog
 ([ADR-0003](./adr/0003-provenance-and-origin.md)), and wants the first real partial-coverage producer
 set to prove it.
 
-**A window-aware ordering step was considered and rejected (2026-08-17):** letting `select` prefer
-a candidate that serves the snapped window whole cannot work on the product path — the retention
-flow opens T before selection runs, so the reconciler never sees the window. The "cannot score
-geometry" limit above thus stands for a deeper reason than interface narrowness →
+Window-aware ordering cannot make `select` prefer a candidate that serves the snapped window whole:
+the retention flow opens T before selection, so the reconciler never sees the window →
 [#49](#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy).
 
 ## 29. Narrated reach: what a profile promises
@@ -1112,20 +1006,9 @@ mechanism is [Edge — MCP: Contract](./edge/mcp.md#contract)'s, which owns it. 
 is rejected — simulating resolution at the edge reintroduces clock races and per-input ordering
 rules. Membership at the **declared** edge is therefore *trim by the winner*, while this concern's
 runtime-degraded case is unchanged: a fault after admission still drops the parameter whole with a
-reason. **Two-fetch divergence under snapped (judged 2026-08-05, 003c's
-re-stage align):** a mixed direct+derived request resolves through two winners and two vendor
-fetches whose grounded T lattices can diverge (an hour roll between the fetches, or a vendor length
-change) → loud whole-request `runtime-failure` at the Arbiter's closed-projection check. Accepted
-as rare-and-loud **for exactly one ticket** — retention
-([006](./tickets/done/01-0115-retentive-store-freshness.md), moved to directly after 003c at the same
-align) collapses the warm path, and the cold-store residue (two disjoint-parameter fetches) is
-owned by 006's **refill-scope** decision; the full record is the
-[003c ticket](./tickets/done/01-0110-request-shaping.md)'s divergence criterion. Recorded revisit,
-triggered by **the first parameter set with
-diverging T reach (the second provider)**: under one-domain Selections a snapped window is
-resolved per winner *per parameter set* — whether a diverging bundle should be served at its
-narrowest common window or at each winner's own (shorter parameters dropping where they end) is
-**undecided**; closed projection forbids per-parameter partial windows, so those are the shapes.
+reason. Mixed direct and derived requests can still resolve against diverging winner domains; the
+producer-economy cause and mitigation options live at
+→ [#43: narrow-answering providers](#43-narrow-answering-providers-re-open-mixed-request-run-divergence).
 
 **Three policies stay distinct:** **fallback** (who serves — the reconciler's),
 **membership** (what a beyond-boundary request gets — declared edge: trim, above; runtime edge: this
@@ -1173,10 +1056,7 @@ contract → [architecture: Failure, nodata, and availability](./architecture.md
 
 **Kind:** room-left (extension) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [#29](#29-narrated-reach-what-a-profile-promises), [#7](#7-quality-scoring), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 
-The **placement** question this concern opened is closed — the declared geometry is on the `Capability`,
-so it is reachable at request time ([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
-
-**What stays open is the extension that motivated it:** a **footprint-aware `reconciler`** that ranks
+A **footprint-aware `reconciler`** would rank
 candidates by how tightly each covers the request (prefer a regional high-resolution producer over a
 global one), adjacent to [#7](#7-quality-scoring). The geometry it would rank on is now published, so
 what remains is the **ranking policy** and the `Reconciler` interface widening it needs
@@ -1227,11 +1107,9 @@ blocks it now; the reconciler interface does
 
 **Kind:** policy coherence (contract-level) · **Refs:** [ADR-0007](./adr/0007-capability-carries-its-domain.md), [#29](#29-narrated-reach-what-a-profile-promises), [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold), [#6](#6-reconciler-catalogue), [#32](#32-footprint-aware-ranking-inside-the-algebra)
 
-The **coherence** half is settled — domain composition is a `Reconciler` member, so it moves with the
-reconciler and cannot be paired incoherently
-([ADR-0007](./adr/0007-capability-carries-its-domain.md)).
-
-**What stays open is the member's shape.** `priority` composes by dominance-or-raise; `tile` would
+Domain composition is a `Reconciler` member, so it moves with the policy and cannot be paired
+incoherently ([ADR-0007](./adr/0007-capability-carries-its-domain.md)). Its interface remains open:
+`priority` composes by dominance-or-raise; `tile` would
 compose a spatial union, `splice` a temporal one. Whether one signature serves all three is unknown
 until a second reconciler is built — the same uncertainty
 [#28](#28-reconciler-interface-selection-ordering-vs-per-cell-fold) records about `select`, and the
@@ -1241,9 +1119,7 @@ reason a reshape is expected rather than feared.
 
 **Kind:** room-left (build-time structure) · **Refs:** [ADR-0005](./adr/0005-build-time-composition.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
 
-Two build-time passes walk the same producer DAG over `ProfileDef`. A third — the standalone reach
-resolver — was removed by [ADR-0007](./adr/0007-capability-carries-its-domain.md): the capability tree
-already composes that geometry structurally, so recomputing it over `ProfileDef` was duplicate work.
+Two build-time passes walk the same producer DAG over `ProfileDef`:
 
 - **`Weaver._weave_calculators`** — memoizes a `Producer` per `CalculatorKey`, with a `visiting` set
   raising `CompositionError("calculator cycle at ...")`. A **backstop**: `validate_calculators` is
@@ -1293,47 +1169,19 @@ the reduced set; matches "optional provider = availability". No v1 driver.
 
 **Kind:** deferred seam (placement) · **Refs:** [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md), [#5](#5-read-time-homogenization-fidelity)
 
-Nodes are not `Countable` ([ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md)): a
-materialized provider (archive bundle, climatological normals, static fields) *is* its own store, so
-it wires **storeless** —
-no `Reservoir(store, provider, clock)` mirroring data that is already local. That removes the node whose
-read-back would have homogenized an off-grid request, and
-[architecture §Reservoir](./architecture.md#reservoir) is explicit that homogenization is **not**
-leaf-only: every producer's answer must honour `sel.domain`.
+Any producer may wire storeless when retention or call economy adds no value; a materialized
+provider must wire storeless so the graph does not mirror data that is already local. Without a
+Reservoir, no read-back step homogenizes an off-grid request, while the algebra still requires every
+producer's answer to honour `sel.domain`.
 
-**Open: where a storeless producer's homogenization lives.** The Resampler itself is the shared sampling
-seam ([#5](#5-read-time-homogenization-fidelity) owns fidelity); this concern owns only **placement** —
-in the provider base, or a thin non-retentive read-back wrapper the Weaver applies. Also open, smaller:
-whether `isinstance(provider.capability, EnumerableCapability)` remains the right "already
-materialized" discriminator once a provider is enumerable but unholdable (the cloud-ARCO case).
+Open: whether a storeless producer invokes the shared sampling engine itself or the Weaver applies a
+thin non-retentive read-back wrapper; which kernel licenses that sampling; and whether
+`EnumerableCapability` remains the right materialization discriminator for enumerable but
+unholdable sources. A storeless producer's fidelity floor is its native lattice, while Store presence
+remains profile policy → [ADR-0005](./adr/0005-build-time-composition.md),
+[architecture §Reservoir](./architecture.md#reservoir).
 
-**Trigger to revisit:** the first real materialized provider. No v1 driver — no v1 provider is
-materialized; the storeless path exists only in fakes. Deferred to the same trigger: the **Source**
-language — glossary *Source* and [architecture](./architecture.md) (guiding principles, §Source)
-define a Source as `Reservoir(store, Provider, clock)`, which a real storeless producer no longer is; those
-sites widen then, not before.
-
-**Widened 2026-08-19 (0123 align):** the concern covers **any storeless producer**, not only
-materialized ones — a fast in-house live source (the coming observation providers) may legitimately
-want neither retention nor call economy, so "storeless" is profile policy, not a materialization
-corollary. Recorded for the placement decision, so accidental verbatim does not decide it:
-
-- The algebra's own registers side with self-honoring: [ADR-0001](./adr/0001-manifold-algebra-and-composition.md)'s
-  result-shape law and [architecture §Reservoir](./architecture.md#reservoir)'s "homogenization is
-  not leaf-only: every producer's answer must honour `sel.domain`". The sampling engine already has
-  one shared home (`manifold/sampling.py` behind `Coverage.project` —
-  [walking skeleton](./tickets/done/01-0020-walking-skeleton.md): "no second verb"), so placement
-  decides *who invokes the engine under which licensed kernel*, never who owns resampling. A
-  storeless producer's claim floor is its **native lattice** (enclosing native cell, identity
-  kernel), exactly as the store cell is the Source's ([RFC 0016](./rfc/done/0016-20260810-off-grid-homogenization.md)).
-- [Architecture §Provider](./architecture.md#provider-leaf-manifold)'s "aligned-crop strength"
-  sentence is **descriptive prose hardened from an m4 implementation fact** (the leaf trims via
-  `resample`), not a decided prohibition on leaf-side relabel — v1's point-timeline leaves already
-  serve arbitrary X/Y by design (vendor-side interpolation). Do not read it as an invariant.
-- Store presence is the wiring switch, not a materialization fact →
-  [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
-  [ADR-0005](./adr/0005-build-time-composition.md). Whether the mirror-waste refusal (a store on an
-  already-local dataset) becomes a warning is still open, and waits on this concern's own trigger.
+**Trigger:** the first real storeless producer that must answer off its native lattice.
 
 ## 38. Calculator admittance is fixed pointwise-total
 

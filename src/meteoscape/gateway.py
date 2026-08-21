@@ -6,10 +6,9 @@ always materialize a Coverage; a non-Coverage result is a bug (non-taxonomy erro
 Gateway exists per woven profile, which is why releasing it releases the profile.
 See docs/architecture.md ("Gateway").
 
-Sits above the surfaces rather than inside `api/`, and carries the `Closeable` facet - placement and
-its reason are docs/module-layout.md's. What must hold here: nothing that realizes `Closeable` ever
-imports it, since Protocols here are structural, so `nodes/` never depends on this module. A change
-that inverts that has moved lifetime into the algebra, which is the design this one replaced.
+Sits above the surfaces rather than inside `api/`, and carries the `Closeable` facet. Nothing that
+realizes `Closeable` imports it: the Protocol is structural, so `nodes/` never depends on this module
+and composition lifetime stays outside the algebra. See docs/module-layout.md.
 """
 
 from __future__ import annotations
@@ -45,9 +44,8 @@ class Gateway:
     async def resolve(self, selection: Selection) -> Coverage:
         result = await self.best_view.project(selection)
         if not isinstance(result, Coverage):
-            # TODO(#39): an engine invariant break reaching the surface as a bare `TypeError` —
-            # neither the request nor a producer is at fault. Wants the engine-side category #39
-            # inventories; deliberately uncaught until 0125's align settles the hierarchy.
+            # TODO(#39): give engine invariant breaks their own public failure category; neither the
+            # request nor a producer is at fault.
             raise TypeError(f"best view must project to Coverage, got {type(result).__name__}")
         return result
 
@@ -62,9 +60,8 @@ class Gateway:
         propagates rather than joining the group; catching it to keep going would swallow the
         cancellation.
 
-        TODO: report each failure through the logging boundary
-        docs/tickets/02-0195-minimal-resolution-logging.md owns - until then the raised group is the
-        only report, and a teardown message must never carry a connection string.
+        TODO(#14): report each failure through the logging boundary. Until then the raised group is
+        the only report, and a teardown message must never carry a connection string.
         """
         closeables = self._closeables
         self._closeables = ()

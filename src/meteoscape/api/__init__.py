@@ -1,4 +1,4 @@
-"""The surface adapters - the canonical model, `gateway.py`, and the parameter vocabulary.
+"""Surface adapters between protocols and the canonical model.
 
 Translate a surface protocol to/from the canonical model, and drive the composition they are
 handed. Caller policy is the `Gateway`'s, one level up.

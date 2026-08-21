@@ -28,7 +28,7 @@ plane. The capability/matching half is
   producer knows its native layout. The partition is a property of the **answer**. Co-domain is an
   invariant of the **exchange record** (one `Coverage`), never of a store or of a fetch.
 
-- **The partition reaches the store because the question asks `ANY`.** A Source asks its
+- **The partition reaches the store because the question asks `ANY`.** A retained Source asks its
   Provider **once** — asking per parameter group would multiply vendor fetches for data one call
   returns — with `ANY` on the axes its Holding spans wholly. By shape-correspondence
   ([ADR-0001](./0001-manifold-algebra-and-composition.md)) that answer is legitimately
@@ -102,7 +102,7 @@ plane. The capability/matching half is
   behind `matches` / the store's `project` — no second public verb.
 
 - **Nodes are not `Countable`; `domain` lives only on the Coverage.** A node's public shape is its
-  **capability** (footprint — a Source admits uncached-but-in-footprint requests precisely because
+  **capability** (footprint — a retained Source admits uncached-but-in-footprint requests precisely because
   admission reads the forwarded footprint, not store contents); its lattice is store-private. The two
   jobs the node facet did move to their owners: the quantize/retention target is internal to the
   `Store`, provisioned from the configured **`StoreSpec`** alone — no provider hands a lattice

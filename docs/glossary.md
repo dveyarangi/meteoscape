@@ -19,7 +19,10 @@ An EnumerableDomain whose axes may use different enumerable representations. →
 _Avoid_: RegularDomain, Grid
 
 **ScatterDomain**:
-Finite paired X/Y points matched jointly, sharing T and Z — CF's `timeSeries`/`timeSeriesProfile` geometry: fixed-site networks (stations, PWS, sounding and profiler sites, moored buoys, per-point archives). Not an axis product, and not enumerable until a scatter-shaped Coverage exists. Geometry only; station identity travels as declared provenance. → [Mongo obs source](./tickets/01-0124-mongo-obs-source.md), [ADR-0003](./adr/0003-provenance-and-origin.md)
+Finite paired X/Y points matched jointly, sharing T and Z — CF's `timeSeries`/`timeSeriesProfile`
+geometry. It represents fixed-site networks without turning paired locations into an axis product;
+station identity is provenance, not geometry. → [ADR-0002](./adr/0002-data-model.md),
+[ADR-0003](./adr/0003-provenance-and-origin.md)
 _Avoid_: StationDomain (the geometry is vendor-neutral), PointSetDomain, Site (dissolved — coordinates are the domain's, identity is provenance's), TrajectoryDomain (moving platforms are a distinct family → [ADR-0002](./adr/0002-data-model.md))
 
 **SelectionDomain**:
@@ -154,7 +157,10 @@ A Quantity's linear, circular, nominal, or ordinal value structure. → [ADR-000
 _Avoid_: Type, dtype
 
 **Resampler**:
-The rule for mapping values between resolutions — Parameter-specific when non-degenerate. Its degenerate member is **identity**: the value passes through untouched, which is one rule for every Parameter and so needs no per-Parameter form. v1 carries only the identity member; the Parameter-specific ones are deferred. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [#5](./concerns.md#5-read-time-homogenization-fidelity)
+The rule for mapping values between resolutions, Parameter-specific when non-degenerate. Its
+identity member passes a value through unchanged. →
+[ADR-0004](./adr/0004-producer-resolution-and-capability.md),
+[#5](./concerns.md#5-read-time-homogenization-fidelity)
 _Avoid_: Interpolator, kernel
 
 **Functional**:
@@ -205,7 +211,7 @@ maximum lead and an optional Shelf define availability. → [ADR-0003](./adr/000
 
 **Shelf**:
 The calendar unit a vendor's served window turns in — daily for a by-calendar-day product, hourly for one relabelled each hour. The availability window starts at the current shelf boundary and advances one shelf at a time, so the shelf is the size of the jumps the window's start makes; the maximum lead is the window's length, and Reach is where the window stands now. Declared in the Cadence; it also fixes the phase the served lattice anchors to. → [ADR-0003](./adr/0003-provenance-and-origin.md)
-_Avoid_: window_quantum (the pre-2026-08-11 field name), window quantum, quantum, window step
+_Avoid_: window quantum, quantum, window step
 
 **Consensus**:
 A Reconciler that blends overlapping contributors instead of selecting one. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)
@@ -238,7 +244,10 @@ The request mode that fixes only an axis's bounds; the resolver's grid supplies 
 _Avoid_: Soft window, clamped window, bounded-ANY
 
 **ANY**:
-The boundless form of the Snapped member — a request member that leaves one axis entirely to the producer: the answer keeps the producer's native cells on that axis and may group records that differ there. Not a separate axis kind; Snapped and ANY are one member kind differing only in whether bounds are present. A one-sided open bound is the same family's deferred "from X onward" form. → [architecture.md](./architecture.md#request-modes), [ADR-0002](./adr/0002-data-model.md)
+The boundless form of the Snapped member — a request member that leaves one axis entirely to the
+producer, so the answer keeps the producer's native cells on that axis and may group records that
+differ there. It is not a separate axis kind. → [architecture.md](./architecture.md#request-modes),
+[ADR-0002](./adr/0002-data-model.md)
 _Avoid_: Wildcard, unbounded, whole-axis
 
 **Canonical lattice**:
@@ -352,7 +361,8 @@ _Avoid_: Builder, compiler, orchestrator, planner
 ### Roles
 
 **Embedding surface**:
-The supported Python package boundary through which a host application uses Meteoscape's weather capabilities without running a protocol server. Its API shape is unresolved. → [architecture.md](./architecture.md#embedding-surface)
+The supported Python package boundary through which a host application uses Meteoscape's weather
+capabilities without running a protocol server. → [architecture.md](./architecture.md#embedding-surface)
 _Avoid_: Internal composition API, headless mode, client SDK
 
 **Edge record**:
@@ -440,7 +450,10 @@ The composite that resolves competing producers per Parameter under a Reconciler
 _Avoid_: Selector, dispatcher, router, resolver, Gateway
 
 **Reconciler**:
-The per-Parameter policy for combining an Arbiter's competing producers — it both ranks them and composes the Reach the combination publishes, since how producers combine is what the combination serves. As built it orders candidates and the Arbiter picks the first admitted, re-selecting past any that fault mid-request (combining reconcilers need a wider interface → [#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md), [ADR-0007](./adr/0007-capability-carries-its-domain.md)
+The per-Parameter policy for combining an Arbiter's competing producers; it also composes the Reach
+that combination publishes. → [ADR-0004](./adr/0004-producer-resolution-and-capability.md),
+[ADR-0007](./adr/0007-capability-carries-its-domain.md),
+[#28](./concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)
 _Avoid_: Mosaic, combiner, stitcher, merger, tiler
 
 **Provider**:
@@ -460,7 +473,9 @@ The operator-owned external service that continuously captures vendor forecasts 
 _Avoid_: Scraper, harvester, ingester; archive (the accumulated data, not the process that accumulates it)
 
 **Source**:
-The role of a Reservoir that serves retained data or fetches it from one Provider. → [architecture.md](./architecture.md#source)
+The role that presents one Provider as a producer in a profile, optionally through a retaining
+Reservoir. → [architecture.md](./architecture.md#source),
+[#37](./concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)
 
 **Producer**:
 A ranked candidate an Arbiter selects over for a Parameter — a live node (a Source or a Calculator) paired with a `ProducerKey` identity (`SourceKey | CalculatorKey`). → [ADR-0004](./adr/0004-producer-resolution-and-capability.md)

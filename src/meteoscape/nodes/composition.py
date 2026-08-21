@@ -47,8 +47,10 @@ class RegisteredSource:
 
 
 def _is_materialized(provider: Provider) -> bool:
-    """Every parameter on one enumerable domain ⇒ an already-materialized dataset (ADR-0006 / m2;
-    the isinstance test is the v1 discriminator — m2 open question 2)."""
+    """Every parameter on one enumerable domain identifies an already-materialized dataset.
+
+    `EnumerableCapability` is the current discriminator; concern #37 owns its widening.
+    """
     return isinstance(provider.capability, EnumerableCapability)
 
 
@@ -116,9 +118,8 @@ class SourceBinder:
                     f"store configured for materialized source {key}; "
                     "a materialized provider wires storeless"
                 )
-            # TODO (temporary): docs/tickets/01-0130-vendor-call-ledger.md mints
-            # ProviderManifest.metered and restores the metered-uncached refusal here.
-            # Until then a storeless metered vendor would compose and buy a call per request.
+            # TODO: once ProviderManifest declares whether calls are metered, refuse a metered
+            # storeless source here; otherwise it buys a call per request.
 
             sources[key] = RegisteredSource(
                 provider=provider,

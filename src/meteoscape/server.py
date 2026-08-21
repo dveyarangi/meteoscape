@@ -63,9 +63,8 @@ def compose(
         )
     )
     # Both construction sites, in construction order — reversed release then unwinds
-    # outermost-first (root store → calculator store → source store → provider). Dropping
-    # `stores.created` would break no test until docs/tickets/01-0145-persisting-store.md ships a
-    # store that holds something.
+    # outermost-first (root store → calculator store → source store → provider). Keep every created
+    # Store in the release set even when the current substrate holds no external resource.
     return Gateway(woven, sources.providers, stores.created)
 
 

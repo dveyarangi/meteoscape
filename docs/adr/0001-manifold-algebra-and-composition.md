@@ -46,7 +46,7 @@ a Coverage carries is the [data model](./0002-data-model.md); provenance is
     is the fold. Each parameter it carries sits on exactly one record, so the geometry a parameter
     arrived on stays answerable per parameter until something asks for them together.
 
-  This is what lets a Source fetch **once** and still retain native geometry. Without it, a
+  This is what lets a retained Source fetch **once** and still retain native geometry. Without it, a
   co-domained question forces a flattened answer and the native cells are destroyed before the store
   can key Holdings by them.
 
