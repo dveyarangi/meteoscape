@@ -35,9 +35,10 @@ from .providers.base import Provider
 class RegisteredSource:
     """One configured producer plus extrinsic priority and optional Source-store knobs.
 
-    Invariant: materialized (`EnumerableCapability`) ⇒ `store is None`; non-materialized ⇒ `store`
-    set. Both enforced by the `SourceBinder`, so downstream reads `store is None` as the materialized
-    fact without re-deriving it.
+    A materialized provider (`EnumerableCapability`) must be storeless — a configured store is a
+    `CompositionError`. A non-materialized producer may also be storeless: store presence is
+    profile policy, not a materialization corollary (#37). Downstream reads `store is None` as
+    storeless, never as "materialized".
     """
 
     provider: Provider
@@ -110,14 +111,14 @@ class SourceBinder:
                 raise CompositionError(f"duplicate SourceKey {key}")
 
             store: StoreSpec | None = offering.store if offering.store is not None else spec.store
-            if _is_materialized(provider):
-                if store is not None:
-                    raise CompositionError(
-                        f"store configured for materialized source {key}; "
-                        "a materialized provider wires storeless"
-                    )
-            elif store is None:
-                raise CompositionError(f"missing store shape for non-materialized source {key}")
+            if _is_materialized(provider) and store is not None:
+                raise CompositionError(
+                    f"store configured for materialized source {key}; "
+                    "a materialized provider wires storeless"
+                )
+            # TODO (temporary): docs/tickets/01-0130-vendor-call-ledger.md mints
+            # ProviderManifest.metered and restores the metered-uncached refusal here.
+            # Until then a storeless metered vendor would compose and buy a call per request.
 
             sources[key] = RegisteredSource(
                 provider=provider,

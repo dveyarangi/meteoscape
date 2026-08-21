@@ -5,8 +5,9 @@ Representations vary behind one interface: separability is a *facet* (not the ba
 regularity is a per-axis choice (`RegularAxis` computes cells from `(anchor, step, count)`), so a
 curvilinear geometry can satisfy the base without either. `issue_time` is a provenance stamp, **not**
 an axis. v1 ships `GridDomain` (the enumerable grid — mixed `EnumerableAxis` per axis),
-`FootprintDomain` (a continuous provider footprint), and `SelectionDomain` (the request-side form, which
-may carry bounds-only members); `ground` resolves the third against either of the first two.
+`FootprintDomain` (a continuous provider footprint), `SelectionDomain` (the request-side form, which
+may carry bounds-only members), and `ScatterDomain` (paired points, jointly matched); `ground`
+resolves a request against an enumerable answer.
 `CurvilinearDomain` and `intersect` are declared seams.
 
 See ADR-0002.
@@ -671,6 +672,65 @@ class FootprintDomain(Domain):
 
     def axis(self, name: AxisName) -> Axis:
         return self.axes[name]
+
+
+@dataclass(frozen=True)
+class ScatterDomain(Domain):
+    """Finite paired X/Y points matched jointly, sharing T and Z.
+
+    X/Y are never an axis product: a request is admitted only at a member place, exactly
+    (no epsilon). Boundless (`ANY`) and boxed spatial asks decline — "all stations" waits on
+    a scatter-shaped Coverage (#12). Not Separable: exposing `axis()` would falsely pass
+    `as_separable` and half-work through the 0137 folds. `points` order does not affect
+    admission but does affect equality, and becomes the positional order of the Coverage a
+    scatter will one day carry. ADR-0002; glossary ScatterDomain.
+    """
+
+    points: tuple[tuple[float, float], ...]
+    t: Axis
+    z: Axis
+
+    def __post_init__(self) -> None:
+        if not self.points:
+            raise ValueError(
+                "an empty scatter is capability absence, not a domain that declines everything"
+            )
+        if len(self.points) != len(set(self.points)):
+            raise ValueError("duplicate scatter points; a registry lists a place once")
+
+    def matches(self, other: Domain) -> bool:
+        requested = as_separable(other)
+        if requested is None:
+            return False
+        place = _request_place(requested)
+        return (
+            place is not None
+            and place in self.points
+            and requested.axis(AxisName.T).matches(self.t)
+            and requested.axis(AxisName.Z).matches(self.z)
+        )
+
+    def intersect(self, other: Domain) -> Domain:
+        raise NotImplementedError
+
+
+def _request_place(requested: Separable) -> tuple[float, float] | None:
+    """The request's X/Y as one place, or `None` when it is not a single point."""
+    x = _point_coordinate(requested.axis(AxisName.X))
+    y = _point_coordinate(requested.axis(AxisName.Y))
+    if x is None or y is None:
+        return None
+    return (x, y)
+
+
+def _point_coordinate(axis: Axis) -> float | None:
+    """A single-cell instant's float coordinate, or `None` for a span, `ANY`, or a non-point."""
+    if not isinstance(axis, EnumerableAxis) or len(axis) != 1:
+        return None
+    if axis.extent.lower != axis.extent.upper:
+        return None
+    coordinate = axis[0].coordinate
+    return coordinate if isinstance(coordinate, float) else None
 
 
 type SelectableAxis = RegularAxis | VantageAxis | SnappedAxis

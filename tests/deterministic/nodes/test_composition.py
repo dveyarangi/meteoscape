@@ -106,7 +106,8 @@ def test_store_configured_on_materialized_source_raises() -> None:
         )
 
 
-def test_missing_store_raises() -> None:
+def test_storeless_non_materialized_source_composes() -> None:
+    """Storeless is profile policy, not a materialization corollary — a live source may omit a store."""
     catalog = fake_catalog(
         offerings={
             "default": OfferingSpec(
@@ -116,13 +117,14 @@ def test_missing_store_raises() -> None:
             )
         },
     )
-    with pytest.raises(CompositionError, match="store"):
-        SourceBinder(catalog).build(
-            [OfferingDef(impl="fake", name="default", priority=0)],
-            secrets={},
-            clock=STOPPED,
-            parameters=core_parameters(),
-        )
+    registry = SourceBinder(catalog).build(
+        [OfferingDef(impl="fake", name="default", priority=0)],
+        secrets={},
+        clock=STOPPED,
+        parameters=core_parameters(),
+    )
+    entry = next(iter(registry.sources.values()))
+    assert entry.store is None
 
 
 def test_offering_def_store_overrides_catalogue() -> None:

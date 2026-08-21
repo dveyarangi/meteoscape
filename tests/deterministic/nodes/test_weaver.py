@@ -146,6 +146,30 @@ def test_materialized_source_weaves_storeless() -> None:
     assert AIR_TEMPERATURE in root.capability.parameters
 
 
+def test_storeless_non_materialized_source_weaves_as_bare_provider() -> None:
+    """A live source with no store wires as a bare `Producer` — the same path as materialized."""
+    stores = RecordingStoreFactory()
+    profile = _profile(
+        offerings=[OfferingDef(impl="fake", name="default", priority=0)],
+        catalog=fake_catalog(
+            offerings={
+                "default": OfferingSpec(
+                    name="default",
+                    parameters=frozenset({AIR_TEMPERATURE}),
+                    store=None,
+                )
+            },
+        ),
+    )
+    root = Weaver(stores, STOPPED).weave(profile)
+    assert isinstance(root, Reservoir)
+    assert isinstance(root.source, Arbiter)
+    entry = next(iter(profile.sources.sources.values()))
+    producer = next(p for p in root.source.producers if p.key in profile.sources.sources)
+    assert producer.node is entry.provider
+    assert stores.calls == [(profile.root_store, frozenset({AxisName.T}))]
+
+
 @pytest.mark.asyncio
 async def test_materialized_source_serves_through_arbiter() -> None:
     """The Arbiter projects the bare materialized leaf and its answer is served as-is.

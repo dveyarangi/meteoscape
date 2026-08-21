@@ -22,7 +22,9 @@ from meteoscape.manifold.domain import (
     EnumerableDomain,
     GridDomain,
     RegularAxis,
+    ScatterDomain,
 )
+from meteoscape.manifold.provenance import AtomicOrigin
 from meteoscape.nodes.catalog.paramtable import StaticParameterTable
 from meteoscape.parameters import (
     AIR_TEMPERATURE,
@@ -175,3 +177,147 @@ def test_derived_capability_carries_the_composed_domain() -> None:
     assert derived.reach(WIND_SPEED) is footprint
     with pytest.raises(KeyError):
         derived.reach(AIR_TEMPERATURE)
+
+
+# ---- origins: declared provenance over the reach (ADR-0003) -------------------------------------
+
+
+def test_unbound_granular_capability_declares_no_origins() -> None:
+    """Served-but-undeclared is empty; unserved is KeyError — the same split as reach()."""
+    table = StaticParameterTable.core()
+    footprint = footprint_domain(STOPPED, cadence=_cadence())
+    leaf = GranularCapability(reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), footprint)})
+    assert leaf.origins(AIR_TEMPERATURE) == ()
+    with pytest.raises(KeyError):
+        leaf.origins(PRECIPITATION)
+
+
+_RUSSEL = (-33.0129, -68.7473)
+_MENDOZA = (-32.890, -68.845)
+_OBS = SourceKey("collector-obs", "stations")
+
+
+def _station_scatter(*points: tuple[float, float]) -> ScatterDomain:
+    noon = datetime(2026, 7, 11, 12, tzinfo=UTC)
+    return ScatterDomain(
+        points=points,
+        t=RegularAxis(AxisName.T, noon, timedelta(hours=1), 4, False),
+        z=RegularAxis(AxisName.Z, 2.0, 1.0, 1, False),
+    )
+
+
+def test_scatter_capability_publishes_origins_before_any_request() -> None:
+    table = StaticParameterTable.core()
+    reach = _station_scatter(_RUSSEL, _MENDOZA)
+    russel = _station_scatter(_RUSSEL)
+    mendoza = _station_scatter(_MENDOZA)
+    leaf = GranularCapability(
+        reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), reach)},
+        declared_origins={
+            AIR_TEMPERATURE: (
+                (
+                    russel,
+                    AtomicOrigin(
+                        _OBS, None, authority="agrometeo", process="instant", unit="Russel"
+                    ),
+                ),
+                (
+                    mendoza,
+                    AtomicOrigin(
+                        _OBS, None, authority="agrometeo", process="instant", unit="Mendoza"
+                    ),
+                ),
+            )
+        },
+    )
+
+    entries = leaf.origins(AIR_TEMPERATURE)
+    published: list[ScatterDomain] = []
+    units: list[str | None] = []
+    # Containment of declared data, not matches() between two declared domains (ADR-0003).
+    for place, origin in entries:
+        assert isinstance(place, ScatterDomain)
+        assert origin.issue_time is None
+        assert set(place.points) <= set(reach.points)
+        assert reach.t.extent.contains(place.t.extent)
+        assert reach.z.extent.contains(place.z.extent)
+        published.append(place)
+        units.append(origin.unit)
+    assert [place.points for place in published] == [(_RUSSEL,), (_MENDOZA,)]
+    assert units == ["Russel", "Mendoza"]
+
+
+def test_enumerable_capability_declares_no_origins() -> None:
+    table = StaticParameterTable.core()
+    leaf = EnumerableCapability(
+        domain=_point(datetime(2026, 7, 11, 12, tzinfo=UTC)),
+        parameters={AIR_TEMPERATURE: table.get(AIR_TEMPERATURE)},
+    )
+    assert leaf.origins(AIR_TEMPERATURE) == ()
+    with pytest.raises(KeyError):
+        leaf.origins(PRECIPITATION)
+
+
+def test_derived_capability_declares_no_origins() -> None:
+    table = StaticParameterTable.core()
+    footprint = footprint_domain(STOPPED, cadence=_cadence())
+    derived = DerivedCapability(
+        parameters={WIND_SPEED: table.get(WIND_SPEED)},
+        inputs=frozenset({WIND_U, WIND_V}),
+        upstream=GranularCapability(
+            reaches={
+                WIND_U: (table.get(WIND_U), footprint),
+                WIND_V: (table.get(WIND_V), footprint),
+            }
+        ),
+        domain=footprint,
+    )
+    assert derived.origins(WIND_SPEED) == ()
+    with pytest.raises(KeyError):
+        derived.origins(AIR_TEMPERATURE)
+
+
+def test_union_capability_concatenates_origins_in_bind_order() -> None:
+    table = StaticParameterTable.core()
+    reach = _station_scatter(_RUSSEL, _MENDOZA)
+    footprint = footprint_domain(STOPPED, cadence=_cadence())
+    first = GranularCapability(
+        reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), reach)},
+        declared_origins={
+            AIR_TEMPERATURE: (
+                (
+                    _station_scatter(_RUSSEL),
+                    AtomicOrigin(
+                        _OBS, None, authority="agrometeo", process="instant", unit="Russel"
+                    ),
+                ),
+            )
+        },
+    )
+    precip_only = GranularCapability(reaches={PRECIPITATION: (table.get(PRECIPITATION), footprint)})
+    second = GranularCapability(
+        reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), reach)},
+        declared_origins={
+            AIR_TEMPERATURE: (
+                (
+                    _station_scatter(_MENDOZA),
+                    AtomicOrigin(
+                        _OBS, None, authority="agrometeo", process="instant", unit="Mendoza"
+                    ),
+                ),
+            )
+        },
+    )
+    union = UnionCapability(
+        members={
+            SourceKey("obs", "west"): first,
+            SourceKey("obs", "precip"): precip_only,
+            SourceKey("obs", "east"): second,
+        },
+        domains={AIR_TEMPERATURE: reach, PRECIPITATION: footprint},
+    )
+
+    units = [origin.unit for _, origin in union.origins(AIR_TEMPERATURE)]
+    assert units == ["Russel", "Mendoza"]
+    with pytest.raises(KeyError):
+        union.origins(WIND_SPEED)

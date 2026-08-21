@@ -15,7 +15,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Final
 
 from ..identity import SourceKey
 from ..parameters import ParameterId
@@ -29,12 +30,21 @@ class Origin:
 class AtomicOrigin(Origin):
     """A single upstream fetch, authored in full at fetch time.
 
-    `source` is the producing `SourceKey`; `issue_time` is the run identity (the forecast issuance the
-    values came from), carried here rather than as a Domain axis (ADR-0002).
+    `source` is the producing `SourceKey`. `issue_time` is the run identity — absent when the
+    origin is run-free (an observation) or not yet fetched (a declaration). Optional
+    `authority` / `process` / `unit` name who, how, and which instance (ADR-0003).
     """
 
     source: SourceKey
-    issue_time: datetime
+    issue_time: datetime | None
+    authority: str | None = None
+    process: str | None = None
+    unit: str | None = None
+
+
+# Aware UTC: `clock.now()` is aware and naive `datetime.max` raises TypeError on compare.
+# An observation stamps this so the reservoir's `expiration <= now` read never refills. ADR-0003.
+NEVER_EXPIRES: Final[datetime] = datetime.max.replace(tzinfo=UTC)
 
 
 class SyntheticOrigin(Origin):
@@ -49,8 +59,8 @@ class SyntheticOrigin(Origin):
 class Provenance:
     """One origin record - what a (parameter, point) value derives from.
 
-    Freshness reads off `expiration` (the provider's `CadenceDef.expiration`, `A + Δ + L`; ADR-0003):
-    fresh while `expiration > now`.
+    Freshness reads off `expiration` (`CadenceDef.expiration` for a forecast; `NEVER_EXPIRES`
+    for an observation): fresh while `expiration > now` (ADR-0003).
     """
 
     origin: Origin

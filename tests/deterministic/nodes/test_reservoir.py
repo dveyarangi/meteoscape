@@ -28,7 +28,7 @@ from meteoscape.manifold.domain import (
     agreed_geometry,
     ground,
 )
-from meteoscape.manifold.provenance import AtomicOrigin, Provenance, Uniform
+from meteoscape.manifold.provenance import NEVER_EXPIRES, AtomicOrigin, Provenance, Uniform
 from meteoscape.nodes.reservoir import Reservoir
 from meteoscape.nodes.store import MemoryStore
 from meteoscape.parameters import AIR_TEMPERATURE, PRECIPITATION, WIND_U, ParameterId
@@ -73,6 +73,7 @@ def _record(
     value: float = 1.0,
     fetched_at: datetime = _FETCHED,
     expiration: datetime | None = None,
+    origin: AtomicOrigin | None = None,
 ) -> CoverageRecord:
     return CoverageRecord(
         capability=EnumerableCapability(
@@ -81,7 +82,7 @@ def _record(
         ranges={pid: ParameterData(values=[value] * len(domain), present=None)},
         provenance=Uniform(
             Provenance(
-                origin=AtomicOrigin(SourceKey("fake", "default"), fetched_at),
+                origin=origin or AtomicOrigin(SourceKey("fake", "default"), fetched_at),
                 fetched_at=fetched_at,
                 expiration=expiration or (fetched_at + timedelta(hours=1)),
             )
@@ -480,6 +481,32 @@ async def test_expired_holding_triggers_refill() -> None:
     clock.instant = _FETCHED + timedelta(hours=2)  # past expiration (= fetched+1h)
     await reservoir.project(_live_ask())
     assert child.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_never_expiring_holding_stays_fresh() -> None:
+    """An observation-shaped origin never expires: the jump that expires a 1h forecast does not refill.
+
+    Retention is a separate store gate; this jump stays inside it.
+    """
+    clock = _AdvancingClock(_FETCHED)
+    child = _Counting(
+        (
+            _record(
+                AIR_TEMPERATURE,
+                _native(lon=10.0, lat=20.0),
+                origin=AtomicOrigin(SourceKey("collector-obs", "stations"), None),
+                expiration=NEVER_EXPIRES,
+            ),
+        ),
+        frozenset({AIR_TEMPERATURE}),
+    )
+    reservoir = Reservoir(_timeline_store(clock=clock), child, clock)
+    await reservoir.project(_live_ask())
+    assert child.calls == 1
+    clock.instant = _FETCHED + timedelta(hours=2)
+    await reservoir.project(_live_ask())
+    assert child.calls == 1
 
 
 @pytest.mark.asyncio

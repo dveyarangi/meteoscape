@@ -37,11 +37,11 @@ _PRODUCT_DEFERRED = frozenset({AxisName.T})
 
 
 def wire_source(registered: RegisteredSource, stores: StoreFactory, clock: Clock) -> Manifold:
-    """Storeless bare Provider when materialized; else `Reservoir(store, Provider, clock)`.
+    """Storeless bare Provider; else `Reservoir(store, Provider, clock)`.
 
-    `registered.store is None` *is* the materialized fact (the `SourceBinder`'s invariant), read
-    directly — no capability re-check, single authority, no drift between readers. The one home of
-    the source-wiring rule: production and test wiring both call it.
+    Store presence is the wiring switch. Materialized producers are always storeless; a
+    non-materialized producer may be storeless too (#37). No capability re-check here — the
+    binder owns the materialized-with-store refusal.
     """
     if registered.store is None:
         return registered.provider
