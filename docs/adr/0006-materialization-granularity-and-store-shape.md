@@ -109,9 +109,10 @@ plane. The capability/matching half is
   anywhere, and no build-time "construction face" exists for one. A provider whose every parameter sits on one
   enumerable domain (an `EnumerableCapability`) *is* an already-materialized dataset and wires
   **storeless** — a bare `Producer`, no `Reservoir`, no store — because wrapping it would mirror
-  data that is already local; the `SourceBinder` enforces the invariant loudly in both directions
-  (a configured store on a materialized offering, like a missing store on a non-materialized one, is
-  a `CompositionError`). A `Coverage` keeps `domain` — the positional
+  data that is already local; the `SourceBinder` refuses a configured store on a materialized
+  offering (`CompositionError`). A non-materialized producer may also be storeless: store presence
+  is profile policy ([#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)).
+  `wire_source` reads store presence, not capability. A `Coverage` keeps `domain` — the positional
   contract for `ParameterData`, derived from `capability.domain`, not stored twice. Snapped resolution stays behavioural: the resolving node supplies its own lattice — a storing
   `Reservoir` quantizes, a storeless leaf resolves onto its private vendor lattice — and no caller
   reads either.

@@ -46,6 +46,34 @@ reads the footprint Domain's axis **`step`s**
 (→ [ADR-0002](./0002-data-model.md); build [#20](../concerns.md#20-provider-multi-resolution-offerings-offering-aware-selection)) — never a free
 `native_resolution` string, and never a parallel provenance / Capability `Resolution` bag.
 
+**Origin identity and declared provenance (2026-08-21 amendment, Mongo obs source align).** An
+atomic origin may carry three optional identity fields beyond its `SourceKey` — **`authority`**
+(who stands behind the values: a station network's owner, a WMO centre, a vendor), **`process`**
+(how they were made: model id and version, blend, instrument method, climatology base period), and
+**`unit`** (which instance of the producing system, where the type has instances: a station, a
+satellite platform, a radar site, an ensemble member). Plain optional strings on `AtomicOrigin` —
+no sub-record and no vocabulary beside provenance; stress-tested against the corpus's source-type
+roster (vendor APIs, station networks, archive runs, radar, satellite, internal models, GRIB/ARCO,
+normals) and nothing needed a fourth field. Run identity stays **`issue_time`**, never an identity
+field. **`unit` is the instance's meaningful identity in the authority's namespace** — a station's
+name or the network's own station id — never a value derivable from the request itself, and never
+an alias dump: alternate ids (WMO / ICAO / local) are registry metadata, not stamps. Precedent: the
+WMO identification section (centre / subCentre / generatingProcess), subCentre folding into the
+`authority` path and versions into `process`.
+
+**The declaration side of the same seam.** `Capability.origins(parameter)` publishes **declared
+provenance over the reach**: a sequence of (sub-domain, `AtomicOrigin`) pairs naming which origin
+would serve where — empty when nothing is declared (the honest default), a single whole-reach entry
+for a one-origin producer, one entry per instance for a scatter-shaped one (the
+`Uniform`/`PerPoint` ladder, declaration side). This is how a request-forming consumer learns
+*what can be requested and from whom, paired*, before any request. A declared origin omits what is
+not yet knowable — for a live vendor that includes `issue_time`, while an archive declaring
+retained runs may honestly carry it; the served stamp is authored at fetch, from the documents
+and the addressing that read them, and normally equals its declaration — divergence is visible
+evidence, never papered over. First filler: the
+[Mongo obs source](../tickets/01-0124-mongo-obs-source.md) — authority = the network, process =
+the method, unit = the station's name / network id.
+
 ## Run identity, Fetch buckets, and freshness — the cadence
 
 `issue_time` is the Source's forecast-revision identity in UTC — a real model run time where the

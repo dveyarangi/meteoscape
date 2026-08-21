@@ -88,11 +88,13 @@ flowchart LR
 ```mermaid
 flowchart TD
   P[Built Provider] --> C{"Materialized (EnumerableCapability)?"}
-  C -->|yes| N["storeless — store=None; a configured store is a CompositionError"]
-  C -->|no| G["store = StoreSpec (OfferingDef override, else catalogue OfferingSpec; missing is a CompositionError)"]
-  N --> S["RegisteredSource → bare Producer at weave"]
-  G --> S2["RegisteredSource → Reservoir(store, provider, clock)"]
+  C -->|yes, store configured| E[CompositionError]
+  C -->|yes, storeless| N[bare Producer at weave]
+  C -->|no, StoreSpec| R["Reservoir(store, provider, clock)"]
+  C -->|no, storeless| N
 ```
+
+`StoreSpec` comes from `OfferingDef.store`, else the catalogue `OfferingSpec`. Store presence is the wiring switch; a materialized provider must be storeless, a non-materialized producer may be ([#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization)).
 
 Profile-root uses the same `StoreSpec` shape (`ProfileConfig` / `ProfileDef`) — a separate *instance*, never the same singleton as a Source store. `OfferingSpec.default_lattice` (a prebuilt `EnumerableDomain`) is excluded; a `StoreSpec` is the only store-provisioning input ([ADR-0006](./0006-materialization-granularity-and-store-shape.md) closed the provider-lattice channel), and a prebuilt domain on the catalogue would reopen it.
 

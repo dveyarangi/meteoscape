@@ -96,7 +96,11 @@ is one no existing shape covers, a wrapper too.
   **already materialized** declares an `EnumerableCapability` and wires **storeless** — its Source gets
   no `Store`, and configuring one is a build-time error (ADR-0006; *validated by:*
   `test_materialized_source_wires_storeless`, `test_store_configured_on_materialized_source_raises`).
-  Whether such a producer has a `Probe` at all, or is a different `Provider` implementation entirely, is
+  A fetching producer may also wire storeless when the profile omits a store
+  (*validated by:*
+  `test_storeless_non_materialized_source_composes`,
+  `test_storeless_non_materialized_source_weaves_as_bare_provider`).
+  Whether a materialized producer has a `Probe` at all, or is a different `Provider` implementation entirely, is
   open at [#37](../concerns.md#37-storeless-materialized-producers-and-read-back-homogenization).
 - **Transport separation** — vendor I/O goes through the `Transport` seam so deterministic tests mock
   **HTTP**, never the Provider — **and never the `Probe`**, which composition makes mockable and this

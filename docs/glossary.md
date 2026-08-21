@@ -18,6 +18,10 @@ _Avoid_: Geometry, lattice
 An EnumerableDomain whose axes may use different enumerable representations. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: RegularDomain, Grid
 
+**ScatterDomain**:
+Finite paired X/Y points matched jointly, sharing T and Z — CF's `timeSeries`/`timeSeriesProfile` geometry: fixed-site networks (stations, PWS, sounding and profiler sites, moored buoys, per-point archives). Not an axis product, and not enumerable until a scatter-shaped Coverage exists. Geometry only; station identity travels as declared provenance. → [Mongo obs source](./tickets/01-0124-mongo-obs-source.md), [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: StationDomain (the geometry is vendor-neutral), PointSetDomain, Site (dissolved — coordinates are the domain's, identity is provenance's), TrajectoryDomain (moving platforms are a distinct family → [ADR-0002](./adr/0002-data-model.md))
+
 **SelectionDomain**:
 The request-side Domain representation composed from SelectableAxis members; structurally separable without narrowing the Selection contract, and never enumerable. → [ADR-0002](./adr/0002-data-model.md)
 _Avoid_: SelectedDomain, GridDomain (the materialized and store shape), request lattice
@@ -176,6 +180,10 @@ _Avoid_: Source
 **SourceKey**:
 The stable identity of a configured producer, distinguished by provider and named dataset. → [ADR-0003](./adr/0003-provenance-and-origin.md)
 _Avoid_: Source, raw source string
+
+**Declared origin**:
+An origin published by a Capability ahead of any request — `origins(parameter)` pairs each sub-domain of the reach with the `AtomicOrigin` that would serve it; a declared origin has no issue time, and the served stamp normally equals it. → [ADR-0003](./adr/0003-provenance-and-origin.md)
+_Avoid_: Attribution (rejected — no vocabulary beside provenance), capability metadata, menu
 
 **Valid time**:
 The time at which a weather value applies. → [architecture.md](./architecture.md#canonical-data-model)

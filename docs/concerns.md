@@ -276,15 +276,15 @@ differs from the store's.
 
 ## 22. Lattice helpers vs `domain` / `sampling` module split
 
-**Kind:** room-left (module layout)
+**Kind:** room-left (module layout) · **→ queued as
+[domain-module-carve](./tickets/01-0131-domain-module-carve.md)** (both the thin `lattice.py` this
+entry prescribed and the wider axes/domain navigation cut; closes into
+[module-layout](./module-layout.md) when it lands)
 
-Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by `domain.py`;
-`sampling.py` consumes it one-way (`sampling → domain`, never the reverse). That matches the
-geometry-vs-value-transfer cut. If Domain grows heavy with non-lattice geometry *and* lattice math, or
-a third consumer appears (`quantize`, store grids), **carve a thin `lattice.py`** that both import —
-pure refactor, no contract change. The trigger has not fired: `sub_lattice_offset` and
-`RegularAxis.clip` are the two index-arithmetic sites, while `quantize` delegates its spatial snap to
-`Axis.clip` and writes none. Do not split preemptively.
+Index arithmetic (row-major encode/decode, `sub_lattice_offset`, `AXIS_ORDER`) is owned by
+`domain.py`; `sampling.py` consumes it one-way. **The trigger fired** (measured 2026-08-21): the
+third consumer this entry named — store grids — exists at `store.py:39,221,237`, and `domain.py`
+now carries non-lattice geometry (the scatter form) beside the lattice math at 858 lines.
 
 ## 23. Spatial vs temporal `RegularAxis` types
 
@@ -718,14 +718,36 @@ fields sparse per provider (`ibm`, `tomorrow`, `visualcrossing`), two obs schema
 station-network source carrying `raw` payload and `method`; legacy `ibm_hod`), a `stations`
 registry, and a `state` freshness doc, keyed `(base_time, time)` / `time`. The Mongo sources map
 this schema to canonical parameters, so a collector-side schema change silently breaks them.
-Mitigations to settle at the Mongo obs source align: pinned integration fixtures (sampled real documents)
+Mitigations belong to the queued ticket: pinned integration fixtures (sampled real documents)
 as the contract test, a schema version marker in the collector if cheap, and a documented ownership
-statement (collector owns the schema; meteoscape adapts). The station network's obs `raw` payload
+statement (collector owns the schema; meteoscape adapts). Two asks stay outside this repository's
+reach, which is why the risk does not retire with the ticket: the version marker, and a
+**per-station** latest-observation time — the `state` doc reports one per source type and covers
+only some of them, so admission cannot read the true end of a station's data
+([#29](#29-narrated-reach-what-a-profile-promises), backward reach). The station network's obs `raw` payload
 preserves replayability; forecast documents carry no raw, so forecast decode fidelity is bounded by
 the collector's own parsing. The station network's *endpoint* is out of meteoscape's scope
 permanently: if meteoscape ever takes over the collector's server edge, that integration arrives as
 an **embedder-owned plug-in provider** through the plugin seam
 ([#26](#26-provider--calculator-plugin-scaffolding)), never an in-tree provider.
+
+## 50. Observation-network scale: station grouping and discovery
+
+**Kind:** deferred seam (scale; driver approaching — the collector's few dozen stations can grow to
+tens of thousands) · **Refs:** [#29](#29-narrated-reach-what-a-profile-promises),
+[#45](#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own),
+[ADR-0005](./adr/0005-build-time-composition.md)
+
+An observation impl over an unbounded station network cannot be one provider hosting the world:
+the registry read, its periodic refresh, the declared site set, and envelope narration all scale
+with station count. The seam is the **offering boundary that already exists**
+([ADR-0005](./adr/0005-build-time-composition.md)): one declared offering hosts one bounded station
+group, and a deployment scales by declaring more offerings — per network, per region — never by one
+provider growing unbounded. A station-*filter* offering setting is added when the second group
+appears, not before. Discovery past description-string scale is
+[#29](#29-narrated-reach-what-a-profile-promises)'s capabilities-introspection trigger, not more
+narration. Open here: what selects a group (network id, region, explicit list), and whether
+grouped offerings of one impl share a client and registry read.
 
 ## 12. Curvilinear domains
 
@@ -758,6 +780,15 @@ a constraint on the Domain interface (don't assume per-axis separability), not a
   source may be a plain grid; only the target is curvilinear. Engineering: **`resample` must sample
   onto an arbitrary point set, not just a grid** — materially wider than
   [#5](#5-read-time-homogenization-fidelity) currently scopes.
+  Its first concrete instance is the **multi-station ask**: a `ScatterDomain` as the *request* —
+  already legal by construction, since `Selection.domain` stays base-typed
+  ([ADR-0002](./adr/0002-data-model.md)) — which arrives as one bundle with a scatter-shaped
+  `Coverage` (the positional-order contract), scatter `EnumerableDomain` conformance, sampler
+  widening past the `GridDomain` gate, and multi-point provider assembly. `ANY` on X/Y then reads
+  "all stations", the same everything-held reading it already carries; a vantage X/Y aperture would
+  read "stations within radius", which no customer wants. A scatter reach declines all of these
+  today. **Trigger:** the first consumer wanting all-stations-as-one-answer — a station-map sweep,
+  or this concern's own obs-space verification.
 
 Grid-space verification (observation → model grid) is then the special case where the target happens
 to be separable; it needs neither role.
@@ -850,8 +881,7 @@ silently inherit the profile root's retention.
 by the Weaver when `stored=True`. This is ADR-0005's own rule — *same knobs shape everywhere,
 separate instances per store position* (it rejected sharing one store **instance** while accepting one
 `StoreSpec` **shape**). A `stored=True` def with no spec then becomes a `CompositionError` rather than
-a silent root-store inheritance, mirroring `SourceBinder`'s "missing store shape for non-materialized
-source".
+a silent root-store inheritance.
 
 Open: whether a stored calc's lattice should instead derive from its resolved input domain (a
 Calculator has no native lattice of its own), and whether "heavy" is a catalogue-side hint on
@@ -990,7 +1020,11 @@ Open parts:
   (v1-requirements), which takes a lat/lon and can return structure.
 - **Backward reach** (historical provision — the archive / run-collection seam) is the other half of
   the same facet. Because reach is a `Domain` rather than a forward scalar, it should absorb this
-  without a contract change.
+  without a contract change. A past-facing declaration is an **estimate** the same way a forward one
+  is — a clock-riding bound admitted from a snapshot, with truth at serve. Open here: when
+  admission must tighten, the accurate feed is a **writer-declared span** published by whoever
+  writes the data (→ [#45](#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)
+  for the first such contract, today incomplete), never per-reader scanning.
 - What a request *beyond* reach receives is **response membership**, a separate policy →
   [#30](#30-response-membership-under-runtime-degraded-fallback). Reach says where the edge is;
   membership says what happens past it.
@@ -1296,14 +1330,10 @@ corollary. Recorded for the placement decision, so accidental verbatim does not 
   sentence is **descriptive prose hardened from an m4 implementation fact** (the leaf trims via
   `resample`), not a decided prohibition on leaf-side relabel — v1's point-timeline leaves already
   serve arbitrary X/Y by design (vendor-side interpolation). Do not read it as an invariant.
-- The binder's `store is None ⇔ materialized` biconditional is **enforced correlation, not
-  information**: `wire_source` wires by store presence alone; the two refusals behind it are policy
-  guards — an uncached *metered* vendor buys a call per request
-  ([0119](./tickets/done/01-0119-live-window-edge-tolerance.md)'s pathology) and bypasses the
-  [ledger](./tickets/01-0130-vendor-call-ledger.md)'s metering seam at the Source, and a store on an
-  already-local dataset mirrors it uselessly. Loosening re-states those guards over capability and
-  metering facts (error for metered-uncached, at most a warning for mirror-waste); it does not
-  delete them.
+- Store presence is the wiring switch, not a materialization fact →
+  [ADR-0006](./adr/0006-materialization-granularity-and-store-shape.md),
+  [ADR-0005](./adr/0005-build-time-composition.md). Whether the mirror-waste refusal (a store on an
+  already-local dataset) becomes a warning is still open, and waits on this concern's own trigger.
 
 ## 38. Calculator admittance is fixed pointwise-total
 

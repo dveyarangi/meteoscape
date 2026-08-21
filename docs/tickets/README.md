@@ -2,20 +2,32 @@
 
 **Last updated:** 2026-08-21
 
-**Current stage:** [composition lifetime](./done/01-0116-composition-lifetime.md) is delivered
-(2026-08-21). A composed profile is released through one `Gateway.aclose()`: `Gateway` left `api/`
-and now carries the `Closeable` facet, since every surface receives a composition and none provides
-one. Nothing shipped holds a resource yet — the seam was built ahead of its first holder so that
-holder would not invent it, which is the whole reason it preceded the source.
+**Current stage:** the [scatter substrate](./done/01-0124.0010-scatter-substrate.md) is delivered
+(2026-08-21) — the first slice of the [Mongo observation source](./01-0124-mongo-obs-source.md),
+which was **aligned 2026-08-21 against the live collector database** and split on its impact trace.
+The algebra can now declare a station scatter and publish declared provenance over it:
+`ScatterDomain` admits exactly its member points (jointly, no epsilon), `AtomicOrigin` carries
+optional `authority` / `process` / `unit`, `Capability.origins` pairs sub-domains with the origins
+that would serve them *before* any request, an observation-shaped origin never expires, and a
+storeless non-materialized producer composes. Fake-tested ahead of its holder, the 0116 carve
+repeated.
 
-Next is the [Mongo observation source](./01-0124-mongo-obs-source.md), whose align was deferred once
-0116 was carved out of it and now stands on its own: past-facing capability and freshness, how a
-request point meets a station, and [#45](../concerns.md#45-the-collector-schema-is-a-contract-meteoscape-depends-on-but-does-not-own)'s
-schema mitigations. It is the seam's first real holder, so its align should confirm the seam fits
-rather than assume it. The [embedding surface](./01-0125-supported-python-embedding.md) follows with
-the second source shape as evidence; its facade question keeps the `Gateway` **name**, the placement
-half having been answered. If the observation align reveals a real unit spread, the trigger-gated
-[unit-conversion catalogue](./01-0129-unit-conversion-edge.md) moves ahead of implementation.
+Next is [station serving](./01-0124.0020-mongo-obs-serving.md) — the source itself in a composition
+of its own: the held `AsyncMongoClient` behind `Closeable`, both collector schemas through one
+canonical mapping, fixtures pinned from the live database. The impact trace also found that the dominance fold refuses obs+forecast composition over a
+shared parameter, minting
+[obs+forecast reach composition](./01-0137-obs-forecast-reach-composition.md) ahead of the
+correction calculator, which now depends on it. The align confirmed the 0116 seam fits its
+first real holder (a pooled client plus a serving-path registry re-read, both released through one
+`aclose`), resolved the observation semantics inline in the ticket (storeless, exact-station
+admission over a `ScatterDomain`, clock-riding past-facing reach, holes as nodata), and minted
+[ADR-0003](../adr/0003-provenance-and-origin.md)'s origin-identity amendment and concern
+[#50](../concerns.md#50-observation-network-scale-station-grouping-and-discovery). Measured against
+real documents, the collector's units are already canonical — the
+[unit-conversion catalogue](./01-0129-unit-conversion-edge.md)'s trigger did not fire and it slides
+behind its next plausible customer. The [embedding surface](./01-0125-supported-python-embedding.md)
+follows with the second source shape as evidence; its facade question keeps the `Gateway` **name**,
+the placement half having been answered.
 
 **Re-cut 2026-08-10 (beeline align).** The queue was re-ordered against a stated product beeline:
 *forecast correction from local stations, TWC as the **main** provider, persistent cache, embedded
@@ -80,6 +92,7 @@ dependency, which is ordering, not blockage.
 | Second provider and fallback | Available | TWC-primary is a private deployment's declaration at the embedding edge; the shipped profile is Open-Meteo alone. A spanning ask serves the primary's clipped shape → [#49](../concerns.md#49-spanning-asks-serve-the-primary-max-reach-is-unbuilt-policy). A child's `runtime-failure` falls through wholesale to the next admitted producer; exhaustion still fails the whole request → [second-provider fallback](./done/01-0121-second-provider-fallback.md). |
 | Per-parameter multi-source assembly | Planned | Single-provider multi-node assembly works; multi-provider routing remains. |
 | Retentive cache/freshness | Available | In-memory `MemoryStore` in both positions; fresh repeats serve with no vendor call; cold mixed requests issue one fetch. Process-lifetime only. A declared live window is an estimate — rolling retention is horizon-satisfied, static by containment ([live-window edge tolerance](./done/01-0119-live-window-edge-tolerance.md)). |
+| Station observations | Planned | No observation source exists. The algebra can *declare* one — a station scatter reach plus declared provenance naming who/how/which-station ahead of any request ([scatter substrate](./done/01-0124.0010-scatter-substrate.md), fake-tested) — but nothing serves through it until [station serving](./01-0124.0020-mongo-obs-serving.md). Composing observations beside forecasts over a shared parameter is refused by the dominance fold until [obs+forecast reach composition](./01-0137-obs-forecast-reach-composition.md). |
 | Persistent retention | Planned | Retention dies with the process. Rung 2 of the substrate ladder — survives restart, shared across processes — is [ticketed](./01-0145-persisting-store.md); rung 3 (bulk/analytical) stays at [#44](../concerns.md#44-dedicated-live-archive-store-for-throughput). |
 | Vendor-call metering and budget | Planned | No count of outbound vendor calls exists. The [ledger](./01-0130-vendor-call-ledger.md) meters at the Source seam (not the Gateway, which can only see requests); the [governor](./01-0155-vendor-budget-governor.md) later gives it authority to refuse. |
 | REST / HTTP surface | Planned | Local stdio MCP only. [Ticketed](./01-0165-rest-surface.md) as the operator deployment shape and part of the v1 bee-line. |
@@ -125,13 +138,17 @@ work `Maint`. What those columns mean is
 | 0121 | [Second-provider fallback](./done/01-0121-second-provider-fallback.md) | — | Done | TWC provider | Wholesale priority fallback across two producers: a child's `runtime-failure` re-enters selection, skipping who faulted; exhaustion still fails the whole request. |
 | 0123 | [Config and secrets](./done/01-0123-config-secrets-degrade.md) | — | Done | TWC provider | Generic secret machinery: profiles declare at composition roots, catalogue handles are ids, calculator I/O lives on its manifest, and a secret is read only at the name its declared `SecretSlot` derives. The public profile is vendor-neutral; a declared keyed offering without its secret refuses startup. |
 | 0116 | [Composition lifetime and shutdown](./done/01-0116-composition-lifetime.md) | Maint | Done | config and secrets | One `Gateway.aclose()` releases everything a composed profile opened — total, idempotent, LIFO, failures collected into an `ExceptionGroup`. Release is declared by the structural `Closeable` facet, so whatever holds nothing implements nothing; `Gateway` moved out of `api/` and carries it. The MCP surface releases through FastMCP's lifespan, the only place teardown can run inside the server's own loop. *Row sits where the work happens; 0123–0124 are adjacent and 0122 is spent, so the position is the nearest free slot before its origin.* |
-| 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (own align precedes) | config and secrets (its connection string is a secret), composition lifetime (the connection it holds) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. |
+| 0124 | [Mongo obs source](./01-0124-mongo-obs-source.md) | — | Ready (split) | config and secrets (its connection string is a secret), composition lifetime (the connection it holds) | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source, with per-parameter provenance naming the observation origin. Decision record and union of criteria; delivered by the two subtickets below. |
+| 0124.0010 | [Scatter substrate](./done/01-0124.0010-scatter-substrate.md) | — | Done (2026-08-21) | — | The algebra can declare a station-scatter reach and pair it with declared provenance: `ScatterDomain` admits exactly its member points, `AtomicOrigin` carries optional identity (authority / process / unit), `Capability.origins` publishes (sub-domain, origin) pairs ahead of any request, an observation-shaped origin never expires, and a storeless non-materialized producer composes. |
+| 0124.0020 | [Mongo obs source station serving](./01-0124.0020-mongo-obs-serving.md) | — | Planned | scatter substrate | Hourly station observations from the operator's Collector database served through the projection algebra as a read-only private source in a composition of its own, with per-parameter provenance naming the network, method, and station. |
 | 0125 | [Supported Python embedding surface](./01-0125-supported-python-embedding.md) | — | Planned (own align precedes) | Mongo obs source (lifecycle and construction evidence) | A documented, supported Python package boundary resolves the same available forecast product as MCP without starting a protocol server, with expected failures exposed through public API. |
 | 0126 | [Tick-convention declaration](./01-0126-tick-convention-declaration.md) | — | Planned (own align precedes) | TWC provider (the second convention) | A tap declares where its value sits relative to the tick, and Open-Meteo precipitation stops being labelled an hour late. |
 | 0129 | [Unit-conversion catalogue](./01-0129-unit-conversion-edge.md) | — | Planned (trigger-gated) | core canonical parameters | Shared verified native-to-canonical conversion edges. Runs only if the Mongo aligns reveal a real unit spread; slides further otherwise. |
 | 0130 | [Vendor-call ledger (meter)](./01-0130-vendor-call-ledger.md) | — | Planned (own align precedes) | TWC provider, config and secrets, embedding surface (the pilot lifecycle) | An operator can answer how many vendor calls a deployment spent, against which vendor, and over what period, with no effect on what any request returns. |
 | 0134 | [Mongo forecast-run archive source](./01-0134-forecast-run-archive-source.md) | — | Planned (own align precedes) | Mongo obs source (shares transport + registry) | Archived forecast runs are served as distinct per-provider origins with run identity in provenance, without deciding cross-run combination. |
-| 0140 | [Correction calculator](./01-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source | Per-source, per-parameter bias over paired forecast/observation history; correction remains gated on measured bias proving stable. |
+| 0131 | [Manifold geometry carved for navigation](./01-0131-domain-module-carve.md) | Maint | Planned | scatter substrate (lands first, so the carve is not entangled with a reviewed diff) | `manifold/domain.py` becomes three navigable modules — axis vocabulary, lattice index arithmetic, Domain forms — no contract change, import direction machine-enforced, [#22](../concerns.md#22-lattice-helpers-vs-domain--sampling-module-split) closed into module-layout. *Row sits where the work happens (after the 0124 slices); 0125–0130 are spent, so the position is the nearest free slot.* |
+| 0137 | [Observation and forecast reaches compose](./01-0137-obs-forecast-reach-composition.md) | — | Planned (own align precedes) | Mongo obs source station serving (a real scatter reach to compose) | A profile composing station observations and forecast producers over shared parameters builds and serves: a shared parameter's reach composes across a past-facing scatter and a forward-facing footprint instead of refusing the whole composition as incomparable. |
+| 0140 | [Correction calculator](./01-0140-correction-calculator.md) | — | Planned (own align precedes) | Mongo obs source, Mongo forecast-run archive source, obs+forecast reach composition (its paired-input fold shears identically) | Per-source, per-parameter bias over paired forecast/observation history; correction remains gated on measured bias proving stable. |
 | 0142 | [Forecast correction](./01-0142-forecast-correction.md) | — | Planned (own align precedes) | correction calculator (the measured bias and its stability criteria) | A requested parameter can be served bias-corrected, carrying synthetic provenance recording the correction's lineage and method. Opens only on stable measured bias. |
 | 0145 | [Persisting SQLite Store](./01-0145-persisting-store.md) | — | Planned (own align precedes) | retentive store | Retained Holdings survive process restart and are shared across concurrent processes on one deployment, behind the existing `Store` face. |
 | 0155 | [Vendor budget governor](./01-0155-vendor-budget-governor.md) | — | Planned (own align precedes) | vendor-call ledger, second-provider fallback | A configured vendor budget stops spending past its limit; the request falls through to the backstop rather than failing. |
@@ -296,6 +313,11 @@ observation implementation.
 
 ## Decisions still owned by tickets
 
+- [Observation and forecast reaches compose](./01-0137-obs-forecast-reach-composition.md): its own
+  align selects how a shared parameter's reach composes across a past-facing scatter and a
+  forward-facing footprint — the [#13](../concerns.md#13-candidate-admission-containment-vs-intersection)
+  containment-vs-intersection fork and whether this is
+  [#28](../concerns.md#28-reconciler-interface-selection-ordering-vs-per-cell-fold)'s first slice.
 - [Supported Python embedding surface](./01-0125-supported-python-embedding.md): its own align selects
   the facade/lifecycle, public failure contract, request ergonomics, and `0.x` compatibility policy
   still open at concerns #39/#40; this queue pass deliberately selects none of them.

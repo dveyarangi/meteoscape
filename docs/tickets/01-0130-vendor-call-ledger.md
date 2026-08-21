@@ -56,6 +56,13 @@ proves stable"*).
 
 ## Decisions this ticket's align owns
 
+- **The `metered` declaration** — decided 2026-08-21 (0124 align review) to be a **provider
+  property on `ProviderManifest`** (`open-meteo: True`, `twc: True`, `collector-obs: False`),
+  never derived from key-existence; this ticket mints the field ([ADR-0005](../adr/0005-build-time-composition.md)
+  gains it then) and **restores the metered-uncached refusal** in the `SourceBinder` — where
+  build-time refusals live, and where the TODO sits; `wire_source` only reads store presence — that the
+  [scatter substrate](./done/01-0124.0010-scatter-substrate.md) loosening leaves as a TODO-marked gap —
+  a storeless metered vendor must refuse again once the fact exists to read.
 - **What an entry is** — one HTTP request, or one `Provider.project`? These differ the moment a
   provider paginates or a natural fetch unit answers wider than the ask.
 - **Attribution granularity** — per `SourceKey`, per offering, per parameter? Vendors price

@@ -135,6 +135,10 @@ classDiagram
     *declares* swath geometry and a request that *targets* it are independent, separately committed
     cases, so neither `Selection.domain` nor `Coverage.domain` nor `Capability.domain`
     ([ADR-0007](./0007-capability-carries-its-domain.md)) may narrow below the base `Domain`.
+    Room is likewise left for the **trajectory** family (aircraft, ships, drifting buoys — every
+    sample at its own place *and* time, no axis product at all; CF's `trajectory` geometry): a
+    fifth representation when a customer exists, never a widening of `ScatterDomain`, whose
+    shared-T constitution is CF's `timeSeries` rung and would be destroyed by it.
 
 - **Admission stays total; build-time rules raise.** `Domain.matches` is **total** — handed geometry it
   cannot compare (a separable representation against the deferred non-separable case) it returns

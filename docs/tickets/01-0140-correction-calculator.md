@@ -3,6 +3,9 @@
 - **Status:** Planned — its own align precedes implementation; it settles the pairing semantics
   (how observations join forecasts along `valid_time` and lead time — the join half of
   [#9](../concerns.md#9-cross-run-combination)), the bias-product shape, and the parity tolerance.
+- **Depends on:** [obs+forecast reach composition](./01-0137-obs-forecast-reach-composition.md) —
+  its paired-input fold (`_contained_in_all`) shears on the same past-facing-vs-forward pair, so
+  this calculator cannot build before that lands (found at the 0124 impact trace, 2026-08-21).
 - **Outcome:** A per-source, per-parameter bias report over paired forecast/observation history —
   the framework's first cross-source, cross-time calculator — validated against the operator's
   existing analysis flow as its parity reference. Correction (adjusted forecast values) is a
