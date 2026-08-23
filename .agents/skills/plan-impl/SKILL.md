@@ -9,6 +9,7 @@ description: Plan or repeatedly validate a ticket's implementation RFC against i
 
 - An RFC implements a ticket — no ticketless RFCs. If the task at hand has no ticket, create it first per the [to-tickets skill](../to-tickets/SKILL.md); its behavior-altitude rule governs the criteria (shape stays in the RFC).
 
+- When incepting, ask yourself - what is the cheapest real example that could prove this design assumption wrong?
 
 - Consider and expose /impact when discussing or providing recommendations or approaches.
 

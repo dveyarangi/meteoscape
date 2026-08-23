@@ -24,6 +24,13 @@ Do not enact the plan until I confirm we have reached a shared understanding.
 
 Goal of architecture is to reduce work on creation and maintenance of the system.
 
+Identify the load-bearing assumption behind the proposed shape; ask yourself - what is the cheapest real example that could prove this design assumption wrong? 
+
+Check it when practical, preferably against external reality rather than our own docs/tests.
+
+If falsified, realign.
+If unverified and load-bearing, preserve the uncertainty explicitly.
+
 ## Domain awareness
 
 During codebase exploration, also look for existing documentation:
@@ -35,12 +42,11 @@ Most repos have a single context:
 ```
 /
 ├── docs/
-│   └── adr/
-│       ├── 0001-event-sourced-orders.md
-│       └── 0002-postgres-for-write-model.md
-├────── architecture.md
-├────── product.md
-├────── glossary.md
+│   ├── adr/
+│   │   ├── 0001-event-sourced-orders.md
+│   │   └── 0002-postgres-for-write-model.md
+│   ├── architecture.md
+│   └── glossary.md
 └── src/
 ```
 
