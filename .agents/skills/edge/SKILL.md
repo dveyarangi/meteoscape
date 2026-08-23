@@ -44,7 +44,7 @@ Your goal is one or more of the following, according to the task at hand:
 
 ## Boundaries
 
-- Aggregate by reference: `concerns.md` owns concerns, tickets own delivery state,
+- Aggregate by reference: `concerns.md` owns concerns, `process.md` owns delivery state,
   `architecture.md` owns the internal shape — the record holds the edge-local projection and the
   link, never a copy.
 - Do not generalize *edge* to other artifacts: in this project, edge means the system's outer

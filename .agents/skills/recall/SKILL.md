@@ -13,3 +13,7 @@ Your goal is to surf through available docs and code and find out actual state o
 
 - In case of ambiguity, present it too user. In case when continuation requires decision making, invoke /align skill.
 - Report drift you hit while reading (stale headers, docs the tree has outrun) rather than fixing it — fixing is outside recall's scope.
+
+<project-local>
+Delivery state lives in [the queue](../../../docs/tickets/README.md) → [the development process](../../../docs/process.md). What each document owns → [the documentation map](../../../docs/README.md).
+</project-local>

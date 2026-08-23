@@ -23,3 +23,20 @@ Verify the new or changed skill against the set:
 A fact the set already states in one skill is referenced from there, not restated.
 
 The frontmatter description narrates the use case, not the implementation, and stays in line with the skill's intent. Capturing skill intent and usage is critical — /align when in tiniest doubt.
+
+## Project-local divergence
+
+A skill's core is portable; a project's own conventions are not. Keep every `SKILL.md` body free of project facts, so the set stays mergeable with the corpus it came from, and hold what is genuinely local behind a reference:
+
+- Prefer an appendix file — `*-FORMAT.md`, `REFERENCE.md` — which may diverge freely.
+- Where a file is too much, a compact `<project-local>` block closes the `SKILL.md`; the tag is the declaration, so it needs no sentence saying so.
+- An appendix points at the project's own documentation for anything that documentation owns; it never restates it.
+
+A body instruction that cannot be written without a project fact belongs in the appendix instead. The project's development process — `docs/process.md`, built up lazily as the process itself incepts or changes — is a corpus convention like `glossary.md`, so a body may cite it by name; its contents are the project's own.
+
+A `<project-local>` block adds local facts; it never overrides the body.
+
+## Merging a reference corpus
+
+When asked to merge the skill corpus, ask which corpus to merge from.
+Port body changes, fixing defects as you port; leave every appendix file and `<project-local>` block as it stands. A skill present in only one corpus is either local by intent or not yet ported — ask which.

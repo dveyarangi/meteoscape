@@ -3,7 +3,7 @@ name: sync-arch
 description: Synchronize architecture docs with high-level code shape.
 ---
 
-I need you to run an all-around check, and make sure that architecture documentation (./docs/architecture.md, ./docs/adrs, ./docs/glossary.md, and the Edge records in ./docs/edge/) properly represent the intent of recently modified code. 
+I need you to run an all-around check, and make sure that architecture documentation (./docs/architecture.md, ./docs/adr/, ./docs/glossary.md, and the Edge records in ./docs/edge/) properly represent the intent of recently modified code.
 
 Two ultimate goals for this skill :
 1) to make sure architecture docs can be converted to the existing code contract shape in one crystal clear way.

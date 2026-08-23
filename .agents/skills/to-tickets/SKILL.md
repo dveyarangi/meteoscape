@@ -9,15 +9,13 @@ Break a parent work into independently-grabbable tickets using vertical slices (
 
 ## Layout
 
-The shape of both artifacts this skill owns — the ticket file and the queue
-(`docs/tickets/README.md`) — is [TICKET-FORMAT.md](./TICKET-FORMAT.md)'s, including the
-[numbering scheme](./TICKET-FORMAT.md#numbering). Read it before writing either, and restate none of
-it here.
+The shape of a ticket, and where it is named and registered, is
+[TICKET-FORMAT.md](./TICKET-FORMAT.md)'s. Read it before writing one, and restate none of it here.
 
 - **Active tickets** live flat in `docs/tickets`; **completed tickets** move to `docs/tickets/done/`
   (all acceptance boxes checked). The filename never changes, only the folder.
-- The **parent** is referenced by its own path (a PRD like `docs/v1-requirements.md`, or a ticket);
-  child tickets do not duplicate it.
+- The **parent** is referenced by its own path — a spec, or a coarser ticket; child tickets do not
+  duplicate it.
 
 ## Process
 
@@ -54,8 +52,8 @@ name it for the product outcome it will deliver.
 Present the proposed breakdown as a numbered list. For each slice, show:
 
 - **Title**: short descriptive name
-- **Type**: HITL / AFK
-- **Blocked by**: which other slices (if any) must complete first
+- **Interaction**: HITL / AFK
+- **Depends on**: which other slices (if any) must complete first
 - **Parent scope covered**: which user stories or acceptance criteria of the parent this addresses
 
 Ask the user:
@@ -69,18 +67,12 @@ Iterate until the user approves the breakdown.
 
 ### 5. Create the ticket files
 
-For each approved slice, write a markdown file at `docs/tickets/RR-NNNN-short-title.md` (e.g. `docs/tickets/01-0210-add-user-auth.md`).
+For each approved slice, write the ticket under `docs/tickets/`, named and registered per
+[TICKET-FORMAT.md](./TICKET-FORMAT.md).
 
-Allocate positions per [Numbering](./TICKET-FORMAT.md#numbering) — place each
-slice where it will actually be worked, not merely at the end, and check both `docs/tickets/` and
-`docs/tickets/done/` for the surrounding positions. Children of a ticket take subticket positions
-under their parent, per the same rules. Add a row to the delivery map in the same pass.
+Create tickets in dependency order (blockers first) so you can reference real filenames in the `Depends on` field. A blocker that is already complete lives in `docs/tickets/done/` — reference it there.
 
-Create files in dependency order (blockers first) so you can reference real filenames in the "Blocked by" field. A blocker that is already complete lives in `docs/tickets/done/` — reference it there.
-
-Write each file to [TICKET-FORMAT.md](./TICKET-FORMAT.md) — its skeleton, header block, section
-rules, and citation conventions. A freshly minted slice needs at minimum `Status`, `Outcome`,
-`Parent`, `What to build`, and `Acceptance criteria`.
+Write each file to [TICKET-FORMAT.md](./TICKET-FORMAT.md) — its skeleton, header block, section rules, and citation conventions. A freshly minted slice needs at minimum `Outcome`, `Parent`, `What to build`, and `Acceptance criteria`.
 
 ### Decision-bearing ticket lifecycle
 
@@ -97,8 +89,8 @@ decision and implementation tickets for that outcome.
   live working document.
 - **At resolution:** land decisions in their durable homes, remove the resolved concern entry (or
   retain separately-scoped residue), and rewrite the same ticket in place to feature altitude
-  ([TICKET-FORMAT.md](./TICKET-FORMAT.md)). Keep its queue position unless the resolved dependencies
-  require reordering under the repository's numbering rules.
+  ([TICKET-FORMAT.md](./TICKET-FORMAT.md)). Keep its place in the order unless the resolved
+  dependencies require moving it.
 - **If the resolved feature is too coarse for one RFC:** retain the ticket as the parent/end-state
   and decompose it through `/to-tickets`; do not create a sibling merely to hold the implementation.
 - **If alignment eliminates the feature:** complete the ticket as a landed decision; this is the
@@ -114,6 +106,6 @@ Criteria state observable behavior; code shape is the RFC's
 
 ### 6. Completing a ticket
 
-When every acceptance box is checked, `git mv` the file from `docs/tickets/` to `docs/tickets/done/`. Fix any "Blocked by" references that pointed at it (they gain the `done/` segment).
+When every acceptance box is checked, move the ticket to `docs/tickets/done/` mechanically, per [one basename per work item](./TICKET-FORMAT.md#one-basename-per-work-item) — the move repairs the citations that pointed at it.
 
 Do NOT close or modify the parent; a parent ticket completes on its own acceptance criteria, not by its children emptying out.

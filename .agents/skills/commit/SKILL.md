@@ -16,8 +16,11 @@ description: >-
 
 - Unless already working in branch or instructed to branch - commit to default branch.
 
-- When commiting code change, always run ruff check, ruff format --check, pyright and pytests before commiting (the same gate
-  set CI runs). Pure doc changes do not need the checks.
+- When committing a code change, first run the checks that repository defines for itself — its linter, its formatter in check mode, its type checker, its tests. Pure doc changes need none of them.
 
 - Do not commit without explicit instruction or permission from user.
 - Separately, do not push without explicit instruction or permission from user.
+
+<project-local>
+The checks are the same gate set CI runs → [cicd.md](../../../docs/cicd.md): `ruff check`, `ruff format --check`, `pyright`, `pytest`.
+</project-local>

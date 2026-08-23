@@ -1,7 +1,10 @@
 # Ticket format
 
-Two artifacts, owned by `/to-tickets`: the **ticket**, `docs/tickets/RR-NNNN-slug.md` → `done/` when
-every box is checked; the **queue**, `docs/tickets/README.md`, which owns order and delivery state.
+Project-local, divergent by design. Where a ticket sits in the document family — the basename that
+links it to its RFC, the seam that keeps everything in-repo — is
+[the development process](../../../docs/process.md)'s. This shelf holds everything `/to-tickets`
+owns: the ticket's naming scheme, the delivery-state vocabulary, and the shape of its two
+documents — the ticket and the queue.
 
 ## Numbering
 
@@ -16,6 +19,8 @@ docs/tickets/done/01-0115-retentive-store-freshness.md
   four digits — longer numbers break numeric ordering. When the gap is exhausted, take the nearest
   free slot on the correct side and note the placement in the queue row. Never renumber anything
   else.
+- Allocate a position where the ticket will actually be worked, not merely at the end, checking
+  both `docs/tickets/` and `docs/tickets/done/` for the surrounding positions.
 - A subticket appends a level: `0130.0010`. Depth is unbounded and means "is a child of", nothing
   else — work merely filed after `0130` takes `0135`. A slice carved out of unstarted work is
   usually a prerequisite, so it sorts *before* its origin and cannot nest.
@@ -23,20 +28,17 @@ docs/tickets/done/01-0115-retentive-store-freshness.md
   folder groups by release; the delivery map is the only cross-release order.
 - A release closes when its contract's criteria are met, not on a date. A later release's ticket may
   land first.
-- Cite tickets by slug, never by number.
 - Maintenance is a `Kind`, never a filename prefix.
 - Completed tickets keep their number.
 
 ### One basename per work item
 
-The ticket names the work; its other artifacts take the same basename —
-`docs/tickets/01-0119-live-window-edge-tolerance.md` ↔ `docs/rfc/01-0119-live-window-edge-tolerance.md`.
+The shared basename, the slug citation, and the independent `done/` moves, are
+[the process](../../../docs/process.md#naming)'s. What it does not say:
 
-- Each artifact moves to its own `done/` on its own completion, basename intact. The move is
-  mechanical — `uv run python .agents/scripts/move_doc.py SRC DST [SRC DST ...]` re-depths the
-  moved record and rewrites live citers; a paired close (ticket + RFC) goes in one invocation.
-- Repositioning a ticket renames its RFC in the same change.
-- Cite a plan by its ticket's slug ("the TWC provider RFC"), never by a serial or position.
+- The move is mechanical: `uv run python .agents/scripts/move_doc.py SRC DST [SRC DST ...]`
+  re-depths the moved record and rewrites live citers; a paired close (ticket + RFC) goes in one
+  invocation.
 - Artifacts predating this keep their names.
 
 What an RFC *contains* is `/plan-impl`'s. Adoption dates and the legacy-id map are the queue's.
@@ -116,8 +118,7 @@ write them.
 ### Conventions
 
 - Cite by slug through a relative link; add the `done/` segment when the target completes.
-- Local files only — no `gh issue create`, no issue numbers.
-- Reference the ADRs, architecture, glossary and concerns; never restate them.
+- Reference the architecture, ADRs, glossary, concerns and edge records; never restate them.
 - Strike superseded text, answer inline in bold, keep the question.
 - Date anything that changed after minting.
 - Update the queue in the same pass.

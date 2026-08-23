@@ -17,7 +17,7 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
-5. Once you have a complete understanding of the problem and solution, use the template below to write the spec. The spec is a local markdown file under `docs/`, named for the effort — agree the filename with the user (the existing release contract is `docs/v1-requirements.md`; not every PRD is a requirements doc). Do NOT submit a GitHub issue or call any external service.
+5. Once you have a complete understanding of the problem and solution, use the template below to write the spec — a local markdown file, named per [the process](../../../docs/process.md#naming). A spec is argument rather than a work item, so it registers nothing anywhere; putting work on the tracker is /to-tickets'.
 
 6. Hand off: once the PRD is written, decomposition into tickets is /to-tickets.
 

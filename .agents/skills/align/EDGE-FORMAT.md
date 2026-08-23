@@ -53,7 +53,7 @@ ticket. Plans, not promises.
   clears them. It is not a softer `Normative` — an unmarked claim in a tentative record is held to
   the same standard — and the owning ticket's docs-at-landing list must carry the record, so the
   qualifier is retired by the same commit that lands the change. `Concerns` and `Roadmap` are aggregation — pointers and plans, never
-  validated, no delivery-status vocabulary (status lives in `docs/tickets/README.md`).
+  validated, and carry no delivery-status vocabulary → [Status](../to-tickets/TICKET-FORMAT.md#status).
 - **Per-invariant validators, not a separate section.** Each promise points at the test that
   enforces it, so `/edge` and `/sync-arch` can check mechanically that the validator still
   exists and still asserts the promise. **⚠ unguarded** is legal in a Stub, a finding in a
