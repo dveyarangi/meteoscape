@@ -9,6 +9,7 @@ so that each fact has one owner.
 | What must v1 demonstrate? | [v1 requirements](./v1-requirements.md) |
 | What does the pilot deployment require, and where does its configuration live? | [Pilot requirements](./pilot-requirements.md) — deployment configuration is never the public shape; its commercial identity stays out of the repo |
 | What are the durable system boundaries and decisions? | [Architecture](./architecture.md), [ADRs](./adr), and [glossary](./glossary.md) |
+| What connects the documents — the naming that links them, and the skill loop that moves work through them? | [Development process](./process.md) |
 | What is implemented, ready, or next? | [delivery status](./tickets/README.md) |
 | What does an individual work item require? | [Active tickets](./tickets) |
 | What is the living status of a product edge — contract, invariants, concerns, staged evolution? | [Edge records](./edge) — one per product surface; customer-facing descriptions derive from them |

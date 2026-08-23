@@ -114,8 +114,9 @@ work `Maint`. What those columns mean is
 ## Ticket numbering
 
 Filenames are `RR-NNNN-slug.md` — release, position, name. The scheme itself (anatomy, position
-stepping and insertion, subticket depth, citation by slug, what completion does to a number) is
-owned by [TICKET-FORMAT.md § Numbering](../../.agents/skills/to-tickets/TICKET-FORMAT.md#numbering).
+stepping and insertion, subticket depth, what completion does to a number) is owned by
+[TICKET-FORMAT.md § Numbering](../../.agents/skills/to-tickets/TICKET-FORMAT.md#numbering);
+citation by slug is [the development process](../process.md#naming)'s.
 This section records only how it landed here.
 
 - **Adopted 2026-08-02**, replacing the flat `NNN` scheme with its `002b`/`003a` letter suffixes and
