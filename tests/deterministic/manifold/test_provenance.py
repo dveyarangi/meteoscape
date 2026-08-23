@@ -17,10 +17,10 @@ def test_atomic_origin_identity_defaults_absent() -> None:
 
 
 def test_atomic_origin_carries_identity_when_given() -> None:
-    origin = AtomicOrigin(_KEY, _RUN, authority="agrometeo", process="instant", unit="Russel")
-    assert origin.authority == "agrometeo"
+    origin = AtomicOrigin(_KEY, _RUN, authority="agromet", process="instant", unit="Alpha")
+    assert origin.authority == "agromet"
     assert origin.process == "instant"
-    assert origin.unit == "Russel"
+    assert origin.unit == "Alpha"
 
 
 def test_run_free_origin_has_no_issue_time() -> None:

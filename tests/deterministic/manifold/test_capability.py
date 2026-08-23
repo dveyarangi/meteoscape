@@ -192,8 +192,8 @@ def test_unbound_granular_capability_declares_no_origins() -> None:
         leaf.origins(PRECIPITATION)
 
 
-_RUSSEL = (-33.0129, -68.7473)
-_MENDOZA = (-32.890, -68.845)
+_ALPHA = (-33.0129, -68.7473)
+_BETA = (-32.890, -68.845)
 _OBS = SourceKey("collector-obs", "stations")
 
 
@@ -208,24 +208,20 @@ def _station_scatter(*points: tuple[float, float]) -> ScatterDomain:
 
 def test_scatter_capability_publishes_origins_before_any_request() -> None:
     table = StaticParameterTable.core()
-    reach = _station_scatter(_RUSSEL, _MENDOZA)
-    russel = _station_scatter(_RUSSEL)
-    mendoza = _station_scatter(_MENDOZA)
+    reach = _station_scatter(_ALPHA, _BETA)
+    alpha = _station_scatter(_ALPHA)
+    beta = _station_scatter(_BETA)
     leaf = GranularCapability(
         reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), reach)},
         declared_origins={
             AIR_TEMPERATURE: (
                 (
-                    russel,
-                    AtomicOrigin(
-                        _OBS, None, authority="agrometeo", process="instant", unit="Russel"
-                    ),
+                    alpha,
+                    AtomicOrigin(_OBS, None, authority="agromet", process="instant", unit="Alpha"),
                 ),
                 (
-                    mendoza,
-                    AtomicOrigin(
-                        _OBS, None, authority="agrometeo", process="instant", unit="Mendoza"
-                    ),
+                    beta,
+                    AtomicOrigin(_OBS, None, authority="agromet", process="instant", unit="Beta"),
                 ),
             )
         },
@@ -243,8 +239,8 @@ def test_scatter_capability_publishes_origins_before_any_request() -> None:
         assert reach.z.extent.contains(place.z.extent)
         published.append(place)
         units.append(origin.unit)
-    assert [place.points for place in published] == [(_RUSSEL,), (_MENDOZA,)]
-    assert units == ["Russel", "Mendoza"]
+    assert [place.points for place in published] == [(_ALPHA,), (_BETA,)]
+    assert units == ["Alpha", "Beta"]
 
 
 def test_enumerable_capability_declares_no_origins() -> None:
@@ -279,17 +275,15 @@ def test_derived_capability_declares_no_origins() -> None:
 
 def test_union_capability_concatenates_origins_in_bind_order() -> None:
     table = StaticParameterTable.core()
-    reach = _station_scatter(_RUSSEL, _MENDOZA)
+    reach = _station_scatter(_ALPHA, _BETA)
     footprint = footprint_domain(STOPPED, cadence=_cadence())
     first = GranularCapability(
         reaches={AIR_TEMPERATURE: (table.get(AIR_TEMPERATURE), reach)},
         declared_origins={
             AIR_TEMPERATURE: (
                 (
-                    _station_scatter(_RUSSEL),
-                    AtomicOrigin(
-                        _OBS, None, authority="agrometeo", process="instant", unit="Russel"
-                    ),
+                    _station_scatter(_ALPHA),
+                    AtomicOrigin(_OBS, None, authority="agromet", process="instant", unit="Alpha"),
                 ),
             )
         },
@@ -300,10 +294,8 @@ def test_union_capability_concatenates_origins_in_bind_order() -> None:
         declared_origins={
             AIR_TEMPERATURE: (
                 (
-                    _station_scatter(_MENDOZA),
-                    AtomicOrigin(
-                        _OBS, None, authority="agrometeo", process="instant", unit="Mendoza"
-                    ),
+                    _station_scatter(_BETA),
+                    AtomicOrigin(_OBS, None, authority="agromet", process="instant", unit="Beta"),
                 ),
             )
         },
@@ -318,6 +310,6 @@ def test_union_capability_concatenates_origins_in_bind_order() -> None:
     )
 
     units = [origin.unit for _, origin in union.origins(AIR_TEMPERATURE)]
-    assert units == ["Russel", "Mendoza"]
+    assert units == ["Alpha", "Beta"]
     with pytest.raises(KeyError):
         union.origins(WIND_SPEED)
