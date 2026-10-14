@@ -6,8 +6,8 @@ ADR owns → [architecture: ADR index](./architecture.md#adr-index)). `architect
 file by subtitle.
 
 This file owns unresolved design pressure — not delivery sequencing, and not decisions. How entries
-are written, ordered, and retired is owned by
-[/align](../.agents/skills/align/SKILL.md#extract-open-questions-and-risks).
+are written, ordered, and retired was owned by the project's former /align, removed when the
+GoodWolf harness was installed; its new home is not yet settled.
 
 ---
 

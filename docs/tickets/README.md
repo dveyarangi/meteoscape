@@ -20,7 +20,7 @@ the project reached its current state; they do not override this page.
 ## Status vocabulary
 
 **Done**, **In progress**, **Ready**, **Partial**, **Planned**, **Blocked** — defined in
-[TICKET-FORMAT.md § Status](../../.agents/skills/to-tickets/TICKET-FORMAT.md#status).
+[TICKET-FORMAT.md § Status](../../.agents/skills/ticket/TICKET-FORMAT.md#status).
 
 No active ticket is presently **Blocked**: everything unstarted is waiting on an ordinary incomplete
 dependency, which is ordering, not blockage.
@@ -55,7 +55,7 @@ dependency, which is ordering, not blockage.
 One queue, in the order the work is done — this table is the canonical order. The **#** column is
 the ticket's position ([Ticket numbering](#ticket-numbering)); the `Kind` column marks maintenance
 work `Maint`. What those columns mean is
-[TICKET-FORMAT.md § The queue](../../.agents/skills/to-tickets/TICKET-FORMAT.md#the-queue).
+[TICKET-FORMAT.md § The queue](../../.agents/skills/ticket/TICKET-FORMAT.md#the-queue).
 
 | # | Ticket | Kind | Status | Depends on | Outcome |
 |---|---|---|---|---|---|
@@ -115,7 +115,7 @@ work `Maint`. What those columns mean is
 
 Filenames are `RR-NNNN-slug.md` — release, position, name. The scheme itself (anatomy, position
 stepping and insertion, subticket depth, what completion does to a number) is owned by
-[TICKET-FORMAT.md § Numbering](../../.agents/skills/to-tickets/TICKET-FORMAT.md#numbering);
+[TICKET-FORMAT.md § Numbering](../../.agents/skills/ticket/TICKET-FORMAT.md#numbering);
 citation by slug is [the development process](../process.md#naming)'s.
 This section records only how it landed here.
 

@@ -60,8 +60,8 @@ their *outbound* links are exempt (a README inside such a directory stays gated)
 no exemptions. External URLs are never checked — the gate stays network-free. Policy, exemptions,
 and the incident history: [docs-integrity-gate](./tickets/done/01-0127-docs-integrity-gate.md).
 
-Lifecycle moves are mechanical: `uv run python .agents/scripts/move_doc.py SRC DST [SRC DST ...]`
-performs the `git mv`, re-depths the moved record's own links, and rewrites live citers (a paired
+Lifecycle moves are mechanical: `uv run python .agents/scripts/gw/move_doc.py SRC DST [SRC DST ...]`
+moves the record, re-depths its own links, and rewrites live citers, leaving the index alone (a paired
 ticket+RFC close goes in one invocation); the guards then prove the move →
 [mechanical record moves](./tickets/done/01-0128-mechanical-record-moves.md).
 

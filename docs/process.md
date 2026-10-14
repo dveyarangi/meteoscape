@@ -22,29 +22,12 @@ The document family shares names, never content:
   tickets it decomposes into carry the work onto [the queue](./tickets/README.md).
 
 The ticket's own scheme — `RR-NNNN-slug`, position allocation, subticket depth — is
-[TICKET-FORMAT.md § Numbering](../.agents/skills/to-tickets/TICKET-FORMAT.md#numbering)'s, as is
-the delivery-state vocabulary ([§ Status](../.agents/skills/to-tickets/TICKET-FORMAT.md#status))
+[TICKET-FORMAT.md § Numbering](../.agents/skills/ticket/TICKET-FORMAT.md#numbering)'s, as is
+the delivery-state vocabulary ([§ Status](../.agents/skills/ticket/TICKET-FORMAT.md#status))
 and the mechanics of the `done/` move
-([§ One basename per work item](../.agents/skills/to-tickets/TICKET-FORMAT.md#one-basename-per-work-item)).
+([§ One basename per work item](../.agents/skills/ticket/TICKET-FORMAT.md#one-basename-per-work-item)).
 
 ## The loop
 
-Each stage is a skill; each hands its artifact to the next. The whole is diagrammed in
-[workflow.excalidraw](../.agents/skills/workflow.excalidraw).
-
-- [/to-spec](../.agents/skills/to-spec/SKILL.md) argues a brief into a spec.
-- [/to-tickets](../.agents/skills/to-tickets/SKILL.md) slices work into tickets and registers them
-  in [the queue](./tickets/README.md) in the same pass.
-- [/align](../.agents/skills/align/SKILL.md) settles a decision-bearing ticket's open questions;
-  [/impact](../.agents/skills/impact/SKILL.md) traces a change's consequences before committing to
-  it.
-- [/plan-impl](../.agents/skills/plan-impl/SKILL.md) plans the ticket's RFC;
-  [/implement](../.agents/skills/implement/SKILL.md) builds to it;
-  [/review-impl](../.agents/skills/review-impl/SKILL.md) checks the build against its governing
-  documents.
-- [/commit](../.agents/skills/commit/SKILL.md) lands the change — never unasked.
-- [/recall](../.agents/skills/recall/SKILL.md) reads where things stand;
-  [/conclude](../.agents/skills/conclude/SKILL.md) records the session;
-  [/sync-arch](../.agents/skills/sync-arch/SKILL.md) and
-  [/edge](../.agents/skills/edge/SKILL.md) keep the architecture documents and edge records honest
-  against the code.
+The skill loop is the GoodWolf harness's, stated in [AGENTS.md § The loop](../AGENTS.md#the-loop);
+its skills are under `.agents/skills/`.
