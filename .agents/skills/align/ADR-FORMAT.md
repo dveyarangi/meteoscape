@@ -24,7 +24,7 @@ Only include these when they add genuine value. Most ADRs won't need them.
 
 ## No open-question tracker in ADRs
 
-The single list of open questions / risks lives in `docs/concerns.md`. An ADR carries no "open" or "resolved" tracker (those drift and go stale; supersession via `Status` is the only cross-ADR pointer). It *may* note deliberately-deferred seams under **Consequences** — that's decision rationale describing the choice as-made, not a tracker.
+Open questions and risks live in the question store, `docs/questions/`. An ADR carries no "open" or "resolved" tracker (those drift and go stale; supersession via `Status` is the only cross-ADR pointer). It *may* note deliberately-deferred seams under **Consequences** — that's decision rationale describing the choice as-made, not a tracker.
 
 ## Numbering
 

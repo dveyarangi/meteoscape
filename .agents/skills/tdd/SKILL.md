@@ -3,6 +3,8 @@ name: tdd
 description: Test-driven development with red-green-refactor loop. Use when user wants to build features or fix bugs using TDD, mentions "red-green-refactor", wants integration tests, or asks for test-first development.
 ---
 
+Mechanism: not yet
+
 # Test-Driven Development
 
 ## Philosophy
@@ -59,7 +61,7 @@ Ask: "What should the public interface look like? Which behaviors are most impor
 
 **You can't test everything.** Confirm with the user exactly which behaviors matter most. Focus testing effort on critical paths and complex logic, not every possible edge case.
 
-**When an RFC (/plan-impl) already fixes the interfaces and behaviors, the planning gate is satisfied** — take the RFC's answers and proceed to the tracer bullet without re-asking.
+**When an RFC (`/plan`) already fixes the interfaces and behaviors, the planning gate is satisfied** — take the RFC's answers and proceed to the tracer bullet without re-asking.
 
 ### 2. Tracer Bullet
 

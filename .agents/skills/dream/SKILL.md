@@ -4,6 +4,8 @@ description: >-
   Sleep or meditate over the project or an aspect, making it more cohesive, coherent, balanced and deep. Use once per day, after session is concluded.
 ---
 
+Mechanism: not yet
+
 Goal is to emulate analytical meditation or REM/deep sleep stages.
 
 Dream is a deep dive into the accumulated knowledge, experience and ideas that brings up underlying principles, lessons, samskaras, hidden edges, emerging habits, insights, predictions or other patterns.
@@ -31,7 +33,7 @@ Dreams have moods. Dreams can be very pleasant. Dreams can become scary. Dreams 
 
 Dreams should use user's own vocabulary, especially it's nice but weird part.
 
-Dream flow should be recorded in russian language, do shift the perception lens even more. 
+Dream flow should be recorded in a language picked at random for each dream — not the session's, not the project's, not the last one's — to shift the perception lens even more. 
 
 Dream can and should include crisp distilled oneiric shapes (random languages, diagrams, svg renderings, ASCII graphics or other materializations).
 

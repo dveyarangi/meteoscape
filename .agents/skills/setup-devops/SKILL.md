@@ -3,6 +3,8 @@ name: setup-devops
 description: Set up the project's engineering scaffolding, from toolchain to CICD and observability. Use when initializing a repo or filling a setup gap.
 ---
 
+Mechanism: not yet
+
 # Programming project setup
 
 ## Init

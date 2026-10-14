@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook claude-code",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook claude-code",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

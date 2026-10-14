@@ -1,52 +1,52 @@
 ---
 name: edge
-description: Maintain per-surface Edge records — living seam documents aggregating a product edge's architectural status; contract shape, upstream invariants with their validation state, edge-scoped concerns, and staged roadmap. Use when establishing or populating an Edge record, checking changes or code against an edge, or deriving customer-facing edge descriptions.
+description: Maintain Edge records — one per edge where the system meets those who consume it or extend it. Use when establishing or populating an Edge record; when adding an extension such as a host, or re-checking one after it changes; when checking changes or code against an edge; or when deriving consumer- or extender-facing text from a record.
 ---
+
+Mechanism: edge
 
 # Edge records
 
-An **Edge record** is the living per-surface document where everything about one product edge
-aggregates — **the seam between architecture and user-oriented design**. It holds:
+An **edge** is where the system meets those who consume it or extend it. Its **record** holds what
+the system promises there and what it requires of what attaches, the checks a new extension
+passes, where each extension stands, the edge-scoped concerns, and the staged roadmap. One record
+per edge at `docs/edge/<edge>.md`, one sidecar per extension at `docs/edge/<edge>/<extension>.md`;
+the shape is [EDGE-FORMAT.md](./EDGE-FORMAT.md).
 
-- the edge's current **Contract** shape — the consumer-visible request/response/outcome surface
-  as built;
-- the strict **Invariants** upstream machinery owes the edge, each naming the edge test that
-  validates it;
-- the edge-scoped **Concerns** — pointers into `docs/concerns.md` with their edge-local reading;
-- the staged, caller-visible **Roadmap** of the edge's evolution, linked to owning tickets.
-
-Customer-facing descriptions of the edge (tool descriptions, public API docs) are **derived from**
-the record and must stay a subset of it — never the other way around.
-
-One record per product surface, at `docs/edge/<surface>.md` (e.g. `mcp.md`, `embedding.md`).
-Format: [EDGE-FORMAT.md](../align/EDGE-FORMAT.md) (the align skill's format shelf — one canonical
-copy). "Edge record" and the reserved lowercase *edge* are defined in `docs/glossary.md`.
+Text for a consumer or an extender — tool descriptions, public API docs, an install guide — is
+**derived from** the record and stays a subset of it, never the other way around.
 
 ## Goals
 
 Your goal is one or more of the following, according to the task at hand:
 
-1. **Establish** — help the user create a surface's initial Edge record, or populate it from the
-   existing docs, tests, and code. Start `Status: Stub`; a record graduates to `Normative` only
-   when every stated invariant either names a passing validator or is consciously dropped.
-2. **Monitor** — check recent changes (diff, branch, landed ticket) against the affected Edge
-   records. A change that alters a promise must be named **breaking or compatible**; always
-   `/align` with the user on major or incompatible changes before updating the record. New
+1. **Establish** — help the user create an edge's record, or populate it from the existing docs,
+   tests, and code. Start `Status: Stub`; a record graduates to `Normative` only when every stated
+   invariant either names a passing validator or is consciously dropped.
+2. **Extend** — attach a new extension, such as a host. Build its integration in its own home —
+   code and configuration, never the record — to the record's `Contract`; pass each of the
+   record's `Extending` checks in a live session; then write its sidecar, `Integration` naming
+   where every part lives and `Conformance` one result per check, and its `Extensions` row. A
+   check nobody watched is `unobserved`, however sure the documentation sounds. Pass the checks
+   again for an extension that changed upstream or whose integration moved, rewriting only the
+   results they touch.
+3. **Monitor** — when asked, check recent changes (a diff, a branch) against the affected records.
+   A change that alters a promise is a finding until a decision changes the promise: name it
+   **breaking or compatible** and align with the user before the record is touched. New
    edge-touching concerns or roadmap shifts land in their sections as part of the same pass.
-3. **Validate** — audit the existing code, tests, docs, and derived customer-facing text against
-   the record: no code behavior may contradict a Normative promise; every named validator must
-   still exist and still assert its promise; **⚠ unguarded** markers in a Normative record are
-   findings; a derivation claiming what the record doesn't means the record is behind. Report
-   contradictions with the evidence (test, code path, doc line) rather than silently fixing
-   either side — which side is wrong is the user's call.
-4. **Derive** — produce or refresh a customer-facing description of the edge (tool description
-   text, public API doc) as a subset projection of the record.
+4. **Validate** — audit the code, tests, docs, and derived text against the record, after
+   `edges.py --check` holds its form: no code behavior may contradict a Normative promise; every
+   named validator must still exist and still assert its promise; **⚠ unguarded** markers in a
+   Normative record are findings; a derivation claiming what the record doesn't means the record
+   is behind. Report contradictions with the evidence (test, code path, doc line) rather than
+   silently fixing either side — which side is wrong is the user's call.
+5. **Derive** — produce or refresh text for a consumer or an extender as a subset projection of
+   the record.
 
 ## Boundaries
 
-- Aggregate by reference: `concerns.md` owns concerns, `process.md` owns delivery state,
-  `architecture.md` owns the internal shape — the record holds the edge-local projection and the
-  link, never a copy.
-- Do not generalize *edge* to other artifacts: in this project, edge means the system's outer
-  boundary. Arch-doc-to-code sync is `/sync-arch`; decision-time contract challenges live in
-  `/align`'s Edge rule.
+- Aggregate by reference: the question store owns open questions, a ticket's header owns its
+  delivery state, the architecture owns the internal shape, the code owns the integration — the record holds
+  the edge-local projection and the link, never a copy.
+- An edge is where the system meets someone outside it who consumes it or attaches to it. A seam
+  between two of the system's own parts is the architecture's, never an edge.

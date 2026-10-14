@@ -1,9 +1,12 @@
 ---
 name: impact
 description: >-
+  Use when asked to check the impact of an issue or its slice.
   Trace the consequences of changing a concept, contract, invariant, behavior,
   or artifact before implementation.
 ---
+
+Mechanism: not yet
 
 Find what actually depends on the subject being shaped, behaving, or meaning
 what it currently does.
@@ -17,9 +20,9 @@ Check:
 - product/API behavior
 - code and composition
 - tests, fixtures, parity/reference readers
-- active tickets, concerns, RFCs
+- active tickets, open questions, RFCs
 - upcoming work likely to depend on it
-- historical context, without treating history as something to update
+- historical context and records; history is maintained mechanically like everything else (`/mechanism`, *Mechanical by construction*), not exempted from repair
 
 Distinguish:
 
@@ -39,7 +42,8 @@ Challenge the proposed change too:
 - does it introduce a general abstraction?
 - if so, what second materially different concrete shape justifies it?
 
-Output only:
+The assessment is these four sections and nothing else. That governs its shape, never the
+turn: called from another skill, hand them back and carry on with the step that called.
 
 ## Impact
 Main blast radius.

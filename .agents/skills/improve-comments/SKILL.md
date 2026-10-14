@@ -1,7 +1,9 @@
 ---
 name: improve-comments
-description: Write or improve codebase comments
+description: Use when writing or reviewing comments and docstrings in code.
 ---
+
+Mechanism: not yet
 
 
 # Comment Guide for LLM-Generated Code

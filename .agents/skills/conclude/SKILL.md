@@ -1,24 +1,40 @@
 ---
 name: conclude
 description: >-
-  Conclude work session into a session record. Use when a chunk of work wraps up.
+  Use when a session ends, or the user asks to conclude the current chat.
 ---
 
-Conclude todays/last session of work (that may span additional chats/external changes) - everything since the previous session recorded, extracting:
-- a brief summary of work done (no need to repeat details already stored into other documentation files), 
-- what the session settled, one line each with a reference to where the decision now lives,
-- the remaining open questions, with compact reasoning and relevant context. 
-- and other things that need continuation.
+Mechanism: not yet
 
-In addition, use /advise skill questions to describe the session.
+First go over the session once more for what it left undone — a step a reply promised and did not
+take, a decision not landed in its home, a change of its own not committed, drift met and not
+reported — and finish or name each.
 
-Open questions go to their owning document first — durable design pressure to `docs/concerns.md`, a ticket's question into that ticket, a hard-to-reverse trade-off to an ADR — and the session file then cites them rather than restating them. Sessions are never maintained as current, so a question left only here will still look open long after it was answered.
+Write one session record under `docs/sessions/`: the account of what happened, for a reader who
+has the tree and not the transcript. Substance before form — a session that produced decisions
+is recorded by its decisions, not by its commits. It opens with
+`- **record of** what happened`, the line after its title: it is of that kind and no other —
+never repaired, never copied into the queue. It holds:
 
-And write it into a markdown file under docs/sessions.
+- Each decision with what chose it: the alternatives weighed, what refuted them, and the
+  correction that turned the answer, in the user's words where the wording carried the point.
+  The decision's home holds the result and who decided it; the reasoning stays here unless an
+  evidence file or an ADR took it.
+- General principles the session derived that have no durable home yet, each named as such, so
+  the next session lands it rather than rediscovers it.
+- What was done, briefly; what another record holds in full is linked, not repeated.
+- What was refuted or went wrong, and what it taught.
+- The open questions the session touched, each with where it stands and what it waits on.
+- What continues, and the first step of the next session.
+Session files live under `docs/sessions/`, named `NNNN-<YYYYMMDD>-<name>` with a constantly incrementing number.
 
-Session conventions, owned here — other skills and the directory README defer to this list:
+The session's unpushed commits are the conclude's to settle, once the ended row is committed, by
+the `push` switch: under `ask`, put to the user here; no other reply speaks of it.
 
-- Named `docs/sessions/NNNN-<YYYYMMDD>-<name>.md`; take the next number from the directory listing.
-- A session is a historical snapshot, never maintained as current. Never rewrite an old one to reflect later delivery — write a new one, or update the owning ticket or contract.
-- Nothing links *to* a session, including other sessions. Sessions may link outward.
-- Records older than the rolling seven-day window move to `docs/sessions/history/YYYY-MM/` (swept by `/denoise`).
+## Installed from other mechanisms
+
+<installed by="questions">
+**Q3** Write a lean line on each question the session touched and left open —
+`questions.py lean q-N '<line>' --session <tag>` — and nothing else: placements and closures were written as they
+happened. As the conclude's last act, run `questions.py --end --session <tag>`.
+</installed>

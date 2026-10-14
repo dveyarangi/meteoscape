@@ -21,7 +21,7 @@ Follow the [C4 model](https://c4model.com/) for the *levels of abstraction*, but
 
 # Architecture
 
-This document captures the **high-level architecture**. See [`glossary.md`](./glossary.md) for the glossary, [`docs/adr/`](./adr) for recorded decisions, [`concerns.md`](./concerns.md) for open issues and risks. Lower-level concerns are intentionally **deferred** and listed at the end.
+This document captures the **high-level architecture**. See [`glossary.md`](./glossary.md) for the glossary, [`docs/adr/`](./adr) for recorded decisions, [`questions/`](./questions/) for open questions and risks. Lower-level concerns are intentionally **deferred** and listed at the end.
 
 > Scope note: everything here is at the architecture/contract level. Where a concrete shape would prematurely lock a deferred decision, we define only the *seam*.
 > A fact the design depends on belongs here, but its justification goes to ADRs.
@@ -38,7 +38,7 @@ This document captures the **high-level architecture**. See [`glossary.md`](./gl
 ## Extension points
 ## Deferred decisions
 ## Risks / open questions
-- should map to entries in [`concerns.md`](./concerns.md)
+- should map to entries in [`questions/`](./questions/)
 ## ADR index
 
 ```

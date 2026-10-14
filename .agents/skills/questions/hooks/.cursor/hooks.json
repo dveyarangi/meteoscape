@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook cursor" }
+    ],
+    "preCompact": [
+      { "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook cursor" }
+    ],
+    "beforeSubmitPrompt": [
+      { "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook cursor" }
+    ]
+  }
+}

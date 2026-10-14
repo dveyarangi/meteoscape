@@ -4,6 +4,8 @@ description: >-
   Strategic advisory read on the project or a regarded aspect.
 ---
 
+Mechanism: not yet
+
 Please advise me on current project/regarded aspect. 
 Tell me, whichever is relevant:
 - What is great? 

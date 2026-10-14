@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "git -c \"alias.gw-hook=!sh .agents/scripts/gw/hook.sh\" gw-hook codex",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

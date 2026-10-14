@@ -3,6 +3,8 @@ name: review-architecture
 description: Explore the codebase for module-deepening opportunities — architectural improvements that raise testability and navigability. Use when asked to improve or refactor the architecture.
 ---
 
+Mechanism: not yet
+
 # Improve Codebase Architecture
 
 Explore a codebase like an AI would, surface architectural friction, discover opportunities for improving testability, and propose module-deepening refactors as refactor tickets with their RFCs.
@@ -73,4 +75,4 @@ After comparing, give your own recommendation: which design you think is stronge
 
 ### 7. Record the outcome
 
-Mint the chosen deepening as a refactor ticket per [to-tickets](../to-tickets/SKILL.md), then record the chosen interface design as that ticket's RFC per [plan-impl](../plan-impl/SKILL.md) — the ticket holds the behavior altitude, the RFC holds the shape. Do NOT ask the user to review before writing — write and share the paths.
+Mint the chosen deepening as a refactor ticket per [`/ticket`](../ticket/SKILL.md), then record the chosen interface design as that ticket's RFC per [`/plan`](../plan/SKILL.md) — the ticket holds the behavior altitude, the RFC holds the shape. Do NOT ask the user to review before writing — write and share the paths.
