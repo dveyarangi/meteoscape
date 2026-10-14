@@ -107,6 +107,7 @@ the preceding cell, or summarizes the following cell. Real providers exercise ea
 | TWC `qpf` | following-hour integral `[T, T+1h)` | correct cell |
 | TWC `windSpeed` | instantaneous at `T` | point statistic on a cellular axis |
 | TWC `windDirection`, `cloudCover` | hourly mean | **wrong statistic:** declared as point |
+| Collector `temp2m_c`, `rh2m`, … | instant reading taken *somewhere inside* the labelled hour | point statistic, label floored to the hour |
 
 The missing declaration is two-dimensional: **which temporal cell** owns the value and **which
 statistic** the vendor already computed over it. `CellStatistic` exists on `ParameterDef`, but v1 fixes
@@ -117,6 +118,13 @@ Open-Meteo precipitation therefore has a live contract error: values and units a
 published hour label is one hour late. Internal arithmetic does not yet read `Cell.bounds`, so the
 error is additive to repair. Provider parity cannot detect a semantic mistake shared with its
 reference reader → [Provider edge: parity limits](./edge/provider.md).
+
+An observation source widens the gap rather than adding a fourth case: a station reading has no
+vendor-declared cell at all. The collector labels each reading with an hour and carries the true
+instant separately, and the two disagree by anything from a few minutes to a full hour; older
+documents are labelled twenty minutes past the hour, and the changeover date differs station by
+station. So the label is a bucket the reading fell into, and any tick a station source publishes is
+floored — a per-document instant has nowhere to go in a lattice of one shared step.
 
 The repair must preserve vendor-native semantics and split records by temporal convention as it
 already splits them by Z level. Open: whether the cell-side declaration belongs on the tap,
