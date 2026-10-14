@@ -27,7 +27,6 @@ _POINTER_EXEMPT = frozenset(
         "docs_corpus.py",
         "test_docs_integrity_guard.py",
         "test_docs_conventions_guard.py",
-        "test_record_mover.py",
     }
 )
 _CONCERNS = "docs/concerns.md"

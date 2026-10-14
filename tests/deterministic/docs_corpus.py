@@ -18,6 +18,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EXEMPT_PREFIXES = ("docs/sessions/", "docs/tickets/done/", "docs/rfc/done/", "docs/dreams/")
 """Dated-record directories: kept as written, so their outbound links are nobody's promise."""
 
+CORE_PREFIX = ".agents/"
+"""The harness core, copied verbatim from its repository: none of it is this project's to keep."""
+
 _FENCE = re.compile(r"^\s*(```|~~~)")
 _INLINE_CODE = re.compile(r"`[^`]*`")
 _HEADING = re.compile(r"^#{1,6}\s+(.*)$")
@@ -93,7 +96,7 @@ def live(name: str) -> bool:
 
     A `README.md` inside a dated-record directory is maintained and counts as live.
     """
-    if not name.endswith(".md"):
+    if not name.endswith(".md") or name.startswith(CORE_PREFIX):
         return False
     if name.startswith(EXEMPT_PREFIXES):
         return name.rsplit("/", 1)[-1] == "README.md"
